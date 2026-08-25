@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --klaros-bg: #0b0d10;
+  --klaros-panel: #14171c;
+  --klaros-border: #23272e;
+}
+
+body {
+  background-color: var(--klaros-bg);
+  color: #e6e8eb;
+}
