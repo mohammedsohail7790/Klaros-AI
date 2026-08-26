@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token, create_refresh_token, hash_password, verify_password
+from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.organization import Organization
 from app.models.rbac import Role
@@ -50,7 +51,7 @@ async def register_organization(
     db.add(
         AuditLog(
             tenant_id=org.id,
-            actor_type="human",
+            actor_type=ActorType.USER,
             actor_id=user.id,
             action="organization.created",
             entity_type="organization",
