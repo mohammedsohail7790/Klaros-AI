@@ -1,9 +1,13 @@
 from functools import lru_cache
 
+from app.api.deps import CurrentUser
 from app.db.session import async_session_maker
 from app.events.bus import EventBus
+from app.events.crm_handlers import register_crm_handlers
 from app.events.factory import get_event_bus
 from app.events.handlers import register_default_handlers
+from app.models.actor import ActorType
+from app.tools.base import ExecutionContext
 from app.tools.factory import build_tool_registry
 from app.tools.registry import ToolRegistry
 
@@ -17,4 +21,45 @@ def get_tool_registry() -> ToolRegistry:
 def get_wired_event_bus() -> EventBus:
     bus = get_event_bus()
     register_default_handlers(bus)
+    register_crm_handlers(bus, async_session_maker)
     return bus
+
+
+def execution_context(current_user: CurrentUser) -> ExecutionContext:
+    return ExecutionContext(
+        tenant_id=current_user.tenant_id,
+        actor_type=ActorType.USER,
+        actor_id=current_user.id,
+        role=current_user.role,
+    )
+
+
+def raise_http_for_tool_error(exc: Exception) -> None:
+    """Shared mapping from ToolRegistry exceptions to HTTP status codes, used
+    by every CRM router so the mapping is defined once."""
+    from fastapi import HTTPException, status
+
+    from app.tools.errors import (
+        ToolApprovalRequiredError,
+        ToolBlockedError,
+        ToolNotFoundError,
+        ToolPermissionError,
+        ToolValidationError,
+    )
+
+    if isinstance(exc, ToolNotFoundError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    if isinstance(exc, ToolPermissionError):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    if isinstance(exc, ToolValidationError):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    if isinstance(exc, ToolBlockedError):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    if isinstance(exc, ToolApprovalRequiredError):
+        raise HTTPException(
+            status_code=status.HTTP_202_ACCEPTED,
+            detail={"status": "pending_approval", "approval_request_id": str(exc.approval_request_id)},
+        ) from exc
+    if isinstance(exc, ValueError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    raise

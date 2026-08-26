@@ -28,6 +28,8 @@ from app.models.rbac import Role
 from app.tools.base import ExecutionContext
 from app.tools.errors import ToolApprovalRequiredError
 from app.tools.factory import build_tool_registry
+from app.services.enrichment_service import LeadEnrichmentService
+from app.services.qualification_service import LeadQualificationService
 
 logger = structlog.get_logger(__name__)
 
@@ -78,4 +80,23 @@ async def check_payment_status_activity(invoice_id: str, tenant_id: str) -> dict
     return {"paid": False}
 
 
-ACTIVITIES = [execute_tool_activity, send_reminder_activity, check_payment_status_activity]
+@activity.defn
+async def qualify_lead_activity(lead_id: str, tenant_id: str) -> dict[str, Any]:
+    """Backs LeadQualificationWorkflow (section 24). Calls the same
+    LeadQualificationService the event-bus handler uses (app/events/crm_handlers.py) —
+    one qualification implementation, two ways to trigger it.
+    """
+    configure_logging()
+    bus = get_event_bus()
+    enrichment = LeadEnrichmentService(async_session_maker)
+    service = LeadQualificationService(async_session_maker, bus, enrichment)
+    outcome = await service.qualify(uuid.UUID(tenant_id), uuid.UUID(lead_id))
+    return outcome.__dict__
+
+
+ACTIVITIES = [
+    execute_tool_activity,
+    send_reminder_activity,
+    check_payment_status_activity,
+    qualify_lead_activity,
+]

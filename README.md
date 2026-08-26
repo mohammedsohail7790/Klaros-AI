@@ -89,14 +89,54 @@ placeholder adapters (QuickBooks, Stripe, ServiceTitan, Jobber, Google Ads, Meta
 credential env vars are unset, which is always true today since none are configured. No adapter
 fabricates an API response.
 
+### CRM: leads, customers, appointments (Phase 3)
+
+`backend/app/models/crm.py`, `backend/app/services/`, `backend/app/tools/builtin/crm_tools.py` +
+`appointment_tools.py`. The first real business domain, built entirely on the Phase 2 backbone:
+
+- **Lead lifecycle**: `POST /api/v1/leads` → validate → normalize phone/email → match an existing
+  customer by **exact** normalized email/phone (`services/customer_matching.py` — no fuzzy
+  auto-merge, per spec) → persist → publish `lead.created`. Qualification runs asynchronously via
+  an event-bus subscriber (`app/events/crm_handlers.py`), never blocking the request.
+- **Qualification** (`services/scoring.py`): real, deterministic, rule-based scoring — **not an
+  LLM call** (no `ANTHROPIC_API_KEY` configured). Score ≥70 → `QUALIFIED`, <30 → `UNQUALIFIED`,
+  else → `REQUIRES_HUMAN`. Stores `score`, `score_version`, and a concise `score_reason`.
+- **Customer 360**: `GET /api/v1/customers/{id}/timeline` and `/summary` are built from real rows
+  (leads, appointments, notes, audit log) and say so honestly when data is thin — never invented.
+  Finance sections explicitly render "Finance module not connected yet."
+- **Booking**: `backend/app/calendar/` — `CalendarProvider` interface,
+  `NotConnectedCalendarAdapter` (external, e.g. Google Calendar — not configured), and
+  `InternalTestCalendarAdapter`, a **real** calendar backed by the `appointments` table (fixed
+  09:00–17:00 UTC business hours), labeled INTERNAL TEST CALENDAR everywhere it surfaces.
+  Double-booking prevention is a real overlap check before every insert/reschedule.
+- **Communications**: `backend/app/communications/` — `CommunicationProvider` interface,
+  `InternalTestCommunicationAdapter` logs every message to `communication_logs` instead of calling
+  Gmail/Twilio/SendGrid. **Not yet wired into any automatic flow** (see PROJECT_STATUS.md).
+- **15 CRM tools** registered on the same `ToolRegistry` as Phase 2 — no CRM code path bypasses
+  permission/tenant/schema/policy/audit enforcement.
+- **Temporal**: `LeadQualificationWorkflow` wraps the same qualification service the event-bus
+  handler uses — see PROJECT_STATUS.md for its (materially improved) live-verification result.
+
+Frontend: `/leads`, `/leads/[id]`, `/customers`, `/customers/[id]`, `/calendar` — real pages against
+the real API, no hardcoded data. `/dashboard` now shows real CRM metrics from
+`GET /api/v1/crm/metrics` (zeros for an empty tenant, never sample numbers).
+
 ## Local setup
 
-Prereqs: Python 3.12, Node 20, Docker (for Postgres/Redis/Temporal), or use `uv` to get Python
-3.12 without touching your system Python:
+Prereqs: Python 3.12, Node 20, Docker (for Postgres/Redis/Temporal). If you don't have them
+system-wide, both can be fetched portably without touching your system install:
 
 ```bash
+# Python 3.12, via uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Node 20, portable (no sudo, no system Node touched)
+mkdir -p ~/.local/node && cd ~/.local/node
+curl -sL https://nodejs.org/dist/v20.17.0/node-v20.17.0-darwin-arm64.tar.gz | tar -xz --strip-components=1
+export PATH="$HOME/.local/node/bin:$PATH"   # add to your shell profile to persist
 ```
+
+(Swap `darwin-arm64` for your platform — e.g. `linux-x64`, `darwin-x64`.)
 
 ### Backend
 
@@ -141,22 +181,35 @@ python -m pytest -q
 ```
 
 Tests run against an in-memory SQLite database (no external services required) and cover:
-registration/login, tenant isolation, event publish/subscribe/idempotency/retry/dead-letter/replay,
-tool registry authorization (permission/tenant/schema/policy), the approval boundary (AUTO /
-APPROVAL_REQUIRED / BLOCKED), and full end-to-end acceptance scenarios (happy path, unauthorized
-tool, duplicate event) per `PROJECT_STATUS.md`.
+registration/login, tenant isolation (auth, CRM leads/customers/appointments), event publish/
+subscribe/idempotency/retry/dead-letter/replay, tool registry authorization (permission/tenant/
+schema/policy), the approval boundary (AUTO / APPROVAL_REQUIRED / BLOCKED), CRM (lead creation +
+dedup, customer matching, qualification scoring, booking + double-booking prevention, timelines),
+and full end-to-end acceptance scenarios (happy path, unauthorized tool, duplicate event, and the
+complete lead→qualify→book→notify→audit→timeline CRM scenario) per `PROJECT_STATUS.md`.
 
 Temporal workflow tests (`tests/test_temporal_workflows.py`) are separate: they spin up
 temporalio's ephemeral local test server (a real standalone binary, downloaded over the network —
-no Docker needed) rather than running against sqlite. If that download or binary can't run in your
-environment, those tests skip themselves with the reason rather than being silently omitted.
+no Docker needed) rather than running against sqlite. Run them individually if the full file hangs
+in your environment — see `PROJECT_STATUS.md`'s Temporal section for a known
+`workflow.sleep()`-related hang this project has hit repeatedly in sandboxed environments.
+
+### Frontend checks
+
+```bash
+cd frontend
+npm install
+npx tsc --noEmit   # typecheck
+npm run build      # production build
+```
 
 ## Database migrations
 
 Alembic is configured (`backend/alembic/`). `0001_initial_schema` creates `organizations`,
 `users`, and `audit_logs`. `0002_event_bus_tools_approvals` creates `events`,
-`event_processing_records`, `dead_letter_events`, `approval_requests`, and `notifications`. Do not
-hand-edit the schema — add a new migration:
+`event_processing_records`, `dead_letter_events`, `approval_requests`, and `notifications`.
+`0003_crm_domain` creates `leads`, `customers`, `customer_notes`, `appointments`, and
+`communication_logs`. Do not hand-edit the schema — add a new migration:
 
 ```bash
 alembic revision --autogenerate -m "description"
@@ -176,3 +229,11 @@ are listed but intentionally left blank — those integrations are not yet imple
   `requirements.txt`).
 - **bcrypt `password cannot be longer than 72 bytes` / passlib crash**: caused by
   `passlib==1.7.4` + `bcrypt>=4.1`. This repo pins `bcrypt==4.0.1`, which is compatible.
+- **Frontend gets a CORS error in the browser console**: `CORS_ORIGINS` (backend) must include the
+  exact origin (scheme+host+port) the frontend is served from. The default covers
+  `http://localhost:3000` (Docker Compose's frontend port); if you run the frontend on a different
+  port for manual testing, add it to `CORS_ORIGINS` and restart the backend.
+- **`npm audit` reports a high-severity postcss advisory**: it's nested inside `next@14.2.35`'s own
+  bundled `postcss` (a dev-time source-map issue in Next's build tooling), not this repo's direct
+  dependency. Clearing it requires a Next 16 major upgrade — tracked, not silently ignored (see
+  `PROJECT_STATUS.md`).

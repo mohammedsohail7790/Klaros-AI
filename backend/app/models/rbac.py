@@ -29,6 +29,13 @@ class Permission(StrEnum):
     MANAGE_USERS = "MANAGE_USERS"
     EXECUTE_AI_ACTION = "EXECUTE_AI_ACTION"
     DELETE_CUSTOMER = "DELETE_CUSTOMER"
+    READ_LEADS = "READ_LEADS"
+    CREATE_LEAD = "CREATE_LEAD"
+    UPDATE_LEAD = "UPDATE_LEAD"
+    QUALIFY_LEAD = "QUALIFY_LEAD"
+    READ_APPOINTMENTS = "READ_APPOINTMENTS"
+    CREATE_APPOINTMENT = "CREATE_APPOINTMENT"
+    CANCEL_APPOINTMENT = "CANCEL_APPOINTMENT"
 
 
 # Permission matrix: role -> allowed permissions.
@@ -52,6 +59,13 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.RUN_MARKETING,
         Permission.SEND_CUSTOMER_MESSAGE,
         Permission.EXECUTE_AI_ACTION,
+        Permission.READ_LEADS,
+        Permission.CREATE_LEAD,
+        Permission.UPDATE_LEAD,
+        Permission.QUALIFY_LEAD,
+        Permission.READ_APPOINTMENTS,
+        Permission.CREATE_APPOINTMENT,
+        Permission.CANCEL_APPOINTMENT,
     },
     Role.STAFF: {
         Permission.READ_CUSTOMERS,
@@ -61,11 +75,19 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.CREATE_JOB,
         Permission.SCHEDULE_JOB,
         Permission.SEND_CUSTOMER_MESSAGE,
+        Permission.READ_LEADS,
+        Permission.CREATE_LEAD,
+        Permission.UPDATE_LEAD,
+        Permission.READ_APPOINTMENTS,
+        Permission.CREATE_APPOINTMENT,
+        Permission.CANCEL_APPOINTMENT,
     },
     Role.TECHNICIAN: {
         Permission.READ_JOBS,
         Permission.SCHEDULE_JOB,
         Permission.READ_CUSTOMERS,
+        Permission.READ_LEADS,
+        Permission.READ_APPOINTMENTS,
     },
     Role.ACCOUNTANT: {
         Permission.VIEW_FINANCIALS,
@@ -73,11 +95,14 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.SEND_INVOICE,
         Permission.COLLECT_PAYMENT,
         Permission.READ_CUSTOMERS,
+        Permission.READ_LEADS,
     },
     Role.READ_ONLY: {
         Permission.READ_CUSTOMERS,
         Permission.READ_JOBS,
         Permission.VIEW_FINANCIALS,
+        Permission.READ_LEADS,
+        Permission.READ_APPOINTMENTS,
     },
 }
 

@@ -26,6 +26,7 @@ with workflow.unsafe.imports_passed_through():
     from app.workflows.activities import (
         check_payment_status_activity,
         execute_tool_activity,
+        qualify_lead_activity,
         send_reminder_activity,
     )
 
@@ -111,3 +112,33 @@ class InvoiceOverdueWorkflow:
             escalated = True
 
         return {"paid": status["paid"], "escalated": escalated}
+
+
+@dataclass
+class LeadQualificationInput:
+    lead_id: str
+    tenant_id: str
+
+
+@workflow.defn
+class LeadQualificationWorkflow:
+    """section 24:
+
+        lead.created -> load lead -> enrich -> qualify -> persist result
+        -> emit lead.qualified / lead.unqualified
+
+    `qualify_lead_activity` does the load/enrich/qualify/persist/emit in one
+    call (LeadQualificationService is the single implementation shared with
+    the event-bus trigger path in app/events/crm_handlers.py) — this
+    workflow's job is Temporal's retry/timeout envelope around that call, not
+    reimplementing the logic.
+    """
+
+    @workflow.run
+    async def run(self, input: LeadQualificationInput) -> dict[str, Any]:
+        return await workflow.execute_activity(
+            qualify_lead_activity,
+            args=[input.lead_id, input.tenant_id],
+            start_to_close_timeout=timedelta(seconds=30),
+            retry_policy=DEFAULT_RETRY_POLICY,
+        )

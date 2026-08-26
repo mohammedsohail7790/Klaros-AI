@@ -14,6 +14,7 @@ from app.api.tool_deps import get_tool_registry, get_wired_event_bus  # noqa: E4
 from app.db.base import Base  # noqa: E402
 from app.db.session import async_session_maker, engine  # noqa: E402
 from app.events.bus import EventBus  # noqa: E402
+from app.events.crm_handlers import register_crm_handlers  # noqa: E402
 from app.events.handlers import register_default_handlers  # noqa: E402
 from app.events.transport import InMemoryTransport  # noqa: E402
 from app.main import app  # noqa: E402
@@ -43,6 +44,7 @@ async def event_bus() -> EventBus:
     """
     bus = EventBus(session_factory=async_session_maker, transport=InMemoryTransport())
     register_default_handlers(bus)
+    register_crm_handlers(bus, async_session_maker)
     app.dependency_overrides[get_wired_event_bus] = lambda: bus
     yield bus
     app.dependency_overrides.pop(get_wired_event_bus, None)

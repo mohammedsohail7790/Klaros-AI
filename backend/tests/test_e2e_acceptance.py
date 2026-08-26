@@ -108,7 +108,9 @@ async def test_failure_path_unauthorized_tool_never_executes(event_bus, tool_reg
         )
         stats = await event_bus.process_pending(EventType.LEAD_CREATED)
 
-        assert stats.dead_lettered == 1  # handler exception -> retried -> dead-lettered
+        # +1 for the default lead_qualification_handler (Phase 3), which also
+        # dead-letters here since this test publishes a bare payload with no lead_id.
+        assert stats.dead_lettered == 2
         assert side_effects == []  # the notification tool body never ran
 
         async with event_bus.session_factory() as session:

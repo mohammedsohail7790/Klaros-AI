@@ -23,6 +23,8 @@ from app.workflows.definitions import (
     EventProcessingWorkflow,
     InvoiceOverdueInput,
     InvoiceOverdueWorkflow,
+    LeadQualificationInput,
+    LeadQualificationWorkflow,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -86,3 +88,42 @@ async def test_invoice_overdue_workflow_escalates_when_unpaid(temporal_env) -> N
         )
         assert result["paid"] is False
         assert result["escalated"] is True
+
+
+async def test_lead_qualification_workflow_scores_a_real_lead(temporal_env) -> None:
+    from app.db.session import async_session_maker
+    from app.models.crm import Lead, LeadStatus, QualificationStatus
+
+    tenant_id = uuid.uuid4()
+    async with async_session_maker() as session:
+        lead = Lead(
+            tenant_id=tenant_id,
+            name="Temporal Test Lead",
+            source="REFERRAL",
+            service_requested="Emergency repair",
+            urgency="EMERGENCY",
+            estimated_value=5000,
+            status=LeadStatus.NEW,
+            qualification_status=QualificationStatus.PENDING,
+        )
+        session.add(lead)
+        await session.commit()
+        await session.refresh(lead)
+
+    async with Worker(
+        temporal_env.client,
+        task_queue=TASK_QUEUE,
+        workflows=[LeadQualificationWorkflow],
+        activities=ACTIVITIES,
+    ):
+        result = await temporal_env.client.execute_workflow(
+            LeadQualificationWorkflow.run,
+            LeadQualificationInput(lead_id=str(lead.id), tenant_id=str(tenant_id)),
+            id=f"lead-qualification-{uuid.uuid4()}",
+            task_queue=TASK_QUEUE,
+        )
+        assert result["qualification_status"] == "QUALIFIED"
+
+    async with async_session_maker() as session:
+        refreshed = await session.get(Lead, lead.id)
+        assert refreshed.qualification_status == QualificationStatus.QUALIFIED

@@ -14,7 +14,11 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.temporal_client import get_temporal_client
 from app.workflows.activities import ACTIVITIES
-from app.workflows.definitions import EventProcessingWorkflow, InvoiceOverdueWorkflow
+from app.workflows.definitions import (
+    EventProcessingWorkflow,
+    InvoiceOverdueWorkflow,
+    LeadQualificationWorkflow,
+)
 
 configure_logging()
 logger = get_logger(__name__)
@@ -30,7 +34,7 @@ async def main() -> None:
             worker = Worker(
                 client,
                 task_queue=settings.TEMPORAL_TASK_QUEUE,
-                workflows=[EventProcessingWorkflow, InvoiceOverdueWorkflow],
+                workflows=[EventProcessingWorkflow, InvoiceOverdueWorkflow, LeadQualificationWorkflow],
                 activities=ACTIVITIES,
             )
             logger.info("klaros_worker_started", task_queue=settings.TEMPORAL_TASK_QUEUE)

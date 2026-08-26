@@ -19,9 +19,22 @@ class EventStatus(StrEnum):
 class EventType(StrEnum):
     LEAD_CREATED = "lead.created"
     LEAD_UPDATED = "lead.updated"
+    LEAD_ENRICHED = "lead.enriched"
+    LEAD_QUALIFIED = "lead.qualified"
+    LEAD_UNQUALIFIED = "lead.unqualified"
+    LEAD_ASSIGNED = "lead.assigned"
+    LEAD_BOOKED = "lead.booked"
+    LEAD_LOST = "lead.lost"
+    LEAD_CONVERTED = "lead.converted"
 
     CUSTOMER_CREATED = "customer.created"
     CUSTOMER_UPDATED = "customer.updated"
+    CUSTOMER_MERGED = "customer.merged"
+
+    APPOINTMENT_CREATED = "appointment.created"
+    APPOINTMENT_UPDATED = "appointment.updated"
+    APPOINTMENT_CANCELLED = "appointment.cancelled"
+    APPOINTMENT_CONFIRMED = "appointment.confirmed"
 
     JOB_CREATED = "job.created"
     JOB_UPDATED = "job.updated"

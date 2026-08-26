@@ -108,6 +108,30 @@ class GmailAdapter(CommunicationProvider):
         return IntegrationStatus(self.provider_name, ConnectionStatus.NOT_CONNECTED, "OAuth not configured")
 
 
+class TwilioAdapter(CommunicationProvider):
+    provider_name = "twilio"
+
+    def get_status(self) -> IntegrationStatus:
+        s = get_settings()
+        if not s.TWILIO_ACCOUNT_SID:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.NOT_CONNECTED, "TWILIO_ACCOUNT_SID not configured"
+            )
+        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "Client not implemented")
+
+
+class SendGridAdapter(CommunicationProvider):
+    provider_name = "sendgrid"
+
+    def get_status(self) -> IntegrationStatus:
+        s = get_settings()
+        if not s.SENDGRID_API_KEY:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.NOT_CONNECTED, "SENDGRID_API_KEY not configured"
+            )
+        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "Client not implemented")
+
+
 ALL_ADAPTERS: list[type] = [
     QuickBooksAdapter,
     StripeAdapter,
@@ -116,4 +140,6 @@ ALL_ADAPTERS: list[type] = [
     GoogleAdsAdapter,
     MetaAdsAdapter,
     GmailAdapter,
+    TwilioAdapter,
+    SendGridAdapter,
 ]

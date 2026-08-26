@@ -25,6 +25,24 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "notifications.create_notification": ActionPolicy.AUTO,
     "audit.record_action": ActionPolicy.AUTO,
     "approvals.create_request": ActionPolicy.AUTO,
+    # CRM (Phase 3): lead/customer/appointment actions are low-risk and
+    # reversible, so AUTO. Nothing here touches money yet.
+    "crm.create_lead": ActionPolicy.AUTO,
+    "crm.get_lead": ActionPolicy.AUTO,
+    "crm.update_lead": ActionPolicy.AUTO,
+    "crm.search_leads": ActionPolicy.AUTO,
+    "crm.qualify_lead": ActionPolicy.AUTO,
+    "crm.create_customer": ActionPolicy.AUTO,
+    "crm.get_customer": ActionPolicy.AUTO,
+    "crm.update_customer": ActionPolicy.AUTO,
+    "crm.search_customers": ActionPolicy.AUTO,
+    "crm.get_customer_timeline": ActionPolicy.AUTO,
+    "crm.create_note": ActionPolicy.AUTO,
+    "crm.generate_customer_summary": ActionPolicy.AUTO,
+    "crm.check_availability": ActionPolicy.AUTO,
+    "crm.create_appointment": ActionPolicy.AUTO,
+    "crm.cancel_appointment": ActionPolicy.AUTO,
+    "crm.reschedule_appointment": ActionPolicy.AUTO,
     # Example of each category from the spec, for future finance/ops tools to
     # register against:
     "finance.refund_over_threshold": ActionPolicy.APPROVAL_REQUIRED,
