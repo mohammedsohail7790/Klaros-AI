@@ -4,6 +4,20 @@ from app.models.communication import CommunicationLog
 from app.models.crm import Appointment, Customer, CustomerNote, Lead
 from app.models.event import DeadLetterEvent, Event, EventProcessingRecord
 from app.models.notification import Notification
+from app.models.operations import (
+    CompletionPacket,
+    CustomerSignoff,
+    Job,
+    JobAttachment,
+    JobMaterial,
+    JobQA,
+    JobTask,
+    OperationsException,
+    PurchaseOrder,
+    PurchaseOrderItem,
+    ScopeChange,
+    Worker,
+)
 from app.models.organization import Organization
 from app.models.user import User
 
@@ -21,4 +35,16 @@ __all__ = [
     "CustomerNote",
     "Appointment",
     "CommunicationLog",
+    "Job",
+    "Worker",
+    "JobTask",
+    "JobAttachment",
+    "JobMaterial",
+    "PurchaseOrder",
+    "PurchaseOrderItem",
+    "ScopeChange",
+    "OperationsException",
+    "JobQA",
+    "CompletionPacket",
+    "CustomerSignoff",
 ]

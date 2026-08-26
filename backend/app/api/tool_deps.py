@@ -6,6 +6,7 @@ from app.events.bus import EventBus
 from app.events.crm_handlers import register_crm_handlers
 from app.events.factory import get_event_bus
 from app.events.handlers import register_default_handlers
+from app.events.operations_handlers import register_operations_handlers
 from app.models.actor import ActorType
 from app.tools.base import ExecutionContext
 from app.tools.factory import build_tool_registry
@@ -22,6 +23,7 @@ def get_wired_event_bus() -> EventBus:
     bus = get_event_bus()
     register_default_handlers(bus)
     register_crm_handlers(bus, async_session_maker)
+    register_operations_handlers(bus, async_session_maker)
     return bus
 
 

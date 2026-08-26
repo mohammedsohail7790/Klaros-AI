@@ -9,10 +9,11 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const isFormData = init?.body instanceof FormData;
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(init?.headers ?? {}),
     },
   });
@@ -304,4 +305,289 @@ export interface CrmMetrics {
 
 export function getCrmMetrics(token: string) {
   return request<CrmMetrics>("/api/v1/crm/metrics", { headers: authHeaders(token) });
+}
+
+// --- Operations: jobs ---
+
+export interface Job {
+  id: string;
+  customer_id: string;
+  lead_id: string | null;
+  appointment_id: string | null;
+  job_number: string;
+  title: string;
+  description: string | null;
+  service_type: string | null;
+  status: string;
+  priority: string;
+  location: string | null;
+  scheduled_start: string | null;
+  scheduled_end: string | null;
+  assigned_user_id: string | null;
+  actual_start: string | null;
+  actual_end: string | null;
+  estimated_revenue: number | null;
+  estimated_cost: number | null;
+  customer_notes: string | null;
+  internal_notes: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export function createJob(
+  token: string,
+  payload: { title: string; customer_id: string; priority?: string; service_type?: string; description?: string }
+) {
+  return request<{ job: Job; deduplicated: boolean }>("/api/v1/jobs", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export function searchJobs(
+  token: string,
+  params: { status?: string; priority?: string; q?: string; limit?: number; offset?: number } = {}
+) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  });
+  return request<{ jobs: Job[]; total: number }>(`/api/v1/jobs?${qs.toString()}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function getJob(token: string, jobId: string) {
+  return request<{ job: Job }>(`/api/v1/jobs/${jobId}`, { headers: authHeaders(token) });
+}
+
+export function getJobTimeline(token: string, jobId: string) {
+  return request<{ job_id: string; entries: TimelineEntry[] }>(`/api/v1/jobs/${jobId}/timeline`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function listJobTasks(token: string, jobId: string) {
+  return request<{ tasks: JobTask[] }>(`/api/v1/jobs/${jobId}/tasks`, { headers: authHeaders(token) });
+}
+
+export function listJobMaterials(token: string, jobId: string) {
+  return request<{ materials: JobMaterial[] }>(`/api/v1/jobs/${jobId}/materials`, { headers: authHeaders(token) });
+}
+
+export function listJobAttachments(token: string, jobId: string) {
+  return request<{ attachments: JobAttachment[] }>(`/api/v1/jobs/${jobId}/attachments`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function getJobSummary(token: string, jobId: string) {
+  return request<{ job_id: string; summary: string }>(`/api/v1/jobs/${jobId}/summary`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function scheduleJob(token: string, jobId: string, start_time: string, end_time: string) {
+  return request<{ job: Job }>(`/api/v1/jobs/${jobId}/schedule`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ start_time, end_time }),
+  });
+}
+
+export function assignJob(token: string, jobId: string, worker_id: string) {
+  return request<{ job: Job }>(`/api/v1/jobs/${jobId}/assign`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ worker_id }),
+  });
+}
+
+export function transitionJob(token: string, jobId: string, action: string, body: Record<string, unknown> = {}) {
+  return request<{ job: Job }>(`/api/v1/jobs/${jobId}/${action}`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export interface JobTask {
+  id: string;
+  job_id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  required: boolean;
+  completed_at: string | null;
+}
+
+export function createTask(token: string, jobId: string, title: string, required = true) {
+  return request<{ task: JobTask }>(`/api/v1/jobs/${jobId}/tasks`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ title, required }),
+  });
+}
+
+export function completeTask(token: string, taskId: string, skip = false) {
+  return request<{ task: JobTask }>(`/api/v1/jobs/tasks/${taskId}/complete`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ skip }),
+  });
+}
+
+export interface JobMaterial {
+  id: string;
+  job_id: string;
+  name: string;
+  quantity: number;
+  unit: string | null;
+  status: string;
+}
+
+export function addMaterial(token: string, jobId: string, name: string, quantity = 1) {
+  return request<{ material: JobMaterial }>(`/api/v1/jobs/${jobId}/materials`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ name, quantity }),
+  });
+}
+
+export interface JobAttachment {
+  id: string;
+  job_id: string;
+  kind: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  storage_provider: string;
+  transcription_status: string | null;
+}
+
+export async function uploadJobFile(
+  token: string,
+  jobId: string,
+  kind: "documents" | "photos" | "voice-notes",
+  file: File
+) {
+  const form = new FormData();
+  form.append("file", file);
+  return request<{ attachment: JobAttachment }>(`/api/v1/jobs/${jobId}/${kind}`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: form,
+  });
+}
+
+export function startQA(token: string, jobId: string) {
+  return request<{ qa: Record<string, unknown> }>(`/api/v1/jobs/${jobId}/qa/start`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function completeQA(token: string, jobId: string) {
+  return request<{ qa: Record<string, unknown> }>(`/api/v1/jobs/${jobId}/qa/complete`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function failQA(token: string, jobId: string, reason: string) {
+  return request<{ qa: Record<string, unknown> }>(`/api/v1/jobs/${jobId}/qa/fail`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function generateCompletionPacket(token: string, jobId: string) {
+  return request<{ packet: { id: string; status: string; summary: Record<string, unknown> } }>(
+    `/api/v1/jobs/${jobId}/completion-packet`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+}
+
+export function closeJob(token: string, jobId: string) {
+  return request<{ job: Job }>(`/api/v1/jobs/${jobId}/close`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+// --- Operations: workers ---
+
+export interface Worker {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  status: string;
+  active: boolean;
+}
+
+export function createWorker(token: string, name: string) {
+  return request<{ worker: Worker }>("/api/v1/workers", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function listWorkers(token: string) {
+  return request<{ workers: Worker[] }>("/api/v1/workers", { headers: authHeaders(token) });
+}
+
+// --- Operations: exceptions ---
+
+export interface OpsException {
+  id: string;
+  type: string;
+  severity: string;
+  entity_type: string;
+  entity_id: string;
+  description: string;
+  recommended_action: string | null;
+  status: string;
+  created_at: string;
+}
+
+export function listExceptions(token: string, status = "OPEN") {
+  const qs = new URLSearchParams({ status });
+  return request<{ exceptions: OpsException[] }>(`/api/v1/exceptions?${qs.toString()}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function resolveException(token: string, exceptionId: string) {
+  return request<{ exception: OpsException }>(`/api/v1/exceptions/${exceptionId}/resolve`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function detectDelays(token: string) {
+  return request<Record<string, number>>("/api/v1/exceptions/detect", {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+// --- Operations: dashboard ---
+
+export interface OperationsDashboard {
+  jobs_today: number;
+  unassigned_jobs: number;
+  at_risk_jobs: number;
+  blocked_jobs: number;
+  in_progress_jobs: number;
+  qa_pending_jobs: number;
+  completed_today: number;
+  open_exceptions: number;
+}
+
+export function getOperationsDashboard(token: string) {
+  return request<OperationsDashboard>("/api/v1/operations/dashboard", { headers: authHeaders(token) });
 }

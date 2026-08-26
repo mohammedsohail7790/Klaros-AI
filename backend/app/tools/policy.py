@@ -43,8 +43,48 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "crm.create_appointment": ActionPolicy.AUTO,
     "crm.cancel_appointment": ActionPolicy.AUTO,
     "crm.reschedule_appointment": ActionPolicy.AUTO,
-    # Example of each category from the spec, for future finance/ops tools to
-    # register against:
+    # Operations (Phase 4) — section 31's recommended defaults.
+    "operations.create_job": ActionPolicy.AUTO,
+    "operations.get_job": ActionPolicy.AUTO,
+    "operations.update_job": ActionPolicy.AUTO,
+    "operations.search_jobs": ActionPolicy.AUTO,
+    "operations.assign_job": ActionPolicy.AUTO,
+    "operations.unassign_job": ActionPolicy.AUTO,
+    "operations.schedule_job": ActionPolicy.AUTO,
+    "operations.reschedule_job": ActionPolicy.APPROVAL_REQUIRED,  # customer-impacting
+    "operations.dispatch_job": ActionPolicy.AUTO,
+    "operations.update_job_status": ActionPolicy.AUTO,
+    "operations.start_job": ActionPolicy.AUTO,
+    "operations.complete_job": ActionPolicy.AUTO,
+    "operations.cancel_job": ActionPolicy.AUTO,
+    "operations.block_job": ActionPolicy.AUTO,
+    "operations.unblock_job": ActionPolicy.AUTO,
+    "operations.get_job_timeline": ActionPolicy.AUTO,
+    "operations.generate_job_summary": ActionPolicy.AUTO,
+    "operations.convert_lead_and_book": ActionPolicy.AUTO,
+    "operations.create_worker": ActionPolicy.AUTO,
+    "operations.list_workers": ActionPolicy.AUTO,
+    "operations.update_worker_status": ActionPolicy.AUTO,
+    "operations.create_task": ActionPolicy.AUTO,
+    "operations.complete_task": ActionPolicy.AUTO,
+    "operations.add_material": ActionPolicy.AUTO,
+    "operations.create_purchase_order_draft": ActionPolicy.AUTO,
+    "operations.add_job_document": ActionPolicy.AUTO,
+    "operations.add_job_photo": ActionPolicy.AUTO,
+    "operations.add_voice_note": ActionPolicy.AUTO,
+    "operations.start_qa": ActionPolicy.AUTO,
+    "operations.complete_qa": ActionPolicy.AUTO,
+    "operations.fail_qa": ActionPolicy.AUTO,
+    "operations.create_scope_change": ActionPolicy.AUTO,
+    "operations.request_scope_change_approval": ActionPolicy.APPROVAL_REQUIRED,  # cost/revenue impact
+    "operations.create_exception": ActionPolicy.AUTO,
+    "operations.resolve_exception": ActionPolicy.AUTO,
+    "operations.generate_completion_packet": ActionPolicy.AUTO,
+    "operations.close_job": ActionPolicy.AUTO,  # gated by its own required-checks, not policy
+    "operations.record_customer_signoff": ActionPolicy.AUTO,
+    "operations.delete_job": ActionPolicy.BLOCKED,  # no tool implements this name — reserved
+    # Example of each category from the spec, for future finance/marketing
+    # tools to register against:
     "finance.refund_over_threshold": ActionPolicy.APPROVAL_REQUIRED,
     "customer.delete": ActionPolicy.BLOCKED,
 }

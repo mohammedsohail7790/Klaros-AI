@@ -111,7 +111,8 @@ fabricates an API response.
   Double-booking prevention is a real overlap check before every insert/reschedule.
 - **Communications**: `backend/app/communications/` — `CommunicationProvider` interface,
   `InternalTestCommunicationAdapter` logs every message to `communication_logs` instead of calling
-  Gmail/Twilio/SendGrid. **Not yet wired into any automatic flow** (see PROJECT_STATUS.md).
+  Gmail/Twilio/SendGrid. Wired into Operations job-status events in Phase 4 (see below); CRM
+  booking-time communication is still not wired (see PROJECT_STATUS.md).
 - **15 CRM tools** registered on the same `ToolRegistry` as Phase 2 — no CRM code path bypasses
   permission/tenant/schema/policy/audit enforcement.
 - **Temporal**: `LeadQualificationWorkflow` wraps the same qualification service the event-bus
@@ -120,6 +121,49 @@ fabricates an API response.
 Frontend: `/leads`, `/leads/[id]`, `/customers`, `/customers/[id]`, `/calendar` — real pages against
 the real API, no hardcoded data. `/dashboard` now shows real CRM metrics from
 `GET /api/v1/crm/metrics` (zeros for an empty tenant, never sample numbers).
+
+### Operations & Delivery: jobs, dispatch, QA, close-out (Phase 4)
+
+`backend/app/models/operations.py`, `backend/app/services/`, `backend/app/tools/builtin/{job,
+task_material,document,qa,exception,scope_change,completion,worker}_tools.py`. Extends the delivery
+lifecycle: `appointment → job → schedule → dispatch → field execution → documentation → QA →
+completion → close-out → invoice.trigger_requested` — entirely on the Phase 2/3 backbone (same
+`ToolRegistry`, same event bus, same audit system; no second permissions or event system).
+
+- **Job state machine** (`services/job_state_machine.py`): a fixed transition table. `CLOSED`/
+  `CANCELLED` are terminal — invalid jumps (`CLOSED→IN_PROGRESS` etc.) are rejected, not silently
+  allowed.
+- **Lead→customer→appointment→job conversion** (`services/conversion_service.py`,
+  `operations.convert_lead_and_book`): the explicit, idempotent chain section 4 asks for — reuses
+  Phase 3's exact-match customer logic, never fuzzy-merges.
+- **Assignment & scheduling** (`services/job_transition_service.py`): checks worker
+  active/availability, service-type compatibility, and real schedule conflicts (overlapping time +
+  same worker) before assigning.
+- **Field documentation — real file storage**: `backend/app/storage/` — `ObjectStorageProvider`
+  interface, `LocalFilesystemStorageAdapter` (**INTERNAL LOCAL STORAGE**, real bytes on disk,
+  MIME/size validation, path-traversal-safe) used until `OBJECT_STORAGE_ENDPOINT` is configured
+  (then `NotConnectedObjectStorageAdapter` — no fake S3). Voice notes get
+  `transcription_status: NOT_CONFIGURED` — no transcription provider exists yet.
+- **QA engine** (`services/qa_service.py`): `complete_qa` re-verifies required tasks/documentation
+  itself rather than trusting the caller; a job can never reach `CLOSED` with failed/incomplete QA.
+- **Deterministic delay detection** (`services/delay_detection_service.py`): pure timestamp
+  comparisons — no LLM, per spec. Exposed as `POST /api/v1/exceptions/detect` (no scheduler runs it
+  automatically yet).
+- **Completion packet & close-out** (`services/completion_service.py`): the packet is assembled from
+  real rows only; `close_job` re-checks QA/tasks/packet itself and emits `job.closed` +
+  `invoice.trigger_requested` — an event only, since there's no Finance module (Phase 5) to create
+  an actual invoice.
+- **34 new `operations.*` tools** on the same `ToolRegistry`, with policies per section 31
+  (`reschedule_job` and `request_scope_change_approval` are `APPROVAL_REQUIRED`; almost everything
+  else is `AUTO`).
+
+Frontend: `/operations` (real dashboard + open exceptions), `/jobs` + `/jobs/[id]` (the operational
+source of truth — status-aware next-action buttons, tasks, materials, real photo/document upload,
+QA panel, completion packet, close), `/exceptions`. **Live-verified end to end in a real browser**:
+create job → schedule → assign worker → dispatch → en route → on site → start → complete a required
+task → upload a real photo → complete field work → pass QA → generate packet → close job → Operations
+dashboard correctly showed "1 Completed today." Found and fixed two backend bugs and one frontend bug
+during this verification — see PROJECT_STATUS.md for exactly what and how.
 
 ## Local setup
 
@@ -180,13 +224,18 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-Tests run against an in-memory SQLite database (no external services required) and cover:
-registration/login, tenant isolation (auth, CRM leads/customers/appointments), event publish/
-subscribe/idempotency/retry/dead-letter/replay, tool registry authorization (permission/tenant/
-schema/policy), the approval boundary (AUTO / APPROVAL_REQUIRED / BLOCKED), CRM (lead creation +
-dedup, customer matching, qualification scoring, booking + double-booking prevention, timelines),
-and full end-to-end acceptance scenarios (happy path, unauthorized tool, duplicate event, and the
-complete lead→qualify→book→notify→audit→timeline CRM scenario) per `PROJECT_STATUS.md`.
+Tests run against an in-memory SQLite database (no external services required) — **109 passing** —
+and cover: registration/login, tenant isolation (auth, CRM, and Operations — leads/customers/
+appointments/jobs/workers/exceptions), event publish/subscribe/idempotency/retry/dead-letter/replay,
+tool registry authorization (permission/tenant/schema/policy), the approval boundary (AUTO /
+APPROVAL_REQUIRED / BLOCKED), CRM (lead creation + dedup, customer matching, qualification scoring,
+booking + double-booking prevention, timelines), Operations (job state-machine transitions incl.
+invalid-transition rejection, assignment incl. schedule-conflict/inactive-worker rejection, tasks,
+materials, file upload incl. size/type validation, QA gating, exception dedup, delay detection,
+job-status communications, completion packet + close-out incl. the `invoice.trigger_requested`
+event), and full end-to-end acceptance scenarios — including the complete
+appointment→job→schedule→assign→dispatch→field-execution→QA→completion→close-out→invoice-trigger
+scenario — per `PROJECT_STATUS.md`.
 
 Temporal workflow tests (`tests/test_temporal_workflows.py`) are separate: they spin up
 temporalio's ephemeral local test server (a real standalone binary, downloaded over the network —
@@ -209,7 +258,10 @@ Alembic is configured (`backend/alembic/`). `0001_initial_schema` creates `organ
 `users`, and `audit_logs`. `0002_event_bus_tools_approvals` creates `events`,
 `event_processing_records`, `dead_letter_events`, `approval_requests`, and `notifications`.
 `0003_crm_domain` creates `leads`, `customers`, `customer_notes`, `appointments`, and
-`communication_logs`. Do not hand-edit the schema — add a new migration:
+`communication_logs`. `0004_operations_domain` creates `jobs`, `workers`, `job_tasks`,
+`job_attachments`, `job_materials`, `purchase_orders`, `purchase_order_items`, `scope_changes`,
+`operations_exceptions`, `job_qa`, `completion_packets`, and `customer_signoffs`. Do not hand-edit
+the schema — add a new migration:
 
 ```bash
 alembic revision --autogenerate -m "description"

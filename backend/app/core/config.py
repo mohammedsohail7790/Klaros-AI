@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     OBJECT_STORAGE_BUCKET: str = "klaros-documents"
     OBJECT_STORAGE_ACCESS_KEY: str | None = None
     OBJECT_STORAGE_SECRET_KEY: str | None = None
+    # Used only when OBJECT_STORAGE_ENDPOINT is unset — see app/storage/local_adapter.py
+    STORAGE_LOCAL_ROOT: str = "./storage_data"
 
     TEMPORAL_HOST: str = "localhost:7233"
     TEMPORAL_NAMESPACE: str = "default"

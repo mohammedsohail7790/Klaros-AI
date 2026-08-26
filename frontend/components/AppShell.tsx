@@ -9,6 +9,9 @@ const NAV_ITEMS = [
   { href: "/leads", label: "Leads" },
   { href: "/customers", label: "Customers" },
   { href: "/calendar", label: "Calendar" },
+  { href: "/operations", label: "Operations" },
+  { href: "/jobs", label: "Jobs" },
+  { href: "/exceptions", label: "Exceptions" },
 ];
 
 export default function AppShell({

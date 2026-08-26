@@ -23,6 +23,8 @@ from app.workflows.definitions import (
     EventProcessingWorkflow,
     InvoiceOverdueInput,
     InvoiceOverdueWorkflow,
+    JobLifecycleInput,
+    JobLifecycleWorkflow,
     LeadQualificationInput,
     LeadQualificationWorkflow,
 )
@@ -127,3 +129,43 @@ async def test_lead_qualification_workflow_scores_a_real_lead(temporal_env) -> N
     async with async_session_maker() as session:
         refreshed = await session.get(Lead, lead.id)
         assert refreshed.qualification_status == QualificationStatus.QUALIFIED
+
+
+async def test_job_lifecycle_workflow_validates_a_real_job(temporal_env) -> None:
+    """section 32/50: JobLifecycleWorkflow does not use workflow.sleep() —
+    verified independently, per the Phase 4 instruction not to introduce
+    another unverified timer-based workflow."""
+    from app.db.session import async_session_maker
+    from app.models.crm import Customer
+    from app.models.operations import Job, JobStatus
+
+    tenant_id = uuid.uuid4()
+    async with async_session_maker() as session:
+        customer = Customer(tenant_id=tenant_id, name="Temporal Job Customer")
+        session.add(customer)
+        await session.flush()
+        job = Job(
+            tenant_id=tenant_id,
+            customer_id=customer.id,
+            job_number="JOB-9001",
+            title="Temporal validated job",
+            status=JobStatus.DRAFT,
+        )
+        session.add(job)
+        await session.commit()
+        await session.refresh(job)
+
+    async with Worker(
+        temporal_env.client,
+        task_queue=TASK_QUEUE,
+        workflows=[JobLifecycleWorkflow],
+        activities=ACTIVITIES,
+    ):
+        result = await temporal_env.client.execute_workflow(
+            JobLifecycleWorkflow.run,
+            JobLifecycleInput(job_id=str(job.id), tenant_id=str(tenant_id), role="OWNER"),
+            id=f"job-lifecycle-{uuid.uuid4()}",
+            task_queue=TASK_QUEUE,
+        )
+        assert result["valid"] is True
+        assert result["issues"] == []

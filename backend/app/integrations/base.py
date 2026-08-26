@@ -53,3 +53,9 @@ class CommunicationProvider(IntegrationProvider):
 
 class CalendarProvider(IntegrationProvider):
     pass
+
+
+class ProcurementProvider(IntegrationProvider):
+    """section 19: supplier/procurement integration — no supplier is
+    connected in Phase 4; `MaterialService` only ever produces DRAFT
+    purchase orders (see app/services/material_service.py)."""

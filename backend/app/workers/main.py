@@ -17,6 +17,7 @@ from app.workflows.activities import ACTIVITIES
 from app.workflows.definitions import (
     EventProcessingWorkflow,
     InvoiceOverdueWorkflow,
+    JobLifecycleWorkflow,
     LeadQualificationWorkflow,
 )
 
@@ -34,7 +35,12 @@ async def main() -> None:
             worker = Worker(
                 client,
                 task_queue=settings.TEMPORAL_TASK_QUEUE,
-                workflows=[EventProcessingWorkflow, InvoiceOverdueWorkflow, LeadQualificationWorkflow],
+                workflows=[
+                    EventProcessingWorkflow,
+                    InvoiceOverdueWorkflow,
+                    LeadQualificationWorkflow,
+                    JobLifecycleWorkflow,
+                ],
                 activities=ACTIVITIES,
             )
             logger.info("klaros_worker_started", task_queue=settings.TEMPORAL_TASK_QUEUE)

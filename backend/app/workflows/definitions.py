@@ -142,3 +142,56 @@ class LeadQualificationWorkflow:
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=DEFAULT_RETRY_POLICY,
         )
+
+
+@dataclass
+class JobLifecycleInput:
+    job_id: str
+    tenant_id: str
+    role: str | None = None
+    correlation_id: str | None = None
+
+
+@workflow.defn
+class JobLifecycleWorkflow:
+    """section 32: durably, idempotently validates a newly created job.
+
+    Deliberately narrow. Real job progression (schedule -> assign ->
+    dispatch -> monitor -> QA -> completion -> close-out) is driven by
+    explicit operator/API actions through the same ToolRegistry this
+    workflow itself uses — not blind, automatic Temporal orchestration
+    ("do not create a workflow that blindly performs every step without
+    checking state"). A signal-driven version of this workflow that
+    durably watches a job through its whole lifecycle is a natural
+    extension, but every workflow in this project that has used
+    `workflow.sleep()` for durable waiting has hung in this sandbox (see
+    `InvoiceOverdueWorkflow`, PROJECT_STATUS.md). Rather than add a second
+    unverified sleep-based workflow, this one does the one step that's
+    genuinely useful without a timer — idempotently validating the job is
+    well-formed — via the same `execute_tool_activity` every other
+    workflow in this project uses, so it inherits the same tested
+    authorization/audit path.
+    """
+
+    @workflow.run
+    async def run(self, input: JobLifecycleInput) -> dict[str, Any]:
+        result = await workflow.execute_activity(
+            execute_tool_activity,
+            args=[
+                "operations.get_job",
+                {"job_id": input.job_id},
+                input.tenant_id,
+                input.role,
+                input.correlation_id,
+            ],
+            start_to_close_timeout=timedelta(seconds=30),
+            retry_policy=DEFAULT_RETRY_POLICY,
+        )
+        job = result.get("job", {})
+        issues: list[str] = []
+        if not job.get("customer_id"):
+            issues.append("missing customer_id")
+        if not job.get("title"):
+            issues.append("missing title")
+
+        return {"job_id": input.job_id, "valid": not issues, "issues": issues}

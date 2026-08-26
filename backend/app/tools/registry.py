@@ -33,6 +33,46 @@ from app.tools.redact import redact_input
 
 logger = structlog.get_logger(__name__)
 
+# Fallback entity inference from raw tool input, when the entity can't be
+# derived from the tool's output (e.g. a failed call, or a read/search tool
+# with no single-entity output). Order matters — most specific first.
+_INPUT_ENTITY_ID_FIELDS: list[str] = [
+    "job_id", "customer_id", "lead_id", "appointment_id", "task_id",
+    "exception_id", "scope_change_id", "worker_id", "purchase_order_id",
+    "event_id",
+]
+
+
+def _infer_entity(raw_input: dict, output=None) -> tuple[str | None, uuid.UUID | None]:
+    """Best-effort (entity_type, entity_id) for an audit row, so job/customer
+    timelines (which filter AuditLog by entity_type/entity_id) actually find
+    the tool calls that acted on them — including ones like `create_job`
+    where the entity doesn't exist until the call succeeds, so it can only
+    come from the output, not the input.
+    """
+    if output is not None:
+        try:
+            dumped = output.model_dump(mode="json")
+        except Exception:  # noqa: BLE001
+            dumped = None
+        if isinstance(dumped, dict):
+            for key, value in dumped.items():
+                if isinstance(value, dict) and isinstance(value.get("id"), str):
+                    try:
+                        return key, uuid.UUID(value["id"])
+                    except ValueError:
+                        continue
+
+    for field in _INPUT_ENTITY_ID_FIELDS:
+        value = raw_input.get(field)
+        if isinstance(value, str):
+            try:
+                return field.removesuffix("_id"), uuid.UUID(value)
+            except ValueError:
+                continue
+
+    return None, None
+
 
 class ToolRegistry:
     def __init__(self, session_factory: async_sessionmaker) -> None:
@@ -112,7 +152,15 @@ class ToolRegistry:
             )
             raise
 
-        await self._audit(context, tool_name=name, raw_input=raw_input, result="success")
+        entity_type, entity_id = _infer_entity(raw_input, output)
+        await self._audit(
+            context,
+            tool_name=name,
+            raw_input=raw_input,
+            result="success",
+            entity_type=entity_type,
+            entity_id=entity_id,
+        )
         return output
 
     async def _create_approval_request(
@@ -144,6 +192,8 @@ class ToolRegistry:
         result: str,
         error: str | None = None,
         approval_id: uuid.UUID | None = None,
+        entity_type: str | None = None,
+        entity_id: uuid.UUID | None = None,
     ) -> None:
         summary = redact_input(raw_input)
         if error:
@@ -157,6 +207,8 @@ class ToolRegistry:
                     actor_id=context.actor_id,
                     action=f"tool.execute:{tool_name}",
                     tool=tool_name,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
                     input_summary=summary,
                     result=result,
                     approval_id=approval_id,

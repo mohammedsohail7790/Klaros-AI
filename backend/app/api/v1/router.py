@@ -7,10 +7,14 @@ from app.api.v1 import (
     crm,
     customers,
     events,
+    exceptions,
     integrations,
+    jobs,
     leads,
+    operations,
     tools,
     users,
+    workers,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -24,3 +28,7 @@ api_router.include_router(leads.router)
 api_router.include_router(customers.router)
 api_router.include_router(appointments.router)
 api_router.include_router(crm.router)
+api_router.include_router(jobs.router)
+api_router.include_router(workers.router)
+api_router.include_router(exceptions.router)
+api_router.include_router(operations.router)

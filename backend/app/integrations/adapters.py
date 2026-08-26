@@ -16,6 +16,7 @@ from app.integrations.base import (
     IntegrationStatus,
     MarketingProvider,
     OperationsProvider,
+    ProcurementProvider,
 )
 
 
@@ -132,6 +133,15 @@ class SendGridAdapter(CommunicationProvider):
         return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "Client not implemented")
 
 
+class GenericSupplierAdapter(ProcurementProvider):
+    provider_name = "supplier_procurement"
+
+    def get_status(self) -> IntegrationStatus:
+        return IntegrationStatus(
+            self.provider_name, ConnectionStatus.NOT_CONNECTED, "No supplier/procurement integration configured"
+        )
+
+
 ALL_ADAPTERS: list[type] = [
     QuickBooksAdapter,
     StripeAdapter,
@@ -142,4 +152,5 @@ ALL_ADAPTERS: list[type] = [
     GmailAdapter,
     TwilioAdapter,
     SendGridAdapter,
+    GenericSupplierAdapter,
 ]

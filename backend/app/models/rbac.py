@@ -36,6 +36,17 @@ class Permission(StrEnum):
     READ_APPOINTMENTS = "READ_APPOINTMENTS"
     CREATE_APPOINTMENT = "CREATE_APPOINTMENT"
     CANCEL_APPOINTMENT = "CANCEL_APPOINTMENT"
+    UPDATE_JOB = "UPDATE_JOB"
+    ASSIGN_JOB = "ASSIGN_JOB"
+    DISPATCH_JOB = "DISPATCH_JOB"
+    MANAGE_TASKS = "MANAGE_TASKS"
+    MANAGE_MATERIALS = "MANAGE_MATERIALS"
+    UPLOAD_JOB_ATTACHMENT = "UPLOAD_JOB_ATTACHMENT"
+    MANAGE_QA = "MANAGE_QA"
+    MANAGE_EXCEPTIONS = "MANAGE_EXCEPTIONS"
+    APPROVE_SCOPE_CHANGE = "APPROVE_SCOPE_CHANGE"
+    CLOSE_JOB = "CLOSE_JOB"
+    DELETE_JOB = "DELETE_JOB"
 
 
 # Permission matrix: role -> allowed permissions.
@@ -66,6 +77,16 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.READ_APPOINTMENTS,
         Permission.CREATE_APPOINTMENT,
         Permission.CANCEL_APPOINTMENT,
+        Permission.UPDATE_JOB,
+        Permission.ASSIGN_JOB,
+        Permission.DISPATCH_JOB,
+        Permission.MANAGE_TASKS,
+        Permission.MANAGE_MATERIALS,
+        Permission.UPLOAD_JOB_ATTACHMENT,
+        Permission.MANAGE_QA,
+        Permission.MANAGE_EXCEPTIONS,
+        Permission.APPROVE_SCOPE_CHANGE,
+        Permission.CLOSE_JOB,
     },
     Role.STAFF: {
         Permission.READ_CUSTOMERS,
@@ -81,6 +102,10 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.READ_APPOINTMENTS,
         Permission.CREATE_APPOINTMENT,
         Permission.CANCEL_APPOINTMENT,
+        Permission.UPDATE_JOB,
+        Permission.MANAGE_TASKS,
+        Permission.MANAGE_MATERIALS,
+        Permission.UPLOAD_JOB_ATTACHMENT,
     },
     Role.TECHNICIAN: {
         Permission.READ_JOBS,
@@ -88,6 +113,11 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.READ_CUSTOMERS,
         Permission.READ_LEADS,
         Permission.READ_APPOINTMENTS,
+        Permission.UPDATE_JOB,
+        Permission.DISPATCH_JOB,
+        Permission.MANAGE_TASKS,
+        Permission.UPLOAD_JOB_ATTACHMENT,
+        Permission.MANAGE_QA,
     },
     Role.ACCOUNTANT: {
         Permission.VIEW_FINANCIALS,
