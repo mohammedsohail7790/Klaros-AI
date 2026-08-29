@@ -169,3 +169,92 @@ async def test_job_lifecycle_workflow_validates_a_real_job(temporal_env) -> None
         )
         assert result["valid"] is True
         assert result["issues"] == []
+
+
+async def test_duplicate_workflow_id_is_rejected_by_the_real_temporal_server(temporal_env) -> None:
+    """Phase 12B: starting a second workflow execution with a workflow ID
+    that's already running must be rejected by Temporal itself (real
+    server-side dedup), not merely by application code — proves at-most-
+    once-per-ID semantics hold against the real server, not just a mock."""
+    from temporalio.exceptions import WorkflowAlreadyStartedError
+
+    async with Worker(
+        temporal_env.client,
+        task_queue=TASK_QUEUE,
+        workflows=[InvoiceOverdueWorkflow],
+        activities=ACTIVITIES,
+    ):
+        tenant_id = str(uuid.uuid4())
+        workflow_id = f"invoice-overdue-dup-{uuid.uuid4()}"
+        workflow_input = InvoiceOverdueInput(
+            invoice_id="inv_dup_test",
+            tenant_id=tenant_id,
+            reminder_wait_seconds=5,
+            payment_check_wait_seconds=5,
+        )
+
+        handle = await temporal_env.client.start_workflow(
+            InvoiceOverdueWorkflow.run,
+            workflow_input,
+            id=workflow_id,
+            task_queue=TASK_QUEUE,
+        )
+
+        with pytest.raises(WorkflowAlreadyStartedError):
+            await temporal_env.client.start_workflow(
+                InvoiceOverdueWorkflow.run,
+                workflow_input,
+                id=workflow_id,
+                task_queue=TASK_QUEUE,
+            )
+
+        # Let the first execution actually finish so the worker/test server
+        # tear down cleanly rather than leaving an orphaned run.
+        await handle.result()
+
+
+async def test_worker_restart_resumes_a_workflow_started_by_the_previous_worker(temporal_env) -> None:
+    """Phase 12B (Step 14): starts a workflow under one Worker, shuts that
+    worker down entirely (simulating a process crash/restart), then brings
+    up a brand-new Worker instance against the SAME task queue and confirms
+    the in-flight workflow resumes and completes — proving no work is lost
+    across a worker restart, verified against the real Temporal server
+    (which persists workflow/task state independently of any single
+    worker process)."""
+    tenant_id = str(uuid.uuid4())
+    workflow_id = f"invoice-overdue-restart-{uuid.uuid4()}"
+    workflow_input = InvoiceOverdueInput(
+        invoice_id="inv_restart_test",
+        tenant_id=tenant_id,
+        reminder_wait_seconds=1,
+        payment_check_wait_seconds=1,
+    )
+
+    first_worker = Worker(
+        temporal_env.client,
+        task_queue=TASK_QUEUE,
+        workflows=[InvoiceOverdueWorkflow],
+        activities=ACTIVITIES,
+    )
+    async with first_worker:
+        handle = await temporal_env.client.start_workflow(
+            InvoiceOverdueWorkflow.run,
+            workflow_input,
+            id=workflow_id,
+            task_queue=TASK_QUEUE,
+        )
+    # first_worker is now fully shut down (process "crashed"/restarted) —
+    # the workflow is mid-flight (inside its sleep) with no worker polling
+    # its task queue at all.
+
+    second_worker = Worker(
+        temporal_env.client,
+        task_queue=TASK_QUEUE,
+        workflows=[InvoiceOverdueWorkflow],
+        activities=ACTIVITIES,
+    )
+    async with second_worker:
+        result = await handle.result()
+
+    assert result["paid"] is False
+    assert result["escalated"] is True

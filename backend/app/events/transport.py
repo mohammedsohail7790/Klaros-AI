@@ -31,15 +31,24 @@ class EventTransport(ABC):
     @abstractmethod
     async def ack(self, stream: str, group: str, message_id: str) -> None: ...
 
+    async def pending_count(self, stream: str, group: str) -> int | None:
+        """Best-effort queue depth for a stream/group — how many messages are
+        published but not yet acked by this consumer group. Returns None if
+        the transport can't answer cheaply (base default; overridden below).
+        """
+        return None
+
 
 class RedisStreamTransport(EventTransport):
     """Real transport, backed by Redis Streams + consumer groups.
 
-    Not exercised against a live Redis server in this sandbox (no redis-server
-    binary available) — see PROJECT_STATUS.md. The logic mirrors the standard
-    Redis Streams consumer-group pattern (XGROUP CREATE / XREADGROUP / XACK)
-    and is otherwise identical in shape to InMemoryTransport, which the same
-    EventBus code is verified against.
+    Verified directly against a live Redis server (Phase 12B, see
+    tests/test_redis_stream_transport.py) — XGROUP CREATE / XREADGROUP /
+    XACK / XPENDING all exercised for real. Note: the EventBus/worker test
+    suite always runs against InMemoryTransport regardless of
+    EVENT_TRANSPORT (see factory.py's docstring) — that suite verifies
+    EventBus's dedup/retry/dead-letter logic, which lives in Postgres and
+    is transport-agnostic, not this class's Redis wiring specifically.
     """
 
     def __init__(self, redis_client) -> None:
@@ -73,6 +82,15 @@ class RedisStreamTransport(EventTransport):
 
     async def ack(self, stream: str, group: str, message_id: str) -> None:
         await self._redis.xack(stream, group, message_id)
+
+    async def pending_count(self, stream: str, group: str) -> int | None:
+        try:
+            summary = await self._redis.xpending(stream, group)
+        except Exception:  # noqa: BLE001 — group/stream may not exist yet; not a real error
+            return 0
+        if not summary:
+            return 0
+        return int(summary.get("pending", 0)) if isinstance(summary, dict) else int(summary[0])
 
 
 class InMemoryTransport(EventTransport):
@@ -112,3 +130,7 @@ class InMemoryTransport(EventTransport):
             if mid == message_id:
                 self._group_offsets[(stream, group)] = i + 1
                 return
+
+    async def pending_count(self, stream: str, group: str) -> int | None:
+        offset = self._group_offsets.get((stream, group), 0)
+        return max(len(self._streams.get(stream, [])) - offset, 0)

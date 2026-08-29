@@ -4,7 +4,6 @@ os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("EVENT_TRANSPORT", "memory")
 os.environ.setdefault("STORAGE_LOCAL_ROOT", "/tmp/klaros-test-storage")
 
-import asyncio  # noqa: E402
 from collections.abc import AsyncGenerator  # noqa: E402
 
 import pytest  # noqa: E402
@@ -16,18 +15,15 @@ from app.db.base import Base  # noqa: E402
 from app.db.session import async_session_maker, engine  # noqa: E402
 from app.events.bus import EventBus  # noqa: E402
 from app.events.crm_handlers import register_crm_handlers  # noqa: E402
+from app.events.finance_handlers import register_finance_handlers  # noqa: E402
 from app.events.handlers import register_default_handlers  # noqa: E402
+from app.events.marketing_handlers import register_marketing_handlers  # noqa: E402
+from app.events.retention_handlers import register_retention_handlers  # noqa: E402
 from app.events.operations_handlers import register_operations_handlers  # noqa: E402
+from app.events.notification_handlers import register_notification_handlers  # noqa: E402
 from app.events.transport import InMemoryTransport  # noqa: E402
 from app.main import app  # noqa: E402
 from app.tools.factory import build_tool_registry  # noqa: E402
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -48,6 +44,10 @@ async def event_bus() -> EventBus:
     register_default_handlers(bus)
     register_crm_handlers(bus, async_session_maker)
     register_operations_handlers(bus, async_session_maker)
+    register_finance_handlers(bus, async_session_maker)
+    register_marketing_handlers(bus, async_session_maker)
+    register_retention_handlers(bus, async_session_maker)
+    register_notification_handlers(bus, async_session_maker)
     app.dependency_overrides[get_wired_event_bus] = lambda: bus
     yield bus
     app.dependency_overrides.pop(get_wired_event_bus, None)

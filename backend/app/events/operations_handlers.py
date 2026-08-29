@@ -6,7 +6,7 @@ provider, real and tested (section 25/47).
 import structlog
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.communications.internal_test_adapter import InternalTestCommunicationAdapter
+from app.communications.factory import get_communication_provider
 from app.events.bus import EventBus
 from app.models.event import Event, EventType
 from app.models.operations import Job
@@ -23,7 +23,7 @@ _EVENT_TO_NOTIFIER = {
 
 
 def register_operations_handlers(bus: EventBus, session_factory: async_sessionmaker) -> None:
-    comms = OperationsCommunicationService(session_factory, InternalTestCommunicationAdapter(session_factory))
+    comms = OperationsCommunicationService(session_factory, get_communication_provider(session_factory))
 
     async def handle_job_communication(event: Event) -> None:
         method_name = _EVENT_TO_NOTIFIER[EventType(event.event_type)]

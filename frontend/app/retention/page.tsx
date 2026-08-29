@@ -1,0 +1,109 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import AppShell from "@/components/AppShell";
+import { useAuth } from "@/lib/useAuth";
+import { ApiError, RetentionAnalytics, RetentionSummary, getRetentionAnalytics, getRetentionSummary } from "@/lib/api";
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border border-neutral-800 p-4">
+      <div className="text-xs text-neutral-500">{label}</div>
+      <div className="mt-1 text-2xl font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function Metric({ label, value, note }: { label: string; value: string | number | null; note: string }) {
+  return (
+    <div className="rounded-lg border border-neutral-800 p-4">
+      <div className="text-xs text-neutral-500">{label}</div>
+      <div className="mt-1 text-xl font-semibold">{value !== null ? value : "INSUFFICIENT DATA"}</div>
+      <div className="mt-1 text-xs text-neutral-600">{note}</div>
+    </div>
+  );
+}
+
+export default function RetentionPage() {
+  const { token, user, loading: authLoading } = useAuth();
+  const [summary, setSummary] = useState<RetentionSummary | null>(null);
+  const [analytics, setAnalytics] = useState<RetentionAnalytics | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const [summaryResult, analyticsResult] = await Promise.all([getRetentionSummary(token), getRetentionAnalytics(token)]);
+      setSummary(summaryResult);
+      setAnalytics(analyticsResult);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to load retention summary.");
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return (
+    <AppShell user={user}>
+      <div className="px-8 py-8">
+        <h1 className="mb-6 text-xl font-semibold">Retention &amp; Referral</h1>
+
+        {authLoading || loading ? (
+          <p className="text-sm text-neutral-500">Loading...</p>
+        ) : error ? (
+          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+            {error}{" "}
+            <button onClick={load} className="ml-2 underline">
+              Retry
+            </button>
+          </div>
+        ) : summary ? (
+          <>
+            {summary.needs_attention && (
+              <div className="mb-6 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-300">
+                RETENTION NEEDS ATTENTION — {summary.open_retention_exception_count} open retention exception(s).
+              </div>
+            )}
+            <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+              <Stat label="Active customers" value={summary.active_customers} />
+              <Stat label="Repeat customers" value={summary.repeat_customers} />
+              <Stat label="At-risk customers" value={summary.at_risk_customers} />
+              <Stat label="Inactive customers" value={summary.inactive_customers} />
+              <Stat label="Retention opportunities" value={summary.retention_opportunities_open} />
+              <Stat label="Upcoming service reminders" value={summary.upcoming_service_reminders} />
+              <Stat label="Review requests sent" value={summary.review_requests_sent} />
+              <Stat label="Positive feedback" value={summary.positive_feedback_count} />
+              <Stat label="Negative feedback" value={summary.negative_feedback_count} />
+              <Stat label="Referral leads" value={summary.referral_leads} />
+              <Stat label="Referral conversions" value={summary.referral_conversions} />
+              <Stat label="Referral revenue" value={`$${summary.referral_revenue}`} />
+              <Stat label="Repeat customer revenue" value={`$${summary.repeat_customer_revenue}`} />
+            </div>
+
+            {analytics && (
+              <>
+                <h2 className="mb-3 text-sm font-semibold text-neutral-400">Analytics</h2>
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                  <Metric label="Retention rate" value={analytics.retention_rate !== null ? `${analytics.retention_rate}%` : null} note={analytics.retention_rate_note} />
+                  <Metric label="Repeat customer rate" value={analytics.repeat_customer_rate !== null ? `${analytics.repeat_customer_rate}%` : null} note={analytics.repeat_customer_rate_note} />
+                  <Metric label="Reactivation rate" value={analytics.customer_reactivation_rate !== null ? `${analytics.customer_reactivation_rate}%` : null} note={analytics.customer_reactivation_rate_note} />
+                  <Metric label="Average customer value" value={analytics.average_customer_value ? `$${analytics.average_customer_value}` : null} note={analytics.average_customer_value_note} />
+                  <Metric label="Referral conversion rate" value={analytics.referral_conversion_rate !== null ? `${analytics.referral_conversion_rate}%` : null} note={analytics.referral_conversion_rate_note} />
+                  <Stat label="Revenue from repeat customers" value={`$${analytics.revenue_from_repeat_customers}`} />
+                  <Stat label="Revenue from referrals" value={`$${analytics.revenue_from_referrals}`} />
+                </div>
+              </>
+            )}
+          </>
+        ) : null}
+      </div>
+    </AppShell>
+  );
+}

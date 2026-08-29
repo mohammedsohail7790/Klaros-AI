@@ -7,6 +7,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
+  Invoice,
   Job,
   JobAttachment,
   JobMaterial,
@@ -19,18 +20,22 @@ import {
   completeQA,
   completeTask,
   createTask,
+  downloadJobAttachment,
   failQA,
   generateCompletionPacket,
   getJob,
   getJobSummary,
   getJobTimeline,
+  listInvoices,
   listJobAttachments,
   listJobMaterials,
   listJobTasks,
   listWorkers,
+  recordJobCost,
   scheduleJob,
   startQA,
   transitionJob,
+  triggerInvoiceFromJob,
   uploadJobFile,
 } from "@/lib/api";
 
@@ -60,6 +65,7 @@ export default function JobDetailPage() {
   const [tasks, setTasks] = useState<JobTask[]>([]);
   const [materials, setMaterials] = useState<JobMaterial[]>([]);
   const [attachments, setAttachments] = useState<JobAttachment[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -73,7 +79,7 @@ export default function JobDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const [jobResult, timelineResult, workersResult, tasksResult, materialsResult, attachmentsResult] =
+      const [jobResult, timelineResult, workersResult, tasksResult, materialsResult, attachmentsResult, invoicesResult] =
         await Promise.all([
           getJob(token, id),
           getJobTimeline(token, id),
@@ -81,6 +87,7 @@ export default function JobDetailPage() {
           listJobTasks(token, id),
           listJobMaterials(token, id),
           listJobAttachments(token, id),
+          listInvoices(token, { job_id: id }),
         ]);
       setJob(jobResult.job);
       setTimeline(timelineResult.entries);
@@ -88,6 +95,7 @@ export default function JobDetailPage() {
       setTasks(tasksResult.tasks);
       setMaterials(materialsResult.materials);
       setAttachments(attachmentsResult.attachments);
+      setInvoices(invoicesResult.invoices);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Job could not be loaded.");
     } finally {
@@ -163,6 +171,16 @@ export default function JobDetailPage() {
   async function handleUpload(kind: "documents" | "photos", file: File | undefined) {
     if (!token || !file) return;
     await runAction(() => uploadJobFile(token, id, kind, file));
+  }
+
+  async function handleViewAttachment(attachmentId: string) {
+    if (!token) return;
+    try {
+      const blobUrl = await downloadJobAttachment(token, id, attachmentId);
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to open attachment.");
+    }
   }
 
   const nextActions = job ? NEXT_ACTIONS[job.status] ?? [] : [];
@@ -338,8 +356,16 @@ export default function JobDetailPage() {
                 </div>
                 <ul className="mt-3 space-y-1 text-sm text-neutral-400">
                   {attachments.map((a) => (
-                    <li key={a.id}>
-                      {a.kind}: {a.filename} ({a.size_bytes} bytes, {a.storage_provider})
+                    <li key={a.id} className="flex items-center gap-2">
+                      <span>
+                        {a.kind}: {a.filename} ({a.size_bytes} bytes, {a.storage_provider})
+                      </span>
+                      <button
+                        onClick={() => handleViewAttachment(a.id)}
+                        className="text-xs text-emerald-400 underline hover:text-white"
+                      >
+                        View
+                      </button>
                     </li>
                   ))}
                   {attachments.length === 0 && <p className="text-neutral-500">No attachments yet.</p>}
@@ -377,6 +403,40 @@ export default function JobDetailPage() {
                   </button>
                 </div>
               )}
+
+              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
+                <h2 className="mb-3 text-sm font-medium text-neutral-300">Finance</h2>
+                {invoices.length === 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-neutral-500">
+                      Invoice not created. Invoicing is triggered automatically when the job is closed — it
+                      hasn&apos;t simply been triggered yet, not because Finance is broken.
+                    </p>
+                    {job?.status === "CLOSED" && token && (
+                      <button
+                        onClick={() => runAction(() => triggerInvoiceFromJob(token, id))}
+                        className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900"
+                      >
+                        Trigger invoice now
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {invoices.map((inv) => (
+                      <li key={inv.id} className="flex items-center justify-between">
+                        <Link href={`/finance/invoices/${inv.id}`} className="underline hover:text-white">
+                          {inv.invoice_number}
+                        </Link>
+                        <span className="text-neutral-500">
+                          {inv.status} · ${inv.total} (${inv.amount_due} due)
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {token && <RecordJobCostForm token={token} jobId={id} onRecorded={load} />}
+              </div>
 
               <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
                 <h2 className="mb-3 text-sm font-medium text-neutral-300">Timeline</h2>
@@ -417,5 +477,75 @@ export default function JobDetailPage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+function RecordJobCostForm({ token, jobId, onRecorded }: { token: string; jobId: string; onRecorded: () => void }) {
+  const [category, setCategory] = useState("MATERIAL");
+  const [description, setDescription] = useState("");
+  const [unitCost, setUnitCost] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!unitCost) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await recordJobCost(token, { job_id: jobId, category, description: description || undefined, unit_cost: unitCost });
+      setDescription("");
+      setUnitCost("");
+      onRecorded();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to record cost.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-2 border-t border-neutral-900 pt-4">
+      <div>
+        <label className="block text-xs text-neutral-500">Category</label>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+        >
+          {["LABOR", "MATERIAL", "SUBCONTRACTOR", "TRAVEL", "EQUIPMENT", "OTHER"].map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-xs text-neutral-500">Description</label>
+        <input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-xs text-neutral-500">Cost</label>
+        <input
+          required
+          value={unitCost}
+          onChange={(e) => setUnitCost(e.target.value)}
+          placeholder="0.00"
+          className="w-24 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={submitting}
+        className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+      >
+        Record cost
+      </button>
+      {error && <p className="w-full text-xs text-red-400">{error}</p>}
+    </form>
   );
 }

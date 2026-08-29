@@ -11,3 +11,5 @@ frontend/node_modules/
 frontend/tsconfig.tsbuildinfo
 .DS_Store
 backend/storage_data/
+.claude/
+frontend/.env.local

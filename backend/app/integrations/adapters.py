@@ -1,13 +1,20 @@
-"""Placeholder adapters (section 11).
+"""Provider adapters (section 11, real-verification depth added Phase 12C).
 
-Each adapter's get_status() reflects real configuration state — if the
+Every adapter's get_status() reflects real configuration state — if the
 credential env vars are unset, it reports NOT_CONNECTED. Nothing here
-fabricates a provider API response. Wiring up OAuth flows, webhook
-verification, and actual API calls is out of scope for Phase 2.
+fabricates a provider API response. Adapters that have a real API client
+(Stripe, Twilio, SendGrid, Anthropic, OpenAI as of Phase 12C) additionally
+implement check_status(), which makes one real, cheap, read-only API call
+to distinguish "credential is set" from "credential actually works" —
+see IntegrationProvider.check_status() in app/integrations/base.py.
+Adapters without a real client yet (QuickBooks, ServiceTitan, Jobber,
+Google Ads, Meta Ads, Gmail) still only ever report NOT_CONNECTED/ERROR,
+honestly, via the base get_status() fallback.
 """
 
 from app.core.config import get_settings
 from app.integrations.base import (
+    AIProvider,
     CalendarProvider,
     CommunicationProvider,
     ConnectionStatus,
@@ -43,7 +50,25 @@ class StripeAdapter(FinanceProvider):
             return IntegrationStatus(
                 self.provider_name, ConnectionStatus.NOT_CONNECTED, "STRIPE_SECRET_KEY not configured"
             )
-        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "Client not implemented")
+        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "not yet verified against the real API")
+
+    async def check_status(self) -> IntegrationStatus:
+        """Phase 12C: a real GET /v1/balance call — the cheapest read-only
+        endpoint that proves the key actually authenticates, not just that
+        it's non-empty."""
+        s = get_settings()
+        if not s.STRIPE_SECRET_KEY:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.NOT_CONNECTED, "STRIPE_SECRET_KEY not configured"
+            )
+        from app.integrations.stripe_client import StripeClient
+
+        client = StripeClient(s.STRIPE_SECRET_KEY)
+        if await client.verify_connection():
+            return IntegrationStatus(self.provider_name, ConnectionStatus.CONNECTED, "verified via GET /v1/balance")
+        return IntegrationStatus(
+            self.provider_name, ConnectionStatus.ERROR, "STRIPE_SECRET_KEY set but rejected by Stripe's API"
+        )
 
 
 class ServiceTitanAdapter(OperationsProvider):
@@ -118,7 +143,36 @@ class TwilioAdapter(CommunicationProvider):
             return IntegrationStatus(
                 self.provider_name, ConnectionStatus.NOT_CONNECTED, "TWILIO_ACCOUNT_SID not configured"
             )
-        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "Client not implemented")
+        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "not yet verified against the real API")
+
+    async def check_status(self) -> IntegrationStatus:
+        """Phase 12C: a real GET .../Accounts/{sid}.json call — proves the
+        Account SID + Auth Token pair actually authenticates."""
+        s = get_settings()
+        if not s.TWILIO_ACCOUNT_SID or not s.TWILIO_AUTH_TOKEN:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.NOT_CONNECTED,
+                "TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN not configured",
+            )
+        if not s.TWILIO_FROM_NUMBER:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.ERROR,
+                "credentials set but TWILIO_FROM_NUMBER missing — cannot send",
+            )
+        import httpx
+
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{s.TWILIO_ACCOUNT_SID}.json"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(url, auth=(s.TWILIO_ACCOUNT_SID, s.TWILIO_AUTH_TOKEN))
+            if response.status_code == 200:
+                return IntegrationStatus(self.provider_name, ConnectionStatus.CONNECTED, "verified via GET .../Accounts/{sid}.json")
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.ERROR,
+                f"credentials rejected by Twilio's API (HTTP {response.status_code})",
+            )
+        except httpx.HTTPError as exc:
+            return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, f"network error verifying Twilio: {exc}")
 
 
 class SendGridAdapter(CommunicationProvider):
@@ -130,7 +184,120 @@ class SendGridAdapter(CommunicationProvider):
             return IntegrationStatus(
                 self.provider_name, ConnectionStatus.NOT_CONNECTED, "SENDGRID_API_KEY not configured"
             )
-        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "Client not implemented")
+        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "not yet verified against the real API")
+
+    async def check_status(self) -> IntegrationStatus:
+        """Phase 12C: a real GET /v3/user/account call — proves the API key
+        actually authenticates."""
+        s = get_settings()
+        if not s.SENDGRID_API_KEY:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.NOT_CONNECTED, "SENDGRID_API_KEY not configured"
+            )
+        if not s.SENDGRID_FROM_EMAIL:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.ERROR,
+                "credentials set but SENDGRID_FROM_EMAIL missing — SendGrid rejects sends from an unverified sender",
+            )
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    "https://api.sendgrid.com/v3/user/account",
+                    headers={"Authorization": f"Bearer {s.SENDGRID_API_KEY}"},
+                )
+            if response.status_code == 200:
+                return IntegrationStatus(self.provider_name, ConnectionStatus.CONNECTED, "verified via GET /v3/user/account")
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.ERROR,
+                f"credentials rejected by SendGrid's API (HTTP {response.status_code})",
+            )
+        except httpx.HTTPError as exc:
+            return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, f"network error verifying SendGrid: {exc}")
+
+
+class AnthropicIntegrationAdapter(AIProvider):
+    provider_name = "anthropic"
+
+    def get_status(self) -> IntegrationStatus:
+        s = get_settings()
+        if not s.ANTHROPIC_API_KEY:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.NOT_CONNECTED, "ANTHROPIC_API_KEY not configured"
+            )
+        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "not yet verified against the real API")
+
+    async def check_status(self) -> IntegrationStatus:
+        """A minimal real Messages call (max_tokens=1) — Anthropic has no
+        free/cheap 'list models' style endpoint, so this is the smallest
+        real request that proves the key authenticates."""
+        s = get_settings()
+        if not s.ANTHROPIC_API_KEY:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.NOT_CONNECTED, "ANTHROPIC_API_KEY not configured"
+            )
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": s.ANTHROPIC_API_KEY,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={"model": s.ANTHROPIC_MODEL, "max_tokens": 1, "messages": [{"role": "user", "content": "hi"}]},
+                )
+            if response.status_code == 200:
+                return IntegrationStatus(
+                    self.provider_name, ConnectionStatus.CONNECTED,
+                    f"verified via a real Messages API call — model={s.ANTHROPIC_MODEL}",
+                )
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.ERROR, f"credentials rejected by Anthropic's API (HTTP {response.status_code})"
+            )
+        except httpx.HTTPError as exc:
+            return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, f"network error verifying Anthropic: {exc}")
+
+
+class OpenAIIntegrationAdapter(AIProvider):
+    provider_name = "openai"
+
+    def get_status(self) -> IntegrationStatus:
+        s = get_settings()
+        if not s.OPENAI_API_KEY:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.NOT_CONNECTED, "OPENAI_API_KEY not configured"
+            )
+        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "not yet verified against the real API")
+
+    async def check_status(self) -> IntegrationStatus:
+        """A real GET /v1/models call — cheap and read-only."""
+        s = get_settings()
+        if not s.OPENAI_API_KEY:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.NOT_CONNECTED, "OPENAI_API_KEY not configured"
+            )
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    "https://api.openai.com/v1/models",
+                    headers={"Authorization": f"Bearer {s.OPENAI_API_KEY}"},
+                )
+            if response.status_code == 200:
+                return IntegrationStatus(
+                    self.provider_name, ConnectionStatus.CONNECTED,
+                    f"verified via GET /v1/models — model={s.OPENAI_MODEL}",
+                )
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.ERROR, f"credentials rejected by OpenAI's API (HTTP {response.status_code})"
+            )
+        except httpx.HTTPError as exc:
+            return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, f"network error verifying OpenAI: {exc}")
 
 
 class GenericSupplierAdapter(ProcurementProvider):
@@ -152,5 +319,7 @@ ALL_ADAPTERS: list[type] = [
     GmailAdapter,
     TwilioAdapter,
     SendGridAdapter,
+    AnthropicIntegrationAdapter,
+    OpenAIIntegrationAdapter,
     GenericSupplierAdapter,
 ]

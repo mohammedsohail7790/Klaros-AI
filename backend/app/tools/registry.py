@@ -28,7 +28,7 @@ from app.tools.errors import (
     ToolPermissionError,
     ToolValidationError,
 )
-from app.tools.policy import ActionPolicy, policy_for
+from app.tools.policy import ActionPolicy
 from app.tools.redact import redact_input
 
 logger = structlog.get_logger(__name__)
@@ -75,9 +75,24 @@ def _infer_entity(raw_input: dict, output=None) -> tuple[str | None, uuid.UUID |
 
 
 class ToolRegistry:
-    def __init__(self, session_factory: async_sessionmaker) -> None:
+    def __init__(self, session_factory: async_sessionmaker, bus=None, policy_service=None) -> None:
         self._session_factory = session_factory
         self._tools: dict[str, Tool] = {}
+        # Optional (Phase 9): lets the registry publish `approval.requested`
+        # when it creates an ApprovalRequest itself. None is fine — nothing
+        # else in the registry depends on it — but every real deployment
+        # wires it via app/tools/factory.py so the event actually fires.
+        self._bus = bus
+        # Phase 10A: resolves the tenant-effective policy for a tool at
+        # execution time. Defaults to a real PolicyService against the same
+        # session_factory if the caller doesn't supply one — every real
+        # deployment gets tenant-configurable policy without every call site
+        # needing to know about it.
+        if policy_service is None:
+            from app.services.policy_service import PolicyService
+
+            policy_service = PolicyService(session_factory)
+        self._policy_service = policy_service
 
     def register(self, tool: Tool) -> None:
         self._tools[tool.name] = tool
@@ -96,7 +111,18 @@ class ToolRegistry:
             or (context.role is not None and role_has_permission(context.role, t.required_permission))
         ]
 
-    async def execute(self, name: str, raw_input: dict, context: ExecutionContext):
+    async def execute(
+        self, name: str, raw_input: dict, context: ExecutionContext, *, skip_approval_gate: bool = False
+    ):
+        """`skip_approval_gate` is set ONLY by `ApprovalExecutionService` when
+        resuming a tool call that has already been through and passed the
+        approval boundary — never by any other caller (human, AI, workflow).
+        Every other check (permission, tenant, schema, BLOCKED policy) still
+        runs; only the APPROVAL_REQUIRED branch below is skipped, so a
+        second approval request is never created for an already-approved
+        action, and — just as importantly — a policy that has since changed
+        to BLOCKED still stops execution even on resume.
+        """
         tool = self.get(name)
 
         if tool.required_permission is not None:
@@ -125,7 +151,7 @@ class ToolRegistry:
             )
             raise ToolValidationError(str(exc)) from exc
 
-        policy = policy_for(name)
+        policy = await self._policy_service.resolve(context.tenant_id, name)
 
         if policy == ActionPolicy.BLOCKED:
             await self._audit(
@@ -133,7 +159,7 @@ class ToolRegistry:
             )
             raise ToolBlockedError(f"Tool '{name}' is blocked by policy")
 
-        if policy == ActionPolicy.APPROVAL_REQUIRED:
+        if policy == ActionPolicy.APPROVAL_REQUIRED and not skip_approval_gate:
             request_id = await self._create_approval_request(context, tool, validated_input)
             await self._audit(
                 context,
@@ -171,17 +197,33 @@ class ToolRegistry:
                 tenant_id=context.tenant_id,
                 requested_by_type=context.actor_type,
                 requested_by_id=context.actor_id,
+                requested_by_role=context.role.value if context.role else None,
                 tool_name=tool.name,
                 action_type=tool.name.split(".")[0],
                 reason=f"Tool '{tool.name}' requires approval by policy",
                 tool_input=validated_input.model_dump(mode="json"),
                 status=ApprovalStatus.PENDING,
                 correlation_id=context.correlation_id,
+                idempotency_key=f"approval-exec-{context.correlation_id or uuid.uuid4()}",
             )
             session.add(request)
             await session.commit()
             await session.refresh(request)
-            return request.id
+            request_id = request.id
+
+        if self._bus is not None:
+            from app.models.event import EventType
+
+            await self._bus.publish(
+                tenant_id=context.tenant_id,
+                event_type=EventType.APPROVAL_REQUESTED,
+                source="tool_registry",
+                entity_type="approval_request",
+                entity_id=request_id,
+                payload={"tool_name": tool.name},
+                correlation_id=context.correlation_id,
+            )
+        return request_id
 
     async def _audit(
         self,

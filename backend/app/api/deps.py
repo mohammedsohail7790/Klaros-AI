@@ -3,11 +3,13 @@ from dataclasses import dataclass
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import TokenError, decode_token
 from app.db.session import get_db
 from app.models.rbac import Permission, Role, role_has_permission
+from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
@@ -19,7 +21,9 @@ class CurrentUser:
     role: Role
 
 
-async def get_current_user(token: str | None = Depends(oauth2_scheme)) -> CurrentUser:
+async def get_current_user(
+    token: str | None = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
+) -> CurrentUser:
     if token is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     try:
@@ -32,8 +36,21 @@ async def get_current_user(token: str | None = Depends(oauth2_scheme)) -> Curren
     if payload.get("type") != "access":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
 
+    user_id = uuid.UUID(payload["sub"])
+
+    # Real revocation (Phase 12 production hardening): a purely stateless
+    # JWT can't be un-issued short of rotating the app-wide secret. This one
+    # indexed lookup per request is the tradeoff for actually being able to
+    # log a user out / revoke a compromised token — see
+    # app/services/auth_service.py's logout().
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+    if payload.get("ver", 0) != user.token_version:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
+
     return CurrentUser(
-        id=uuid.UUID(payload["sub"]),
+        id=user_id,
         tenant_id=uuid.UUID(payload["tenant_id"]),
         role=Role(payload["role"]),
     )

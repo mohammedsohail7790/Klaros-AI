@@ -5,10 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, get_current_user
-from app.api.tool_deps import get_wired_event_bus
+from app.api.tool_deps import execution_context, get_tool_registry, get_wired_event_bus, raise_http_for_tool_error
 from app.db.session import async_session_maker
 from app.events.bus import EventBus
 from app.models.event import Event
+from app.tools.errors import ToolError
+from app.tools.registry import ToolRegistry
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -52,6 +54,103 @@ async def publish_event(
     return resp
 
 
+# --- Admin/operator routes (Phase 8). NOTE: literal paths must be declared
+# before the generic "/{event_id}" route below, or FastAPI's path matching
+# (by segment shape, not by declared type) would try to parse "dead-letters"
+# or "metrics" as a UUID and 422 before ever reaching these handlers. ---
+
+
+@router.get("")
+async def list_events(
+    status_filter: str | None = None,
+    event_type: str | None = None,
+    limit: int = 50,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute(
+            "events.list_events",
+            {"status": status_filter, "event_type": event_type, "limit": limit},
+            execution_context(current_user),
+        )
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
+@router.get("/dead-letters")
+async def list_dead_letters(
+    include_replayed: bool = False,
+    limit: int = 50,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute(
+            "events.list_dead_letters",
+            {"include_replayed": include_replayed, "limit": limit},
+            execution_context(current_user),
+        )
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
+@router.post("/dead-letters/{dead_letter_id}/replay")
+async def replay_dead_letter(
+    dead_letter_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute(
+            "events.replay_dead_letter",
+            {"dead_letter_id": str(dead_letter_id)},
+            execution_context(current_user),
+        )
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
+@router.get("/metrics")
+async def get_worker_metrics(
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute("events.get_worker_metrics", {}, execution_context(current_user))
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
+@router.post("/process/{event_type}")
+async def process_pending_events(
+    event_type: str,
+    current_user: CurrentUser = Depends(get_current_user),
+    bus: EventBus = Depends(get_wired_event_bus),
+) -> dict[str, Any]:
+    """Manual override, kept for operators — NOT required for normal
+    operation as of Phase 8. The Klaros Event Worker (app/events/worker.py)
+    now runs continuously (in-process when EVENT_TRANSPORT=memory, as its
+    own `event-worker` Docker service against Redis in production) and
+    drives this same `EventBus.process_pending` call on a poll loop, so
+    published events propagate automatically. This endpoint still exists for
+    forcing an immediate pass without waiting for the next poll tick.
+    """
+    del current_user
+    stats = await bus.process_pending(event_type)
+    return {
+        "read": stats.read,
+        "succeeded": stats.succeeded,
+        "failed_retrying": stats.failed_retrying,
+        "dead_lettered": stats.dead_lettered,
+        "duplicates_skipped": stats.duplicates_skipped,
+    }
+
+
 @router.get("/{event_id}", response_model=EventResponse)
 async def get_event(
     event_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user)
@@ -63,22 +162,16 @@ async def get_event(
         return EventResponse.model_validate(event)
 
 
-@router.post("/process/{event_type}")
-async def process_pending_events(
-    event_type: str,
+@router.get("/{event_id}/detail")
+async def get_event_detail(
+    event_id: uuid.UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    bus: EventBus = Depends(get_wired_event_bus),
+    registry: ToolRegistry = Depends(get_tool_registry),
 ) -> dict[str, Any]:
-    """Dev/ops endpoint: drive the subscriber loop on demand instead of
-    waiting for a background worker. In production this runs continuously in
-    a worker process, not on the request path.
-    """
-    del current_user
-    stats = await bus.process_pending(event_type)
-    return {
-        "read": stats.read,
-        "succeeded": stats.succeeded,
-        "failed_retrying": stats.failed_retrying,
-        "dead_lettered": stats.dead_lettered,
-        "duplicates_skipped": stats.duplicates_skipped,
-    }
+    try:
+        output = await registry.execute(
+            "events.get_event_detail", {"event_id": str(event_id)}, execution_context(current_user)
+        )
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")

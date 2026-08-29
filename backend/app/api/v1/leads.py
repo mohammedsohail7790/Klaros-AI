@@ -109,3 +109,23 @@ async def qualify_lead(
     except (ToolError, ValueError) as exc:
         raise_http_for_tool_error(exc)
     return output.model_dump(mode="json")
+
+
+@router.post("/{lead_id}/ai-qualify-advisory")
+async def ai_qualify_lead_advisory(
+    lead_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    """Phase 12E: a real-LLM-generated recommendation only — never persists
+    anything to the lead. Honestly reports `available: false` when no AI
+    provider is configured, rather than fabricating a score. To actually
+    apply a reviewed recommendation, call POST /{lead_id}/qualify (the
+    existing, policy-gated deterministic path) or edit the lead directly."""
+    try:
+        output = await registry.execute(
+            "crm.ai_qualify_lead_advisory", {"lead_id": str(lead_id)}, execution_context(current_user)
+        )
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")

@@ -15,6 +15,7 @@ through the same permission/tenant/schema/policy pipeline as any other tool
 call — a workflow has no back door.
 """
 
+import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
@@ -72,7 +73,7 @@ class InvoiceOverdueInput:
 class InvoiceOverdueWorkflow:
     @workflow.run
     async def run(self, input: InvoiceOverdueInput) -> dict[str, Any]:
-        await workflow.sleep(timedelta(seconds=input.reminder_wait_seconds))
+        await asyncio.sleep(input.reminder_wait_seconds)
 
         await workflow.execute_activity(
             send_reminder_activity,
@@ -81,7 +82,7 @@ class InvoiceOverdueWorkflow:
             retry_policy=DEFAULT_RETRY_POLICY,
         )
 
-        await workflow.sleep(timedelta(seconds=input.payment_check_wait_seconds))
+        await asyncio.sleep(input.payment_check_wait_seconds)
 
         status = await workflow.execute_activity(
             check_payment_status_activity,
@@ -163,14 +164,10 @@ class JobLifecycleWorkflow:
     ("do not create a workflow that blindly performs every step without
     checking state"). A signal-driven version of this workflow that
     durably watches a job through its whole lifecycle is a natural
-    extension, but every workflow in this project that has used
-    `workflow.sleep()` for durable waiting has hung in this sandbox (see
-    `InvoiceOverdueWorkflow`, PROJECT_STATUS.md). Rather than add a second
-    unverified sleep-based workflow, this one does the one step that's
-    genuinely useful without a timer — idempotently validating the job is
-    well-formed — via the same `execute_tool_activity` every other
-    workflow in this project uses, so it inherits the same tested
-    authorization/audit path.
+    extension; this one does the one step that's genuinely useful without
+    a timer — idempotently validating the job is well-formed — via the
+    same `execute_tool_activity` every other workflow in this project
+    uses, so it inherits the same tested authorization/audit path.
     """
 
     @workflow.run

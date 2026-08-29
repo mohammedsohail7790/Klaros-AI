@@ -69,6 +69,8 @@ services:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  # Temporal Worker — runs durable, long-running business *workflows*
+  # (InvoiceOverdueWorkflow, JobLifecycleWorkflow, etc.), NOT the event bus.
   worker:
     build: ./backend
     env_file: .env
@@ -87,6 +89,30 @@ services:
     volumes:
       - ./backend:/app
     command: python -m app.workers.main
+
+  # Klaros Event Worker (Phase 8) — continuously consumes the durable event
+  # store (Postgres) via the Redis Streams transport and runs every
+  # subscribed domain handler (retention, finance, marketing, operations,
+  # CRM, Morning Brief scheduling). This is NOT the Temporal worker above:
+  # Temporal owns long-running multi-step business workflows: this process
+  # owns event-bus consumption/fan-out. Losing it means published events
+  # stop propagating — everything else keeps accepting requests.
+  event-worker:
+    build: ./backend
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-klaros}:${POSTGRES_PASSWORD:-klaros}@postgres:5432/${POSTGRES_DB:-klaros}
+      - REDIS_URL=redis://redis:6379/0
+      - EVENT_TRANSPORT=redis
+      - TEMPORAL_HOST=temporal:7233
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: python -m app.events.worker
 
   frontend:
     build: ./frontend

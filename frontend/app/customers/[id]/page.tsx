@@ -8,11 +8,23 @@ import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
   Customer,
+  CustomerHealth,
+  FeedbackRow,
+  Invoice,
+  RetentionOpportunityRow,
+  ReviewRequestRow,
+  ServiceReminderRow,
   TimelineEntry,
   createCustomerNote,
   getCustomer,
+  getCustomerHealth,
   getCustomerSummary,
   getCustomerTimeline,
+  listFeedback,
+  listInvoices,
+  listReviewRequests,
+  listRetentionOpportunities,
+  listServiceReminders,
 } from "@/lib/api";
 
 export default function CustomerDetailPage() {
@@ -21,6 +33,7 @@ export default function CustomerDetailPage() {
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -29,17 +42,36 @@ export default function CustomerDetailPage() {
   const [note, setNote] = useState("");
   const [noteSubmitting, setNoteSubmitting] = useState(false);
 
+  const [health, setHealth] = useState<CustomerHealth | null>(null);
+  const [opportunities, setOpportunities] = useState<RetentionOpportunityRow[]>([]);
+  const [reminders, setReminders] = useState<ServiceReminderRow[]>([]);
+  const [reviewRequests, setReviewRequests] = useState<ReviewRequestRow[]>([]);
+  const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
+
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const [customerResult, timelineResult] = await Promise.all([
-        getCustomer(token, id),
-        getCustomerTimeline(token, id),
-      ]);
+      const [customerResult, timelineResult, invoicesResult, healthResult, opportunitiesResult, remindersResult, reviewRequestsResult, feedbackResult] =
+        await Promise.all([
+          getCustomer(token, id),
+          getCustomerTimeline(token, id),
+          listInvoices(token, { customer_id: id }),
+          getCustomerHealth(token, id),
+          listRetentionOpportunities(token, "OPEN"),
+          listServiceReminders(token),
+          listReviewRequests(token),
+          listFeedback(token),
+        ]);
       setCustomer(customerResult.customer);
       setTimeline(timelineResult.entries);
+      setInvoices(invoicesResult.invoices);
+      setHealth(healthResult);
+      setOpportunities(opportunitiesResult.opportunities.filter((o) => o.customer_id === id));
+      setReminders(remindersResult.reminders.filter((r) => r.customer_id === id));
+      setReviewRequests(reviewRequestsResult.review_requests.filter((r) => r.customer_id === id));
+      setFeedback(feedbackResult.feedback.filter((f) => f.customer_id === id));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Customer could not be loaded.");
     } finally {
@@ -81,6 +113,20 @@ export default function CustomerDetailPage() {
   }
 
   const appointmentEntries = timeline.filter((e) => e.type === "appointment");
+
+  type RetentionTimelineEntry = { type: string; summary: string; timestamp: string };
+  const retentionTimeline: RetentionTimelineEntry[] = [
+    ...opportunities.map((o) => ({ type: "opportunity", summary: `Retention opportunity opened: ${o.reason}`, timestamp: o.detected_at })),
+    ...reminders.map((r) => ({ type: "reminder", summary: `Service reminder scheduled: ${r.reason ?? r.service_type ?? "service"}`, timestamp: r.reminder_date })),
+    ...reviewRequests
+      .filter((r) => r.requested_at)
+      .map((r) => ({ type: "review_request", summary: `Review request ${r.status.toLowerCase()} via ${r.channel}`, timestamp: r.requested_at as string })),
+    ...feedback.map((f) => ({
+      type: "feedback",
+      summary: `Feedback received: rating ${f.rating ?? "n/a"}/5 (${f.sentiment ?? "no sentiment"})`,
+      timestamp: f.received_at,
+    })),
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   return (
     <AppShell user={user}>
@@ -159,8 +205,23 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">Quotes / Invoices / Payments</h2>
-                <p className="text-sm text-neutral-500">Finance module not connected yet.</p>
+                <h2 className="mb-3 text-sm font-medium text-neutral-300">Invoices / Payments</h2>
+                {invoices.length === 0 ? (
+                  <p className="text-sm text-neutral-500">No financial history for this customer yet.</p>
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {invoices.map((inv) => (
+                      <li key={inv.id} className="flex items-center justify-between">
+                        <Link href={`/finance/invoices/${inv.id}`} className="underline hover:text-white">
+                          {inv.invoice_number}
+                        </Link>
+                        <span className="text-neutral-500">
+                          {inv.status} · ${inv.total} (${inv.amount_due} due)
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
@@ -184,6 +245,76 @@ export default function CustomerDetailPage() {
             </section>
 
             <section className="space-y-4">
+              {health && (
+                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
+                  <h2 className="mb-3 text-sm font-medium text-neutral-300">Customer health</h2>
+                  <dl className="space-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-neutral-500">Lifecycle</dt>
+                      <dd className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{health.lifecycle_state}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-neutral-500">Jobs completed</dt>
+                      <dd>{health.completed_jobs} / {health.total_jobs}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-neutral-500">Total collected</dt>
+                      <dd>${health.total_collected}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-neutral-500">Open balance</dt>
+                      <dd>${health.open_balance}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-neutral-500">Last service</dt>
+                      <dd>{health.last_completed_job_at ? new Date(health.last_completed_job_at).toLocaleDateString() : "—"}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-neutral-500">Service frequency</dt>
+                      <dd>{health.average_days_between_jobs !== null ? `~${health.average_days_between_jobs} days` : "INSUFFICIENT DATA"}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-neutral-500">Last review request</dt>
+                      <dd>{health.last_review_request_at ? new Date(health.last_review_request_at).toLocaleDateString() : "None"}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-neutral-500">Last referral</dt>
+                      <dd>{health.last_referral_at ? new Date(health.last_referral_at).toLocaleDateString() : "None"}</dd>
+                    </div>
+                  </dl>
+                  {feedback.some((f) => f.sentiment === "NEGATIVE") && (
+                    <p className="mt-3 rounded-md border border-red-900 bg-red-950/30 p-2 text-xs text-red-300">
+                      Negative feedback on file — service recovery required.
+                    </p>
+                  )}
+                  <div className="mt-3 text-xs text-neutral-500">
+                    Next recommended action:{" "}
+                    {opportunities[0] ? opportunities[0].recommended_action ?? opportunities[0].reason : "None open"}
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
+                <h2 className="mb-3 text-sm font-medium text-neutral-300">Retention timeline</h2>
+                {retentionTimeline.length === 0 ? (
+                  <p className="text-sm text-neutral-500">No retention activity recorded yet.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {retentionTimeline.map((entry, i) => (
+                      <li key={i} className="flex gap-3 text-sm">
+                        <span className="mt-0.5 rounded-full border border-neutral-700 px-2 py-0.5 text-[10px] uppercase text-neutral-500">
+                          {entry.type}
+                        </span>
+                        <div>
+                          <p>{entry.summary}</p>
+                          <p className="text-xs text-neutral-600">{new Date(entry.timestamp).toLocaleString()}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
                 <h2 className="mb-2 text-sm font-medium text-neutral-300">AI summary</h2>
                 {summary ? (

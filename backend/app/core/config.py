@@ -12,8 +12,18 @@ class Settings(BaseSettings):
     # "redis" (default, production) or "memory" (dev/test fallback when no Redis is
     # reachable — a real in-process transport, not a mock; see app/events/transport.py)
     EVENT_TRANSPORT: str = "redis"
+    # How often the Klaros Event Worker (app/events/worker.py) polls for
+    # pending events — distinct from Temporal, which has its own scheduling.
+    EVENT_WORKER_POLL_SECONDS: float = 1.0
 
     JWT_SECRET: str = "change-me-in-production"
+    # Phase 12D: encrypts tenant-owned integration credentials (OAuth
+    # tokens, per-tenant API keys) at rest — see
+    # app/integrations/credential_store.py. Empty by default in dev; the
+    # store falls back to an insecure, publicly-known key when unset, so
+    # this MUST be set to a real random value before any real tenant
+    # credential is ever stored in production.
+    INTEGRATION_CREDENTIAL_ENCRYPTION_KEY: str | None = None
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -39,6 +49,9 @@ class Settings(BaseSettings):
     XERO_CLIENT_SECRET: str | None = None
     STRIPE_SECRET_KEY: str | None = None
     STRIPE_WEBHOOK_SECRET: str | None = None
+    # Phase 12F: previously hardcoded in app/integrations/stripe_client.py.
+    STRIPE_TIMEOUT_SECONDS: float = 20.0
+    STRIPE_MAX_RETRIES: int = 3
     GOOGLE_ADS_CLIENT_ID: str | None = None
     GOOGLE_ADS_CLIENT_SECRET: str | None = None
     GOOGLE_ADS_DEVELOPER_TOKEN: str | None = None
@@ -52,9 +65,33 @@ class Settings(BaseSettings):
     JOBBER_CLIENT_SECRET: str | None = None
     TWILIO_ACCOUNT_SID: str | None = None
     TWILIO_AUTH_TOKEN: str | None = None
+    # Real Twilio sender number (E.164, e.g. "+15551234567") — required to
+    # actually send, distinct from the account credentials above.
+    TWILIO_FROM_NUMBER: str | None = None
     SENDGRID_API_KEY: str | None = None
+    # Verified SendGrid sender identity — SendGrid rejects sends from an
+    # unverified address, so this must be a real, verified sender.
+    SENDGRID_FROM_EMAIL: str | None = None
     OPENAI_API_KEY: str | None = None
     ANTHROPIC_API_KEY: str | None = None
+    # "auto" (default) picks a real provider only if its key is set, preferring
+    # Anthropic, else falls back to deterministic. "deterministic" forces the
+    # deterministic path even if keys are present (useful for ops/testing).
+    # "anthropic" / "openai" force that provider — get_ai_provider() still
+    # falls back to deterministic if the matching key is missing, it never
+    # fabricates a connection.
+    AI_PROVIDER: str = "auto"
+    ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    # Phase 12E: previously hardcoded in app/services/ai_provider.py —
+    # made configurable so timeout/retry/output-size behavior is
+    # observable and testable per environment, not a silent constant.
+    OPENAI_TIMEOUT_SECONDS: float = 20.0
+    OPENAI_MAX_RETRIES: int = 2
+    OPENAI_MAX_OUTPUT_TOKENS: int = 1024
+    ANTHROPIC_TIMEOUT_SECONDS: float = 20.0
+    ANTHROPIC_MAX_RETRIES: int = 2
+    ANTHROPIC_MAX_OUTPUT_TOKENS: int = 1024
 
 
 @lru_cache

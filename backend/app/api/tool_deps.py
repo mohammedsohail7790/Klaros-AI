@@ -5,8 +5,12 @@ from app.db.session import async_session_maker
 from app.events.bus import EventBus
 from app.events.crm_handlers import register_crm_handlers
 from app.events.factory import get_event_bus
+from app.events.finance_handlers import register_finance_handlers
 from app.events.handlers import register_default_handlers
+from app.events.marketing_handlers import register_marketing_handlers
+from app.events.retention_handlers import register_retention_handlers
 from app.events.operations_handlers import register_operations_handlers
+from app.events.notification_handlers import register_notification_handlers
 from app.models.actor import ActorType
 from app.tools.base import ExecutionContext
 from app.tools.factory import build_tool_registry
@@ -19,11 +23,30 @@ def get_tool_registry() -> ToolRegistry:
 
 
 @lru_cache
+def get_morning_brief_service():
+    """A second, lightweight MorningBriefService instance for the scheduler
+    (see app/main.py's lifespan) — sharing the same session_factory and
+    ToolRegistry singleton as get_tool_registry(). All actual state lives in
+    Postgres, so a second instance is stateless and safe; it exists only
+    because the scheduler runs with no human ExecutionContext to hand a Tool
+    call, unlike the `insights.generate_morning_brief` tool a human triggers.
+    """
+    from app.ai.execution_service import AIExecutionService
+    from app.services.morning_brief_service import MorningBriefService
+
+    return MorningBriefService(async_session_maker, AIExecutionService(get_tool_registry()), get_wired_event_bus())
+
+
+@lru_cache
 def get_wired_event_bus() -> EventBus:
     bus = get_event_bus()
     register_default_handlers(bus)
     register_crm_handlers(bus, async_session_maker)
     register_operations_handlers(bus, async_session_maker)
+    register_finance_handlers(bus, async_session_maker)
+    register_marketing_handlers(bus, async_session_maker)
+    register_retention_handlers(bus, async_session_maker)
+    register_notification_handlers(bus, async_session_maker)
     return bus
 
 

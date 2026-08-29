@@ -1,20 +1,50 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    ai_activity,
     appointments,
     approvals,
+    ar,
     auth,
+    automation,
+    cash,
+    credit_notes,
     crm,
     customers,
     events,
     exceptions,
+    finance,
     integrations,
+    invoices,
+    job_costs,
     jobs,
+    knowledge,
     leads,
+    marketing,
+    marketing_attribution,
+    marketing_campaigns,
+    marketing_content,
+    marketing_nurture,
+    marketing_outbound,
+    marketing_reactivation,
+    marketing_seo,
+    morning_brief,
+    notifications,
     operations,
+    payments,
+    profitability,
+    refunds,
+    retention,
+    retention_campaigns,
+    retention_opportunities,
+    retention_referrals,
+    retention_reminders,
+    retention_reviews,
     tools,
     users,
+    webhooks,
     workers,
+    writeoffs,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -23,6 +53,7 @@ api_router.include_router(users.router)
 api_router.include_router(events.router)
 api_router.include_router(tools.router)
 api_router.include_router(approvals.router)
+api_router.include_router(ai_activity.router)
 api_router.include_router(integrations.router)
 api_router.include_router(leads.router)
 api_router.include_router(customers.router)
@@ -32,3 +63,32 @@ api_router.include_router(jobs.router)
 api_router.include_router(workers.router)
 api_router.include_router(exceptions.router)
 api_router.include_router(operations.router)
+api_router.include_router(invoices.router)
+api_router.include_router(payments.router)
+api_router.include_router(ar.router)
+api_router.include_router(refunds.router)
+api_router.include_router(credit_notes.router)
+api_router.include_router(writeoffs.router)
+api_router.include_router(job_costs.router)
+api_router.include_router(profitability.router)
+api_router.include_router(cash.router)
+api_router.include_router(finance.router)
+api_router.include_router(marketing_campaigns.router)
+api_router.include_router(marketing_attribution.router)
+api_router.include_router(marketing_content.router)
+api_router.include_router(marketing_seo.router)
+api_router.include_router(marketing_outbound.router)
+api_router.include_router(marketing_nurture.router)
+api_router.include_router(marketing_reactivation.router)
+api_router.include_router(marketing.router)
+api_router.include_router(retention_opportunities.router)
+api_router.include_router(retention_reminders.router)
+api_router.include_router(retention_reviews.router)
+api_router.include_router(retention_referrals.router)
+api_router.include_router(retention_campaigns.router)
+api_router.include_router(retention.router)
+api_router.include_router(morning_brief.router)
+api_router.include_router(automation.router)
+api_router.include_router(notifications.router)
+api_router.include_router(knowledge.router)
+api_router.include_router(webhooks.router)

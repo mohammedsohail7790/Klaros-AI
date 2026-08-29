@@ -30,6 +30,15 @@ class IntegrationProvider(ABC):
     def get_status(self) -> IntegrationStatus:
         raise NotImplementedError
 
+    async def check_status(self) -> IntegrationStatus:
+        """Phase 12C: like get_status(), but permitted to make a real,
+        cheap, read-only API call to verify the configured credential
+        actually works — not just that an env var is non-empty. Defaults
+        to get_status() for adapters that have no real client yet (still
+        honest: env-var-presence is all they can report). Override this,
+        not get_status(), when real verification becomes possible."""
+        return self.get_status()
+
 
 class FinanceProvider(IntegrationProvider):
     pass
@@ -52,6 +61,16 @@ class CommunicationProvider(IntegrationProvider):
 
 
 class CalendarProvider(IntegrationProvider):
+    pass
+
+
+class AIProvider(IntegrationProvider):
+    """Status-reporting marker for LLM providers — distinct from
+    app/services/ai_provider.py's AIProvider ABC (that one is the actual
+    enrich_brief() execution boundary); this one exists only so OpenAI/
+    Anthropic appear in the same GET /api/v1/integrations list as every
+    other provider."""
+
     pass
 
 

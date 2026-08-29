@@ -1,8 +1,9 @@
 import uuid
+from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Integer, String, UniqueConstraint, Uuid
+from sqlalchemy import JSON, Boolean, DateTime, Integer, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TenantScopedMixin
@@ -11,6 +12,7 @@ from app.db.base import Base, TenantScopedMixin
 class EventStatus(StrEnum):
     PUBLISHED = "PUBLISHED"
     PROCESSING = "PROCESSING"
+    RETRYING = "RETRYING"
     PROCESSED = "PROCESSED"
     FAILED = "FAILED"
     DEAD_LETTER = "DEAD_LETTER"
@@ -64,15 +66,93 @@ class EventType(StrEnum):
     EXCEPTION_RESOLVED = "exception.resolved"
 
     INVOICE_CREATED = "invoice.created"
+    INVOICE_UPDATED = "invoice.updated"
+    INVOICE_APPROVAL_REQUESTED = "invoice.approval_requested"
+    INVOICE_APPROVED = "invoice.approved"
+    INVOICE_REJECTED = "invoice.rejected"
+    INVOICE_SENT = "invoice.sent"
     INVOICE_OVERDUE = "invoice.overdue"
+    INVOICE_PAID = "invoice.paid"
+    INVOICE_PARTIALLY_PAID = "invoice.partially_paid"
+    INVOICE_VOIDED = "invoice.voided"
     INVOICE_TRIGGER_REQUESTED = "invoice.trigger_requested"
+
+    PAYMENT_CREATED = "payment.created"
+    PAYMENT_SUCCEEDED = "payment.succeeded"
+    PAYMENT_FAILED = "payment.failed"
     PAYMENT_RECEIVED = "payment.received"
+    PAYMENT_REFUNDED = "payment.refunded"
+
+    REFUND_REQUESTED = "refund.requested"
+    REFUND_APPROVED = "refund.approved"
+    REFUND_REJECTED = "refund.rejected"
+    REFUND_COMPLETED = "refund.completed"
+
+    CREDIT_NOTE_CREATED = "credit_note.created"
+    CREDIT_NOTE_APPROVED = "credit_note.approved"
+    CREDIT_NOTE_APPLIED = "credit_note.applied"
+
+    WRITEOFF_REQUESTED = "writeoff.requested"
+    WRITEOFF_APPROVED = "writeoff.approved"
+    WRITEOFF_APPLIED = "writeoff.applied"
+
+    JOB_COST_RECORDED = "job.cost_recorded"
+    JOB_MARGIN_UPDATED = "job.margin_updated"
+
+    CASH_FORECAST_UPDATED = "cash_forecast.updated"
 
     APPROVAL_REQUESTED = "approval.requested"
     APPROVAL_APPROVED = "approval.approved"
     APPROVAL_REJECTED = "approval.rejected"
+    APPROVAL_EXECUTION_STARTED = "approval.execution.started"
+    APPROVAL_EXECUTION_COMPLETED = "approval.execution.completed"
+    APPROVAL_EXECUTION_FAILED = "approval.execution.failed"
 
     INTEGRATION_FAILED = "integration.failed"
+    # Phase 12C
+    INTEGRATION_CONNECTED = "integration.connected"
+    INTEGRATION_DISCONNECTED = "integration.disconnected"
+    INTEGRATION_CONNECTION_FAILED = "integration.connection_failed"
+    WEBHOOK_RECEIVED = "webhook.received"
+    WEBHOOK_REJECTED = "webhook.rejected"
+
+    # Marketing (Phase 6)
+    MARKETING_CAMPAIGN_CREATED = "marketing.campaign_created"
+    MARKETING_SPEND_RECORDED = "marketing.spend_recorded"
+    MARKETING_LEAD_ATTRIBUTED = "marketing.lead_attributed"
+    MARKETING_CONTENT_CREATED = "marketing.content_created"
+    MARKETING_CONTENT_APPROVED = "marketing.content_approved"
+    MARKETING_CONTENT_PUBLISHED = "marketing.content_published"
+    MARKETING_LEAD_ADDED_TO_SEQUENCE = "marketing.lead_added_to_sequence"
+    MARKETING_NURTURE_STARTED = "marketing.nurture_started"
+    MARKETING_REACTIVATION_CANDIDATE_CREATED = "marketing.reactivation_candidate_created"
+    MARKETING_REACTIVATION_SENT = "marketing.reactivation_sent"
+    MARKETING_CAMPAIGN_PERFORMANCE_UPDATED = "marketing.campaign_performance_updated"
+
+    # Retention & Referral (Phase 7)
+    RETENTION_LIFECYCLE_CHANGED = "retention.customer_lifecycle_changed"
+    RETENTION_OPPORTUNITY_CREATED = "retention.opportunity_created"
+    RETENTION_REMINDER_CREATED = "retention.reminder_created"
+    RETENTION_REMINDER_DUE = "retention.reminder_due"
+    RETENTION_REVIEW_REQUEST_CREATED = "retention.review_request_created"
+    RETENTION_REVIEW_RECEIVED = "retention.review_received"
+    RETENTION_FEEDBACK_RECEIVED = "retention.feedback_received"
+    RETENTION_SERVICE_RECOVERY_REQUIRED = "retention.service_recovery_required"
+    RETENTION_REFERRAL_CREATED = "retention.referral_created"
+    RETENTION_REFERRAL_LEAD_CREATED = "retention.referral_lead_created"
+    RETENTION_REFERRAL_QUALIFIED = "retention.referral_qualified"
+    RETENTION_REFERRAL_BOOKED = "retention.referral_booked"
+    RETENTION_REFERRAL_CONVERTED = "retention.referral_converted"
+    RETENTION_REWARD_REQUESTED = "retention.reward_requested"
+    RETENTION_REWARD_APPROVED = "retention.reward_approved"
+    RETENTION_REWARD_ISSUED = "retention.reward_issued"
+
+    # Morning Brief (Phase 10B): published once per real generation that
+    # produced at least one recommendation — so a notification handler can
+    # create ONE grouped "N actions need attention" notification instead of
+    # the AI-execution-service audit rows (which fire per snapshot tool
+    # call, not per brief) doing it.
+    MORNING_BRIEF_GENERATED = "morning_brief.generated"
 
 
 class Event(TenantScopedMixin, Base):
@@ -118,6 +198,10 @@ class EventProcessingRecord(TenantScopedMixin, Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    # Added Phase 8 (event worker observability) — nullable so existing rows
+    # written before this column existed remain valid.
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("event_id", "handler_name", name="uq_event_processing_event_handler"),
@@ -135,3 +219,4 @@ class DeadLetterEvent(TenantScopedMixin, Base):
     reason: Mapped[str] = mapped_column(String(2000), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     replayed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    replayed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

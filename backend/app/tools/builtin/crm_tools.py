@@ -234,6 +234,70 @@ class QualifyLead(Tool):
         return QualifyLeadOutput(**outcome.__dict__)
 
 
+class AIQualifyLeadAdvisoryInput(BaseModel):
+    lead_id: uuid.UUID
+
+
+class AIQualifyLeadAdvisoryOutput(BaseModel):
+    available: bool
+    qualification_score: int | None = None
+    intent: str | None = None
+    urgency: str | None = None
+    buying_signal: str | None = None
+    summary: str | None = None
+    recommended_next_action: str | None = None
+    unavailable_reason: str | None = None
+
+
+class AIQualifyLeadAdvisory(Tool):
+    """Phase 12E: ADVISORY ONLY — never writes to the Lead record. Produces
+    a real-LLM-generated qualification recommendation for a human (or a
+    future approval-gated apply step) to review; applying it still
+    requires calling the existing, policy-gated crm.qualify_lead or a
+    human editing the lead directly. Read-only, so AUTO policy is correct
+    here for the same reason as finance.send_invoice/create_stripe_checkout_
+    session — nothing is mutated by this call itself."""
+
+    name = "crm.ai_qualify_lead_advisory"
+    description = "Generate an AI-assisted qualification recommendation for a lead (advisory only, does not persist)."
+    input_schema = AIQualifyLeadAdvisoryInput
+    output_schema = AIQualifyLeadAdvisoryOutput
+    required_permission = Permission.QUALIFY_LEAD
+
+    def __init__(self, ai_qualification_service) -> None:
+        self._service = ai_qualification_service
+
+    async def execute(
+        self, input: AIQualifyLeadAdvisoryInput, context: ExecutionContext
+    ) -> AIQualifyLeadAdvisoryOutput:
+        from app.services.ai_qualification_service import LeadNotFoundError
+
+        try:
+            result = await self._service.generate_recommendation(
+                context.tenant_id,
+                input.lead_id,
+                actor_type=context.actor_type,
+                actor_id=context.actor_id,
+                correlation_id=context.correlation_id,
+            )
+        except LeadNotFoundError as exc:
+            raise ValueError(str(exc)) from exc
+
+        if not result.available:
+            return AIQualifyLeadAdvisoryOutput(available=False, unavailable_reason=result.error_detail)
+
+        rec = result.recommendation
+        return AIQualifyLeadAdvisoryOutput(
+            available=True,
+            qualification_score=rec.qualification_score,
+            intent=rec.intent,
+            urgency=rec.urgency,
+            buying_signal=rec.buying_signal,
+            summary=rec.summary,
+            recommended_next_action=rec.recommended_next_action,
+        )
+
+
 class CreateCustomerInput(BaseModel):
     name: str
     company_name: str | None = None

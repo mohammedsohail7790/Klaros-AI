@@ -1,6 +1,7 @@
+from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import String
+from sqlalchemy import Boolean, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -24,3 +25,14 @@ class Organization(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         String(20), nullable=False, default=AutonomyLevel.LEVEL_0
     )
     billing_status: Mapped[str] = mapped_column(String(50), nullable=False, default="trialing")
+    # Phase 5: MANUAL / INTERNAL TEST DATA only — no bank integration exists.
+    # Cash position reports "NOT_CONNECTED" unless this is explicitly set.
+    manual_starting_cash: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    # Phase 8: Morning Brief scheduling. The event worker's already-running
+    # poll loop checks this once per tick (see
+    # app/services/morning_brief_service.py's check_and_generate_scheduled)
+    # rather than a second sleep-based scheduler — disabled by default so no
+    # tenant gets a brief generated without opting in.
+    morning_brief_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    morning_brief_local_time: Mapped[str] = mapped_column(String(5), nullable=False, default="07:00")
+    morning_brief_timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="UTC")

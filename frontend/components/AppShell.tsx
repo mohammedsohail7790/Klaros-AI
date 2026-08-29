@@ -1,17 +1,42 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { UserResponse } from "@/lib/api";
+import { UserResponse, logout as logoutRequest } from "@/lib/api";
+import NotificationBell from "./NotificationBell";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/morning-brief", label: "Morning Brief" },
   { href: "/leads", label: "Leads" },
   { href: "/customers", label: "Customers" },
   { href: "/calendar", label: "Calendar" },
   { href: "/operations", label: "Operations" },
   { href: "/jobs", label: "Jobs" },
   { href: "/exceptions", label: "Exceptions" },
+  { href: "/finance", label: "Finance" },
+  { href: "/finance/invoices", label: "Invoices" },
+  { href: "/finance/ar", label: "AR" },
+  { href: "/finance/profitability", label: "Profitability" },
+  { href: "/finance/cash", label: "Cash" },
+  { href: "/marketing", label: "Marketing" },
+  { href: "/marketing/campaigns", label: "Campaigns" },
+  { href: "/marketing/content", label: "Content" },
+  { href: "/marketing/seo", label: "SEO" },
+  { href: "/marketing/outbound", label: "Outbound" },
+  { href: "/marketing/reactivation", label: "Reactivation" },
+  { href: "/retention", label: "Retention" },
+  { href: "/retention/opportunities", label: "Opportunities" },
+  { href: "/retention/reminders", label: "Reminders" },
+  { href: "/retention/reviews", label: "Reviews" },
+  { href: "/retention/referrals", label: "Referrals" },
+  { href: "/events", label: "Events" },
+  { href: "/approvals", label: "Approvals" },
+  { href: "/ai-activity", label: "AI Activity" },
+  { href: "/settings/automation", label: "Automation Settings" },
+  { href: "/settings/knowledge", label: "Knowledge Layer" },
+  { href: "/settings/integrations", label: "Integrations" },
 ];
 
 export default function AppShell({
@@ -23,8 +48,21 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [token, setToken] = useState<string | null>(null);
 
-  function signOut() {
+  useEffect(() => {
+    setToken(sessionStorage.getItem("klaros_access_token"));
+  }, []);
+
+  async function signOut() {
+    const currentToken = sessionStorage.getItem("klaros_access_token");
+    if (currentToken) {
+      // Real revocation (Phase 12) — bumps the user's token_version
+      // server-side so this token (and any other still-outstanding one)
+      // stops working immediately, not just locally. Best-effort: even if
+      // this fails (e.g. already expired), still clear local state below.
+      await logoutRequest(currentToken).catch(() => {});
+    }
     sessionStorage.removeItem("klaros_access_token");
     sessionStorage.removeItem("klaros_refresh_token");
     router.push("/login");
@@ -62,7 +100,12 @@ export default function AppShell({
           )}
         </div>
       </aside>
-      <main className="flex-1 overflow-x-auto">{children}</main>
+      <div className="flex flex-1 flex-col overflow-x-auto">
+        <header className="flex items-center justify-end border-b border-neutral-800 bg-neutral-950 px-6 py-2">
+          <NotificationBell token={token} />
+        </header>
+        <main className="flex-1">{children}</main>
+      </div>
     </div>
   );
 }

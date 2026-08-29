@@ -18,6 +18,7 @@ import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 import structlog
 from sqlalchemy import select
@@ -59,6 +60,14 @@ class EventBus:
 
     def subscribe(self, event_type: str, handler_name: str, handler: EventHandler) -> None:
         self._subscriptions.setdefault(event_type, []).append(_Subscription(handler_name, handler))
+
+    def subscribed_event_types(self) -> list[str]:
+        """Every event type with at least one registered handler — what a
+        continuous worker needs to poll. Publishing an event type with no
+        subscribers is legal (nothing consumes it, by design), so this is
+        deliberately *not* the full `EventType` enum.
+        """
+        return list(self._subscriptions.keys())
 
     def _stream_name(self, event_type: str) -> str:
         return f"{self.stream_prefix}.{event_type}"
@@ -193,6 +202,7 @@ class EventBus:
                 )
                 return None
 
+            is_new_record = record is None
             if record is None:
                 record = EventProcessingRecord(
                     tenant_id=event.tenant_id,
@@ -203,13 +213,38 @@ class EventBus:
                 )
                 session.add(record)
 
+            event.status = EventStatus.PROCESSING
+            try:
+                await session.commit()
+            except IntegrityError:
+                # Two workers (or two ticks of the same worker, racing under a
+                # transport that doesn't itself serialize delivery — see
+                # InMemoryTransport's documented single-process limitation in
+                # app/events/transport.py) both tried to claim this
+                # (event_id, handler_name) pair for the first time. The other
+                # writer won; back off rather than run the handler twice.
+                # Under Redis Streams in production this path is defensive
+                # only — XREADGROUP already hands a given pending message to
+                # one consumer at a time.
+                await session.rollback()
+                if is_new_record:
+                    logger.info(
+                        "event_processing_claim_lost_to_concurrent_worker",
+                        event_id=str(event_id),
+                        handler=sub.handler_name,
+                    )
+                    return None
+                raise
+
             last_error: str | None = None
             for attempt in range(record.attempts, self.max_retries):
                 record.attempts = attempt + 1
+                record.last_attempt_at = datetime.now(timezone.utc)
                 try:
                     await sub.handler(event)
                     record.status = ProcessingStatus.SUCCESS
                     record.last_error = None
+                    record.processed_at = datetime.now(timezone.utc)
                     event.status = EventStatus.PROCESSED
                     await session.commit()
                     logger.info(
@@ -223,6 +258,8 @@ class EventBus:
                     last_error = str(exc)
                     record.last_error = last_error
                     event.retry_count = record.attempts
+                    will_retry = attempt + 1 < self.max_retries
+                    event.status = EventStatus.RETRYING if will_retry else EventStatus.FAILED
                     await session.commit()
                     logger.warning(
                         "event_handler_failed",
@@ -230,6 +267,7 @@ class EventBus:
                         handler=sub.handler_name,
                         attempt=record.attempts,
                         error=last_error,
+                        will_retry=will_retry,
                     )
                     if self.retry_backoff_seconds:
                         await asyncio.sleep(self.retry_backoff_seconds * record.attempts)
@@ -287,3 +325,61 @@ class EventBus:
 
         logger.info("event_replay_started", event_id=str(event_id), handler=handler_name)
         return await self._handle_one(event_id, sub)
+
+    async def reconcile_stuck_events(self, *, grace_seconds: float = 30.0, limit: int = 100) -> int:
+        """Outbox-relay pass (Phase 12 production hardening): `publish()`
+        durably writes the `Event` row to Postgres *before* enqueueing to
+        the transport, by design — but the enqueue (`transport.send()`) is
+        a separate step, not part of the same transaction (Redis can't
+        join a Postgres transaction). If the process crashes, or the Redis
+        call itself fails, between those two steps, the row exists and is
+        genuinely durable, but nothing ever delivers it — `process_pending`
+        only ever reads from the transport's consumer groups, never scans
+        this table directly. That gap was found during the Phase 11
+        production audit and is closed here: periodically (called from
+        `EventWorker`'s tick loop, not on every tick) re-enqueue any
+        `PUBLISHED` event older than `grace_seconds` whose event_type has
+        subscribers. A redundant re-enqueue of an event that actually *was*
+        delivered fine is always safe and cheap — the existing
+        `EventProcessingRecord` per-(event_id, handler_name) uniqueness is
+        exactly the same dedup guarantee that already protects against a
+        genuinely duplicated transport delivery, so this never causes a
+        handler to run twice.
+        """
+        cutoff = datetime.now(timezone.utc).timestamp() - grace_seconds
+        cutoff_dt = datetime.fromtimestamp(cutoff, tz=timezone.utc)
+        subscribed_types = self.subscribed_event_types()
+        if not subscribed_types:
+            return 0
+
+        async with self.session_factory() as session:
+            stuck = (
+                await session.execute(
+                    select(Event)
+                    .where(
+                        Event.status == EventStatus.PUBLISHED,
+                        Event.event_type.in_(subscribed_types),
+                        Event.created_at < cutoff_dt,
+                    )
+                    .limit(limit)
+                )
+            ).scalars().all()
+            events = [
+                {
+                    "event_id": str(e.id),
+                    "tenant_id": str(e.tenant_id),
+                    "event_type": e.event_type,
+                    "correlation_id": str(e.correlation_id),
+                }
+                for e in stuck
+            ]
+
+        for fields in events:
+            await self.transport.send(self._stream_name(fields["event_type"]), fields)
+            logger.warning(
+                "event_reconciled_after_stuck",
+                event_id=fields["event_id"],
+                event_type=fields["event_type"],
+                grace_seconds=grace_seconds,
+            )
+        return len(events)

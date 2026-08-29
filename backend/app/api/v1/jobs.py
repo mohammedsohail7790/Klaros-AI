@@ -3,7 +3,8 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -11,6 +12,7 @@ from app.api.deps import CurrentUser, get_current_user
 from app.api.tool_deps import execution_context, get_tool_registry, raise_http_for_tool_error
 from app.db.session import async_session_maker
 from app.models.operations import Job, JobAttachment, JobMaterial, JobTask
+from app.storage.factory import get_object_storage
 from app.tools.errors import ToolError
 from app.tools.registry import ToolRegistry
 
@@ -235,6 +237,41 @@ async def list_job_attachments(
             for a in rows
         ]
     }
+
+
+@router.get("/{job_id}/attachments/{attachment_id}/download")
+async def download_job_attachment(
+    job_id: uuid.UUID, attachment_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user)
+) -> Response:
+    """Phase 12 production hardening: attachments could be uploaded and
+    listed as metadata since Phase 4, but never actually retrieved — a
+    real, previously-unnoticed gap found in the Phase 11 production audit.
+    Tenant ownership is re-verified from the DB row itself, never trusted
+    from the URL alone; `LocalFilesystemStorageAdapter.get()` additionally
+    scopes every read to `tenant_id` at the filesystem-key level, so even a
+    guessed/leaked storage_key from another tenant can't be read through
+    this path either."""
+    await _owned_job_or_404(job_id, current_user)
+    async with async_session_maker() as session:
+        attachment = await session.get(JobAttachment, attachment_id)
+    if (
+        attachment is None
+        or attachment.tenant_id != current_user.tenant_id
+        or attachment.job_id != job_id
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment not found")
+
+    storage = get_object_storage()
+    try:
+        content = await storage.get(current_user.tenant_id, attachment.storage_key)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment file not found") from exc
+
+    return Response(
+        content=content,
+        media_type=attachment.content_type,
+        headers={"Content-Disposition": f'inline; filename="{attachment.filename}"'},
+    )
 
 
 # --- Assignment & scheduling ---
