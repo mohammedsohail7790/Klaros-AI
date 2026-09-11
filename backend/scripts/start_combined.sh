@@ -9,7 +9,11 @@
 set -eu -o pipefail
 
 echo "[combined] starting Temporal server (auto-setup)..."
-TEMPORAL_ADDRESS="0.0.0.0:7233" /etc/temporal/entrypoint.sh autosetup &
+# temporal-server's config loader looks for ./config relative to the
+# current directory (matching the real image's WORKDIR /etc/temporal) —
+# our own WORKDIR is /app for the Python app, so run this in a subshell
+# with the directory it actually expects.
+(cd /etc/temporal && TEMPORAL_ADDRESS="0.0.0.0:7233" /etc/temporal/entrypoint.sh autosetup) &
 TEMPORAL_PID=$!
 
 echo "[combined] waiting for Temporal to accept connections on 127.0.0.1:7233..."
