@@ -1,0 +1,41 @@
+# All-in-one deployment: backend API + Event Worker + Temporal Worker +
+# a self-hosted Temporal server, in a single container/service. This is
+# NOT the standard deployment path (see backend/Dockerfile, which runs
+# only `uvicorn app.main:app` and is what docker-compose.yml /
+# docker-compose.prod.yml use) — it exists specifically for a one-Render-
+# service deployment, trading Render's normal per-process crash isolation
+# for a single lower-cost service.
+#
+# Temporal's real server binaries/configs/scripts are copied verbatim
+# from the official image (docker-builds repo: temporalio/docker-builds,
+# server.Dockerfile's `auto-setup` stage) — same binaries the standalone
+# `temporalio/auto-setup:1.24` image ships, not reimplemented.
+FROM temporalio/auto-setup:1.24 AS temporal
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev curl bash ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Temporal server binaries, config, schema, and its own startup scripts —
+# copied wholesale from the real auto-setup image.
+COPY --from=temporal /usr/local/bin/dockerize /usr/local/bin/dockerize
+COPY --from=temporal /usr/local/bin/temporal-server /usr/local/bin/temporal-server
+COPY --from=temporal /usr/local/bin/temporal /usr/local/bin/temporal
+COPY --from=temporal /usr/local/bin/tctl /usr/local/bin/tctl
+COPY --from=temporal /usr/local/bin/tctl-authorization-plugin /usr/local/bin/tctl-authorization-plugin
+COPY --from=temporal /usr/local/bin/temporal-cassandra-tool /usr/local/bin/temporal-cassandra-tool
+COPY --from=temporal /usr/local/bin/temporal-sql-tool /usr/local/bin/temporal-sql-tool
+COPY --from=temporal /etc/temporal /etc/temporal
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+RUN chmod +x scripts/start_combined.sh /etc/temporal/entrypoint.sh /etc/temporal/auto-setup.sh /etc/temporal/start-temporal.sh
+
+EXPOSE 8000
+
+CMD ["bash", "scripts/start_combined.sh"]
