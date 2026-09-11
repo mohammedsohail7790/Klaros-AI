@@ -247,7 +247,7 @@ export default function CompanyMemoryPage() {
             {aiFeedbackPending && aiFeedbackPending.length > 0 && (
               <button
                 onClick={() => setStatusFilter("PENDING")}
-                className="mb-3 block w-full rounded-lg border border-violet-900 bg-violet-950/20 p-3 text-left text-sm text-violet-300 hover:bg-violet-950/40"
+                className="mb-3 block w-full rounded-lg border border-violet-200 bg-violet-50/20 p-3 text-left text-sm text-violet-700 hover:bg-violet-50/40"
               >
                 AI feedback awaiting review: {aiFeedbackPending.length} — Klaros learned something from{" "}
                 {aiFeedbackPending.length === 1 ? "a decision you made" : "decisions you made"}. Review below to
@@ -284,7 +284,7 @@ export default function CompanyMemoryPage() {
                         <span className="flex items-center gap-2 font-medium">
                           {m.key}
                           {m.memory_type === "AI_FEEDBACK" && (
-                            <span className="rounded-full border border-violet-800 bg-violet-950/30 px-2 py-0.5 text-[10px] font-normal text-violet-300">
+                            <span className="rounded-full border border-violet-200 bg-violet-50/30 px-2 py-0.5 text-[10px] font-normal text-violet-700">
                               Learned from an AI decision
                             </span>
                           )}

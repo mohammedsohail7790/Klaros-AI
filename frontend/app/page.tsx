@@ -1,17 +1,21 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, Sparkles, Bot, Layers3, BrainCircuit } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import HeroVisual from "@/components/HeroVisual";
 
 const FEATURES = [
   {
+    icon: Bot,
     title: "An AI that acts, not just chats",
     body: "Klaros reads every lead, quote, invoice, and job — then proposes the next action, waits for your approval on anything that matters, and executes safely within limits you set.",
   },
   {
+    icon: Layers3,
     title: "One operating system, not twelve tabs",
     body: "CRM, scheduling, quoting, invoicing, and retention live in one place, wired together by a real event system — not a pile of disconnected tools pretending to integrate.",
   },
   {
+    icon: BrainCircuit,
     title: "It learns your business, on the record",
     body: "Every recommendation, approval, and outcome is logged. Klaros gets better at recommending what you'd actually do — and you can always see why.",
   },
@@ -25,7 +29,7 @@ const PROOF_POINTS = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen overflow-x-hidden bg-background">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <div className="font-display text-xl italic tracking-tight text-foreground">Klaros</div>
         <div className="flex items-center gap-3">
@@ -74,13 +78,21 @@ export default function Home() {
             </div>
           ))}
         </div>
+
+        <HeroVisual />
       </section>
 
       <section className="border-t border-border bg-surface">
         <div className="mx-auto max-w-6xl px-6 py-20">
-          <div className="grid gap-10 sm:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-3">
             {FEATURES.map((feature) => (
-              <div key={feature.title}>
+              <div
+                key={feature.title}
+                className="klaros-card p-6 transition-shadow hover:shadow-raised"
+              >
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft">
+                  <feature.icon className="h-5 w-5 text-accent" strokeWidth={1.75} />
+                </div>
                 <h2 className="font-display text-xl text-foreground">{feature.title}</h2>
                 <p className="mt-3 text-sm leading-relaxed text-muted">{feature.body}</p>
               </div>

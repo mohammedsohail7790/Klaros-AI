@@ -20,6 +20,7 @@
   --color-accent-hover: 32 44 77;
   --color-accent-foreground: 255 255 255;
   --color-accent-soft: 232 234 241;
+  --color-accent-2: 190 138 64;
   --color-success: 47 107 79;
   --color-warning: 165 105 12;
   --color-danger: 173 59 44;
@@ -30,6 +31,32 @@
 body {
   background-color: rgb(var(--color-background));
   color: rgb(var(--color-foreground));
+  position: relative;
+}
+
+/* Subtle film-grain texture for tactile depth — applied as a fixed,
+   near-invisible overlay so flat color fields don't read as flat/generated. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes klaros-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-14px); }
+}
+.klaros-float {
+  animation: klaros-float 7s ease-in-out infinite;
+}
+
+.klaros-perspective {
+  perspective: 1800px;
 }
 
 @layer components {

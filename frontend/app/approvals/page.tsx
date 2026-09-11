@@ -207,7 +207,7 @@ export default function ApprovalsPage() {
                       <span className="flex items-center gap-2 font-medium">
                         {a.tool_name}
                         {a.requested_by_type === "AI" && (
-                          <span className="rounded-full border border-violet-800 bg-violet-950/30 px-2 py-0.5 text-[10px] font-normal text-violet-300">
+                          <span className="rounded-full border border-violet-200 bg-violet-50/30 px-2 py-0.5 text-[10px] font-normal text-violet-700">
                             AI-proposed
                           </span>
                         )}
@@ -241,7 +241,7 @@ export default function ApprovalsPage() {
                   </span>
                 </div>
                 {selected.requested_by_type === "AI" && (
-                  <div className="mb-3 rounded-md border border-violet-900 bg-violet-950/20 p-2 text-xs text-violet-300">
+                  <div className="mb-3 rounded-md border border-violet-200 bg-violet-50/20 p-2 text-xs text-violet-700">
                     Klaros AI proposed this action — it was not executed automatically because this action
                     type requires your approval. Nothing has happened yet.
                   </div>

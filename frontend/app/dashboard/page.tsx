@@ -225,7 +225,7 @@ export default function DashboardPage() {
           {!attention ? (
             <p className="text-sm text-muted">Loading...</p>
           ) : attention.items.length === 0 ? (
-            <p className="rounded-lg border border-emerald-200 bg-emerald-50/10 p-4 text-sm text-emerald-700">
+            <p className="rounded-lg border border-emerald-200 bg-emerald-50/10 p-4 shadow-card text-sm text-emerald-700">
               Nothing needs your attention right now.
             </p>
           ) : (
@@ -267,24 +267,24 @@ export default function DashboardPage() {
           </div>
           {autonomy ? (
             autonomy.total === 0 ? (
-              <p className="rounded-lg border border-border bg-surface p-4 text-sm text-muted">
+              <p className="rounded-lg border border-border bg-surface p-4 shadow-card text-sm text-muted">
                 No actions yet today.
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50/20 p-4">
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/20 p-4 shadow-card">
                   <div className="text-2xl font-semibold text-emerald-700">{autonomy.automatic}</div>
                   <div className="text-xs text-muted">Automatic</div>
                 </div>
-                <div className="rounded-lg border border-amber-200 bg-amber-50/20 p-4">
+                <div className="rounded-lg border border-amber-200 bg-amber-50/20 p-4 shadow-card">
                   <div className="text-2xl font-semibold text-amber-700">{autonomy.approval_required}</div>
                   <div className="text-xs text-muted">Awaiting approval</div>
                 </div>
-                <div className="rounded-lg border border-red-200 bg-red-50/20 p-4">
+                <div className="rounded-lg border border-red-200 bg-red-50/20 p-4 shadow-card">
                   <div className="text-2xl font-semibold text-red-700">{autonomy.blocked}</div>
                   <div className="text-xs text-muted">Blocked</div>
                 </div>
-                <div className="rounded-lg border border-border-strong bg-surface-muted/40 p-4">
+                <div className="rounded-lg border border-border-strong bg-surface-muted/40 p-4 shadow-card">
                   <div className="text-2xl font-semibold text-muted">{autonomy.failed}</div>
                   <div className="text-xs text-muted">Failed</div>
                 </div>
@@ -305,25 +305,25 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Link
               href="/approvals"
-              className={`rounded-lg border p-4 transition hover:border-violet-600 ${
-                (aiApprovalsPending ?? 0) > 0 ? "border-violet-900 bg-violet-950/20" : "border-border bg-surface"
+              className={`rounded-lg border p-4 transition hover:border-violet-400 ${
+                (aiApprovalsPending ?? 0) > 0 ? "border-violet-200 bg-violet-50/20" : "border-border bg-surface"
               }`}
             >
-              <div className="text-2xl font-semibold text-violet-300">{aiApprovalsPending ?? 0}</div>
+              <div className="text-2xl font-semibold text-violet-700">{aiApprovalsPending ?? 0}</div>
               <div className="text-xs text-muted">Awaiting approval</div>
             </Link>
             <Link
               href="/settings/memory"
-              className={`rounded-lg border p-4 transition hover:border-violet-600 ${
-                (aiFeedbackPending ?? 0) > 0 ? "border-violet-900 bg-violet-950/20" : "border-border bg-surface"
+              className={`rounded-lg border p-4 transition hover:border-violet-400 ${
+                (aiFeedbackPending ?? 0) > 0 ? "border-violet-200 bg-violet-50/20" : "border-border bg-surface"
               }`}
             >
-              <div className="text-2xl font-semibold text-violet-300">{aiFeedbackPending ?? 0}</div>
+              <div className="text-2xl font-semibold text-violet-700">{aiFeedbackPending ?? 0}</div>
               <div className="text-xs text-muted">Feedback to review</div>
             </Link>
             {aiHealth && (
               <>
-                <div className="rounded-lg border border-border bg-surface p-4">
+                <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                   <div className={`text-sm font-semibold ${aiHealth.provider_configured ? "text-emerald-700" : "text-muted"}`}>
                     {aiHealth.provider_configured ? "Connected" : "Not connected"}
                   </div>
@@ -331,7 +331,7 @@ export default function DashboardPage() {
                 </div>
                 <Link
                   href="/ai-activity"
-                  className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
+                  className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
                 >
                   <div className="text-2xl font-semibold text-muted">
                     {aiHealth.invocations_24h_succeeded}/{aiHealth.invocations_24h}
@@ -352,14 +352,14 @@ export default function DashboardPage() {
           </div>
           {automations ? (
             automations.automations_total === 0 ? (
-              <p className="rounded-lg border border-border bg-surface p-4 text-sm text-muted">
+              <p className="rounded-lg border border-border bg-surface p-4 shadow-card text-sm text-muted">
                 No automations set up yet.
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                 <Link
                   href="/automations"
-                  className="rounded-lg border border-blue-200 bg-blue-50/20 p-4 transition hover:border-blue-300"
+                  className="rounded-lg border border-blue-200 bg-blue-50/20 p-4 shadow-card transition hover:border-blue-300"
                 >
                   <div className="text-2xl font-semibold text-blue-700">{automations.executions_running}</div>
                   <div className="text-xs text-muted">Running now</div>
@@ -373,18 +373,18 @@ export default function DashboardPage() {
                   <div className="text-2xl font-semibold text-red-700">{automations.executions_failed}</div>
                   <div className="text-xs text-muted">Failed</div>
                 </Link>
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50/20 p-4">
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/20 p-4 shadow-card">
                   <div className="text-2xl font-semibold text-emerald-700">{automations.executions_completed_today}</div>
                   <div className="text-xs text-muted">Completed today</div>
                 </div>
                 <Link
                   href="/automations"
-                  className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
+                  className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
                 >
                   <div className="text-2xl font-semibold text-muted">{automations.automations_scheduled}</div>
                   <div className="text-xs text-muted">Scheduled</div>
                 </Link>
-                <div className="rounded-lg border border-border-strong bg-surface-muted/40 p-4">
+                <div className="rounded-lg border border-border-strong bg-surface-muted/40 p-4 shadow-card">
                   <div className="text-2xl font-semibold text-muted">
                     {automations.automations_enabled}/{automations.automations_total}
                   </div>
@@ -478,7 +478,7 @@ export default function DashboardPage() {
           ) : metrics ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
               {METRIC_LABELS.map(({ key, label }) => (
-                <div key={key} className="rounded-lg border border-border bg-surface p-4">
+                <div key={key} className="rounded-lg border border-border bg-surface p-4 shadow-card">
                   <p className="text-2xl font-semibold">
                     {key === "conversion_rate_pct" ? `${metrics[key]}%` : metrics[key]}
                   </p>
@@ -506,14 +506,14 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               <Link
                 href="/quotes"
-                className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
+                className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
               >
                 <p className="text-2xl font-semibold">{pipeline.quotes_awaiting_response}</p>
                 <p className="mt-1 text-xs text-muted">Quotes awaiting response</p>
               </Link>
               <Link
                 href="/quotes"
-                className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
+                className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
               >
                 <p className="text-2xl font-semibold">${pipeline.quotes_accepted_value}</p>
                 <p className="mt-1 text-xs text-muted">{pipeline.quotes_accepted} quote(s) accepted</p>
@@ -531,7 +531,7 @@ export default function DashboardPage() {
               </Link>
               <Link
                 href="/contracts"
-                className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
+                className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
               >
                 <p className="text-2xl font-semibold">{pipeline.contracts_signed}</p>
                 <p className="mt-1 text-xs text-muted">Contracts signed</p>
@@ -549,13 +549,13 @@ export default function DashboardPage() {
                   {pipeline.deposits_awaiting_payment} deposit(s) outstanding
                 </p>
               </Link>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">${pipeline.deposits_collected}</p>
                 <p className="mt-1 text-xs text-muted">Deposits collected</p>
               </div>
               <Link
                 href="/jobs"
-                className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
+                className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
               >
                 <p className="text-2xl font-semibold">{pipeline.jobs_from_quotes}</p>
                 <p className="mt-1 text-xs text-muted">Jobs created from quotes</p>
@@ -581,11 +581,11 @@ export default function DashboardPage() {
           )}
           {operations ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong">
+              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong">
                 <p className="text-2xl font-semibold">{operations.jobs_today}</p>
                 <p className="mt-1 text-xs text-muted">Jobs today</p>
               </Link>
-              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong">
+              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong">
                 <p className="text-2xl font-semibold">{operations.unassigned_jobs}</p>
                 <p className="mt-1 text-xs text-muted">Unassigned</p>
               </Link>
@@ -607,7 +607,7 @@ export default function DashboardPage() {
                 <p className="text-2xl font-semibold">{operations.blocked_jobs}</p>
                 <p className="mt-1 text-xs text-muted">Blocked</p>
               </Link>
-              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong">
+              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong">
                 <p className="text-2xl font-semibold">{operations.qa_pending_jobs}</p>
                 <p className="mt-1 text-xs text-muted">Awaiting QA</p>
               </Link>
@@ -636,19 +636,19 @@ export default function DashboardPage() {
           )}
           {finance && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">${finance.total_ar}</p>
                 <p className="mt-1 text-xs text-muted">Total AR outstanding</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">{finance.overdue_invoice_count}</p>
                 <p className="mt-1 text-xs text-muted">Overdue invoices</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">{finance.pending_approval_invoice_count}</p>
                 <p className="mt-1 text-xs text-muted">Pending approval</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">${finance.total_paid}</p>
                 <p className="mt-1 text-xs text-muted">Total paid</p>
               </div>
@@ -665,27 +665,27 @@ export default function DashboardPage() {
           )}
           {marketing && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">${marketing.marketing_spend}</p>
                 <p className="mt-1 text-xs text-muted">Marketing spend</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">{marketing.leads}</p>
                 <p className="mt-1 text-xs text-muted">Leads</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">{marketing.jobs_won}</p>
                 <p className="mt-1 text-xs text-muted">Jobs won</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">${marketing.revenue}</p>
                 <p className="mt-1 text-xs text-muted">Revenue attributed</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">{marketing.cac ? `$${marketing.cac}` : "—"}</p>
                 <p className="mt-1 text-xs text-muted">CAC</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">{marketing.roas ? `${marketing.roas}x` : "—"}</p>
                 <p className="mt-1 text-xs text-muted">ROAS</p>
               </div>
@@ -702,27 +702,27 @@ export default function DashboardPage() {
           )}
           {retention && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">{retention.at_risk_customers}</p>
                 <p className="mt-1 text-xs text-muted">At-risk customers</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">{retention.retention_opportunities_open}</p>
                 <p className="mt-1 text-xs text-muted">Retention opportunities</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">${retention.repeat_customer_revenue}</p>
                 <p className="mt-1 text-xs text-muted">Repeat revenue</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">{retention.referral_leads}</p>
                 <p className="mt-1 text-xs text-muted">Referral leads</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">${retention.referral_revenue}</p>
                 <p className="mt-1 text-xs text-muted">Referral revenue</p>
               </div>
-              <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="text-2xl font-semibold">{retention.negative_feedback_count}</p>
                 <p className="mt-1 text-xs text-muted">Review issues</p>
               </div>
@@ -753,7 +753,7 @@ export default function DashboardPage() {
           {!activity && activityLoading ? (
             <p className="text-sm text-muted">Loading...</p>
           ) : !activity || activity.items.length === 0 ? (
-            <p className="rounded-lg border border-border bg-surface p-4 text-sm text-muted">
+            <p className="rounded-lg border border-border bg-surface p-4 shadow-card text-sm text-muted">
               No activity yet.
             </p>
           ) : (

@@ -26,6 +26,7 @@ const config: Config = {
           hover: rgbVar("--color-accent-hover"),
           foreground: rgbVar("--color-accent-foreground"),
           soft: rgbVar("--color-accent-soft"),
+          2: rgbVar("--color-accent-2"),
         },
         success: rgbVar("--color-success"),
         warning: rgbVar("--color-warning"),
