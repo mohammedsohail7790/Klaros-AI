@@ -171,7 +171,7 @@ export default function ReferralsPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-6 text-xl font-semibold">Referrals</h1>
+        <h1 className="font-display text-2xl text-foreground mb-6">Referrals</h1>
 
         {authLoading || loading ? (
           <p className="text-sm text-muted">Loading...</p>
@@ -183,23 +183,23 @@ export default function ReferralsPage() {
         ) : (
           <>
             <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-5">
-              <div className="rounded-lg border border-border p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <div className="text-xs text-muted">Referral leads</div>
                 <div className="mt-1 text-2xl font-semibold">{leads}</div>
               </div>
-              <div className="rounded-lg border border-border p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <div className="text-xs text-muted">Qualified</div>
                 <div className="mt-1 text-2xl font-semibold">{qualified}</div>
               </div>
-              <div className="rounded-lg border border-border p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <div className="text-xs text-muted">Booked</div>
                 <div className="mt-1 text-2xl font-semibold">{booked}</div>
               </div>
-              <div className="rounded-lg border border-border p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <div className="text-xs text-muted">Converted</div>
                 <div className="mt-1 text-2xl font-semibold">{converted}</div>
               </div>
-              <div className="rounded-lg border border-border p-4">
+              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <div className="text-xs text-muted">Collected revenue</div>
                 <div className="mt-1 text-2xl font-semibold">${revenue.toFixed(2)}</div>
               </div>

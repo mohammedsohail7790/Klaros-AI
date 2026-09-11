@@ -125,7 +125,7 @@ export default function ReviewsPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-6 text-xl font-semibold">Reviews &amp; Reputation</h1>
+        <h1 className="font-display text-2xl text-foreground mb-6">Reviews &amp; Reputation</h1>
         <p className="mb-6 text-xs text-muted">
           External Google/Yelp reviews are NOT CONNECTED — no external review has ever been fetched. Everything below is
           internal.

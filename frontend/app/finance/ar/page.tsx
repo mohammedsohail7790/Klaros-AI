@@ -16,7 +16,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 function Bucket({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
       <div className="text-xs text-muted">{label}</div>
       <div className="mt-1 text-xl font-semibold">${value}</div>
     </div>

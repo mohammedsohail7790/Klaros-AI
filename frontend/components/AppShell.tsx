@@ -121,6 +121,24 @@ export default function AppShell({
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
 
+  // Only the single most specific matching nav item is "active" — without
+  // this, a page like /finance/ar matches both the "Finance" item (href
+  // /finance) and the "AR" item (href /finance/ar) under a plain
+  // startsWith check, highlighting both at once.
+  const activeHref = (() => {
+    if (!pathname) return null;
+    let best: string | null = null;
+    for (const section of NAV_SECTIONS) {
+      for (const item of section.items) {
+        const matches = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        if (matches && (!best || item.href.length > best.length)) {
+          best = item.href;
+        }
+      }
+    }
+    return best;
+  })();
+
   useEffect(() => {
     setToken(sessionStorage.getItem("klaros_access_token"));
   }, []);
@@ -153,7 +171,7 @@ export default function AppShell({
               <div className="klaros-label px-2 pb-1.5">{section.label}</div>
               <div className="space-y-0.5">
                 {section.items.map((item) => {
-                  const active = pathname?.startsWith(item.href);
+                  const active = item.href === activeHref;
                   const Icon = item.icon;
                   return (
                     <Link

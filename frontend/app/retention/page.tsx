@@ -7,7 +7,7 @@ import { ApiError, RetentionAnalytics, RetentionSummary, getRetentionAnalytics, 
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
       <div className="text-xs text-muted">{label}</div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
     </div>
@@ -16,7 +16,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 
 function Metric({ label, value, note }: { label: string; value: string | number | null; note: string }) {
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
       <div className="text-xs text-muted">{label}</div>
       <div className="mt-1 text-xl font-semibold">{value !== null ? value : "INSUFFICIENT DATA"}</div>
       <div className="mt-1 text-xs text-muted-foreground">{note}</div>
@@ -53,7 +53,7 @@ export default function RetentionPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-6 text-xl font-semibold">Retention &amp; Referral</h1>
+        <h1 className="font-display text-2xl text-foreground mb-6">Retention &amp; Referral</h1>
 
         {authLoading || loading ? (
           <p className="text-sm text-muted">Loading...</p>

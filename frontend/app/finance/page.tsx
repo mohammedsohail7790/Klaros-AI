@@ -7,7 +7,7 @@ import { ApiError, FinanceSummary, getFinanceSummary } from "@/lib/api";
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
       <div className="text-xs text-muted">{label}</div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
     </div>
@@ -40,7 +40,7 @@ export default function FinancePage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-6 text-xl font-semibold">Finance</h1>
+        <h1 className="font-display text-2xl text-foreground mb-6">Finance</h1>
 
         {authLoading || loading ? (
           <p className="text-sm text-muted">Loading...</p>

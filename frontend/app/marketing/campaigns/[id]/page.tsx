@@ -109,36 +109,36 @@ export default function CampaignDetailPage() {
         )}
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Spend</div>
             <div className="mt-1 text-lg font-semibold">${perf.spend}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Leads / Qualified</div>
             <div className="mt-1 text-lg font-semibold">{perf.leads} / {perf.qualified_leads}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Appointments / Jobs</div>
             <div className="mt-1 text-lg font-semibold">{perf.booked} / {perf.jobs_created}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Jobs closed</div>
             <div className="mt-1 text-lg font-semibold">{perf.jobs_closed}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Revenue</div>
             <div className="mt-1 text-lg font-semibold">${perf.revenue}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Collected revenue</div>
             <div className="mt-1 text-lg font-semibold">${perf.collected_revenue}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">CAC</div>
             <div className="mt-1 text-lg font-semibold">{perf.cac ? `$${perf.cac}` : "—"}</div>
             {!perf.cac && <div className="mt-1 text-xs text-amber-700">{perf.cac_note}</div>}
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">ROAS</div>
             <div className="mt-1 text-lg font-semibold">{perf.roas ? `${perf.roas}x` : "—"}</div>
             {!perf.roas && <div className="mt-1 text-xs text-amber-700">{perf.roas_note}</div>}

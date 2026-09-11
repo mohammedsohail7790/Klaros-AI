@@ -158,7 +158,7 @@ export default function AutomationSettingsPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-2 text-xl font-semibold">Automation Settings</h1>
+        <h1 className="font-display text-2xl text-foreground mb-2">Automation Settings</h1>
         <p className="mb-6 text-sm text-muted">
           Decide what Klaros is allowed to do automatically, and how it should notify you when it needs
           your attention.

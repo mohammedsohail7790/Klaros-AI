@@ -37,7 +37,7 @@ export default function ContractsPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-1 text-xl font-semibold">Contracts</h1>
+        <h1 className="font-display text-2xl text-foreground mb-1">Contracts</h1>
         <p className="mb-6 text-sm text-muted">
           The agreement a customer signs after accepting a quote — an internal attestation, not a third-party
           e-signature.

@@ -89,7 +89,7 @@ export default function VoiceReceptionistPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-2 text-xl font-semibold">AI Voice Receptionist</h1>
+        <h1 className="font-display text-2xl text-foreground mb-2">AI Voice Receptionist</h1>
         <p className="mb-6 max-w-2xl text-sm text-muted">
           A real, governed AI phone receptionist — every action it takes (creating a lead, answering a
           knowledge question, escalating to a human) goes through the same permission/policy/audit

@@ -470,10 +470,7 @@ export default function AutomationsPage() {
               Back to list
             </button>
           ) : (
-            <button
-              onClick={startCreate}
-              className="rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-xs hover:bg-surface-muted"
-            >
+            <button onClick={startCreate} className="klaros-btn-primary text-xs">
               New automation
             </button>
           )}

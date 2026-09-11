@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { AdsProviderStatus, ApiError, MarketingSummary, getAdsProviderStatus, getMarketingSummary } from "@/lib/api";
+import { Badge } from "@/components/ui/Badge";
 
 function Stat({ label, value, note }: { label: string; value: string | number; note?: string | null }) {
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
       <div className="text-xs text-muted">{label}</div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
       {note && <div className="mt-1 text-xs text-amber-700">{note}</div>}
@@ -44,7 +45,7 @@ export default function MarketingPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-6 text-xl font-semibold">Marketing &amp; Demand Generation</h1>
+        <h1 className="font-display text-2xl text-foreground mb-6">Marketing &amp; Demand Generation</h1>
 
         {authLoading || loading ? (
           <p className="text-sm text-muted">Loading...</p>
@@ -90,11 +91,11 @@ export default function MarketingPage() {
             <h2 className="mb-3 text-sm font-semibold text-muted">Paid ads integration status</h2>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {providers.map((p) => (
-                <div key={p.provider} className="rounded-lg border border-border p-4">
+                <div key={p.provider} className="rounded-lg border border-border bg-surface p-4 shadow-card">
                   <div className="text-sm font-medium">{p.provider.replace(/_/g, " ")}</div>
-                  <span className="mt-1 inline-block rounded-full border border-border-strong px-2 py-0.5 text-xs text-muted">
+                  <Badge status={p.status} className="mt-1">
                     {p.status}
-                  </span>
+                  </Badge>
                   <div className="mt-2 text-xs text-muted">{p.detail}</div>
                 </div>
               ))}

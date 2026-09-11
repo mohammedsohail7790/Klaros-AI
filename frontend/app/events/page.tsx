@@ -92,27 +92,27 @@ export default function EventsPage() {
               <div className="mb-8">
                 <h2 className="mb-3 text-sm font-medium text-muted">Worker metrics (real, in-process counters)</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
-                  <div className="rounded-lg border border-border p-4">
+                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                     <div className="text-xs text-muted">Processed</div>
                     <div className="mt-1 text-2xl font-semibold">{metrics.events_processed}</div>
                   </div>
-                  <div className="rounded-lg border border-border p-4">
+                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                     <div className="text-xs text-muted">Failed (retrying)</div>
                     <div className="mt-1 text-2xl font-semibold">{metrics.events_failed}</div>
                   </div>
-                  <div className="rounded-lg border border-border p-4">
+                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                     <div className="text-xs text-muted">Dead-lettered</div>
                     <div className="mt-1 text-2xl font-semibold">{metrics.events_dead_lettered}</div>
                   </div>
-                  <div className="rounded-lg border border-border p-4">
+                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                     <div className="text-xs text-muted">Deduplicated</div>
                     <div className="mt-1 text-2xl font-semibold">{metrics.events_deduplicated}</div>
                   </div>
-                  <div className="rounded-lg border border-border p-4">
+                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                     <div className="text-xs text-muted">Ticks</div>
                     <div className="mt-1 text-2xl font-semibold">{metrics.ticks}</div>
                   </div>
-                  <div className="rounded-lg border border-border p-4">
+                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                     <div className="text-xs text-muted">Started</div>
                     <div className="mt-1 text-xs text-muted">
                       {metrics.started_at ? new Date(metrics.started_at).toLocaleTimeString() : "Not running in this process"}

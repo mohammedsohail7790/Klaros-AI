@@ -105,19 +105,19 @@ export default function QuoteDetailPage() {
         )}
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Total</div>
             <div className="mt-1 text-lg font-semibold">${quote.total}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Valid until</div>
             <div className="mt-1 text-lg font-semibold">{quote.valid_until ?? "—"}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Sent</div>
             <div className="mt-1 text-lg font-semibold">{quote.sent_at ? "Yes" : "No"}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Decided</div>
             <div className="mt-1 text-lg font-semibold">{quote.decided_at ? "Yes" : "No"}</div>
           </div>

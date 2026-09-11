@@ -100,19 +100,19 @@ export default function InvoiceDetailPage() {
         )}
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Total</div>
             <div className="mt-1 text-lg font-semibold">${invoice.total}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Amount paid</div>
             <div className="mt-1 text-lg font-semibold">${invoice.amount_paid}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Amount due</div>
             <div className="mt-1 text-lg font-semibold">${invoice.amount_due}</div>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <div className="text-xs text-muted">Due date</div>
             <div className="mt-1 text-lg font-semibold">{invoice.due_date}</div>
           </div>

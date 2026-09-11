@@ -59,10 +59,7 @@ export default function CampaignsPage() {
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="font-display text-2xl text-foreground">Campaigns</h1>
-          <button
-            onClick={() => setShowCreate((v) => !v)}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
-          >
+          <button onClick={() => setShowCreate((v) => !v)} className="klaros-btn-primary">
             New campaign
           </button>
         </div>

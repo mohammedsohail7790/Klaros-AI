@@ -166,7 +166,7 @@ export default function CompanyMemoryPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-2 text-xl font-semibold">Company Memory</h1>
+        <h1 className="font-display text-2xl text-foreground mb-2">Company Memory</h1>
         <p className="mb-6 text-xs text-muted">
           Durable owner preferences, business rules, and context that Klaros reads before generating AI
           recommendations (e.g. the Morning Brief). The owner is always the authority — AI can only ever

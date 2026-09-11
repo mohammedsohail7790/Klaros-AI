@@ -79,12 +79,12 @@ export default function OutboundPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-6 text-xl font-semibold">Outbound &amp; List Building</h1>
+        <h1 className="font-display text-2xl text-foreground mb-6">Outbound &amp; List Building</h1>
 
         {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>}
 
         <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <h2 className="mb-3 text-sm font-medium text-muted">Lists</h2>
             <form onSubmit={handleCreateList} className="mb-3 flex gap-2">
               <input value={listName} onChange={(e) => setListName(e.target.value)} placeholder="List name" className="flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
@@ -105,7 +105,7 @@ export default function OutboundPage() {
             )}
           </div>
 
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
             <h2 className="mb-3 text-sm font-medium text-muted">Add contact</h2>
             <form onSubmit={handleAddContact} className="space-y-2">
               <select value={selectedList} onChange={(e) => setSelectedList(e.target.value)} className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm">

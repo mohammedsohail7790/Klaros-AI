@@ -105,7 +105,7 @@ function PublicContractViewInner() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-foreground">Contract {contract.contract_number}</h1>
+        <h1 className="font-display text-2xl text-foreground text-foreground">Contract {contract.contract_number}</h1>
         <span className="rounded-full border border-border-strong px-3 py-1 text-xs text-muted">
           {contract.status.replace(/_/g, " ")}
         </span>

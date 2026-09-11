@@ -286,7 +286,7 @@ function IntegrationsPageInner() {
       <div className="mx-auto max-w-4xl px-6 py-10">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-foreground">Integrations</h1>
+            <h1 className="font-display text-2xl text-foreground text-foreground">Integrations</h1>
             <p className="mt-1 text-sm text-muted">
               Every status here is checked live against the real provider — nothing is fabricated.
               {rows && ` ${connectedCount} of ${rows.length} connected.`}

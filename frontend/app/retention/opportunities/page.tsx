@@ -49,7 +49,7 @@ export default function OpportunitiesPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-6 text-xl font-semibold">Retention Opportunities</h1>
+        <h1 className="font-display text-2xl text-foreground mb-6">Retention Opportunities</h1>
 
         <div className="mb-4 flex flex-wrap gap-2">
           {STATUS_TABS.map((s) => (

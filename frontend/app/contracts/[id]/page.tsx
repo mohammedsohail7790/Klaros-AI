@@ -168,7 +168,7 @@ export default function ContractDetailPage() {
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           {timeline.map((step) => (
-            <div key={step.label} className="rounded-lg border border-border p-4">
+            <div key={step.label} className="rounded-lg border border-border bg-surface p-4 shadow-card">
               <div className="text-xs text-muted">{step.label}</div>
               <div className="mt-1 text-sm font-medium">{step.at ? new Date(step.at).toLocaleString() : "—"}</div>
             </div>

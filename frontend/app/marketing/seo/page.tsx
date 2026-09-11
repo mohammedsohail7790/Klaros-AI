@@ -71,7 +71,7 @@ export default function SEOPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-6 text-xl font-semibold">Local SEO Pages</h1>
+        <h1 className="font-display text-2xl text-foreground mb-6">Local SEO Pages</h1>
 
         <form onSubmit={handleGenerate} className="mb-6 flex flex-wrap items-end gap-2">
           <div>

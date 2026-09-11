@@ -168,7 +168,7 @@ export default function KnowledgePage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-2 text-xl font-semibold">Knowledge Layer</h1>
+        <h1 className="font-display text-2xl text-foreground mb-2">Knowledge Layer</h1>
         <p className="mb-6 text-sm text-muted">
           The real, editable source of truth for how your business actually operates — pricing rules,
           qualification criteria, brand voice. Klaros reads these where wired in (e.g. the Morning Brief's

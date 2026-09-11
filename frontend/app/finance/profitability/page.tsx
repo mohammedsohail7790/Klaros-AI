@@ -38,7 +38,7 @@ export default function ProfitabilityPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="mb-6 text-xl font-semibold">Job Profitability</h1>
+        <h1 className="font-display text-2xl text-foreground mb-6">Job Profitability</h1>
 
         {authLoading || loading ? (
           <p className="text-sm text-muted">Loading...</p>
