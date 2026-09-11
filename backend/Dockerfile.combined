@@ -29,6 +29,7 @@ COPY --from=temporal /usr/local/bin/tctl-authorization-plugin /usr/local/bin/tct
 COPY --from=temporal /usr/local/bin/temporal-cassandra-tool /usr/local/bin/temporal-cassandra-tool
 COPY --from=temporal /usr/local/bin/temporal-sql-tool /usr/local/bin/temporal-sql-tool
 COPY --from=temporal /etc/temporal /etc/temporal
+ENV TEMPORAL_HOME=/etc/temporal
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
