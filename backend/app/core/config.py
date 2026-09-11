@@ -152,9 +152,13 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: str | None = None
     DEEPSEEK_MODEL: str = "deepseek-chat"
     NVIDIA_API_KEY: str | None = None
-    NVIDIA_MODEL: str = "meta/llama3-70b-instruct"
+    # Confirmed against the real /v1/models catalog (Phase: multi-provider
+    # AI) — "meta/llama3-70b-instruct" doesn't exist under that slug.
+    NVIDIA_MODEL: str = "nvidia/llama-3.1-nemotron-70b-instruct"
     GOOGLE_API_KEY: str | None = None
-    GOOGLE_MODEL: str = "gemini-2.0-flash"
+    # Confirmed via a real call — "gemini-2.0-flash" is retired; Google's
+    # own 404 body names the current replacement.
+    GOOGLE_MODEL: str = "gemini-3.6-flash"
 
     # Knowledge-layer embeddings (Phase 3 RAG) — see
     # app/services/embedding_provider.py. "auto" (default) uses real
