@@ -12,21 +12,26 @@ falling back to the platform-level `Settings.STRIPE_SECRET_KEY` — see
 app/tools/builtin/stripe_tools.py) rather than only ever sharing one
 platform-wide key across every tenant.
 
-Every other provider this model is FOR (QuickBooks, Google Calendar,
-Gmail, Google Ads, Meta Ads — tenant-owned OAuth accounts) still has no
-real API client built (no credentials to build against). Registering a
-fake "always succeeds" verifier for those would be exactly the
-fabricated-success this project's rules forbid; leaving them unregistered
-means every connect/verify attempt for those providers honestly reports
-"no real verifier registered" rather than a fake CONNECTED.
+Phase 14 registered a second real verifier — "google_calendar" (same
+tenant-owned-OAuth-account shape as QuickBooks). Every other provider
+this model is FOR (Gmail, Google Ads, Meta Ads — tenant-owned OAuth
+accounts) still has no real API client built (no credentials to build
+against). Registering a fake "always succeeds" verifier for those would
+be exactly the fabricated-success this project's rules forbid; leaving
+them unregistered means every connect/verify attempt for those providers
+honestly reports "no real verifier registered" rather than a fake
+CONNECTED.
 """
 
 from functools import lru_cache
 
 from app.core.config import get_settings
 from app.db.session import async_session_maker
+from app.integrations.google_calendar_client import GoogleCalendarAPIError, GoogleCalendarClient
+from app.integrations.quickbooks_client import QuickBooksAPIError, QuickBooksClient
 from app.integrations.stripe_client import StripeClient
 from app.services.integration_connection_service import IntegrationConnectionService
+from app.services.notification_service import NotificationService
 
 
 async def _stripe_verifier(credential: dict) -> tuple[bool, str]:
@@ -44,11 +49,51 @@ async def _stripe_verifier(credential: dict) -> tuple[bool, str]:
     return False, "secret_key rejected by Stripe's API"
 
 
+async def _quickbooks_verifier(credential: dict) -> tuple[bool, str]:
+    """Phase 13: real verification for a tenant's stored QuickBooks OAuth
+    tokens — a real GET .../companyinfo/{realmId} call, mirroring the
+    Stripe verifier's shape. `realm_id` isn't part of the encrypted
+    credential (it's stored on the connection row's own
+    external_account_id column, set by the OAuth callback) — this
+    verifier is only ever invoked with it already resolved by the caller
+    embedding it into the credential dict passed to `connect()`/`verify()`
+    time, since `IntegrationConnectionService.verify()` only hands the
+    verifier the encrypted_credential's own decrypted contents. To keep
+    the verifier self-sufficient, the OAuth callback stores `realm_id`
+    inside the encrypted credential blob too (alongside access_token/
+    refresh_token), not only in the plaintext external_account_id column."""
+    access_token = credential.get("access_token")
+    realm_id = credential.get("realm_id")
+    if not access_token or not realm_id:
+        return False, "credential missing required 'access_token'/'realm_id' fields"
+    client = QuickBooksClient()
+    try:
+        info = await client.get_company_info(access_token=access_token, realm_id=realm_id)
+    except QuickBooksAPIError as exc:
+        return False, f"QuickBooks rejected the connection: {exc}"
+    return True, f"verified via GET companyinfo (company: {info.CompanyName or realm_id})"
+
+
+async def _google_calendar_verifier(credential: dict) -> tuple[bool, str]:
+    """Phase 14: real verification for a tenant's stored Google Calendar
+    OAuth tokens — a real GET /calendars/primary call, mirroring the
+    QuickBooks verifier's shape exactly (no realm-id-equivalent needed;
+    the access_token alone identifies the calendar owner to Google)."""
+    access_token = credential.get("access_token")
+    if not access_token:
+        return False, "credential missing required 'access_token' field"
+    client = GoogleCalendarClient()
+    try:
+        calendar = await client.get_calendar(access_token=access_token, calendar_id="primary")
+    except GoogleCalendarAPIError as exc:
+        return False, f"Google Calendar rejected the connection: {exc}"
+    return True, f"verified via GET calendars/primary (calendar: {calendar.summary or calendar.id})"
+
+
 @lru_cache
 def get_integration_connection_service() -> IntegrationConnectionService:
-    service = IntegrationConnectionService(async_session_maker)
+    service = IntegrationConnectionService(async_session_maker, NotificationService(async_session_maker))
     service.register_verifier("stripe", _stripe_verifier)
-    # Future: service.register_verifier("quickbooks", real_quickbooks_verifier)
-    # once a real QuickBooks OAuth client exists and credentials are
-    # available to verify it against.
+    service.register_verifier("quickbooks", _quickbooks_verifier)
+    service.register_verifier("google_calendar", _google_calendar_verifier)
     return service

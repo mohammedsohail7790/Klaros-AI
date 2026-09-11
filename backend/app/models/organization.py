@@ -36,3 +36,12 @@ class Organization(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     morning_brief_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     morning_brief_local_time: Mapped[str] = mapped_column(String(5), nullable=False, default="07:00")
     morning_brief_timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="UTC")
+    # Phase 11 (Automation Engine SCHEDULE trigger): the tenant's general
+    # business timezone, distinct from morning_brief_timezone above (which
+    # stays feature-specific and untouched for backward compatibility) —
+    # used to resolve a SCHEDULE-triggered automation's local time-of-day
+    # (see AutomationService.check_and_dispatch_scheduled). No general
+    # tenant timezone field existed before this; this is the smallest
+    # correct extension rather than overloading morning_brief_timezone's
+    # name for an unrelated purpose.
+    timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="UTC")

@@ -14,23 +14,51 @@ a browser-driven frontend session all ran against those real engines. See
 Docker itself — image builds, container networking, `depends_on`/healthcheck ordering
 under a real daemon — remains unverified.
 
-## Known gaps in the current Docker setup (static read, Phase 12B)
+## Status after Phase 33A deployment-artifact hardening
 
-- Neither `backend/Dockerfile` nor `frontend/Dockerfile` declares a non-root `USER` —
-  both containers run as root.
-- `frontend/Dockerfile`'s `CMD` is `npm run dev` unconditionally. There is no production
-  build stage (`next build` + `next start`) — the image as written is dev-mode-only.
-- No `restart:` policy on any `docker-compose.yml` service.
-- Postgres/Redis/Temporal ports are all published to the host — convenient for local
-  dev, likely undesirable to expose on a real multi-host production deployment.
-- `POSTGRES_PASSWORD` defaults to the literal `klaros` via `${POSTGRES_PASSWORD:-klaros}`
-  in `docker-compose.yml` if no `.env` override is set — fine for local dev, must be
-  overridden for anything real.
+Corrections to this section's prior (Phase 12B) claims, and what changed:
+
+- **Corrected**: `frontend/Dockerfile`'s `CMD` is `npm run start`, preceded by a real
+  `RUN npm run build` — a genuine production build stage already exists in the Dockerfile
+  itself. The prior claim that it was "dev-mode-only" was stale; `docker-compose.yml`
+  overrides the Dockerfile's command to `npm run dev` for local hot-reload convenience
+  only — `docker-compose.prod.yml` (new, Phase 33A) restores the Dockerfile's real
+  production command for an actual deployment.
+- **Fixed** (Phase 33A): every service in `docker-compose.yml` now has
+  `restart: unless-stopped`.
+- **Fixed** (Phase 33A): `postgres`/`redis`/`temporal`/`temporal-ui` ports are now bound to
+  `127.0.0.1` only (`127.0.0.1:5432:5432`, etc.) instead of published to every interface —
+  still reachable from the same host (local dev unaffected), not reachable from outside it.
+- **Fixed** (Phase 33A): `docker-compose.prod.yml` (new) removes the `POSTGRES_PASSWORD`
+  default fallback for production use — `docker compose -f docker-compose.yml -f
+  docker-compose.prod.yml up` now fails loudly if `POSTGRES_PASSWORD` isn't set, instead of
+  silently using the `klaros` dev default.
+- **Fixed** (Phase 33A): both `backend/.dockerignore` and `frontend/.dockerignore` now
+  exist (neither did before) — the build context no longer includes `.venv/`,
+  `node_modules/`, `.git/`, `__pycache__/`, any `.env*` file, or the test suite.
+- **Fixed** (Phase 33A): `backend/requirements.txt` no longer installs `pytest`,
+  `pytest-asyncio`, or `pip-audit` into the production image — those moved to
+  `backend/requirements-dev.txt` (`pip install -r requirements.txt -r requirements-dev.txt`
+  for local development).
+- **Still open, deliberately not changed this phase**: neither Dockerfile declares a
+  non-root `USER`. Investigated and NOT implemented — `docker-compose.yml` bind-mounts
+  `./backend:/app` and `./frontend:/app` for local dev hot-reload, and the backend's local
+  storage adapter (`app/storage/local_adapter.py`, active whenever
+  `OBJECT_STORAGE_ENDPOINT` is unset) writes to that same bind-mounted tree
+  (`STORAGE_LOCAL_ROOT`). A non-root container UID that doesn't match the host user's UID
+  would risk silent permission-denied write failures against that bind mount in local dev.
+  This needs a real Docker daemon to verify safely (none available in this project's
+  sandbox) and is flagged here as a SHOULD HAVE rather than implemented blind.
 
 What IS correct in the current setup: `postgres`/`redis` have real healthchecks;
 `backend`/`worker`/`event-worker` correctly `depends_on` them with
 `condition: service_healthy`; every internal service address uses the Docker Compose
 service name (`postgres`, `redis`, `temporal`), never `localhost`.
+
+None of the above has been run against a real Docker daemon — same standing limitation as
+every prior phase (no `docker`/`podman`/`colima`/`lima` available in this sandbox). The YAML
+syntax of both compose files was validated with `pyyaml`; the actual `docker compose config`
+merge and a real `docker build` remain unverified.
 
 ## Prerequisites
 
@@ -39,13 +67,27 @@ docker --version
 docker compose version
 ```
 
-## Clean startup
+## Clean startup (local development)
 
 ```bash
 cp .env.example .env
 # edit .env: at minimum set a real JWT_SECRET before anything resembling production use
 docker compose up -d --build
 ```
+
+## Production startup
+
+```bash
+cp .env.example .env
+# edit .env: real JWT_SECRET, INTEGRATION_CREDENTIAL_ENCRYPTION_KEY, POSTGRES_PASSWORD,
+# CORS_ORIGINS, FRONTEND_BASE_URL, and every provider credential actually in use.
+docker compose -f docker-compose.yml -f docker-compose.prod.yml config   # sanity-check the merge first
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+See `KLAROS_PRODUCTION_DEPLOYMENT_PLAN.md` for the full recommended architecture — in
+particular, a real deployment should generally point `DATABASE_URL`/`REDIS_URL` at managed
+Postgres/Redis instead of running this file's `postgres`/`redis` services at all.
 
 ## Run database migrations
 

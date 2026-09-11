@@ -37,7 +37,10 @@ class GenerateSEOPageDraft(Tool):
         self._seo_service = seo_service
 
     async def execute(self, input: GeneratePageDraftInput, context: ExecutionContext) -> PageOutput:
-        page = await self._seo_service.generate_page_draft(context.tenant_id, service=input.service, location=input.location)
+        page = await self._seo_service.generate_page_draft(
+            context.tenant_id, service=input.service, location=input.location,
+            actor_type=context.actor_type, actor_id=context.actor_id, correlation_id=context.correlation_id,
+        )
         return PageOutput(page=_page_to_dict(page))
 
 

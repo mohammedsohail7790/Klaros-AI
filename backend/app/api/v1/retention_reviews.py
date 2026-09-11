@@ -25,6 +25,7 @@ def _feedback_to_dict(f: CustomerFeedback) -> dict[str, Any]:
     return {
         "id": str(f.id), "customer_id": str(f.customer_id), "job_id": str(f.job_id) if f.job_id else None,
         "rating": f.rating, "sentiment": f.sentiment, "comment": f.comment, "received_at": f.received_at.isoformat(),
+        "consent_to_use_publicly": f.consent_to_use_publicly,
     }
 
 
@@ -67,6 +68,39 @@ async def record_feedback(
     """body = {customer_id, job_id?, rating?, comment?, source?}"""
     try:
         output = await registry.execute("retention.record_feedback", body, execution_context(current_user))
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
+@router.post("/feedback/{feedback_id}/consent")
+async def record_review_consent(
+    feedback_id: uuid.UUID, body: dict, current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    """body = {consent: bool} — a human recording a fact confirmed with the
+    customer directly; see retention.record_review_consent's own docstring
+    for why this can never be AI-callable."""
+    try:
+        output = await registry.execute(
+            "retention.record_review_consent",
+            {"feedback_id": str(feedback_id), "consent": body.get("consent")},
+            execution_context(current_user),
+        )
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
+@router.post("/feedback/{feedback_id}/create-content")
+async def create_content_from_review(
+    feedback_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute(
+            "marketing.create_content_from_review", {"feedback_id": str(feedback_id)}, execution_context(current_user)
+        )
     except (ToolError, ValueError) as exc:
         raise_http_for_tool_error(exc)
     return output.model_dump(mode="json")

@@ -28,16 +28,30 @@ from app.integrations.base import (
 
 
 class QuickBooksAdapter(FinanceProvider):
+    """Phase 13: this reports the PLATFORM OAuth app's own configuration
+    state only — whether ANY tenant could ever start a connect flow at
+    all. Whether a given TENANT has actually connected their own
+    QuickBooks company is tenant-scoped (`IntegrationConnection`, see
+    `GET /api/v1/integrations/connections`), not reflected here, same
+    relationship as `StripeAdapter` vs. a tenant's own Stripe connection."""
+
     provider_name = "quickbooks"
 
     def get_status(self) -> IntegrationStatus:
         s = get_settings()
-        client_id = s.QUICKBOOKS_CLIENT_ID
-        if not client_id:
+        if not s.QUICKBOOKS_CLIENT_ID or not s.QUICKBOOKS_CLIENT_SECRET:
             return IntegrationStatus(
-                self.provider_name, ConnectionStatus.NOT_CONNECTED, "QUICKBOOKS_CLIENT_ID not configured"
+                self.provider_name, ConnectionStatus.NOT_CONNECTED,
+                "QUICKBOOKS_CLIENT_ID/QUICKBOOKS_CLIENT_SECRET not configured — no tenant can connect yet",
             )
-        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "OAuth flow not implemented")
+        if not s.QUICKBOOKS_REDIRECT_URI:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.ERROR, "QUICKBOOKS_REDIRECT_URI not configured"
+            )
+        return IntegrationStatus(
+            self.provider_name, ConnectionStatus.NOT_CONNECTED,
+            "OAuth app configured — connect per-tenant via Settings → Integrations",
+        )
 
 
 class StripeAdapter(FinanceProvider):

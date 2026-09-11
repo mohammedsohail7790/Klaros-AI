@@ -38,9 +38,16 @@ class ConnectionNotFoundError(Exception):
 class IntegrationConnectionService:
     VERIFY_TIMEOUT_SECONDS = 10.0
 
-    def __init__(self, session_factory: async_sessionmaker) -> None:
+    def __init__(self, session_factory: async_sessionmaker, notification_service=None) -> None:
         self._session_factory = session_factory
         self._verifiers: dict[str, VerifierFn] = {}
+        # Optional (production observability phase) — reuses the existing
+        # NotificationService, never a second notification mechanism.
+        # None in every existing test/call site that doesn't pass one, so
+        # this stays fully backward compatible; only the one real
+        # production wiring (app/api/tool_deps_integrations.py) provides
+        # a real instance.
+        self._notifications = notification_service
 
     def register_verifier(self, provider: str, verifier: VerifierFn) -> None:
         """A real, provider-specific async function: takes the decrypted
@@ -184,7 +191,30 @@ class IntegrationConnectionService:
 
             await session.commit()
             await session.refresh(connection)
-            return connection
+
+        # Real-time owner alert on a genuine auth failure — deliberately
+        # NOT sent on every failed verify() call (that would fire every
+        # time the Owner Cockpit re-checks status, an alert storm): the
+        # dedupe_key is scoped to one calendar day per tenant+provider,
+        # so a failing connection notifies once, then stays quiet until
+        # either it's fixed or the day rolls over — reuses
+        # NotificationService's own existing dedupe mechanism, never a
+        # second one.
+        if not ok and self._notifications is not None:
+            today = datetime.now(timezone.utc).date().isoformat()
+            try:
+                from app.models.notification import NotificationPriority, NotificationType
+
+                await self._notifications.notify(
+                    tenant_id, NotificationType.SYSTEM_ERROR,
+                    title=f"{provider} connection failed", body=detail,
+                    priority=NotificationPriority.HIGH, entity_type="integration_connection",
+                    entity_id=connection.id, dedupe_key=f"provider-auth-failed:{tenant_id}:{provider}:{today}",
+                )
+            except Exception as exc:  # noqa: BLE001 — a notification failure must never fail the verify() call itself
+                logger.error("integration_connection_notify_failed", provider=provider, error=str(exc))
+
+        return connection
 
     async def disconnect(self, tenant_id: uuid.UUID, provider: str) -> IntegrationConnection:
         async with self._session_factory() as session:

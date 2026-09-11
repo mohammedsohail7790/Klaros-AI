@@ -1,6 +1,8 @@
 import pytest
 from httpx import AsyncClient
 
+from app.core.config import get_settings
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -114,5 +116,23 @@ async def test_integrations_report_not_connected(client: AsyncClient) -> None:
     assert len(statuses) >= 6
     providers = {s["provider"] for s in statuses}
     assert {"quickbooks", "stripe", "servicetitan", "jobber", "google_ads", "meta_ads", "gmail"} <= providers
+    # Phase 31/32/production-integration-audit: each of these adapters
+    # (app/integrations/adapters.py) checks its own real credential
+    # directly — honest either way, matching whichever credential state
+    # this environment actually has. This environment has since gained
+    # live OPENAI_API_KEY (Phase 31), TWILIO_ACCOUNT_SID/AUTH_TOKEN
+    # (Phase 32), and STRIPE_SECRET_KEY (production integration audit) —
+    # see ARCHITECTURE_TRACEABILITY.md for all three.
+    settings = get_settings()
+    live_connected = set()
+    if settings.OPENAI_API_KEY:
+        live_connected.add("openai")
+    if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN:
+        live_connected.add("twilio")
+    if settings.STRIPE_SECRET_KEY:
+        live_connected.add("stripe")
     for s in statuses:
-        assert s["status"] == "NOT_CONNECTED"
+        if s["provider"] in live_connected:
+            assert s["status"] == "CONNECTED"
+        else:
+            assert s["status"] == "NOT_CONNECTED"

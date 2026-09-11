@@ -7,13 +7,18 @@ from app.api.v1 import (
     ar,
     auth,
     automation,
+    automations,
     cash,
+    company_memory,
     credit_notes,
     crm,
     customers,
+    dashboard,
     events,
     exceptions,
     finance,
+    google_calendar,
+    google_calendar_oauth,
     integrations,
     invoices,
     job_costs,
@@ -28,11 +33,18 @@ from app.api.v1 import (
     marketing_outbound,
     marketing_reactivation,
     marketing_seo,
+    marketplace_webhooks,
     morning_brief,
     notifications,
     operations,
     payments,
     profitability,
+    public_contracts,
+    public_leads,
+    public_quotes,
+    quickbooks_oauth,
+    quotes,
+    contracts,
     refunds,
     retention,
     retention_campaigns,
@@ -42,6 +54,8 @@ from app.api.v1 import (
     retention_reviews,
     tools,
     users,
+    voice,
+    voice_stream,
     webhooks,
     workers,
     writeoffs,
@@ -55,15 +69,24 @@ api_router.include_router(tools.router)
 api_router.include_router(approvals.router)
 api_router.include_router(ai_activity.router)
 api_router.include_router(integrations.router)
+api_router.include_router(quickbooks_oauth.router)
+api_router.include_router(google_calendar_oauth.router)
+api_router.include_router(google_calendar.router)
 api_router.include_router(leads.router)
 api_router.include_router(customers.router)
 api_router.include_router(appointments.router)
 api_router.include_router(crm.router)
+api_router.include_router(dashboard.router)
 api_router.include_router(jobs.router)
 api_router.include_router(workers.router)
 api_router.include_router(exceptions.router)
 api_router.include_router(operations.router)
 api_router.include_router(invoices.router)
+api_router.include_router(quotes.router)
+api_router.include_router(contracts.router)
+api_router.include_router(public_quotes.router)
+api_router.include_router(public_contracts.router)
+api_router.include_router(public_leads.router)
 api_router.include_router(payments.router)
 api_router.include_router(ar.router)
 api_router.include_router(refunds.router)
@@ -89,6 +112,11 @@ api_router.include_router(retention_campaigns.router)
 api_router.include_router(retention.router)
 api_router.include_router(morning_brief.router)
 api_router.include_router(automation.router)
+api_router.include_router(automations.router)
+api_router.include_router(company_memory.router)
 api_router.include_router(notifications.router)
 api_router.include_router(knowledge.router)
 api_router.include_router(webhooks.router)
+api_router.include_router(marketplace_webhooks.router)
+api_router.include_router(voice.router)
+api_router.include_router(voice_stream.router)

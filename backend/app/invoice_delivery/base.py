@@ -34,3 +34,23 @@ class InvoiceDeliveryProvider(ABC):
         amount: Decimal,
         invoice_number: str,
     ) -> DeliveryResult: ...
+
+    @abstractmethod
+    async def send_quote(
+        self,
+        tenant_id: uuid.UUID,
+        *,
+        quote_id: uuid.UUID,
+        customer_email: str | None,
+        amount: Decimal,
+        quote_number: str,
+        view_url: str,
+    ) -> DeliveryResult:
+        """Phase 14: same provider/document-delivery abstraction as
+        `send_invoice`, extended for quotes — deliberately on the same
+        interface rather than a parallel `quote_delivery/` package, since
+        it is the identical capability (email a customer-facing document
+        reference) for a different document type. `view_url` is the real,
+        signed public link (`create_quote_view_token`) the customer uses
+        to view and accept/decline — never a fabricated one."""
+        ...

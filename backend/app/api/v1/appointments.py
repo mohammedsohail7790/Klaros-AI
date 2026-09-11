@@ -29,6 +29,11 @@ def _appointment_to_dict(a: Appointment) -> dict[str, Any]:
         "end_time": a.end_time.isoformat(),
         "status": a.status,
         "notes": a.notes,
+        # Phase 14: honest sync state for external calendars (Google
+        # Calendar, ...) — null/null until a real sync actually sets
+        # these (see GoogleCalendarSyncService), never fabricated.
+        "external_provider": a.external_provider,
+        "external_id": a.external_id,
     }
 
 

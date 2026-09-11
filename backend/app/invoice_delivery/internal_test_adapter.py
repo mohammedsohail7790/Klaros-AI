@@ -47,3 +47,34 @@ class InternalTestInvoiceDeliveryAdapter(InvoiceDeliveryProvider):
             await session.commit()
         logger.info("internal_test_invoice_delivered", invoice_id=str(invoice_id), recipient=recipient)
         return DeliveryResult(delivered=True, provider=self.provider_name, external_reference=str(invoice_id))
+
+    async def send_quote(
+        self,
+        tenant_id: uuid.UUID,
+        *,
+        quote_id: uuid.UUID,
+        customer_email: str | None,
+        amount: Decimal,
+        quote_number: str,
+        view_url: str,
+    ) -> DeliveryResult:
+        recipient = customer_email or "unknown@no-email-on-file.invalid"
+        async with self._session_factory() as session:
+            session.add(
+                CommunicationLog(
+                    tenant_id=tenant_id,
+                    channel="QUOTE_DELIVERY",
+                    template="quote_sent",
+                    recipient=recipient,
+                    subject=f"Quote {quote_number}",
+                    body=(
+                        f"Quote {quote_number} for ${amount} — view and respond at {view_url} "
+                        "(delivered via internal test adapter)."
+                    ),
+                    status="SENT" if customer_email else "SENT_NO_EMAIL_ON_FILE",
+                    provider=self.provider_name,
+                )
+            )
+            await session.commit()
+        logger.info("internal_test_quote_delivered", quote_id=str(quote_id), recipient=recipient)
+        return DeliveryResult(delivered=True, provider=self.provider_name, external_reference=str(quote_id))

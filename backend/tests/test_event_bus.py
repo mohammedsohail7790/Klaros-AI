@@ -64,8 +64,9 @@ async def test_subscriber_receives_published_event(event_bus: EventBus) -> None:
     )
     stats = await event_bus.process_pending(EventType.JOB_CREATED)
 
-    # audit_recorder (every event type) + marketing_attribution_job_created (Phase 6) + this test's own handler.
-    assert stats.succeeded == 3
+    # audit_recorder (every event type) + marketing_attribution_job_created (Phase 6)
+    # + automation_dispatch (every event type, Automation Engine phase) + this test's own handler.
+    assert stats.succeeded == 4
     assert received == [str(event.id)]
 
 

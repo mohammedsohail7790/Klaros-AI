@@ -6,6 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, get_db
+from app.api.tool_deps import get_wired_event_bus
+from app.events.bus import EventBus
 from app.models.finance import CollectionAction, Invoice
 from app.services.ar_service import ARService
 from app.services.collection_service import CollectionService
@@ -13,13 +15,11 @@ from app.services.collection_service import CollectionService
 router = APIRouter(prefix="/ar", tags=["ar"])
 
 
-def _services() -> tuple[ARService, CollectionService]:
+def _services(bus: EventBus) -> tuple[ARService, CollectionService]:
     from app.communications.factory import get_communication_provider
     from app.db.session import async_session_maker
-    from app.events.factory import get_event_bus
     from app.services.exception_service import ExceptionService
 
-    bus = get_event_bus()
     exception_service = ExceptionService(async_session_maker, bus)
     collection_service = CollectionService(async_session_maker, get_communication_provider(async_session_maker))
     ar_service = ARService(async_session_maker, exception_service, collection_service)
@@ -27,8 +27,10 @@ def _services() -> tuple[ARService, CollectionService]:
 
 
 @router.get("/aging")
-async def get_aging(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
-    ar_service, _ = _services()
+async def get_aging(
+    current_user: CurrentUser = Depends(get_current_user), bus: EventBus = Depends(get_wired_event_bus),
+) -> dict[str, Any]:
+    ar_service, _ = _services(bus)
     summary = await ar_service.aging_summary(current_user.tenant_id)
     return {
         "current": str(summary.current),
@@ -42,16 +44,19 @@ async def get_aging(current_user: CurrentUser = Depends(get_current_user)) -> di
 
 @router.get("/customers/{customer_id}/balance")
 async def get_customer_balance(
-    customer_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user)
+    customer_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user),
+    bus: EventBus = Depends(get_wired_event_bus),
 ) -> dict[str, Any]:
-    ar_service, _ = _services()
+    ar_service, _ = _services(bus)
     balance = await ar_service.customer_balance(current_user.tenant_id, customer_id)
     return {"customer_id": str(customer_id), "balance": str(balance)}
 
 
 @router.post("/detect-overdue")
-async def detect_overdue(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
-    ar_service, _ = _services()
+async def detect_overdue(
+    current_user: CurrentUser = Depends(get_current_user), bus: EventBus = Depends(get_wired_event_bus),
+) -> dict[str, Any]:
+    ar_service, _ = _services(bus)
     ids = await ar_service.detect_overdue(current_user.tenant_id)
     return {"newly_overdue_invoice_ids": [str(i) for i in ids]}
 
@@ -85,7 +90,9 @@ async def list_collection_actions(
 
 
 @router.post("/collections/execute-due")
-async def execute_due_collections(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
-    _, collection_service = _services()
+async def execute_due_collections(
+    current_user: CurrentUser = Depends(get_current_user), bus: EventBus = Depends(get_wired_event_bus),
+) -> dict[str, Any]:
+    _, collection_service = _services(bus)
     ids = await collection_service.execute_due_actions(current_user.tenant_id)
     return {"executed_action_ids": [str(i) for i in ids]}

@@ -28,9 +28,16 @@ def _auth(token: str) -> dict:
 
 
 async def test_connect_to_unimplemented_provider_is_honest_error_not_fake_connected(client: AsyncClient) -> None:
+    """`quickbooks` used to be this test's exemplar of an unimplemented
+    provider (Phase 12D); Phase 13 gave it a real OAuth client and
+    verifier, so this test now uses `google_ads` instead — still
+    genuinely unimplemented (no verifier registered), same as every
+    provider in `app/marketing_ads/` — to keep proving the underlying
+    invariant: an unimplemented provider must never report fake
+    CONNECTED."""
     token = await _register_and_get_token(client, "Conn API Co", "owner@connapi.com")
     resp = await client.post(
-        "/api/v1/integrations/connections/quickbooks/connect",
+        "/api/v1/integrations/connections/google_ads/connect",
         json={"credential": {"client_id": "fake", "client_secret": "fake"}},
         headers=_auth(token),
     )

@@ -25,8 +25,23 @@ can never both "win" the same transition. This is the same pattern
 `EventBus._handle_one`'s unique-constraint race-recovery uses (Phase 8),
 applied here as a conditional UPDATE instead of a unique-insert, since the
 resource here is a single existing row rather than a new one.
+
+Phase 19 (Learn): the APPROVED/REJECTED transition is also the real
+boundary where a human decision about an AI-proposed action becomes
+durable — see `_learn_from_ai_decision` below. This is NOT autonomous
+self-learning: the AI never decides what to remember, and never writes an
+ACTIVE memory. A human's approve/reject click is the only trigger, and the
+result always enters through the existing, unchanged
+`CompanyMemoryService.propose_memory()` (always PENDING, source=
+AI_PROPOSED) — a second, separate human action (the existing memory
+confirm/reject flow, unchanged since Phase 13) decides whether it ever
+becomes ACTIVE context for a future AI decision. Idempotent for free: the
+`ApprovalStatus` CAS above already guarantees this code path is reached at
+most once per `ApprovalRequest` — no second/duplicate memory-dedup
+mechanism is added.
 """
 
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -39,9 +54,11 @@ from app.events.bus import EventBus
 from app.models.actor import ActorType
 from app.models.approval import ApprovalExecutionStatus, ApprovalRequest, ApprovalStatus
 from app.models.audit_log import AuditLog
+from app.models.company_memory import MAX_VALUE_LENGTH, MemoryType
 from app.models.event import EventType
 from app.models.rbac import Role
 from app.models.user import User
+from app.services.company_memory_service import CompanyMemoryService, MemoryValidationError
 from app.tools.base import ExecutionContext
 from app.tools.registry import ToolRegistry
 
@@ -66,6 +83,11 @@ class ApprovalExecutionService:
         self._session_factory = session_factory
         self._registry = registry
         self._bus = bus
+        # Phase 19: internally constructed, no new required constructor
+        # arg — same pattern as every other Company Memory consumer
+        # (Morning Brief, Qualification, Marketing, SEO, Knowledge Q&A,
+        # AI Next Action).
+        self._memory = CompanyMemoryService(session_factory)
 
     async def _load(self, session, tenant_id: uuid.UUID, approval_id: uuid.UUID) -> ApprovalRequest:
         request = await session.get(ApprovalRequest, approval_id)
@@ -108,6 +130,7 @@ class ApprovalExecutionService:
             tenant_id, decided_by_id, "approval.approve", approval_id=approval_id,
             correlation_id=correlation_id, result="success",
         )
+        await self._learn_from_ai_decision(tenant_id, request, decision="APPROVED", decision_note=note)
 
         return await self.execute_approved(tenant_id, approval_id)
 
@@ -142,6 +165,7 @@ class ApprovalExecutionService:
             tenant_id, decided_by_id, "approval.reject", approval_id=approval_id,
             correlation_id=correlation_id, result="success",
         )
+        await self._learn_from_ai_decision(tenant_id, request, decision="REJECTED", decision_note=note)
         return result
 
     async def execute_approved(self, tenant_id: uuid.UUID, approval_id: uuid.UUID) -> ApprovalRequest:
@@ -273,6 +297,56 @@ class ApprovalExecutionService:
             role=role,
             correlation_id=request.correlation_id,
         )
+
+    async def _learn_from_ai_decision(
+        self, tenant_id: uuid.UUID, request: ApprovalRequest, *, decision: str, decision_note: str | None
+    ) -> None:
+        """Phase 19 (Learn): the ONLY place a human approve/reject decision
+        becomes governed Company Memory feedback. Rule 6: only an
+        AI-originated ApprovalRequest produces feedback — an AUTO
+        execution never creates an ApprovalRequest at all, so it can never
+        reach here, and a human-requested approval (requested_by_type ==
+        USER) is not an AI decision to learn from.
+
+        Rule 15: this is NOT the AI deciding what to remember — the human
+        approve/reject click is the only trigger, already durably decided
+        by the real `ApprovalStatus` CAS in `approve()`/`reject()` before
+        this is ever called; this method only describes that already-made
+        decision. Rule 2: never invents a reason the owner didn't give —
+        `decision_note` is used verbatim if present, otherwise the memory
+        honestly says none was given, never a fabricated explanation.
+        Rule 12: idempotent for free — the CAS above guarantees this is
+        reached at most once per ApprovalRequest, so `key` (derived
+        deterministically from `request.id`) is proposed at most once.
+        A failure here must never undo or block the real approval/
+        rejection decision that already committed — logged, not raised.
+        """
+        if request.requested_by_type != ActorType.AI:
+            return
+
+        value = (
+            f"Owner {decision} an AI-proposed action: tool='{request.tool_name}', "
+            f"arguments={json.dumps(request.tool_input, sort_keys=True, default=str)}."
+        )
+        value += f" Owner note: {decision_note!r}." if decision_note else " No reason was given."
+        if len(value) > MAX_VALUE_LENGTH:
+            value = value[: MAX_VALUE_LENGTH - 1] + "…"
+
+        try:
+            await self._memory.propose_memory(
+                tenant_id,
+                memory_type=MemoryType.AI_FEEDBACK,
+                key=f"ai_feedback_approval_{request.id.hex}",
+                value=value,
+                description=None,
+                source_entity_type="approval_request",
+                source_entity_id=request.id,
+                reason="derived from an owner decision on an AI Next Action proposal",
+            )
+        except MemoryValidationError as exc:  # noqa: BLE001 — learning is best-effort, never blocks the real decision
+            logger.warning(
+                "ai_feedback_memory_proposal_failed", approval_id=str(request.id), tenant_id=str(tenant_id), error=str(exc)
+            )
 
     async def _publish(
         self, tenant_id: uuid.UUID, event_type: str, approval_id: uuid.UUID, payload: dict, *, correlation_id: uuid.UUID | None

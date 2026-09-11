@@ -11,9 +11,11 @@ import asyncio
 from temporalio.worker import Worker
 
 from app.core.config import get_settings
+from app.core.error_monitoring import capture_exception, init_error_monitoring
 from app.core.logging import configure_logging, get_logger
 from app.temporal_client import get_temporal_client
 from app.workflows.activities import ACTIVITIES
+from app.workflows.automation_workflow import AutomationWaitWorkflow
 from app.workflows.definitions import (
     EventProcessingWorkflow,
     InvoiceOverdueWorkflow,
@@ -27,6 +29,7 @@ logger = get_logger(__name__)
 
 async def main() -> None:
     settings = get_settings()
+    init_error_monitoring()
     logger.info("klaros_worker_connecting", temporal_host=settings.TEMPORAL_HOST)
 
     while True:
@@ -40,6 +43,7 @@ async def main() -> None:
                     InvoiceOverdueWorkflow,
                     LeadQualificationWorkflow,
                     JobLifecycleWorkflow,
+                    AutomationWaitWorkflow,
                 ],
                 activities=ACTIVITIES,
             )
@@ -47,6 +51,7 @@ async def main() -> None:
             await worker.run()
         except Exception as exc:  # noqa: BLE001 — must never crash-loop silently
             logger.error("klaros_worker_connection_failed", error=str(exc))
+            capture_exception(exc, component="temporal_worker")
             await asyncio.sleep(5)
 
 

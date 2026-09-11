@@ -1,6 +1,52 @@
 # Klaros AI — Project Status
 
-Last updated: 2026-08-27 (Phase 8 checkpoint)
+Last updated: 2026-09-04 (Automation Engine phase checkpoint)
+
+## Automation Engine phase — generic trigger→condition→action orchestration
+
+Built the generic, tenant-safe Automation & Orchestration Engine explicitly requested after the voice
+receptionist work hit its external-credential boundary (Phases 8–10). Full detail: see
+`ARCHITECTURE_TRACEABILITY.md`'s "Automation Engine" row and `INTEGRATIONS.md`'s new top addendum.
+
+- **Model**: `Automation` → `AutomationVersion` (immutable, versioned; edits never mutate a version an
+  in-flight execution is running against) → `AutomationExecution` (idempotent via a real DB unique
+  constraint on `(automation_version_id, source_event_id)`) → `AutomationExecutionStep` (full audit
+  trail). Migration `0030`, verified against real PostgreSQL (upgrade/downgrade/upgrade round-trip).
+- **Condition engine**: a safe, bounded JSON DSL (`app/services/automation_condition.py`) — AND/OR/NOT
+  composition over field-path comparisons, no `eval()`, no arbitrary SQL, depth-limited, validated at
+  save time. 15 dedicated tests including deliberately malicious inputs.
+- **Actions**: every automation step runs through the exact same `AIExecutionService` governance
+  boundary as everything else in Klaros, restricted to a hardcoded `ACTION_ALLOWLIST` (currently
+  `notifications.create_notification`, `crm.update_lead`, `crm.create_note` — the only tools that both
+  make sense as automation actions and don't require inventing a new domain entity).
+  `_run_one_step` defensively re-checks the allowlist even though `_validate_steps` already rejects
+  anything else at save time.
+- **Triggers**: MANUAL (API-driven) and EVENT (dispatches off the real EventBus — one handler
+  subscribed to every `EventType`, matching ENABLED automations by `trigger_config.event_type`) are
+  fully implemented and tested, including a real end-to-end browser verification (created a real lead →
+  a real `lead.created` event → automatic execution → a real notification row, all visible in the new
+  `/automations` UI). `SCHEDULE` is accepted by validation but has no dispatcher yet — an honest,
+  documented gap; the frontend deliberately excludes it from the trigger-type picker.
+- **Durable wait**: exactly one `"wait"` step, only as an automation's first step, backed by a real
+  Temporal workflow (`AutomationWaitWorkflow`) — verified against a real local Temporal test server and
+  a real `Worker`, not mocked.
+- **Frontend**: `/automations` — list, create, structured step/condition editor (no visual canvas, per
+  the mission's own allowance), publish, enable/disable, manual trigger, execution history, and a
+  per-execution step-by-step trace. The Owner Cockpit dashboard gained a real "Automations" widget
+  (running/failed/completed-today/enabled counts) backed by a new `GET /automations/summary` endpoint —
+  no fabricated metrics.
+- **Tests**: 55 new automation-specific tests across condition logic, service-layer CRUD/versioning/
+  execution, real EventBus dispatch, real HTTP API (incl. RBAC and tenant isolation), real PostgreSQL
+  concurrent-duplicate-event idempotency, and real Temporal wait-workflow resumption. Full regression
+  after implementation: 928 passed / 13 skipped / 0 failed (SQLite); 16/16 PostgreSQL-specific; 8/8
+  Temporal-specific. Two pre-existing tests that hardcoded exact EventBus subscriber counts
+  (`test_e2e_acceptance.py`, `test_event_bus.py`) needed their counts bumped by one for the new
+  always-on `automation_dispatch` subscriber — found and fixed as a genuine regression, not just
+  documented.
+- **Voice status** (unchanged from Phase 10, restated per this phase's own instructions): the AI Voice
+  Receptionist is fully implemented and locally verified but remains BLOCKED BY EXTERNAL CREDENTIALS
+  (Twilio/Deepgram/ElevenLabs) for live-call verification — this was not re-tested this phase, and is
+  not the reason for any classification here.
 
 ## What's actually built and verified — Phases 1–5 (unchanged, condensed)
 
@@ -1465,8 +1511,1435 @@ Stripe's real API with a deliberately-invalid key (proving the pipe, not a succe
 — never against a real Stripe test-mode payment, because no credential exists in this
 environment. See `INTEGRATIONS.md` for the exact remaining step.
 
+## Phase 12G — Credential Re-Audit + Self-Contained Stripe Verification
+
+Mission for this phase: prioritize REAL external-provider verification without fabricating
+credentials, responses, payments, or webhook events. Credential audit at the start of this
+phase (report PRESENT/MISSING only, no values printed): `STRIPE_SECRET_KEY`,
+`STRIPE_WEBHOOK_SECRET`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`,
+`SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `OPENAI_API_KEY`, and `ANTHROPIC_API_KEY` are all
+PRESENT as variable names in `backend/.env` but EMPTY — unchanged from every prior phase back to
+Phase 12C. QuickBooks/Xero/Google Ads/Meta Ads/Google Business/ServiceTitan/Jobber/S3 have no
+variables set at all and remain honest stubs by design regardless. Because Stripe credentials
+were absent, STEP 3's live-provider verification (connectivity, checkout, webhook signature
+against a genuine Stripe test webhook, duplicate-delivery, failed-payment, tenant attribution,
+frontend reflection) was correctly NOT attempted and NOT fabricated — no live Stripe call, no
+synthetic webhook payload dressed up as "real," no invented test-mode response.
+
+Instead did the self-contained audit STEP 2 calls for: a full code-level read of every file in
+the Stripe integration path (`app/integrations/stripe_client.py`, `app/api/v1/webhooks.py`,
+`app/services/payment_service.py`, `app/tools/builtin/stripe_tools.py`/`payment_tools.py`,
+`app/models/integration.py`/`finance.py`, `app/integrations/credential_store.py`, the tenant
+connection service) against ten specific criteria: schema validation, webhook signature
+verification, outbound/inbound idempotency, tenant isolation, duplicate-event handling, payment/
+refund state transitions, retry/failure behavior, audit logging, and secret hygiene. All ten were
+found implemented or partially implemented with real, working code and existing test coverage —
+see `INTEGRATIONS.md`'s Phase 12G addendum and `PRODUCTION_READINESS.md` item 28 for the
+criterion-by-criterion result. One concrete, previously-untested gap was found and closed:
+`PaymentService.decide_refund`'s guard against re-deciding an already-settled refund existed in
+code (`if refund.status != RefundStatus.REQUESTED: raise ...`) but had no test exercising it
+directly outside the Stripe-failure scenario — `tests/test_refund_state_transition_guard.py`
+(2 new tests) now proves a `COMPLETED` or `REJECTED` refund can never be decided again, and that
+neither a second approval nor a second rejection moves any row. Two further findings — unused
+`RefundStatus.APPROVED`/`PaymentStatus.PENDING`/`FAILED` enum members, and Stripe's webhook/API
+bodies being handled as untyped `dict`s rather than through a Pydantic schema boundary — are
+documented as known limitations, not changed, since neither is a reproducible defect and fixing
+them speculatively risks the kind of scope creep this phase's mission explicitly warned against.
+
+**Real Postgres+Redis re-verified, not fabricated as "unchanged"**: this sandbox already has a
+locally-running (non-Docker, non-`pgserver`/`redislite`) PostgreSQL 16.2 and Redis 7 instance
+from prior work — confirmed via `lsof` (ports 5432/6379 listening) and a real `asyncpg`/`redis-py`
+connection, using the existing `klaros` role/database (owned, not superuser — a fresh throwaway
+database could not be created due to lacking `CREATEDB`, so the existing `klaros` database was
+reused; safe because `tests/conftest.py`'s autouse `_reset_database` fixture drops and recreates
+every table before each test run regardless). Full suite re-run against it after the new test:
+**SQLite 400 passed, 8 skipped** (up from 398/8); **real PostgreSQL 16.2 + real Redis: see the
+exact count in `PRODUCTION_READINESS.md`'s Phase 12G section** (re-run twice — once at 406/0
+before the new test file existed, confirming the pre-existing baseline was unchanged, then again
+after adding the 2 new tests). `pip-audit` re-run: unchanged, the one already-accepted `ecdsa`
+finding only, no new backend CVEs.
+
+**A genuine environment gap, disclosed rather than worked around**: this sandbox instance has no
+`node`/`npm` binary anywhere (`which`, `mdfind`, and a filesystem search all came up empty) despite
+`frontend/node_modules` already being populated from a prior session where Node clearly was
+available. `tsc --noEmit`/`next build`/`npm audit` could not be re-run this phase as a result —
+reported as NOT RE-VERIFIED in `PRODUCTION_READINESS.md` item 29 rather than silently carrying
+forward Phase 12F's clean result as still-current. No frontend source was touched this phase.
+
+**Gap analysis (STEP 4)**: re-checked authentication, RBAC, tenant isolation, the event bus,
+Temporal, the ToolRegistry/MCP layer, `AIExecutionService`, approvals, CRM, Operations,
+Marketing, Retention, Finance, storage, communications, observability, migrations, and the
+frontend/backend contract for any concrete, reproducible defect. None found beyond the Stripe
+refund-guard test gap above and the two documented enum/schema known limitations — every other
+area matched its already-documented, already-tested state from Phase 12A–12F with no new finding
+requiring a code change.
+
+## Phase 12G-2 — Dedicated Stripe Schema-Hardening Pass
+
+Same phase, a follow-on mission closing the one item Phase 12G left as a known limitation instead
+of a fix: Stripe's webhook/API bodies were handled as bare `dict`s. Credentials re-checked again
+at the start — `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` still empty; everything below is
+static-code-audit and self-contained-test work, no live Stripe call made or claimed.
+
+**Built** `app/integrations/stripe_schemas.py` — Pydantic models for exactly the shapes this app
+reads/writes (webhook envelope, `payment_intent`/`charge` payloads, `checkout.session`/
+`payment_intent`/`refund` API responses), all `extra="allow"` so a future Stripe field is
+preserved, never rejected. `stripe_client.py`/`webhooks.py` updated to validate through these
+instead of unchecked dict indexing.
+
+**Two real bugs found and fixed**: (1) a validly-signed-but-malformed webhook body previously hit
+an uncaught `json.JSONDecodeError` → unhandled 500; now a clean 400 via a new
+`StripeWebhookPayloadError`. (2) A Pydantic `ValidationError` naming several simultaneously-bad
+fields on one object can render past 500 characters — invisible on SQLite, a genuine
+`StringDataRightTruncationError` against real Postgres for `WebhookEvent.error_detail`
+(`VARCHAR(500)`) — the same bug class as the Phase 12B `communication_logs.status` finding. Fixed
+by truncating at the one write site; proven against the actual enforcing column by running the
+regression test against real Postgres+Redis, not just SQLite. A third, smaller fix: the new
+envelope-validation log line was changed to log only field names/error types, never Pydantic's
+default `str(exc)`, which echoes a repr of the actual (possibly PII-bearing) input value.
+
+**15 new tests** (`tests/test_stripe_schema_hardening.py`): malformed JSON, envelope validation,
+unknown-field tolerance, outbound response validation (well-formed + deliberately malformed),
+the `error_detail` truncation fix, and 3 cross-tenant refund tests (tenant B can approve/reject
+neither via the tool layer nor `PaymentService.decide_refund` directly — already correctly
+guarded, now explicitly pinned down). All 47 pre-existing Stripe tests still pass unchanged.
+
+**Final counts, re-run against the completed final code state**: SQLite 415 passed, 8 skipped, 0
+failed (86.91s); real PostgreSQL 16.2 + real Redis 423 passed, 0 failed, 0 skipped, 0 errors
+(420.33s). The dedicated new test file alone: 15/15 on both backends. `pip-audit`: unchanged, one
+accepted `ecdsa` finding. Migrations re-verified from a genuinely empty, isolated throwaway
+schema in the same real Postgres instance (never touching the `public` schema's existing data —
+18/18 migrations, 93 tables, head `0018`, schema and role `search_path` override both cleaned up
+afterward, confirmed). Frontend: still no `node`/`npm` in this sandbox — NOT RE-VERIFIED, no
+frontend source touched. See `PRODUCTION_AUDIT.md`'s Phase 12G-2 section for full detail.
+
+## Phase 13 — QuickBooks Online Integration (OAuth2 + Invoice Sync)
+
+The next production phase after Phase 12G's Stripe hardening: a full audit of every completed
+domain (CRM, Operations, Marketing, Retention, Finance, Stripe) found no concrete, reproducible
+defect worth fixing in isolation — every remaining gap was either a documented known limitation
+or a genuinely unbuilt capability. Of the unbuilt external integrations (QuickBooks, Xero,
+Google Ads, Meta Ads, Google Business, ServiceTitan, Jobber — all equally credential-blocked in
+this environment), QuickBooks was selected: the single most business-critical integration for a
+field-service SMB platform (every such business already runs its books through QuickBooks or an
+equivalent), and — like Stripe was before Phase 12C — a provider whose entire OAuth2/API
+boundary can be built and self-contained-tested completely honestly without ever needing real
+credentials, per the mission's own explicit fallback instruction.
+
+**Built, reusing every existing pattern rather than inventing new ones**: `QuickBooksClient`
+(`app/integrations/quickbooks_client.py`) mirrors `StripeClient` exactly — direct httpx, real
+OAuth2 authorization-code + refresh-token grants, real error classification
+(`QuickBooksErrorType`), real retry-with-backoff, real bounded timeout.
+`app/integrations/quickbooks_schemas.py` mirrors the Phase 12G-2 Stripe schema-hardening
+approach from the start (`extra="allow"` Pydantic models), rather than starting QuickBooks with
+untyped dicts and hardening it later. The OAuth connect flow
+(`app/api/v1/quickbooks_oauth.py`: `/authorize` + `/callback`) reuses the existing
+`IntegrationConnectionService`/`IntegrationConnection` model built in Phase 12D — no parallel
+credential-storage path — and introduces one new, narrowly-scoped primitive:
+`create_oauth_state_token`/`decode_oauth_state_token` (`app/core/security.py`), a signed,
+10-minute-lived CSRF/tenant-binding token for the one thing this project didn't already have a
+mechanism for (binding an unauthenticated provider redirect back to the tenant/user who started
+it) — built by reusing the existing `JWT_SECRET`/signing mechanism, not a second credential
+system. A real verifier (`_quickbooks_verifier`) is registered exactly like Stripe's, making a
+real `GET .../companyinfo/{realmId}` call.
+
+**Invoice sync** (`QuickBooksSyncService`, `app/services/quickbooks_sync_service.py`): pushes an
+approved/sent/paid Klaros invoice to the tenant's own connected QuickBooks company, creating a
+matching QBO Customer the first time (new `customers.external_provider`/`external_id` columns,
+migration `0019` — mirrors the pre-existing `Invoice.external_provider`/`external_id` columns
+exactly, so this required no new pattern, just extending an existing one to a second table) and
+reusing it on subsequent invoices for the same customer. Idempotent by construction: an
+already-synced invoice is a safe no-op, never a second API call. A 401 during either API call
+triggers exactly one token-refresh-and-retry, never an unbounded loop. Exposed as
+`finance.sync_invoice_to_quickbooks` — a real `ToolRegistry` tool, `AUTO` policy (moves no
+money, idempotent — same reasoning as `finance.create_stripe_checkout_session`).
+
+**Migration `0019`**: adds `customers.external_provider`/`external_id` (nullable, unique per
+`(tenant_id, provider, external_id)`, mirroring `payments`' existing constraint shape) — required
+`op.batch_alter_table` for the unique constraint (SQLite has no `ALTER TABLE ADD CONSTRAINT`;
+alembic's batch mode does a copy-and-move under the hood, same technique already used by
+migrations `0011`/`0012`/`0014`/`0016` for the same SQLite limitation). Verified from a
+genuinely empty SQLite file and from a genuinely empty, isolated throwaway schema in the same
+real Postgres instance already running in this environment (never touching `public`'s existing
+data — created, migrated, verified, `search_path` reset, schema dropped, confirmed clean
+afterward): all 19 migrations (0001→0019) apply cleanly, landing 93 tables, alembic head `0019`.
+
+**A real, pre-existing test updated, not weakened**: `tests/test_integration_connections_api.py`
+used `quickbooks` as its example of a genuinely-unimplemented provider since Phase 12D — now
+false, since Phase 13 gave it a real verifier. Repointed the one test whose assertion depended
+on that (`test_connect_to_unimplemented_provider_is_honest_error_not_fake_connected`) at
+`google_ads` instead, which is still accurately unimplemented — identical assertion strength,
+just pointed at a provider the claim is still true for. The other tests in that file used
+`quickbooks` only as a generic example provider name for connect/list/disconnect CRUD and needed
+no change (their fake credentials never include the `access_token`/`realm_id` fields the real
+verifier now checks for, so they still correctly produce `ERROR`).
+
+**Frontend** (`app/settings/integrations/page.tsx`): QuickBooks moved out of the "planned OAuth
+providers, no real client" list into its own section matching Stripe's — a real "Connect with
+QuickBooks" button that redirects the browser to the backend's `/authorize` endpoint (which
+redirects to Intuit's real consent page), a banner reading the `?quickbooks=connected|error`
+query param the backend's real callback redirects back to, and Verify/Disconnect actions reusing
+the existing generic connection endpoints. `finance.get_invoice`'s tool output gained
+`external_provider`/`external_id` fields (previously omitted from the dict even though the
+columns existed) so the frontend can show honest sync state. **Not re-verified this phase** — no
+`node`/`npm` binary in this sandbox (re-confirmed); BLOCKED BY ENVIRONMENT, not claimed working.
+
+**Tests**: 31 new (`tests/test_quickbooks_integration.py`) — OAuth authorization-URL
+construction, signed state-token round-trip and rejection (wrong provider, garbage token),
+`QuickBooksClient` retry/backoff/error-classification via real `httpx.MockTransport` (mirroring
+`test_stripe_client.py`), the full OAuth callback HTTP flow (missing params, invalid/wrong-
+provider state, Intuit's own `error` param, a mocked-token-exchange success and failure), the
+verifier (success/missing-fields/rejection), and the full sync service (not-connected, DRAFT-
+invoice rejection, already-synced no-op, full customer+invoice creation with external-id
+persistence, customer-reuse across two invoices, 401-triggers-refresh-then-retry-once, and two
+cross-tenant-isolation tests) plus tool-layer wiring through the real `ToolRegistry`.
+
+A 31st test (`test_oauth_state_token_rejects_expired`) was added during final verification —
+constructs an already-expired state token directly (bypassing the real 10-minute window) to
+prove expiry is genuinely enforced by `python-jose`'s `jwt.decode`, not merely intended.
+
+**A real, pre-existing test-infrastructure bug found and fixed during final verification**:
+`test_phase10_e2e.py::test_full_autonomy_loop_policy_gated_notified_approved_then_reconfigured`
+failed intermittently across full-suite runs (not reproducible in isolation). Root-caused, not
+dismissed as a flake: the test runs a real background `EventWorker` task (polling every 0.02s)
+concurrently with its own tool calls, and serializes every DB access between them through a
+shared `asyncio.Lock()` (`db_lock`) — except ONE direct row mutation (setting the test invoice
+to `OVERDUE` with a 12-days-ago due date) that bypassed the lock, unlike every other database
+access in the same test. This let the concurrently-running worker race that write, occasionally
+letting the Morning Brief generation immediately after run before the overdue status was
+reliably visible, intermittently failing the `"overdue" in insight.summary` assertion with no
+actual product defect involved. Fixed by wrapping that one write in `async with db_lock:`,
+matching the pattern already used everywhere else in the test. Verified fixed: 5/5 clean runs in
+isolation, then 2 consecutive full-suite runs both clean (446 passed, 0 failed each).
+
+**Final counts, re-run against the completed final code state**: SQLite 446 passed, 8 skipped, 0
+failed, 0 errors (96.17s) — 415 Phase-12G-2 baseline + 30 QuickBooks tests + 1 expired-state-
+token test. Real PostgreSQL 16.2 + real Redis: **454 passed, 0 failed, 0 skipped, 0 errors,
+472.40s (7:52)**. The dedicated `tests/test_quickbooks_integration.py` file run independently:
+31/31 passed. `pip-audit`: unchanged, the one already-accepted `ecdsa` finding only — no new
+dependency was added (direct httpx, matching every other provider client in this codebase).
+Repository secret scan re-run against every new/changed file: no hardcoded key/secret pattern
+found; the platform app's `client_secret` is used only inside a base64-encoded Basic-auth header,
+never in a log call or exception message (proven by a dedicated test).
+
+**Credential status**: `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_REDIRECT_URI`
+all confirmed empty in `backend/.env` at the start of this phase — real-provider verification
+(an actual Intuit OAuth consent flow, a real token exchange, a real invoice landing in a real
+QuickBooks sandbox company) is `BLOCKED BY CREDENTIAL`, not attempted, not faked.
+
+## Phase 14 — Quotes/Estimates + the first customer-facing (no-login) surface
+
+**Audit and selection**: with QuickBooks landed, every completed domain (CRM, Operations,
+Marketing, Retention, Finance, Stripe, QuickBooks) was re-checked for gaps. The real one found:
+the pipeline modeled Lead → Job → Invoice with nothing in between for "propose a price, let the
+customer approve it before any work starts" — `Job` already carries `estimated_revenue`/
+`estimated_cost`/`estimated_margin` (an older "known limitation" note claiming otherwise was
+stale), but no formal, customer-approvable Quote/Estimate document existed anywhere. A second
+finding: Klaros has zero customer-facing pages — even the Stripe Checkout flow redirects to
+*Stripe's* hosted page, never Klaros' own. Quotes closes both gaps at once, entirely
+self-contained (no external provider, no credential of any kind), reusing more existing
+architecture than a further external integration would have.
+
+**Built, reusing existing architecture throughout, not duplicating it**:
+- `Quote`/`QuoteLineItem` models (migration `0020`) — same `Decimal`-via-`Numeric` shape as
+  `Invoice`/`InvoiceLineItem`; `jobs.quote_id` (nullable) added to the existing `Job` model
+  rather than inventing a new job-origin table.
+- `QuoteService` reuses `InvoiceService`'s deterministic pricing primitives directly
+  (`LineItemInput`/`compute_line_total`/`compute_totals` — imported, not re-derived) and calls
+  the existing `JobService.create_job` to convert an accepted quote into a real job (one small,
+  additive `quote_id` field added to `CreateJobInput`).
+- `InvoiceDeliveryProvider` (the existing document-delivery abstraction) extended with a
+  `send_quote` method rather than a parallel `quote_delivery/` package — same provider/adapter/
+  factory, one new capability.
+- `create_quote_view_token`/`decode_quote_view_token` (`app/core/security.py`) — a 90-day signed
+  token reusing the exact `create_oauth_state_token` mechanism from Phase 13 (same `JWT_SECRET`,
+  no new credential system), extended to Klaros' first genuinely public, unauthenticated surface:
+  a customer views and accepts/declines a quote with no Klaros account at all. Same trust-boundary
+  reasoning as the Stripe/QuickBooks webhook endpoints — `tenant_id`/`quote_id` come only from the
+  verified token, never from a client-supplied path value trusted on its own.
+- `quotes.*` ToolRegistry tools (create/update/send/get/detect-expired draft — ALL `AUTO` policy:
+  a quote commits no money and no work; the real commitment point is the CUSTOMER's own accept
+  decision, made through the public view, which deliberately has no `ExecutionContext` at all —
+  the same reasoning `app/api/v1/webhooks.py` already established) plus two new permissions
+  (`CREATE_QUOTE`/`SEND_QUOTE`, mapped to the same roles as `CREATE_INVOICE`/`SEND_INVOICE`) and
+  seven new `EventType.QUOTE_*` lifecycle events (picked up automatically by the existing
+  audit-recorder, which subscribes to every `EventType`).
+- No new Temporal workflow — quote expiry uses a deterministic sweep tool
+  (`quotes.detect_expired_quotes`), mirroring `ar_service.py`'s existing `detect_overdue`
+  pattern for invoices; async orchestration wasn't a genuine need here.
+- Two new API routers: `app/api/v1/quotes.py` (authenticated staff CRUD, mirrors
+  `invoices.py` exactly) and `app/api/v1/public_quotes.py` (unauthenticated
+  view/accept/decline — Klaros' first).
+- Frontend: `app/quotes/page.tsx` (list), `app/quotes/[id]/page.tsx` (staff detail + Send action,
+  surfaces the real signed customer link once sent), `app/quotes/view/[id]/page.tsx` (the public
+  page itself — no `AppShell`, no `useAuth`, wrapped in `Suspense` per the existing
+  `useSearchParams` convention). `finance.get_invoice`-style API client functions added to
+  `lib/api.ts`, including public ones that deliberately never send an `Authorization` header.
+
+**Tests**: 23 new (`tests/test_quotes.py`) — full tool-layer lifecycle (create/update/send,
+idempotent create, unknown-customer error, edit-after-send rejection), RBAC (technician denied
+create, staff denied send), tenant isolation (cross-tenant update/send rejected), the full public
+flow (view marks VIEWED and never leaks `customer_id`/`tenant_id`, wrong-quote-id-in-token
+rejected, garbage token rejected, tenant A's real token can't be used against tenant B's real
+quote, accept creates a real `Job` end-to-end with the correct `quote_id`/`estimated_revenue`,
+accept is idempotent — a second accept is a `409`, never a second `Job` — decline never creates a
+job, a declined quote can't later be accepted), expiry (an expired quote can't be decided, the
+sweep tool marks it), and event publishing + audit logging.
+
+**Final counts**: SQLite 469 passed, 8 skipped, 0 failed (85.22s) — 446 Phase-13 baseline + 23
+new. Real PostgreSQL 16.2 + real Redis: **477 passed, 0 failed, 0 skipped, 0 errors, 490.19s
+(8:10)**. The dedicated `tests/test_quotes.py` file run independently: 23/23. Migration `0020`
+verified from a genuinely empty SQLite file and a genuinely empty, isolated throwaway Postgres
+schema (never touching this environment's existing `public` schema data — created, migrated,
+verified, `search_path` reset, schema dropped, confirmed clean afterward): all 20 migrations
+(0001→0020) apply cleanly, landing 95 tables, alembic head confirmed `0020`. `pip-audit`:
+unchanged, the one already-accepted `ecdsa` finding only — no new dependency. Repository secret
+scan: no hardcoded key/secret pattern found; no `logger.*` call anywhere in the new quote code
+(matching `invoice_service.py`'s own precedent — the generic `EventBus`/audit-recorder path
+already covers observability without a domain module needing its own logging).
+
+**Frontend**: written (list page, staff detail page, public accept/decline page, API client
+functions, nav entry) but genuinely NOT VERIFIED — no `node`/`npm` binary anywhere in this
+sandbox instance (re-checked again this phase); no typecheck, build, or browser verification
+performed or claimed.
+
+**Credential status**: none required — Quotes is a fully internal Klaros capability with no
+external provider at all. Nothing in this phase is `BLOCKED BY CREDENTIAL`.
+
+## Phase 14 — Real Google Calendar Integration
+
+(Named "Phase 14" by the mission that requested it, same as the Quotes/Estimates phase directly
+above — two independent phases share that number in this document's history; both are real,
+neither overwrote the other. Chronologically this is the phase after Quotes.)
+
+**Current-state audit**: `app/calendar/base.py`'s `CalendarProvider` ABC (`get_availability`/
+`create_event`/`update_event`/`cancel_event`) already existed and already matched the shape a
+real Google Calendar adapter would need — but `InternalTestCalendarAdapter` is hardcoded as the
+only implementation in `app/tools/factory.py`, with no factory/selection mechanism. Rather than
+risk the internal scheduling engine (double-booking prevention, availability) by swapping in an
+external dependency, Google Calendar was built as an ADDITIVE sync capability — the same
+"push already-decided Klaros data outward, never replace the internal system of record"
+relationship `QuickBooksSyncService` already has with internal invoicing, applied to a second
+domain. `Appointment` had no `external_provider`/`external_id` columns (unlike `Invoice`/
+`Customer`/`Quote`, which already had the identical pair) — genuinely necessary, added via
+migration `0021`. RBAC needed no new permission: `READ_APPOINTMENTS`/`CREATE_APPOINTMENT`/
+`MANAGE_INTEGRATIONS` already existed and were semantically exact fits. `EventType.
+APPOINTMENT_CREATED`/`UPDATED`/`CANCELLED`/`CONFIRMED` already existed too.
+
+**Credential audit**: `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`GOOGLE_REDIRECT_URI` — none
+present in `backend/.env` at all. Real Google OAuth/API verification is `BLOCKED BY CREDENTIAL`
+for the entire phase; every finding below comes from static code audit and self-contained tests,
+never a live Google call.
+
+**Built, reusing existing architecture at every layer**:
+- `GoogleCalendarClient` (`app/integrations/google_calendar_client.py`) mirrors `QuickBooksClient`
+  exactly — direct httpx, real OAuth2 grants, real error classification
+  (`GoogleCalendarErrorType`), real retry-with-backoff, real bounded timeout.
+  `google_calendar_schemas.py` mirrors the schema-hardening pattern from the start.
+- OAuth connect flow (`app/api/v1/google_calendar_oauth.py`: `/authorize` + `/callback`) reuses
+  `create_oauth_state_token`/`decode_oauth_state_token` (the exact QuickBooks primitive, zero new
+  state-token code) and the existing `IntegrationConnectionService`. A real verifier
+  (`_google_calendar_verifier`) is registered, making a real `GET /calendars/primary` call.
+- `GoogleCalendarSyncService.sync_appointment` (`app/services/google_calendar_sync_service.py`)
+  is one idempotent entry point: creates the Google event the first time, updates it on later
+  calls, deletes/cancels it once the Klaros appointment is `CANCELLED` — a 404-on-delete
+  (already gone) and cancelling a never-synced appointment (never calls Google) are both safe
+  no-ops. A 401 triggers exactly one refresh-and-retry, matching QuickBooks' pattern.
+- Deliberately a manually-invoked tool (`calendar.sync_appointment_to_google`), not an automatic
+  `APPOINTMENT_CREATED`/`UPDATED` event-subscriber — same reasoning already established for
+  QuickBooks invoice sync (an external push should be an explicit, auditable action, not a side
+  effect that could silently retry against a flaky API on every internal event). Also exposed:
+  `calendar.list_google_calendars`, `calendar.check_google_availability` (a real `freeBusy`
+  query). All three tools are `AUTO` policy (move no money, reversible/idempotent).
+- Two new API routers: `app/api/v1/google_calendar.py` (authenticated tool-facing endpoints) and
+  `google_calendar_oauth.py` (the OAuth flow), following existing router/dependency conventions
+  exactly (same `_call_tool` helper pattern as `quotes.py`/`invoices.py`).
+- Frontend: a "Your Own Google Calendar" section added to `app/settings/integrations/page.tsx`
+  (mirrors the QuickBooks section exactly — real OAuth-redirect button, callback-result banner),
+  and a "Sync to Google"/"Re-sync" button added per-appointment on `app/calendar/page.tsx`,
+  showing "synced to Google" honestly when `external_provider === "google_calendar"`.
+  `finance.get_invoice`-style field additions: `appointments`' API response gained
+  `external_provider`/`external_id` (previously omitted even though the columns exist after this
+  phase's migration) so the frontend can show honest sync state.
+
+**Tests**: 39 new (`tests/test_google_calendar_integration.py`) — OAuth URL construction
+(including `access_type=offline`/`prompt=consent`), signed state-token round-trip and rejection
+(wrong provider, garbage token, genuinely expired token), `GoogleCalendarClient` retry/backoff/
+error-classification via real `httpx.MockTransport`, the full OAuth callback flow (missing
+params, invalid/wrong-provider state, Google's own `error` param, a missing-refresh-token
+rejection, a mocked-but-otherwise-real successful connect), the verifier (success/missing-
+fields/rejection), and the full sync service (not-connected, unknown-appointment error, event
+creation with external-id persistence, update-not-recreate on a second call, cancellation
+deleting the Google event, two no-op edge cases, 401-triggers-refresh-then-retry-once on two
+different calls, and two cross-tenant-isolation tests) plus tool-layer wiring and honest
+`NOT_CONNECTED` behavior through the real `ToolRegistry`.
+
+**Final counts**: SQLite 508 passed, 8 skipped, 0 failed (89.97s) — 469 Quotes-phase baseline +
+39 new. Real PostgreSQL 16.2 + real Redis: **516 passed, 0 failed, 0 skipped, 0 errors, 518.60s
+(8:38)** (run just before a small, additive, behaviorally-inert field-addition to the
+appointments API response — re-confirmed against the final code state on SQLite afterward, 508/
+8/0 unchanged). The dedicated `tests/test_google_calendar_integration.py` file run
+independently: **39/39 passed**. Migration `0021` verified from a genuinely empty SQLite file and
+a genuinely empty, isolated throwaway Postgres schema (never touching this environment's
+existing data — created, migrated, verified, `search_path` reset, schema dropped, confirmed
+clean afterward): all 21 migrations (0001→0021) apply cleanly, landing 95 tables, alembic head
+confirmed `0021`. `pip-audit`: unchanged, the one already-accepted `ecdsa` finding only — no new
+dependency (direct httpx again). Repository secret scan: no hardcoded key/secret pattern found;
+no `logger.*` call anywhere in the new code includes a token/secret (grepped every new file).
+
+**Frontend**: written (Google Calendar connect UI, per-appointment sync button, API client
+functions) but genuinely NOT VERIFIED — no `node`/`npm` binary anywhere in this sandbox instance
+(re-checked again this phase); no typecheck, build, or browser verification performed or claimed.
+
+**Credential status**: `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`GOOGLE_REDIRECT_URI` all
+confirmed absent from `backend/.env` at the start of this phase — real-provider verification (an
+actual Google OAuth consent flow, a real token exchange, a real event landing in a real Google
+Calendar) is `BLOCKED BY CREDENTIAL`, not attempted, not faked.
+
+## Phase 15 — Quote Acceptance + Deposit Collection
+
+Closes the commercial loop the Quotes phase left open: quote created → sent → customer accepts →
+deposit determined → real Stripe Checkout → webhook → payment recorded → quote deposit-paid →
+downstream Job created.
+
+**Current-state audit**: quote acceptance already existed (`QuoteService.decide`, Phase 14) and
+already auto-created a `Job` immediately on `ACCEPTED` — with no deposit concept at all. `Payment`
+already had `provider`/`external_id` (reusable directly for a Stripe PaymentIntent id) but had no
+relationship to `Quote` — `PaymentAllocation.invoice_id` is `NOT NULL`, so a deposit (which has no
+`Invoice` yet) genuinely could not be represented with the existing allocation path. `StripeClient.
+create_payment_intent` existed with zero real callers; `create_checkout_session` (the hosted-page
+flow `finance.create_stripe_checkout_session` already uses for invoices) was reused instead, per
+"don't build a payment portal the frontend can't support" — no Stripe.js/Elements needed anywhere.
+The existing `create_quote_view_token`/`decode_quote_view_token` (tenant+quote bound, purpose-typed,
+90-day expiry) already satisfied every STEP 4 security requirement and is reused unchanged for the
+deposit-checkout step — no new token type.
+
+**State machine**: two new `QuoteStatus` members, `DEPOSIT_PENDING`/`DEPOSIT_PAID`, added between
+`ACCEPTED` and `CONVERTED` — reached ONLY when a quote has a deposit configured. A no-deposit quote's
+accept flow is byte-for-byte the pre-Phase-15 behavior (`ACCEPTED` → immediate `Job` creation →
+`CONVERTED`); every Phase 14 test passes unchanged. A deposit-configured quote instead freezes
+`deposit_amount` (Decimal-safe: `PERCENTAGE` quantized to cents, `FIXED` used directly, both clamped
+to `(0, quote.total]`) and holds at `DEPOSIT_PENDING` — the `Job` is only created once the deposit is
+actually paid (`QuoteService.mark_deposit_paid`, called from the webhook), extending rather than
+replacing the existing "customer's own decision is the approval boundary" rule from Phase 14.
+
+**Built, reusing existing architecture at every layer**:
+- `quotes.deposit_type`/`deposit_value`/`deposit_amount` (migration `0022`) — configuration + the
+  frozen due amount, immutable once accept happens (no code path ever recomputes it afterward).
+- `payments.quote_id` (migration `0022`, nullable/indexed) — links a deposit `Payment` directly to
+  its `Quote`; `PaymentService.record_payment` gained an optional `quote_id` param and already
+  supported `allocations=[]` as a safe no-op, so no new payment ledger was needed.
+- `app/services/quote_deposit_service.py::QuoteDepositService` — creates the real, hosted Stripe
+  Checkout Session for a quote's frozen deposit amount, reusing `StripeClient` and (promoted from
+  private to shared) `resolve_stripe_secret_key` — no second Stripe client, no duplicated
+  credential-resolution logic. Idempotency key is `klaros-quote-deposit-{quote_id}-{deposit_amount}`
+  (stable because the amount is frozen), same pattern as the invoice checkout flow.
+- Webhook (`app/api/v1/webhooks.py`): `payment_intent.succeeded` now branches on
+  `metadata.purpose == "quote_deposit"` before falling through to the unchanged invoice path.
+  The deposit branch verifies the claimed `tenant_id` against the quote's own `tenant_id` **before**
+  recording any `Payment` — a real gap caught by this phase's own tenant-isolation test (a
+  forged/mismatched `tenant_id` would otherwise have created an orphan `Payment` row scoped to the
+  wrong tenant even though it could never advance that tenant's own quote; see BUGS FOUND below).
+  Duplicate delivery is safe at both layers: `record_payment`'s own `(tenant_id, provider,
+  external_id)` uniqueness, and `mark_deposit_paid`'s own already-`DEPOSIT_PAID`/`CONVERTED` no-op.
+- Two new staff-facing `ToolRegistry` tools (`finance.get_quote_deposit_status`, reusing
+  `VIEW_FINANCIALS`; `finance.create_quote_deposit_checkout_session`, reusing `COLLECT_PAYMENT` —
+  finally giving that pre-existing, previously-unused permission a real caller), both `AUTO` policy
+  (same "generates a payment LINK, no money moves until the signed webhook confirms it" reasoning as
+  `finance.create_stripe_checkout_session`).
+- Public, unauthenticated endpoints (`app/api/v1/public_quotes.py`): `POST /{quote_id}/deposit/
+  checkout`, reusing the existing `quote_view` token exactly. Deliberately does NOT accept
+  `success_url`/`cancel_url` from the caller (unlike the staff-only tool) — both are built
+  server-side from `FRONTEND_BASE_URL` to close off an open-redirect vector on a no-login surface.
+  `GET /{quote_id}` gained `deposit_required`/`deposit_amount` in its response; `deposit_type`/
+  `deposit_value` deliberately excluded (internal configuration, not customer-facing).
+- Staff-facing API (`app/api/v1/quotes.py`): `GET/POST /{quote_id}/deposit[/checkout]`, plus
+  `deposit_type`/`deposit_value` accepted directly in the existing create/update-draft request
+  bodies (already generic `dict` passthrough to the tool layer — no router change needed there).
+- QuickBooks: deliberately NOT touched this phase — `QuickBooksSyncService` only syncs `Invoice`
+  today; representing a deposit `Payment` in QuickBooks would need real payment-sync logic that
+  doesn't exist yet. Documented as a known limitation below rather than built unsafely.
+- Frontend: **BLOCKED BY ENVIRONMENT** — no `node`/`npm` binary anywhere in this sandbox (re-checked
+  this phase); no frontend code was written or claimed verified.
+
+**Tests**: 25 new (`tests/test_quote_deposit.py`) — deposit configuration validation (percentage
+>100%/fixed exceeding total/zero rejected), no-deposit accept unchanged, deposit accept holds at
+`DEPOSIT_PENDING` with no `Job` yet, double-accept rejected, decline still works, Decimal-safe
+percentage rounding, deposit-amount immutability, Stripe checkout-session creation (success,
+wrong-state rejection, no-deposit rejection, missing-credential honest 503, idempotency-key
+stability via a real `httpx.MockTransport` request-header assertion), the real webhook endpoint
+(deposit success records `Payment`+converts the quote+creates the `Job`, duplicate delivery never
+double-records or double-converts, missing `quote_id` metadata recorded `FAILED` not silently
+dropped, the ordinary invoice-payment path proven unaffected by the new branch), tenant isolation
+(the cross-tenant fix above, asserted directly), RBAC on both new tools (technician denied, owner/
+accountant-permission path allowed), and a full realistic E2E (create with deposit → send → accept
+→ checkout session → webhook → `Payment` + `CONVERTED` quote + real `Job`, verified via the public
+view endpoint too).
+
+**Final counts**: SQLite 533 passed, 8 skipped, 0 failed (102.48s) — 508 Phase-14 baseline + 25 new.
+Real PostgreSQL 16.2 + real Redis 7 (isolated schema, `public` schema confirmed untouched — 94
+tables before and after both runs, schema created/migrated/verified/dropped, role `search_path`
+reset each time): **541 passed, 0 failed, 0 skipped (569.86s)**. The dedicated
+`tests/test_quote_deposit.py` file run independently: **25/25 passed**. Migration `0022` verified
+from a genuinely empty SQLite file and a genuinely empty, isolated throwaway Postgres schema: all 22
+migrations (0001→0022) apply cleanly, alembic head confirmed `0022`. No dependency changes. Secret
+scan of every new/changed file: clean.
+
+**Credential status**: `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` both confirmed absent from
+`backend/.env` — real-provider verification (a real Stripe test-mode PaymentIntent, a real webhook
+delivery) is `BLOCKED BY CREDENTIAL`, not attempted, not faked. Every finding above comes from the
+mocked-httpx-transport and real-webhook-endpoint tests described above, never a live Stripe call.
+
+**Bug found and fixed this phase**: the initial webhook implementation recorded a deposit `Payment`
+before checking that the quote named in `metadata.quote_id` actually belonged to the tenant named in
+`metadata.tenant_id` — a mismatched/forged `tenant_id` (impossible without the webhook secret, but
+still a real logic gap worth closing) would have created an orphan `Payment` row under the wrong
+tenant. Caught by this phase's own `test_deposit_payment_is_tenant_isolated` test; fixed by looking
+the `Quote` up scoped to the claimed `tenant_id` before ever calling `record_payment`.
+
+## Phase 16 — Customer-Facing Quote Acceptance + Deposit UX
+
+Builds the customer-facing UI on top of the already-verified Phase 15 backend — no backend
+production code changed this phase; the entire deposit-collection loop (quote acceptance, deposit
+computation, Stripe Checkout, webhook confirmation, tenant isolation) was already real and tested.
+
+**Current-state audit**: `/quotes/view/[id]` (`frontend/app/quotes/view/[id]/page.tsx`) already
+existed as Klaros' first customer-facing, no-login page — real `quote_view` token handling,
+accept/decline actions, line-item table. It had no knowledge of deposits at all: `PublicQuote`
+(`frontend/lib/api.ts`) was missing the `deposit_required`/`deposit_amount` fields the backend's
+`GET /public/quotes/{id}` had already been returning since Phase 15, and there was no frontend
+function for the deposit-checkout endpoint (`POST /{id}/deposit/checkout`) at all. No existing
+frontend Stripe-redirect pattern existed anywhere in the codebase to reuse (the invoice-side
+Checkout tool is staff-only, called through the `ToolRegistry`, never surfaced in the frontend) —
+this phase establishes that pattern (`window.location.href = checkout_url`) for the first time.
+
+**Environment**: `node`/`npm`/`yarn`/`pnpm` all confirmed absent from this sandbox (re-checked this
+phase, same result as every prior phase) — frontend work is written and statically reviewed but
+**BLOCKED BY ENVIRONMENT** for typecheck/build/browser verification.
+
+**Built**:
+- `PublicQuote` gained `deposit_required`/`deposit_amount`, matching the backend's actual
+  (already-redacted) response shape exactly — no `deposit_type`/`deposit_value` (never exposed to
+  an unauthenticated customer, per Phase 15's design).
+- `createPublicQuoteDepositCheckout(quoteId, token)` — the one new API function, reusing the same
+  `quote_view` token as every other public-quote call; sends no body, no amount, no redirect URL.
+- `/quotes/view/[id]` extended with the full deposit state machine: a pre-accept notice when a
+  deposit is configured (amount deliberately not shown before accept — the backend doesn't freeze
+  or expose it until then), a `DEPOSIT_PENDING` view with a "Pay deposit securely with Stripe"
+  button that full-page-navigates to the real Stripe-hosted Checkout URL, `DEPOSIT_PAID`/
+  `CONVERTED` confirmation views showing the paid deposit amount and a derived remaining balance
+  (computed client-side from two already-server-supplied numbers, display-only, not authoritative),
+  and the no-deposit accept/decline flow left completely unchanged.
+- **Stripe return handling**: the `?deposit=success|cancelled` query param Stripe redirects back
+  with is treated as a UI hint only — never as proof of payment. On `success`, the page polls the
+  real `GET /public/quotes/{id}` endpoint (bounded: 5 attempts, 2.5s apart) until the server-side
+  status genuinely advances past `DEPOSIT_PENDING`, showing a "confirming your payment" state
+  throughout and an honest "still waiting" fallback (with a manual retry) if the webhook hasn't
+  landed by the time polling gives up — it never fabricates a paid state from the query param. On
+  `cancelled`, shows a dismissible notice and leaves the Pay button available to retry.
+- Duplicate-submission guards on all three actions (accept/decline/pay-deposit) via a shared `busy`
+  flag, checked both in the handler and via `disabled` on every button.
+
+**Security review** (STEP 6 checklist, each verified, not assumed):
+- The `quote_view` token remains the only authorization boundary — the new deposit-checkout
+  function sends nothing else; `tenant_id` is never accepted from the browser anywhere in this
+  phase's code (the backend derives it exclusively from the verified token, unchanged from Phase 15).
+- Deposit amounts are never calculated in the frontend — every dollar figure rendered comes
+  directly from a backend response field; the "remaining balance" shown post-payment is a display-
+  only subtraction of two already-server-supplied numbers, never fed back into any request.
+- No Stripe secret, webhook secret, or other credential appears anywhere in the new frontend code —
+  grepped explicitly.
+- No open redirect: `window.location.href` is only ever set to the `checkout_url` the backend
+  itself returns (which the backend builds from Stripe's own response and its own
+  `FRONTEND_BASE_URL`-derived success/cancel URLs — never from anything the browser sent).
+- **A regression test suite was added this phase specifically to prove three of these properties
+  server-side**, not just assumed from the frontend's own behavior (`tests/
+  test_quote_deposit_public_ux.py`, 9 new tests): the deposit-checkout endpoint rejects a garbage
+  token, a token from a different quote, and a token from a different tenant (all 400); rejects
+  checkout attempts on an already-`CONVERTED` quote and a quote that hasn't been accepted yet (both
+  409); proves the actual Stripe-bound checkout amount is the server-frozen `deposit_amount` even
+  when a forged JSON body tries to smuggle a different amount (the endpoint takes no body at all,
+  proven by inspecting the real outbound Stripe request); proves a client-supplied `evil_redirect`
+  query param has zero effect on the success/cancel URLs actually sent to Stripe; and proves the
+  public view endpoint never leaks `deposit_type`/`deposit_value`, only the customer-appropriate
+  `deposit_required`/`deposit_amount`. No gap was found in the existing Phase 15 backend by this
+  review — all 9 tests passed on first correct assertion (one test had a wrong assertion about
+  urlencoded field naming, fixed in the test itself, not the code).
+
+**Tests**: 9 new (`tests/test_quote_deposit_public_ux.py`), all passing. Combined with the existing
+Phase 15 suite, SQLite: **542 passed, 8 skipped, 0 failed (128.68s)**. Real PostgreSQL 16.2 + real
+Redis (isolated schema, `public`'s 94 tables confirmed untouched before/after): **550 passed, 0
+failed, 0 skipped (482.44s)**. No migration — no schema change was needed or made this phase.
+
+**Frontend verification**: written and manually, carefully static-reviewed (JSX structure, type
+shapes, hook dependency arrays, duplicate-submission guards) — genuinely **NOT** typechecked, not
+built, not browser-verified. `node`/`npm` remain absent from this sandbox; no fabricated result is
+claimed for any of those steps.
+
+## Phase 17 — QuickBooks Deposit & Payment Synchronization
+
+Closes the accounting side of the Quote → Deposit → Payment lifecycle: a real Stripe deposit
+`Payment` (Phase 15/16) can now be pushed to a tenant's connected QuickBooks Online company as a
+real QBO Payment applied against that job's invoice.
+
+**Current-state audit**: confirmed `Payment.provider`/`external_id` already identify the
+ORIGINATING provider (Stripe) and could not be reused for a QuickBooks id without colliding with
+that identity — a genuinely necessary new column, `Payment.quickbooks_payment_id` (migration
+`0023`), mirroring the same "secondary accounting-sync target" relationship `Invoice` already has
+via its own `external_provider`/`external_id`. Confirmed — critically — that **no Invoice exists
+at the moment a deposit is paid**: `QuoteService._convert_to_job` (Phase 15) creates only a `Job`;
+Invoice creation (`finance.trigger_invoice_from_job`) and its own QuickBooks sync
+(`finance.sync_invoice_to_quickbooks`, Phase 13) remain separate, staff-triggered steps, unchanged.
+This ruled out representing the deposit as a QuickBooks Payment-linked-to-Invoice immediately, and
+ruled out inventing a SalesReceipt (which would misrepresent the deposit as a completed sale rather
+than a payment toward a future invoice) — the correct design instead treats "resolve the associated
+Invoice" as a genuine precondition that can legitimately fail (not yet created, or created but not
+yet synced), reported as a specific, distinguishable, retryable error rather than silently skipped
+or worked around.
+
+**Built, reusing existing architecture at every layer**:
+- `Payment.quickbooks_payment_id` (migration `0023`) — nullable, the local idempotency boundary
+  (its presence means "already synced," matching `Invoice.external_id`'s existing role exactly).
+- `QuickBooksClient.create_payment`/`get_payment` (`app/integrations/quickbooks_client.py`) — same
+  shape as every other client method (bounded timeout, real retry/backoff, real error
+  classification, 401 never retried). `create_payment` posts a QBO Payment with
+  `Line[].LinkedTxn` applying it to the invoice (the standard "receive payment against an invoice"
+  shape), and passes Intuit's own documented `?requestid=` write-deduplication query param — a
+  deterministic value derived from the Klaros `Payment.id` — closing the "QuickBooks accepted the
+  write, then this process crashed before persisting `quickbooks_payment_id`" retry window a purely
+  local DB check cannot close. This specific mechanism has not been verified against a real
+  QuickBooks account (no credentials) — implemented per Intuit's documented API contract, not
+  fabricated behavior.
+- `QuickBooksPaymentSyncService.sync_deposit_payment(tenant_id, payment_id)`
+  (`app/services/quickbooks_payment_sync_service.py`) — the only two arguments accepted are
+  `tenant_id` and `payment_id`; every accounting value (amount, QBO customer id, QBO invoice id)
+  is read from Klaros' own persisted, tenant-scoped records, never accepted from a caller. Resolves
+  Payment → Quote → Job → Invoice → QBO customer/invoice ids, tenant-scoped at every hop, failing
+  before any QuickBooks API call for a wrong-tenant/wrong-type/unpaid/not-yet-invoiced payment.
+  Idempotent: a Payment already carrying a `quickbooks_payment_id` is a safe no-op.
+- **Event integration** (`app/events/finance_handlers.py`): subscribes to the already-existing
+  `EventType.QUOTE_DEPOSIT_PAID` and attempts the sync automatically — reusing the `EventBus`'s own
+  existing bounded retry + dead-letter queue rather than a second background mechanism. This is
+  EXPECTED to fail (not a transient error) on most first attempts, since no invoice has usually
+  been created for the job yet at that moment — it lands in the dead-letter queue, which IS the
+  "visibly ERROR/PENDING_RETRY, safely retryable later" state; `EventBus.replay()` (or the manual
+  tool below) completes it once staff has created and synced the invoice. The handler never touches
+  `Payment`/`Quote` state either way — those were already committed before the triggering event was
+  even published (the existing outbox pattern), so a QuickBooks failure can never roll back a real
+  Stripe payment or a real quote conversion.
+- `finance.sync_deposit_payment_to_quickbooks` (ToolRegistry tool, reuses `SEND_INVOICE`
+  permission and `AUTO` policy, same reasoning as `finance.sync_invoice_to_quickbooks`) — the
+  reliable, staff-triggered counterpart to the automatic attempt, calling the identical service
+  method.
+
+**Tests**: 30 new (`tests/test_quickbooks_deposit_payment_sync.py`, stable across repeated runs) —
+client-level (success, malformed/unknown-field responses, 401/403 never retried, transient 5xx
+retried, permanent 4xx never retried, timeout, no token leakage in error messages), service-level
+(every precondition failure — not-found, wrong payment type, unpaid, no quote, no job, no invoice,
+invoice-not-yet-synced, customer-not-synced, not-connected — each proven to fail with a specific
+exception, generally before any QuickBooks call), tenant isolation (cross-tenant payment access,
+cross-tenant QuickBooks connection use), amount integrity (the QBO-bound amount is always the real
+persisted `Payment.amount`), idempotency (already-synced no-op, duplicate tool invocation, the
+`requestid` staying deterministic across a simulated partial-completion retry), and event/worker
+integration (the real registered handler picks up `QUOTE_DEPOSIT_PAID` and syncs when the
+precondition is met; a failed automatic attempt dead-letters without touching Payment/Quote state;
+a dead-lettered event replays successfully once the invoice exists). Every scenario built through
+the REAL services (`QuoteService`, `PaymentService`, `InvoiceService`, `QuickBooksSyncService`)
+rather than hand-crafted rows.
+
+**Final counts**: SQLite **572 passed, 8 skipped, 0 failed (116.62s)** — 542 Phase-16 baseline + 30
+new. Real PostgreSQL 16.2 + real Redis (isolated schema, `public`'s 94 tables confirmed untouched
+before/after): **580 passed, 0 failed, 0 skipped (607.33s)**. The dedicated
+`tests/test_quickbooks_deposit_payment_sync.py` file run independently, 3 times in a row to
+confirm stability: **30/30 passed** each time. Migration `0023` verified from a genuinely empty
+SQLite file and a genuinely empty, isolated throwaway Postgres schema — 23/23 migrations, head
+`0023`.
+
+**Credential status**: `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_REDIRECT_URI`
+and `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` all confirmed absent from `backend/.env` — real
+QuickBooks and Stripe verification remain `BLOCKED BY CREDENTIAL`, not attempted, not faked.
+
+**Frontend**: not touched this phase — no backend-adjacent invoice/payment UI change was judged
+necessary for a purely accounting-sync capability with no direct customer-facing surface, and
+`node`/`npm` remain absent from this sandbox regardless (re-confirmed).
+
+## Phase 18 — QuickBooks Refund Synchronization
+
+Closes the last unsynced piece of the finance-to-accounting chain: a real, completed Klaros
+`Refund` can now be pushed to a tenant's connected QuickBooks Online company as a `RefundReceipt`
+applied against the original `Payment` it reverses.
+
+**Current-state audit**: confirmed `Refund` has no external-identifier column of any kind
+(`Payment` already has `provider`/`external_id` for Stripe and `quickbooks_payment_id` for QBO,
+Phase 17; `Refund` had neither) — a genuinely necessary new column,
+`Refund.quickbooks_refund_receipt_id` (migration `0024`). Confirmed the real Stripe refund happens
+inside `PaymentService.decide_refund` (Klaros-initiated) and separately inside
+`reconcile_external_refund` (a Stripe-Dashboard-initiated refund reconciled after the fact via the
+`charge.refunded` webhook) — **both paths already publish `EventType.PAYMENT_REFUNDED` at exactly
+the moment `Refund.status` becomes `COMPLETED`**, so no new `EventType` was needed. Determined the
+correct QuickBooks representation from the existing accounting model, not guessed: a `RefundReceipt`
+(QuickBooks' own documented object for "money already received, now being refunded back"), not a
+`CreditMemo` (which represents an unapplied credit toward FUTURE purchases — wrong model for money
+that has genuinely left the business via Stripe) and not a void/edit of the original `Payment`
+(would destroy the historical record and can't represent Klaros' own PARTIAL-refund capability
+correctly, since `Refund.amount` can be less than `Payment.amount`).
+
+**A real bug found and fixed this phase**: `QuickBooksPaymentSyncService.sync_deposit_payment`
+(Phase 17) rejected any `Payment` whose status wasn't exactly `SUCCEEDED` — meaning a payment that
+had SINCE been refunded (status `REFUNDED`/`PARTIALLY_REFUNDED`) could never be synced to
+QuickBooks at all, permanently, even though it genuinely happened and deserves its own QuickBooks
+Payment record regardless of a later refund. Found via this phase's own dead-letter/replay test
+(a refund completed against a not-yet-synced payment, then an attempt to sync that payment
+afterward). Fixed by widening the eligibility check to accept `SUCCEEDED`/`PARTIALLY_REFUNDED`/
+`REFUNDED` (only `PENDING`/`FAILED` — a payment that never actually succeeded — are still
+rejected); all existing Phase 17 tests still pass unchanged.
+
+**Built, reusing existing architecture at every layer**:
+- `Refund.quickbooks_refund_receipt_id` (migration `0024`) — the local idempotency boundary,
+  mirroring `Payment.quickbooks_payment_id`'s exact role.
+- `QuickBooksClient.create_refund_receipt`/`get_refund_receipt` — same shape as every other client
+  method (bounded timeout, real retry/backoff, real error classification, 401/403 never retried).
+  `create_refund_receipt` links the RefundReceipt to the original QBO Payment via `Line[].LinkedTxn`
+  (`TxnType: "Payment"`) and passes the same Intuit-documented `?requestid=` write-deduplication
+  parameter used for Payment sync (deterministic, derived from `Refund.id`) — not independently
+  verified against a real QuickBooks account (no credentials).
+- `QuickBooksRefundSyncService.sync_refund_to_quickbooks(tenant_id, refund_id)` — only those two
+  arguments; every accounting value (amount, QBO customer/payment ids) is read from Klaros' own
+  tenant-scoped records. The genuine precondition it enforces: the ORIGINAL `Payment` must already
+  carry a `quickbooks_payment_id` (Phase 17) — a refund can't reference a QuickBooks Payment that
+  was never created. As of today, only Stripe quote-deposit payments have a sync path to reach that
+  state; a refund against an ordinary invoice payment fails this precondition with a specific,
+  honest error — a pre-existing Phase 17 scope boundary this phase inherits and documents, not one
+  it silently expands. Idempotent: a Refund already carrying a QBO id is a safe no-op.
+- **Event integration**: a new subscriber, `finance_quickbooks_refund_sync`, on the ALREADY-EXISTING
+  `EventType.PAYMENT_REFUNDED` — reusing the `EventBus`'s own bounded retry + dead-letter queue, no
+  second background mechanism. Expected to dead-letter on most first attempts when the original
+  payment hasn't been synced yet; `EventBus.replay()` or the manual tool completes it once ready.
+  Never touches `Refund`/`Payment` state either way (already committed before the event publishes).
+- `finance.sync_refund_to_quickbooks` (ToolRegistry tool, reuses `SEND_INVOICE` permission and
+  `AUTO` policy, same reasoning as the two QuickBooks-sync tools before it).
+
+**Tests**: 30 new (`tests/test_quickbooks_refund_sync.py`, stable across 3 repeated runs) — client
+(success, malformed/unknown-field responses, 401/403/429/5xx/4xx/timeout classification, no token
+leakage), service (every precondition failure — not-found, wrong status, missing payment, payment
+not synced, customer not synced, not connected — plus full success, PARTIAL-refund amount
+integrity, 401-refresh-retry), tenant isolation (cross-tenant refund access, cross-tenant
+QuickBooks connection use), idempotency (already-synced no-op, duplicate tool call, deterministic
+requestid across a simulated partial-completion retry), and event/worker integration (real handler
+syncs on `PAYMENT_REFUNDED` when ready, a failed attempt dead-letters without touching Refund/
+Payment state, a dead-lettered event replays successfully once the original payment gets synced).
+Built through the REAL services (`QuoteService`, `PaymentService`, `InvoiceService`,
+`QuickBooksSyncService`, `QuickBooksPaymentSyncService`) including a REAL (mocked) Stripe refund
+call through `PaymentService.decide_refund`, not a shortcut.
+
+**Final counts**: SQLite **602 passed, 8 skipped, 0 failed (110.34s)** — 572 Phase-17 baseline + 30
+new. Real PostgreSQL 16.2 + real Redis (isolated schema, `public`'s 94 tables confirmed untouched
+before/after): **610 passed, 0 failed, 0 skipped (591.87s)**. The dedicated
+`tests/test_quickbooks_refund_sync.py` file run independently, 3 times in a row to confirm
+stability: **30/30 passed** each time. Migration `0024` verified from a genuinely empty SQLite file and a genuinely empty, isolated
+throwaway Postgres schema (`public`'s 94 tables confirmed untouched before/after) — 24/24
+migrations, head `0024`.
+
+**Credential status**: `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_REDIRECT_URI`
+and `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` all confirmed absent from `backend/.env` — real
+verification remains `BLOCKED BY CREDENTIAL`, not attempted, not faked.
+
+**Frontend**: not touched — same reasoning as Phase 17 (no compelling customer-facing surface for
+a pure accounting-sync capability); `node`/`npm` remain absent from this sandbox regardless.
+
+## Phase 19 — Ordinary Invoice Payment → QuickBooks Payment Sync
+
+Extends Phase 17's QuickBooks payment sync (previously deposit-only) to cover ORDINARY invoice
+payments too — the scope boundary Phase 17/18 both explicitly documented as a known limitation.
+
+**Current-state audit**: confirmed an ordinary invoice payment is represented identically to a
+deposit payment at the `Payment` row level (`provider="stripe"`, `status`), differing only in
+`quote_id` (`None` for an invoice payment) and its relationship to the invoice — a deposit payment
+resolves its invoice indirectly via `Quote → Job → Invoice`, while an ordinary payment is linked
+directly via one or more `PaymentAllocation` rows. `Payment.quickbooks_payment_id` (Phase 17) is
+generic enough to serve both origins with zero schema change — confirmed by inspection, not
+assumed, and no migration was needed this phase.
+
+**Eligibility rule** (established from the models, not guessed): a payment is an ordinary
+invoice-payment sync candidate when `quote_id is None` AND `provider == "stripe"` AND status is
+`SUCCEEDED`/`PARTIALLY_REFUNDED`/`REFUNDED` (the Phase 18 fix's widened set) AND it has EXACTLY ONE
+distinct `PaymentAllocation.invoice_id`. Zero allocations fails as `NoInvoiceAssociatedError`;
+more than one distinct invoice (a split payment) fails as `MultipleInvoicesNotSupportedError` —
+real QuickBooks Payments CAN represent a split via multiple `Line` entries, but building that was
+judged genuinely out of this phase's bounded scope, and failing cleanly beats a silent partial sync
+of only one of the invoices.
+
+**Built, extending the existing service rather than creating a parallel one**:
+- `QuickBooksPaymentSyncService.sync_invoice_payment_to_quickbooks(tenant_id, payment_id)` — the
+  new public method, resolving Invoice/Customer via the payment's own `PaymentAllocation` instead
+  of Quote/Job. Refactored the shared "resolve QuickBooks connection, call `create_payment` with
+  401-refresh-retry, persist `quickbooks_payment_id`" logic into a private
+  `_create_and_persist_payment` helper used by BOTH this method and the unchanged Phase 17
+  `sync_deposit_payment` — no duplicated HTTP/retry/persistence logic between the two paths. Uses
+  its own deterministic `requestid` namespace (`klaros-invoice-payment-{id}`, distinct from
+  deposit's `klaros-deposit-payment-{id}`) for Intuit's documented write-deduplication.
+- `finance.sync_invoice_payment_to_quickbooks` (ToolRegistry tool, reuses `SEND_INVOICE`
+  permission and `AUTO` policy — identical reasoning to the two prior QuickBooks-sync tools).
+- **Event integration**: reuses the ALREADY-EXISTING `EventType.PAYMENT_RECEIVED` (published by
+  `PaymentService.record_payment` for every payment, deposit or ordinary) — no new EventType. The
+  new subscriber silently no-ops (not an error, not a dead-letter) for a deposit payment
+  (`quote_id is not None`) or a non-Stripe payment, since those aren't its job; proven by a
+  dedicated test asserting `dead_lettered == 0` and the `EventProcessingRecord` still shows
+  `SUCCESS` for that no-op. Reuses the `EventBus`'s own bounded retry + dead-letter queue for the
+  real failure case (invoice not yet synced) — never touches `Payment`/`Invoice` state on failure.
+
+**Refund compatibility, verified not assumed**: `QuickBooksRefundSyncService` (Phase 18) needed
+**zero code changes** — it only ever checks `Payment.quickbooks_payment_id`, never `quote_id` — so
+a refund against a now-synced ordinary invoice payment already flows through the existing,
+unmodified refund-sync service correctly. Proven end-to-end by a dedicated test exercising the full
+chain: Payment → QuickBooks Payment → Refund → QuickBooks RefundReceipt.
+
+**Tests**: 25 new (`tests/test_quickbooks_invoice_payment_sync.py`, stable across 3 repeated runs)
+— eligibility (deposit-vs-invoice-payment method cross-rejection, non-Stripe rejection, unpaid
+rejection, no-allocation rejection, multi-invoice rejection, invoice-not-synced, customer-not-
+synced, not-connected), full success + 401-refresh-retry, idempotency (no-op re-sync, duplicate
+invocation, deterministic requestid across a simulated partial-completion retry), tenant isolation
+(cross-tenant payment, a forged cross-tenant `PaymentAllocation.invoice_id`, cross-tenant
+QuickBooks connection), event/worker integration (real handler syncs on `PAYMENT_RECEIVED`, a
+deposit payment on the same event type is a proven silent no-op, a failed attempt dead-letters
+without mutating Payment/Invoice state, a dead-lettered event replays successfully), the full
+refund-compatibility chain, and RBAC/tool-layer wiring. Built through the real services
+(`PaymentService`, `QuickBooksSyncService`), no hand-crafted shortcuts.
+
+**Final counts**: SQLite **627 passed, 8 skipped, 0 failed (122.33s)** — 602 Phase-18 baseline + 25
+new. Real PostgreSQL 16.2 + real Redis (isolated schema, `public`'s 94 tables confirmed untouched
+before/after): **635 passed, 0 failed, 0 skipped (570.50s)**. No migration this phase — `Payment.quickbooks_payment_id` already existed and needed no change.
+
+**Credential status**: `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_REDIRECT_URI`
+and `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` all confirmed absent — real verification remains
+`BLOCKED BY CREDENTIAL`, not attempted, not faked.
+
+**Frontend**: N/A — no user-facing workflow materially benefits from a UI change for this
+backend-internal accounting-sync extension; not touched, not claimed verified.
+
+## Phase 20 — Accounting Lifecycle Audit + Split-Payment Hardening
+
+Audits the complete Customer→Invoice→Payment→PaymentAllocation→Refund→QuickBooks relationship
+(requested explicitly, to determine whether Phase 19's split-payment limitation should remain or
+be removed) and, having found the underlying data model genuinely already supports it, removes
+that limitation with real QuickBooks multi-line support. Also finds and fixes a real,
+independently-discovered bug in `PaymentService.decide_refund`'s cumulative refund-status
+tracking.
+
+**Accounting data-model audit** (traced from actual service code, not assumed from the schema):
+1. one payment → one invoice: the standard case, one `PaymentAllocation` row.
+2. **one payment → multiple invoices: genuinely supported by `PaymentService.record_payment`
+   today** — `allocations` is already a list, each independently validated against its own
+   invoice's `amount_due`, each creating its own `PaymentAllocation` row; real and reachable via
+   `finance.record_test_payment`, not merely a theoretical schema shape.
+3. partial payment: `alloc.amount` can be less than `invoice.amount_due`; `Invoice.status` becomes
+   `PARTIALLY_PAID` until fully covered.
+4. multiple payments → one invoice: `_recompute_invoice` sums ALL `PaymentAllocation` rows for
+   that invoice across every `Payment`, not just the most recent — fully supported.
+5. one refund → one payment: `Refund.payment_id` is a single FK, always exactly one.
+6. partial refund: `Refund.amount` can be less than `Payment.amount`.
+7. multiple refunds against one payment: `PaymentService.request_refund` sums existing
+   non-`REJECTED` refunds and guards against exceeding `Payment.amount` — multiple partial
+   refunds are a real, supported flow.
+8. **fully refunded payment via multiple partial refunds — found broken, now fixed** (see below).
+9. payment before invoice creation: this is exactly the Phase 15 deposit-payment shape
+   (`Payment.quote_id` set, no `Invoice` yet) — unchanged, still handled by
+   `sync_deposit_payment`.
+10. invoice payment after QuickBooks invoice sync: the precondition `sync_invoice_payment_to_
+    quickbooks` already enforced (Phase 19), unchanged.
+
+**A real bug found and fixed**: `PaymentService.decide_refund` set `Payment.status` by comparing
+**this** refund's own amount against `Payment.amount`, not the cumulative total refunded against
+that payment (including this one). A payment fully refunded via several partial refunds — e.g. two
+50% refunds decided separately, or three ~34% refunds — never reached `PaymentStatus.REFUNDED`,
+staying `PARTIALLY_REFUNDED` indefinitely, since each individual refund's own amount was always
+less than the full payment amount even though their sum equalled it. Inconsistent with
+`PaymentService.reconcile_external_refund`, which already used the correct cumulative comparison
+for externally-initiated (Stripe-Dashboard) refunds. Fixed by computing the cumulative total of
+`COMPLETED` refunds against the payment (including the one just approved) and comparing THAT
+against `Payment.amount`, matching the already-correct `reconcile_external_refund` pattern. 5 new
+regression tests (`tests/test_payment_refund_status_cumulative.py`): two-partial-refunds-sum-to-
+full, three-equal-partial-refunds, a single-partial-refund regression (must still be
+`PARTIALLY_REFUNDED`, not overcorrected), a single-full-refund regression (must still work), and a
+rejected-refund-never-counted-toward-the-total regression.
+
+**Split-payment QuickBooks sync — the limitation removed, not just documented**: since the
+underlying data model genuinely supports one `Payment` split across multiple `Invoice`s,
+`QuickBooksClient.create_payment` was extended to accept a list of `(invoice_id, amount)` line
+pairs (previously a single pair) — one real QBO `Line` entry per allocation, `TotalAmt` as their
+sum, exactly how QuickBooks itself represents a payment applied across several invoices.
+`QuickBooksPaymentSyncService.sync_invoice_payment_to_quickbooks` now resolves EVERY
+`PaymentAllocation` for the payment (not just the first), requiring each allocated invoice to
+independently already be synced to QuickBooks — if any one of several isn't, the error names
+which invoice. A new, genuine precondition was also identified and enforced: a single QuickBooks
+Payment has exactly one `CustomerRef`, so if a payment's allocated invoices somehow belonged to
+different QuickBooks customers (not reachable through real Klaros code paths today, but not
+structurally impossible), syncing fails cleanly (`AllocationSpansMultipleCustomersError`) rather
+than silently picking one customer. `sync_deposit_payment` (Phase 17) is unaffected — it always
+resolves exactly one invoice via Quote→Job→Invoice, now expressed as a single-line-list call to
+the same shared `_create_and_persist_payment` helper.
+
+**Tests**: 2 net new tests in `tests/test_quickbooks_invoice_payment_sync.py` (one rejection test
+replaced with three: successful two-invoice split payment with real multi-line assertions, a
+one-of-several-invoices-not-synced failure naming the specific invoice, and a
+different-QuickBooks-customers rejection) plus 5 new in `tests/test_payment_refund_status_
+cumulative.py`. All existing Phase 17/18/19 QuickBooks tests (87 total) re-run and pass unchanged
+after the client signature change (mock call sites updated to the new `invoice_lines` shape,
+behavior unchanged for every single-invoice case).
+
+**Final counts**: SQLite **634 passed, 8 skipped, 0 failed (121.85s)** — 627 Phase-19 baseline + 5
+(refund-status) + 2 (net new split-payment tests). Real PostgreSQL 16.2 + real Redis (isolated schema,
+`public`'s 94 tables confirmed untouched before/after): **642 passed, 0 failed, 0 skipped
+(705.06s)**. No migration this phase — no schema change
+was needed; the entire change is service/client logic.
+
+**Credential status**: `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_REDIRECT_URI`
+and `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` all confirmed absent — real verification remains
+`BLOCKED BY CREDENTIAL`, not attempted, not faked.
+
+**Frontend**: N/A — no user-facing workflow change.
+
+## Phase 21 — Accounting Production-Readiness Audit
+
+A complete audit of the accounting lifecycle (Phases 17–20) before adding anything new, per
+explicit instruction not to trust prior certifications blindly. Found and fixed **two genuine
+concurrency bugs and one single-call validation bug**, all confirmed by direct reproduction before
+being fixed, none by inference.
+
+**Bug 1 — duplicate-invoice-allocation overpayment (single call)**: `PaymentService.
+record_payment` validated each `AllocationInput` independently against the invoice's own
+(unchanged-until-the-loop-ends) `amount_due` — two allocations to the SAME invoice within one call
+each individually passed the guard even though their sum exceeded it. Reproduced directly: two $60
+allocations against a $100-due invoice both succeeded, driving `amount_due` to **-$20.00**. Fixed
+by tracking a running allocated-so-far total per invoice within the call.
+
+**Bug 2 — concurrent payments to the same invoice (cross-call race)**: two SEPARATE
+`record_payment` calls racing to allocate against the same invoice (e.g. a customer double-paying
+via two browser tabs, each a real distinct Stripe payment) each read `amount_due` in their own
+transaction before either committed. Reproduced directly under `asyncio.gather` against **real
+PostgreSQL**: two concurrent $60 payments against a $100-due invoice both succeeded, again driving
+`amount_due` to -$20.00. Fixed with `session.get(Invoice, ..., with_for_update=True)` — a real row
+lock on Postgres that serializes the two transactions (verified: the second transaction now
+correctly sees the first's committed allocation and fails with `OverpaymentError`, `amount_due`
+stays at $40.00). SQLite (this project's test default) has no row-level locking and silently
+ignores the hint — the fix is verified specifically against real Postgres, not merely assumed from
+a SQLite pass, and the test file says so explicitly rather than claiming more than was shown.
+
+**Bug 3 — concurrent refund approval (double real Stripe call)**: two concurrent
+`PaymentService.decide_refund(approved=True)` calls for the SAME refund each independently passed
+a post-hoc "is this refund still pending?" check and both proceeded to call Stripe's real refund
+API — reproduced directly: two genuine `create_refund` calls fired for one $100 refund under
+`asyncio.gather`. Safety depended entirely on **Stripe's own idempotency key** deduplicating the
+two calls into one real refund at Stripe's end — true per Stripe's documented contract, but
+unverifiable in this environment (no credentials) and not something Klaros' own logic ever
+enforced locally. Fixed with a CAS claim: a conditional `UPDATE refunds SET status='APPROVED'
+WHERE id=... AND tenant_id=... AND status='REQUESTED'` executes BEFORE any decision is made about
+calling Stripe — only the caller whose UPDATE actually affects a row proceeds; the loser raises
+immediately, before ever touching Stripe (verified: Stripe's `create_refund` is now called exactly
+once under the identical race). This repurposes `RefundStatus.APPROVED` — previously a defined-but-
+never-assigned enum member (a known, documented Phase 12G finding) — as exactly the "claimed,
+in-flight" intermediate status it was always positioned to be. A failed Stripe call reverts the
+claim back to `REQUESTED` so the refund remains genuinely retryable, preserving the pre-existing
+"no DB state changed on failure" guarantee (verified with a dedicated fail-then-retry test).
+
+**Everything else audited and found correct, not merely assumed**: the full ten-relationship data
+model trace (quote acceptance → deposit → Stripe webhook → Payment → Job → Invoice → QuickBooks →
+payment/refund sync → EventBus retry/DLQ/replay) matches its Phase 17–20 documentation with no
+further gaps found. Decimal/money safety: `float()` conversion appears only at the final
+QuickBooks/Stripe API-serialization boundary, never in internal computation or comparison;
+`.quantize(Decimal("0.01"))` (deterministic banker's rounding) is the only rounding in the codebase,
+already tested. Requestid namespaces (`klaros-deposit-payment-`, `klaros-invoice-payment-`,
+`klaros-refund-`) are distinct and keyed on globally-unique UUIDs — no collision risk. Tenant
+isolation re-confirmed at every boundary the mission asked about, including the CAS UPDATE itself
+now embedding the tenant filter directly in its WHERE clause (a small isolation improvement, not
+just a concurrency one). No DB schema inconsistency found — `Payment.quickbooks_payment_id`/
+`Refund.quickbooks_refund_receipt_id` are correctly unconstrained (QuickBooks ids are only unique
+within their own realm/tenant, never queried by that column alone — always resolved through a
+tenant-scoped lookup first). `pip-audit`: unchanged, the one already-accepted `ecdsa` finding only.
+
+**A related duplicate-invoice-allocation gap was also found and fixed in the QuickBooks sync
+path**: `sync_invoice_payment_to_quickbooks` built one QuickBooks `Line` entry per
+`PaymentAllocation` row without merging — two allocations to the same invoice within one payment
+(now correctly accepted by the Bug 1 fix when within bounds) would have produced two duplicate
+`LinkedTxn` entries against the same QBO invoice, whose real QuickBooks handling is unverified and
+not worth risking. Fixed by merging same-invoice allocations into one summed `Line` before
+building the QuickBooks payload.
+
+**Tests**: 7 new (`tests/test_phase21_accounting_hardening.py`) — the three bug reproductions/
+fixes above (each with both a positive within-bounds regression and the failure-mode proof), the
+QuickBooks duplicate-line-merge behavior, and the explicitly-requested 100+100+100-against-$300
+partial-refund sequence (proving the Phase 20 cumulative-status fix combined correctly with a
+three-way split, and that a subsequent over-refund attempt is still correctly rejected). Run
+repeatedly (3x on SQLite, 3x on real Postgres) to confirm no flakiness in the concurrency
+assertions.
+
+**Final counts**: SQLite **641 passed, 8 skipped, 0 failed (116.78s)** — 634 Phase-20 baseline + 7
+new. Real PostgreSQL 16.2 + real Redis (isolated schema, `public`'s 94 tables confirmed untouched
+before/after): **649 passed, 0 failed, 0 skipped (602.02s)**. No migration this phase — both fixes
+are service-layer logic; `RefundStatus.APPROVED` was already a defined column value, just
+previously unused. Migration head unchanged at `0024`.
+
+**Credential status**: `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_REDIRECT_URI`
+and `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` all confirmed absent — no live verification
+attempted or claimed.
+
+## Phase 22 — Stripe Payment Lifecycle Production-Readiness Audit
+
+An adversarial audit of the complete Stripe money flow (quote acceptance → deposit → Checkout →
+webhook → Payment → Job conversion → Invoice → QuickBooks, and the equivalent refund path), not
+trusting Phase 15–21's own certifications blindly.
+
+**A real, high-severity bug found and fixed**: `JobService.create_job`'s idempotency check
+(`SELECT` for an existing `idempotency_key`, then `INSERT`) had no handling for a concurrent
+duplicate-key race — under real concurrent execution (Stripe webhook retries are a normal,
+documented occurrence, not a theoretical edge case), two concurrent deposit-payment-confirmation
+calls for the SAME quote (e.g. two genuinely distinct Stripe PaymentIntents) could both pass the
+"does a Job with this key exist?" check before either committed. The second `INSERT` then raised
+an **unhandled** `IntegrityError` straight out of `create_job`, propagating through `QuoteService.
+mark_deposit_paid` → `_convert_to_job` and leaving the quote stuck at `DEPOSIT_PAID` with
+`job_id=None` — **a customer's real Stripe deposit taken, with no Job ever created and no error
+surfaced to staff**. Confirmed by direct reproduction under `asyncio.gather` against real
+PostgreSQL. Fixed by catching the `IntegrityError` and re-resolving the existing row via a fresh
+session, mirroring the "concurrent delivery raced us to the constraint — the other request is
+handling it, this is a genuine duplicate, not an error" pattern already used for `WebhookEvent`
+elsewhere in this codebase. Re-verified against real Postgres: both concurrent calls now succeed,
+exactly one Job exists, and the quote correctly reaches `CONVERTED`. **This specific race does not
+reproduce meaningfully on SQLite** (this project's test default) — the StaticPool single shared
+connection cannot hold two truly overlapping transactions, producing a confusing artifact (both
+tasks appear to fail) rather than a faithful concurrency simulation; the regression test only
+asserts the fix's real behavior against real Postgres and says so explicitly.
+
+**Everything else audited and found correct, not merely assumed**: conflicting duplicate webhook
+delivery (two DIFFERENT Stripe event ids both claiming success for the SAME PaymentIntent, one with
+a forged/corrupted amount) — proven the original `Payment` row is never mutated, `PaymentService.
+record_payment`'s own `(tenant_id, provider, external_id)` uniqueness is the correct second line of
+defense behind `WebhookEvent`'s per-event dedup. Same webhook event id delivered twice with a
+DIFFERENT payload — proven the second payload's content is never applied; the original `WebhookEvent`
+row and the original `Payment` stand untouched. Concurrent Checkout Session creation for the same
+quote (a customer double-clicking pay) — proven both calls send the identical deterministic Stripe
+idempotency key (`klaros-quote-deposit-{quote_id}-{deposit_amount}`); this is Klaros' own LOCAL
+guarantee, explicitly distinguished from Stripe's own provider-side deduplication, which remains
+unverifiable without credentials. No amount/currency/Decimal-safety gap found beyond what Phases
+15–21 already established and re-verified passing.
+
+**Tests**: 4 new (`tests/test_phase22_stripe_hardening.py`, stable across 3 repeated runs on both
+SQLite and real Postgres) — the Job-creation race fix, conflicting-duplicate-webhook-amount
+integrity, same-event-id-different-payload integrity, and concurrent-checkout-idempotency-key
+stability.
+
+**Final counts**: SQLite **645 passed, 8 skipped, 0 failed (105.81s)** — 641 Phase-21 baseline + 4
+new. Real PostgreSQL 16.2 + real Redis (isolated schema, `public`'s 94 tables confirmed untouched
+before/after): **653 passed, 0 failed, 0 skipped (587.63s)**. No migration this phase — the fix
+is pure service-layer logic; head remains `0024`.
+
+**Credential status**: `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` both confirmed absent — no live
+Stripe verification attempted or claimed.
+
+## Phase 23 — Live Stripe Test-Mode Verification & Payment Lifecycle Final Audit
+
+An attempt to verify the Stripe payment lifecycle against Stripe's real test-mode infrastructure —
+the explicit next step Phase 22 recommended — combined with a from-scratch adversarial re-audit of
+the complete Stripe→Payment→Job→Invoice→QuickBooks lifecycle, treating Phase 22's own certification
+as something to independently re-verify, not assume correct.
+
+**Credential audit**: `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`QUICKBOOKS_CLIENT_ID`/
+`QUICKBOOKS_CLIENT_SECRET` all confirmed absent — checked in `backend/.env`, the OS environment, and
+confirmed there is no other secrets source in this repo. `.env` confirmed still gitignored; no
+value was ever printed. This blocks every live-provider step (real Checkout Session creation, live
+provider-side idempotency observation, real webhook delivery, live refund lifecycle, live
+QuickBooks sync) — none was attempted, simulated, or reported as if it had occurred.
+
+**A real, previously-undiscovered defect found and fixed, distinct from Phase 22's**: while
+auditing STEP 7 ("Stripe succeeds, local persistence fails") and STEP 12 (failure injection),
+directly reproduced (via `monkeypatch`, not inferred) a **sequential recovery gap** — separate from
+Phase 22's *concurrent* duplicate-key race — in the quote-deposit webhook path. If
+`JobService.create_job` fails for ANY reason during `QuoteService.mark_deposit_paid` →
+`_convert_to_job` OTHER than the specific duplicate-key `IntegrityError` Phase 22 already fixed
+(e.g. a transient DB connectivity blip), two independent bugs combined to make the failure
+**permanent and unrecoverable**:
+1. `app/api/v1/webhooks.py`'s `WebhookEvent` dedup check treated ANY existing row for an
+   `external_event_id` — including one stuck at `FAILED` — as an unconditional duplicate, so a
+   redelivery of the SAME event (Stripe's own automatic retry, or an operator manually resending it
+   from the Stripe Dashboard) was silently swallowed before ever reaching the handler again.
+2. `QuoteService.mark_deposit_paid`'s own idempotency check treated `DEPOSIT_PAID`/`CONVERTED` as
+   "already fully handled" regardless of whether `Quote.job_id` was actually set — so even a
+   genuinely reprocessed event would silently report success without ever retrying
+   `_convert_to_job`.
+
+Combined, this meant: **a customer's real Stripe deposit charged, the quote correctly recorded
+DEPOSIT_PAID, and no Job ever created — permanently, with no possible recovery path, not even a
+manual webhook resend from the Stripe Dashboard.** A quiet side effect of the same root cause:
+`WebhookEvent.tenant_id` was left `NULL` on this failure path (the uncaught exception skipped the
+assignment entirely), making the stuck row impossible to filter by tenant for investigation.
+
+**Fix** (`app/api/v1/webhooks.py`, `app/services/quote_service.py`): the dedup check now only
+short-circuits when the existing row's status isn't `FAILED`, reusing that same row for a genuine
+retry rather than inserting a second one for the same event id. `mark_deposit_paid` now retries
+`_convert_to_job` specifically when `DEPOSIT_PAID` but `job_id` is still unset, relying on
+`_convert_to_job`/`create_job`'s own existing idempotency (`job-from-quote-{quote_id}`, Phase 22) to
+make this safe even under a concurrent retry. `_handle_quote_deposit_succeeded` now also catches a
+generic `Exception` around `mark_deposit_paid` (mirroring the existing `record_payment` try/except
+directly above it), which is what fixes the `tenant_id` audit gap. Re-verified: after a simulated
+transient failure, a redelivery of the identical event now converges to exactly one Payment, one
+Job, and `Quote.status == CONVERTED` — and a THIRD delivery after genuine success correctly goes
+back to being an unconditional duplicate (verified explicitly, so the fix doesn't leave events
+permanently retryable). 2 new tests (`tests/test_phase23_webhook_failure_recovery.py`).
+
+**Current-state audit, test-coverage matrix, and everything else re-examined found correct, not
+merely assumed**: `StripeClient`'s bounded timeout/retry classification, the deposit-checkout
+path's exclusive use of the persisted `Quote.deposit_amount` (never client-supplied), the public
+redirect URLs always built server-side from `settings.FRONTEND_BASE_URL` (no open redirect), the
+`quote_view` token's `quote_id` checked against the URL before its `tenant_id` is trusted, tenant
+isolation on every entity load in `PaymentService` (invoice/payment/refund all checked before use),
+and the full `PaymentStatus`/`RefundStatus` transition tables. The one meaningful test-coverage gap
+identified (STEP 2's matrix) was flow **S — webhook-level retry/recovery after a genuine processing
+failure** — previously zero coverage anywhere in the suite; closed by the new test file above. No
+duplicate tests were added for flows already well-covered by Phases 14–22.
+
+**Regression verification**: full suite re-run on both engines after the fix. SQLite: **647
+passed, 8 skipped, 0 failed (119.88s)** — 645 Phase-22 baseline + 2 new. Real PostgreSQL 16.2 + real
+Redis (isolated schema, migrated to head `0024`, `public`'s 94 tables confirmed untouched
+before/after, `EVENT_TRANSPORT=redis` explicitly set): **655 passed, 0 failed, 0 skipped
+(591.04s)** — 653 baseline + 2 new. The dedicated concurrency/hardening files
+(`test_phase21_accounting_hardening.py`, `test_phase22_stripe_hardening.py`,
+`test_phase23_webhook_failure_recovery.py`, 13 tests total) re-run 3× against real Postgres: **13/13
+passed all three runs, no flakiness observed** — confirming the `mark_deposit_paid` restructuring
+does not disturb Phase 22's own concurrent duplicate-key fix.
+
+**Security**: fresh secret scan of the diff (including the untracked/uncommitted `quote_service.py`
+and the new test file directly, not just `git diff`) — clean. `pip-audit` re-run: unchanged, the
+one already-accepted `ecdsa` (`PYSEC-2026-1325`) finding only. No dependency changes.
+
+**Frontend**: Node/npm remain unavailable — `BLOCKED BY ENVIRONMENT`.
+
+**No migration this phase** — the fix is pure service-layer logic; head remains `0024`.
+
+### Phase 23 continued — concurrent refund-request over-commitment
+
+A further audit pass (STEP 5's concurrency battery, specifically "two concurrent partial refunds")
+found and fixed a **second, distinct** real defect in `PaymentService.request_refund` — separate
+from both the webhook-recovery gap above and Phase 21's "concurrent refund *approval*" fix.
+
+**Bug**: `request_refund`'s "does this fit within the payment amount?" check (summing all
+non-`REJECTED` refunds against the payment, then comparing against `Payment.amount`) read the
+Payment row without any lock. Two (or more) separate refund *requests* against the SAME payment,
+submitted concurrently — e.g. two support agents acting on the same payment at the same time —
+could each read the same `already_refunded` total before any of them committed, so all of them
+independently passed the check. **Reproduced directly under `asyncio.gather` against real
+PostgreSQL**: 5 concurrent $30 refund requests against a single $100 payment ALL succeeded,
+producing $150 in `REQUESTED` refunds against a $100 payment. Refunds are never auto-approved (a
+human always decides separately via `decide_refund`), so this alone doesn't move money — but
+nothing elsewhere in the codebase re-validates the cumulative total at approval time, so an
+approver acting on more than one of these pending requests (realistic in a busy refund queue) was
+a genuine path to asking Stripe to refund more than the original payment.
+
+**Fix**: `with_for_update=True` on the Payment row load in `request_refund` — the exact same
+pattern Phase 21 already used for concurrent invoice overpayment in `record_payment`'s allocation
+path. Re-verified: the identical 5-concurrent-request reproduction now correctly admits exactly 3
+of the 5 $30 requests (summing to $90, within the $100 payment) and rejects the other 2 with
+`InvalidRefundError` — stable across 8 repeated runs against real Postgres before formalizing, and
+3 further repeated runs of the full concurrency/hardening test set (15 tests) after. Verified only
+against real Postgres — SQLite has no row-level locking and silently ignores the hint. 2 new tests
+(`tests/test_phase23_refund_request_concurrency.py`).
+
+**Other STEP 5-13 axes audited and found already correct, not merely assumed**: `Payment.currency`
+always defaults to `"USD"` and is never actually threaded from Stripe metadata or the quote/
+invoice's own currency — confirmed this is a pre-existing, system-wide, deliberate USD-only design
+(nothing anywhere in the codebase exercises a non-USD currency), not a newly-discovered defect, so
+left unchanged. QuickBooks payment sync's "provider succeeds, then local persistence fails" window
+is already closed via a deterministic per-Payment `request_id` (Intuit's own documented
+write-deduplication contract) — already honestly documented as unverifiable without live
+QuickBooks credentials, not re-claimed as verified here. `QuickBooksClient`'s 401/403/429/5xx/
+timeout handling re-confirmed to mirror `StripeClient`'s already-hardened pattern exactly.
+
+**Final counts after this fix**: SQLite **649 passed, 8 skipped, 0 failed (122.76s)** — 647 + 2
+new. Real PostgreSQL 16.2 + real Redis (fresh isolated schema, migrated to head `0024`, `public`'s
+94 tables confirmed untouched before/after): **657 passed, 0 failed, 0 skipped (535.99s)** — 655 +
+2 new. `pip-audit` re-run: unchanged, the one already-accepted `ecdsa` finding only. No migration
+this phase — head remains `0024`.
+
+**Bottom line**: the Stripe payment lifecycle now correctly recovers from a real class of failure
+(transient Job-creation errors) that was previously silent and permanent, and refund *requests*
+against a single payment can no longer collectively exceed that payment's amount even under real
+concurrent submission. Live Stripe/QuickBooks provider-side verification remains blocked purely on
+missing credentials, not on any code concern.
+
+### Phase 23 continued — QuickBooks persistence-failure coverage + re-verification
+
+A further pass re-confirmed both fixes above remain intact and closed one remaining test-coverage
+gap named by the mission's failure-recovery matrix: "QuickBooks payment creation succeeds, then
+local DB persistence fails." This was already architecturally correct (a deterministic per-Payment
+`request_id` intended to let Intuit's own write-dedup absorb a retry) and already documented as
+such, but never directly failure-injection tested. New test
+(`tests/test_phase23_quickbooks_persistence_failure.py`) forces a local commit failure exactly at
+the point of persisting `Payment.quickbooks_payment_id` after a successful mocked QuickBooks call,
+confirms the exception propagates and the id stays unset, then confirms a retry succeeds sending
+the IDENTICAL deterministic `request_id` both times — proving the LOCAL half of the guarantee
+directly; the PROVIDER half (Intuit's actual deduplication) remains explicitly unverified without
+live credentials. No code change — this closes a coverage gap, not a defect. All 3 Phase 23 test
+files (5 tests) re-run 3× on SQLite and 3× on real Postgres: 5/5 every time, no flakiness. Full
+regression: SQLite **650 passed, 8 skipped, 0 failed (125.99s)**; real PostgreSQL 16.2 + real Redis
+**658 passed, 0 failed, 0 skipped (694.58s)**. `pip-audit` unchanged. No migration — head `0024`.
+
+## Phase 24 — Provider Boundary & Production Readiness Audit
+
+A disciplined readiness audit of the Stripe/QuickBooks provider boundary specifically — not a
+feature phase. Re-traced the current code (not prior documentation) for every live accounting path:
+Checkout creation → webhook → Payment → deposit-paid → Job → Invoice; refund request → CAS claim →
+Stripe refund → persistence → `PAYMENT_REFUNDED` → QuickBooks refund sync; QuickBooks OAuth
+authorize → callback → encrypted storage → token refresh → invoice/payment/split-payment/refund
+sync.
+
+**Newly checked this phase, found correct, no defect**: QuickBooks OAuth CSRF/state protection —
+`create_oauth_state_token`/`decode_oauth_state_token` (`app/core/security.py`) is a real, signed,
+10-minute-expiring JWT binding the callback back to the exact tenant/user/provider that started the
+flow, the only defense against a forged/replayed OAuth callback (Intuit's own redirect carries no
+Klaros auth). QuickBooks OAuth scope (`com.intuit.quickbooks.accounting`) and API base URLs
+(`sandbox-quickbooks.api.intuit.com` / `quickbooks.api.intuit.com`, defaulting safely to sandbox on
+an unrecognized `QUICKBOOKS_ENVIRONMENT`) both match Intuit's real documented values. QuickBooks
+amount handling confirmed to send plain decimal dollars with no erroneous cents conversion (unlike
+Stripe, which correctly does convert to cents) — verified by absence of any `* 100`/`/ 100` in
+`quickbooks_client.py`. Credential storage re-confirmed genuinely Fernet-encrypted at rest (not
+merely claimed), and every `IntegrationConnection` lookup re-confirmed tenant-scoped. No
+`access_token`/`refresh_token` value found in any log call or exception message.
+
+**Credential audit**: `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PUBLISHABLE_KEY`/
+`QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_REDIRECT_URI` all confirmed absent —
+checked in `.env` and the OS environment, never printed. Live provider verification (STEP 15-
+equivalent) remains entirely blocked.
+
+**No defect found this phase.** Every axis named by the mission (provider contract field-by-field
+review, failure matrix, money-safety gaps, concurrency, migration/database, security) had already
+been covered by the preceding Phase 21–23 audits or was newly re-checked here and found correct.
+Per the mission's own explicit instruction not to manufacture a bug to justify the phase, **zero
+code changes were made**.
+
+**Full regression, re-run fresh against the final working tree**: SQLite **650 passed, 8 skipped, 0
+failed (125.84s)** — identical to the pre-phase baseline. Real PostgreSQL 16.2 + real Redis (fresh
+isolated schema, migrated to head `0024`, `public`'s 94 tables confirmed untouched before/after):
+**658 passed, 0 failed, 0 skipped (668.44s)** — identical to the pre-phase baseline, confirming
+zero regression from a zero-change phase. `pip-audit` unchanged (one already-accepted `ecdsa`
+finding). No migration — head remains `0024`.
+
+**Bottom line**: the provider boundary is code-complete and internally self-consistent; nothing new
+was found wrong with it. The only remaining gap to genuine production readiness is live Stripe
+test-mode and QuickBooks sandbox credential access — a code-level audit cannot close that gap
+further without them.
+
+## Phase 25 — Live Provider Readiness
+
+Focused on making the provider boundary maximally ready for real credentials, not on adding
+features. `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PUBLISHABLE_KEY`/
+`QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_REDIRECT_URI` all re-confirmed
+**ABSENT** — checked in `.env` and the OS environment, never printed.
+
+**Genuine test-coverage gap found and closed (not a production-code defect)**: auditing the
+real-provider adapter boundary (STEP 8) found that every existing Stripe `MockTransport` test
+either checked generic client behavior (retry/error classification) or captured only the
+`Idempotency-Key` header — none decoded and asserted the actual outgoing request body for the two
+most safety-critical writes: Checkout Session creation (what a customer is actually charged) and
+Refund creation (how much money comes back). Added `tests/test_phase25_stripe_request_shape.py` (2
+tests) asserting method, path, `Authorization`/`Idempotency-Key` headers, and every field of the
+decoded form body — amount in real Stripe minor units (cents), currency, metadata
+(tenant/quote/customer/purpose), and that redirect URLs are always the server-built ones. Both pass
+on the first try, proving no defect exists in the actual request construction — this closes a
+verification gap, not a bug. QuickBooks's equivalent write path (`create_payment`) was already found
+adequately covered (`test_create_payment_success_carries_requestid_and_linked_txn` already asserts
+the requestid-bearing URL and the `LinkedTxn`/`TxnId` body content) — no duplicate test added there.
+
+**External-documentation verification**: fetched Stripe's current official Checkout Session
+creation API reference and cross-checked it against the implementation — `mode` (required),
+`success_url`/`cancel_url` (required in `payment` mode with the default `hosted_page` UI, which is
+what Klaros uses), `metadata` (top-level map), and `line_items` (required) all match exactly. No
+discrepancy found. QuickBooks's contract was re-verified via code-level cross-check against known
+Intuit API conventions in Phase 24 (OAuth scope, sandbox/production base URLs, decimal-dollar
+amounts) — not re-fetched live this phase, since nothing there was in question.
+
+**Live-verification runbook** (produced this phase, not yet executed — credentials remain absent):
+see `INTEGRATIONS.md`'s Phase 25 section for the full step-by-step Stripe and QuickBooks sequences,
+covering exactly what local state, provider state, IDs, and idempotency keys to expect at each step,
+plus safe cleanup notes.
+
+**No production-code defect found this phase.** Every fix from Phases 21–24 re-confirmed intact.
+
+**Full regression after the new test**: SQLite **652 passed, 8 skipped, 0 failed (129.19s)** — 650 +
+2 new. Real PostgreSQL 16.2 + real Redis (fresh isolated schema, migrated to head `0024`, `public`'s
+94 tables confirmed untouched before/after): **660 passed, 0 failed, 0 skipped (625.65s)** — 658 + 2
+new. `pip-audit` unchanged (one pre-existing, unrelated `ecdsa` finding). No migration this phase —
+head remains `0024`. No dependency changes.
+
+**Final readiness classification**: Internally production-ready for controlled live-provider
+verification, subject to obtaining test/sandbox credentials. No code-level blocker remains.
+
+## Phase 27 — Production Operations Readiness
+
+A genuinely different angle from Phases 21–26 (which focused on payment/refund/accounting
+correctness): operational readiness — startup fail-fast behavior, health/readiness checks,
+EventBus/worker recovery, graceful shutdown — none of which needed Stripe/QuickBooks credentials or
+Node/npm to audit.
+
+**A real, previously-undiscovered defect found and fixed**: `GET /ready`'s database check was only
+`SELECT 1` — a connectable database, not a USABLE one. Reproduced directly: pointed a real,
+connectable Postgres connection at a completely empty, unmigrated schema and confirmed `/ready`
+still returned `200`/`{"status": "ready", "checks": {"database": "ok", ...}}` despite every real
+table this app depends on being missing. This is exactly the "service reports healthy while
+critical functionality is unusable" failure mode — an orchestrator would happily route real traffic
+to an instance whose very first real query would fail with a confusing "relation does not exist"
+error. **Fix**: `/ready` now also compares the database's own `alembic_version` row against the
+code's expected Alembic head (`app/main.py`), reporting `not_ready`/`503` with a clear "schema out
+of date" message on any mismatch — the same real-dependency-check philosophy already established
+for the `database`/`redis` checks, bounded by the same timeout, never raising. A necessary
+companion fix: the test harness's `_reset_database` fixture (`tests/conftest.py`) builds its schema
+directly from `Base.metadata` rather than running real Alembic migrations (on BOTH SQLite and real
+Postgres test runs) — without stamping `alembic_version` at the current head there too, every
+single test hitting `/ready` would have failed this new check. Re-verified by direct reproduction:
+an empty schema now correctly reports `not_ready`/`503`; a properly-migrated one reports `ready`/
+`200` with `"migration": "ok"`. 2 new tests (`tests/test_readiness.py`), stable across 3 repeated
+runs on both SQLite and real Postgres.
+
+**Other operational areas audited and found already correct, no defect**: startup fail-fast for
+insecure production defaults (`JWT_SECRET`, `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY`) already
+refuses to boot in `ENV=production`; the out-of-process `event-worker` (`app/events/worker.py`)
+already has real graceful SIGTERM/SIGINT shutdown, restart recovery via durable Postgres state (no
+special code needed — a fresh process just resumes polling), and a single bad tick never crashes
+the loop; the Temporal worker (`app/workers/main.py`) already retries its connection with backoff
+rather than crash-looping; QuickBooks OAuth's `/authorize` and token-exchange paths already fail
+cleanly (503/`QuickBooksAPIError`) on missing/partial credentials rather than raising unexpected
+errors deep in the call stack.
+
+**Full regression after the fix**: SQLite **653 passed, 8 skipped, 0 failed (132.86s)** — 652 + 1
+new. Real PostgreSQL 16.2 + real Redis (fresh isolated schema, migrated to head `0024`, `public`'s
+94 tables confirmed untouched before/after): **661 passed, 0 failed, 0 skipped (593.44s)** — 660 + 1
+new. `pip-audit` unchanged (one pre-existing, unrelated `ecdsa` finding). No new migration — this
+is a runtime check, not a schema change; head remains `0024`.
+
+## Phase 29 — Transaction-Boundary & Retry-Safety Audit
+
+A new axis, deliberately distinct from Phase 28's session-reuse and Redis-authority checks:
+transaction boundaries across external side effects — specifically, the gap between a business
+mutation's own DB commit and the SEPARATE `EventBus.publish()` call that follows it. Real
+PostgreSQL/Redis remained unavailable in this environment (confirmed again: nothing listening on
+5432/6379, no `brew`/`docker`/`pg_ctl` to restore them) — both defects found this phase are
+sequential retry-after-failure scenarios (not concurrency races), so SQLite-based failure injection
+genuinely proves them; nothing here required real-Postgres verification.
+
+**Two real, previously-undiscovered defects found and fixed, same root cause in two sibling
+functions**: `PaymentService.record_payment` and `QuoteService.mark_deposit_paid` both commit their
+business-state mutation inside one session, close it, and only THEN call `self._bus.publish(...)`
+as a completely separate operation. If that publish call fails (a real, realistic failure mode — a
+transient Redis/transport outage, a DB hiccup inside `EventBus.publish`'s own session), the
+exception propagates out even though the underlying state (the `Payment` row; the quote's
+`DEPOSIT_PAID` status) is durably committed. The caller (the Stripe webhook handler) reasonably
+retries. But the retry lands on each function's OWN idempotency short-circuit — which, before this
+fix, returned immediately without ever attempting the publish again. **`PAYMENT_RECEIVED` and
+`QUOTE_DEPOSIT_PAID` were both permanently, silently lost** in this window, with no error surfaced
+after the first failed attempt — any downstream consumer (QuickBooks payment sync, notifications)
+would simply never fire. Both confirmed by direct reproduction (`EventBus.publish` monkeypatched to
+fail once, mid-`record_payment`/mid-`mark_deposit_paid`): the DB state committed correctly, the
+event was never published, and — critically — a subsequent successful retry STILL never published
+it, since the retry path never reached the publish call again.
+
+**Fix**: both functions now call their publish unconditionally — on the fresh-creation path AND the
+already-exists/dedup path — using a deterministic idempotency key (`payment-received-{payment.id}`,
+already existing; `quote-deposit-paid-{quote.id}`, newly added). `EventBus.publish` already
+deduplicates on that key (an existing, unmodified mechanism), so calling it again once the event
+genuinely was already published is a safe no-op — but when it wasn't, the retry now actually
+delivers it. `record_payment`'s publish logic was factored into `_publish_payment_received` and
+called from both paths. `INVOICE_PAID` (published later in `record_payment`, with no idempotency
+key of its own) was deliberately left out of the dedup path — giving it the same fix would require
+also deciding its own idempotency key, a separate, lower-severity concern not covered by this
+phase's reproduction; changing it without proof would risk introducing a NEW duplicate-event issue
+rather than closing one.
+
+**Regression evidence**: both reproductions re-run post-fix confirm the previously-lost event now
+arrives on retry, and a FURTHER retry after genuine success does not duplicate it. 4 new tests
+(`tests/test_phase29_publish_after_commit_recovery.py`,
+`tests/test_phase29_quote_deposit_paid_publish_recovery.py`), stable across 3 repeated runs.
+
+**Other new-axis areas investigated this phase, found already correct, no defect**: `EventBus`'s
+`reconcile_stuck_events()` outbox-relay (Phase 12A) already closes the narrower "Event row created
+but never enqueued to transport" gap — this phase's finding is a genuinely different, earlier
+window (the Event row never gets created at all). `EventWorker.run_forever`'s crash/restart recovery,
+Redis's purely-transport (never-authoritative) role, and the single tracked `asyncio.create_task`
+in `app/main.py` were all re-confirmed unchanged from Phase 28 (not re-audited from scratch, per the
+mission's own instruction). FastAPI's default (no custom handler, no `debug=True`) safely avoids
+leaking internal details on unhandled exceptions. The one `PaymentAllocation` query lacking an
+explicit `tenant_id` filter is safe — transitively scoped via an already tenant-verified `Payment.id`.
+
+**Full regression after the fix**: SQLite **657 passed, 8 skipped, 0 failed (156.73s)** — 653 + 4
+new. Real PostgreSQL + Redis: **not run this phase** — infrastructure unavailable, `BLOCKED BY
+ENVIRONMENT`; both fixes are sequential (not concurrency-dependent), so this doesn't weaken the
+evidence for them. `pip-audit` unchanged (one pre-existing, unrelated `ecdsa` finding). No
+migration — both fixes are pure service-layer logic; head remains `0024`.
+
 ## Known limitations / caveats
 
+- **Phase 23**: live Stripe/QuickBooks verification remains blocked on missing credentials
+  (`STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`,
+  all confirmed absent) — every provider-boundary guarantee in this codebase remains proven only at
+  the LOCAL (Klaros' own deterministic behavior) or INTERNAL/MOCK level, never at the PROVIDER
+  (Stripe/QuickBooks' own actual server-side behavior) level. Additionally, the webhook endpoint
+  still returns HTTP 200 even when internal processing genuinely fails (a deliberate, pre-existing
+  design choice for permanent/data-shape failures — see the "malformed payload" test — that this
+  phase did not change), so Stripe itself will not automatically redeliver a failed event; recovery
+  today still requires an operator-triggered manual resend from the Stripe Dashboard (which, after
+  this phase's fix, will now actually be reprocessed correctly instead of silently swallowed).
+- **Phase 22**: the `JobService.create_job` concurrency fix is verified against real PostgreSQL
+  specifically — it has no meaningful effect on SQLite (no row-level locking, and this specific
+  interleaving is a known test-harness artifact there, not a faithful simulation). Stripe's own
+  provider-side idempotency-key deduplication (checkout creation) remains unverified without
+  credentials — Klaros' own local guarantee (a stable, deterministic key) is proven; Stripe's side
+  of the contract is not.
+- **Phase 21**: Stripe's own idempotency-key deduplication (relied on as a second layer of
+  protection behind the new local CAS claim) has never been observed against a real Stripe
+  account — the local fix removes Klaros' own dependency on it for the concurrent-approval case,
+  but the claim itself is still not proof of what Stripe's server actually does. The
+  concurrent-payment row-lock fix (`with_for_update=True`) is real and verified against real
+  Postgres specifically — it has no effect on SQLite, which this project's test suite defaults to;
+  this is disclosed, not hidden, in both the code comment and the test itself.
+- **Phase 20 (resolves the Phase 19 limitation below)**: split-payment QuickBooks sync is now
+  supported for the common case (multiple invoices, same QuickBooks customer). The one remaining
+  edge case — a payment's allocated invoices genuinely belonging to different QuickBooks customers
+  — fails cleanly (`AllocationSpansMultipleCustomersError`) rather than syncing incorrectly; this
+  isn't reachable through any real Klaros code path today, so it's a defensive guard, not an
+  active gap. Intuit's `requestid` write-deduplication remains unverified against a real
+  QuickBooks account (no credentials).
+- **Phase 19 (resolved in Phase 20)**: ~~ordinary invoice payment sync to QuickBooks does not yet
+  support a single payment split across multiple invoices~~ — see the Phase 20 section above; this
+  is now supported.
+- **Phase 18 (resolved in Phase 19 for the common case)**: refund sync to QuickBooks requires the
+  ORIGINAL payment to already be synced to QuickBooks itself. Originally only quote-deposit
+  payments had a sync path (Phase 17); **as of Phase 19, ordinary (non-split) invoice payments do
+  too**, so a refund against either type can now sync once its payment has been. A refund against
+  a payment split across multiple invoices still cannot sync — that payment itself cannot be
+  synced yet (see the Phase 19 limitation above). The automatic `PAYMENT_REFUNDED`-triggered sync
+  attempt will dead-letter (not wait indefinitely) whenever the precondition isn't met yet — a
+  manual `finance.sync_refund_to_quickbooks` call or `EventBus.replay()` is needed once it is.
+  Intuit's `?requestid=` write-deduplication has not been verified against a real QuickBooks
+  account. Live QuickBooks/Stripe verification remains `BLOCKED BY CREDENTIAL`.
+- **Phase 17**: the automatic `QUOTE_DEPOSIT_PAID`-triggered QuickBooks sync attempt will fail
+  (deterministically, not a transient error) for the common case where no invoice has been created
+  for the job yet at deposit-payment time — it dead-letters after exhausting the `EventBus`'s
+  bounded retries rather than waiting indefinitely for a human step. This is a deliberate design
+  choice (documented above), not a bug, but it does mean most deposits will need either a manual
+  `finance.sync_deposit_payment_to_quickbooks` call or an explicit `EventBus.replay()` once the
+  invoice exists — there is no automatic "watch for the invoice to appear and retry" mechanism.
+  Intuit's `?requestid=` write-deduplication (used to close the local "partial completion" gap) has
+  not been verified against a real QuickBooks account — implemented per documented API contract
+  only. QuickBooks deposit-payment sync itself remains entirely `BLOCKED BY CREDENTIAL` for live
+  verification — `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_REDIRECT_URI` unset.
+- **Phase 16**: the deposit-collection customer UX (`/quotes/view/[id]`) is written but has never
+  been typechecked, built, or exercised in a real browser — no `node`/`npm` in this sandbox. A real
+  Stripe test-mode checkout has also never been driven through this UI (`STRIPE_SECRET_KEY`/
+  `STRIPE_WEBHOOK_SECRET` still unset). The backend contract it's built against is fully tested
+  (Phase 15 + this phase's 9 new endpoint-security regression tests), but the frontend code itself
+  is unverified beyond static review.
+- **Phase 15 (resolved in Phase 17)**: a collected quote deposit previously had no QuickBooks
+  representation at all. **As of Phase 17**, `QuickBooksPaymentSyncService`/
+  `finance.sync_deposit_payment_to_quickbooks` push a paid deposit `Payment` to QuickBooks as a
+  Payment applied against that job's invoice, once the invoice exists and has itself been synced —
+  see the Phase 17 section above for the full design and its one remaining honest limitation (the
+  automatic sync attempt dead-letters, rather than waiting, when the invoice doesn't exist yet).
 - **No Docker in this dev sandbox** (unchanged since Phase 1 — still true as of Phase 12B). Automated
   tests default to sqlite; day-to-day live browser verification typically runs against the file-backed
   sqlite dev database (`backend/dev.db`) and the in-memory event transport. **As of Phase 12B**, real

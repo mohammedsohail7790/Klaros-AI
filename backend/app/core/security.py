@@ -52,3 +52,86 @@ def decode_token(token: str) -> dict:
         return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
     except JWTError as exc:
         raise TokenError(str(exc)) from exc
+
+
+def create_oauth_state_token(tenant_id: UUID, provider: str, user_id: UUID) -> str:
+    """Phase 13: a short-lived, signed CSRF/tenant-binding token for a
+    provider OAuth redirect flow (QuickBooks, ...). Reuses this project's
+    existing JWT_SECRET/signing mechanism rather than inventing a second
+    one — the provider's own redirect (`GET .../callback?state=...`) is
+    never authenticated by our own JWT (Intuit doesn't carry it), so this
+    signed `state` value is the ONLY thing binding an inbound callback
+    back to the tenant/user who started the flow, and the only defense
+    against a forged/replayed callback."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=10)
+    payload = {
+        "tenant_id": str(tenant_id),
+        "provider": provider,
+        "sub": str(user_id),
+        "type": "oauth_state",
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_oauth_state_token(token: str, *, expected_provider: str) -> dict:
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except JWTError as exc:
+        raise TokenError(str(exc)) from exc
+    if payload.get("type") != "oauth_state" or payload.get("provider") != expected_provider:
+        raise TokenError("state token is not a valid oauth_state token for this provider")
+    return payload
+
+
+def create_quote_view_token(quote_id: UUID, tenant_id: UUID) -> str:
+    """Phase 14: a signed, tenant-bound token that lets a CUSTOMER view and
+    accept/decline a quote with no Klaros login — Klaros' first
+    customer-facing surface with no account behind it. Same reasoning and
+    mechanism as `create_oauth_state_token` (reuses `JWT_SECRET`, no
+    second credential system), but long-lived (90 days, well past any
+    realistic `Quote.valid_until`) since it's mailed/texted to a customer
+    once and must keep working when they open it later, not a
+    same-session redirect round-trip."""
+    expire = datetime.now(timezone.utc) + timedelta(days=90)
+    payload = {
+        "quote_id": str(quote_id),
+        "tenant_id": str(tenant_id),
+        "type": "quote_view",
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_quote_view_token(token: str) -> dict:
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except JWTError as exc:
+        raise TokenError(str(exc)) from exc
+    if payload.get("type") != "quote_view":
+        raise TokenError("token is not a valid quote_view token")
+    return payload
+
+
+def create_contract_view_token(contract_id: UUID, tenant_id: UUID) -> str:
+    """Same reasoning and mechanism as `create_quote_view_token` — the
+    contract's own customer-facing view/sign flow has no Klaros login
+    behind it either."""
+    expire = datetime.now(timezone.utc) + timedelta(days=90)
+    payload = {
+        "contract_id": str(contract_id),
+        "tenant_id": str(tenant_id),
+        "type": "contract_view",
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_contract_view_token(token: str) -> dict:
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except JWTError as exc:
+        raise TokenError(str(exc)) from exc
+    if payload.get("type") != "contract_view":
+        raise TokenError("token is not a valid contract_view token")
+    return payload

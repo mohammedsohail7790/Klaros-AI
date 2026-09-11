@@ -48,8 +48,16 @@ class _Subscription:
     handler: EventHandler
 
 
-@dataclass
+@dataclass(eq=False)
 class EventBus:
+    """`eq=False` keeps the default identity-based `__eq__`/`__hash__` (a
+    plain `@dataclass` generates `__eq__` and, as a side effect, sets
+    `__hash__` to None) — Phase 25 needs EventBus instances usable as
+    `functools.lru_cache` keys (see app/api/tool_deps.py's
+    `get_morning_brief_service`), and no code anywhere compares two
+    EventBus instances for value equality; identity is the only
+    meaningful notion of "same bus" here."""
+
     session_factory: async_sessionmaker
     transport: EventTransport
     stream_prefix: str = "klaros.events"

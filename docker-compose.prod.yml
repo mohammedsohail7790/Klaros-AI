@@ -1,0 +1,46 @@
+# Production overrides for docker-compose.yml.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# This file does NOT replace docker-compose.yml or redefine its
+# architecture — it only overrides the specific settings that are correct
+# for local development but wrong for a real deployment: hot-reload,
+# the dev-mode frontend command, and the default Postgres password.
+# Everything else (service topology, healthchecks, restart policies,
+# loopback-only port bindings) already lives in the base file and applies
+# to both.
+#
+# This file has NOT been exercised against a real Docker daemon (none is
+# available in this project's development sandbox — see
+# DOCKER_DEPLOYMENT.md) or a real deployment target. Run
+# `docker compose -f docker-compose.yml -f docker-compose.prod.yml config`
+# to sanity-check the merged configuration before first real use.
+#
+# For a real production deployment, KLAROS_PRODUCTION_DEPLOYMENT_PLAN.md
+# recommends pointing DATABASE_URL/REDIS_URL at managed Postgres/Redis
+# instead of the self-hosted `postgres`/`redis` services below — in that
+# case, omit those two services from the `up` command entirely
+# (`docker compose ... up -d backend worker event-worker temporal temporal-ui frontend`)
+# rather than running them unused.
+
+services:
+  postgres:
+    environment:
+      # No insecure fallback in production — fails the `docker compose
+      # config`/`up` command loudly if POSTGRES_PASSWORD isn't set,
+      # instead of silently accepting the "klaros" dev default.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set explicitly for a production deployment — do not use the local-dev default}
+
+  backend:
+    # Same command as the base file, minus --reload (which watches the
+    # bind-mounted source tree for hot-reload — a dev-only behavior with
+    # no place in a production container).
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  frontend:
+    # The base file overrides frontend/Dockerfile's own CMD to `npm run
+    # dev` for local hot-reload; this restores the Dockerfile's real
+    # production path (`npm run build && npm run start`, already present
+    # in frontend/Dockerfile) for an actual deployment.
+    command: sh -c "npm run build && npm run start"

@@ -15,7 +15,7 @@ service-area config scoring.py already flags as missing), not implemented here.
 import uuid
 from datetime import datetime, time, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.calendar.base import BookingRequest, CalendarProvider, DoubleBookingError, TimeSlot
@@ -93,12 +93,25 @@ class InternalTestCalendarAdapter(CalendarProvider):
                 if existing is not None:
                     return existing
 
-            # Double-booking check. Production on Postgres should additionally
-            # take a row lock (SELECT ... FOR UPDATE) or run this in a
-            # SERIALIZABLE transaction to close the race between this check
-            # and the insert under real concurrency; sqlite (used in tests)
-            # doesn't support that, so this check is correct for sequential
-            # calls, which is what's actually verified here.
+            # Phase 7: a real PostgreSQL concurrency test proved the plain
+            # check-then-insert below is NOT race-safe — two simultaneous
+            # bookers for the exact same slot could both pass the SELECT
+            # before either INSERT commits (a classic phantom-read race:
+            # `SELECT ... FOR UPDATE` can't lock rows that don't exist
+            # yet). SQLite masked this because this codebase gives each
+            # writer its own serialized connection to the same file (see
+            # app/db/session.py's comment). The real fix is a PostgreSQL
+            # session-level advisory lock, keyed on exactly the resource
+            # this booking would contend over (tenant + assigned technician,
+            # or tenant alone when unassigned) — acquired BEFORE the
+            # conflict check and released automatically at transaction end,
+            # so only one concurrent booker for that resource ever reaches
+            # the check-then-insert at a time. A no-op on SQLite (which
+            # doesn't have advisory locks and doesn't need one here).
+            if session.bind is not None and session.bind.dialect.name == "postgresql":
+                lock_key = f"appointment-booking:{request.tenant_id}:{request.assigned_user_id or 'unassigned'}"
+                await session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key))"), {"key": lock_key})
+
             conflict_query = select(Appointment).where(
                 Appointment.tenant_id == request.tenant_id,
                 Appointment.status.in_(ACTIVE_STATUSES),

@@ -54,10 +54,12 @@ async def test_happy_path_event_to_tool_to_audit(event_bus, tool_registry) -> No
 
     stats = await event_bus.process_pending(EventType.JOB_COMPLETED)
 
-    # +1 for the default audit_recorder handler (subscribes to every event type) and
+    # +1 for the default audit_recorder handler (subscribes to every event type),
     # +1 for the Phase 4 operations_communication_handler (also subscribes to
-    # job.completed; no-ops here since entity_id is a random uuid with no real job).
-    assert stats.succeeded == 3
+    # job.completed; no-ops here since entity_id is a random uuid with no real job),
+    # +1 for the Automation Engine's automation_dispatch handler (also subscribes
+    # to every event type; no-ops here since no automation is registered).
+    assert stats.succeeded == 4
     assert handled == [str(event.id)]
 
     async with event_bus.session_factory() as session:

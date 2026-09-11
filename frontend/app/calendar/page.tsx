@@ -14,6 +14,7 @@ import {
   createAppointment,
   listAppointments,
   searchCustomers,
+  syncAppointmentToGoogle,
 } from "@/lib/api";
 
 function todayIso(): string {
@@ -79,6 +80,22 @@ function CalendarPageInner() {
     }
   }
 
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+
+  async function handleSyncToGoogle(appointmentId: string) {
+    if (!token) return;
+    setSyncingId(appointmentId);
+    setError(null);
+    try {
+      await syncAppointmentToGoogle(token, appointmentId);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not sync to Google Calendar.");
+    } finally {
+      setSyncingId(null);
+    }
+  }
+
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
@@ -126,16 +143,34 @@ function CalendarPageInner() {
                           {new Date(a.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} –{" "}
                           {new Date(a.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·{" "}
                           {a.status}
+                          {a.external_provider === "google_calendar" && (
+                            <span className="ml-2 text-emerald-500">· synced to Google</span>
+                          )}
                         </p>
                       </div>
-                      {a.status !== "CANCELLED" && (
-                        <button
-                          onClick={() => handleCancel(a.id)}
-                          className="text-xs text-red-400 hover:underline"
-                        >
-                          Cancel
-                        </button>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {a.status !== "CANCELLED" && (
+                          <button
+                            onClick={() => handleSyncToGoogle(a.id)}
+                            disabled={syncingId === a.id}
+                            className="text-xs text-neutral-400 hover:underline disabled:opacity-50"
+                          >
+                            {syncingId === a.id
+                              ? "Syncing..."
+                              : a.external_provider === "google_calendar"
+                                ? "Re-sync"
+                                : "Sync to Google"}
+                          </button>
+                        )}
+                        {a.status !== "CANCELLED" && (
+                          <button
+                            onClick={() => handleCancel(a.id)}
+                            className="text-xs text-red-400 hover:underline"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>

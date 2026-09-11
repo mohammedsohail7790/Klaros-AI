@@ -3,12 +3,19 @@ version: "3.9"
 services:
   postgres:
     image: ankane/pgvector:v0.5.1
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-klaros}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-klaros}
       POSTGRES_DB: ${POSTGRES_DB:-klaros}
+    # Bound to loopback only — never intended to be reachable from outside
+    # this host. Still reachable at localhost:5432 for local dev tooling
+    # (psql, a GUI client) on the same machine; a real production
+    # deployment should point DATABASE_URL at a managed Postgres instead
+    # of this container (see DEPLOYMENT_RUNBOOK.md) and can remove this
+    # port mapping entirely.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,8 +26,10 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
+    # Loopback only — see postgres comment above.
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -29,6 +38,7 @@ services:
 
   temporal:
     image: temporalio/auto-setup:1.24
+    restart: unless-stopped
     environment:
       - DB=postgres12
       - DB_PORT=5432
@@ -38,25 +48,36 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Loopback only — the Temporal worker/backend reach this over the
+    # internal Compose network (temporal:7233), not via this published
+    # port; this mapping exists only for host-side tooling (tctl, a local
+    # SDK client) to reach it during development.
     ports:
-      - "7233:7233"
+      - "127.0.0.1:7233:7233"
 
   temporal-ui:
     image: temporalio/ui:2.31.2
+    restart: unless-stopped
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
     depends_on:
       - temporal
+    # Loopback only — the Temporal UI ships with no authentication of its
+    # own and would otherwise expose full workflow history/payloads to
+    # anyone who can reach this port. Access it via `ssh -L 8080:localhost:8080`
+    # (or equivalent) rather than publishing it further.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   backend:
     build: ./backend
+    restart: unless-stopped
     env_file: .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-klaros}:${POSTGRES_PASSWORD:-klaros}@postgres:5432/${POSTGRES_DB:-klaros}
       - REDIS_URL=redis://redis:6379/0
       - EVENT_TRANSPORT=redis
+      - RATE_LIMIT_BACKEND=redis
       - TEMPORAL_HOST=temporal:7233
     depends_on:
       postgres:
@@ -73,6 +94,7 @@ services:
   # (InvoiceOverdueWorkflow, JobLifecycleWorkflow, etc.), NOT the event bus.
   worker:
     build: ./backend
+    restart: unless-stopped
     env_file: .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-klaros}:${POSTGRES_PASSWORD:-klaros}@postgres:5432/${POSTGRES_DB:-klaros}
@@ -99,6 +121,7 @@ services:
   # stop propagating — everything else keeps accepting requests.
   event-worker:
     build: ./backend
+    restart: unless-stopped
     env_file: .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-klaros}:${POSTGRES_PASSWORD:-klaros}@postgres:5432/${POSTGRES_DB:-klaros}
@@ -116,6 +139,7 @@ services:
 
   frontend:
     build: ./frontend
+    restart: unless-stopped
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:

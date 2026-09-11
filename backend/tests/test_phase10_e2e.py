@@ -94,11 +94,21 @@ async def test_full_autonomy_loop_policy_gated_notified_approved_then_reconfigur
         invoice = await call("finance.trigger_invoice_from_job", {"job_id": job.job["id"]})
         await call("finance.request_invoice_approval", {"invoice_id": invoice.invoice["id"]})
         await call("finance.send_invoice", {"invoice_id": invoice.invoice["id"]})
-        async with event_bus.session_factory() as session:
-            row = await session.get(Invoice, uuid.UUID(invoice.invoice["id"]))
-            row.status = InvoiceStatus.OVERDUE
-            row.due_date = date.today() - timedelta(days=12)
-            await session.commit()
+        # Real bug found while investigating an intermittent failure of this
+        # test: this direct row mutation is the only DB access in the whole
+        # test that didn't go through `db_lock`, unlike every other write/
+        # read here (via `call`/`read`) — racing the concurrently-running
+        # real EventWorker task (polling every 0.02s) could let the
+        # Morning Brief generation a few lines below run before this
+        # commit's overdue status/due_date were reliably visible,
+        # intermittently making the "overdue" insight assertion fail with
+        # no code defect involved. Fixed by acquiring the same lock.
+        async with db_lock:
+            async with event_bus.session_factory() as session:
+                row = await session.get(Invoice, uuid.UUID(invoice.invoice["id"]))
+                row.status = InvoiceStatus.OVERDUE
+                row.due_date = date.today() - timedelta(days=12)
+                await session.commit()
 
         # Real referral loop -> a real pending reward, the executable
         # recommendation this test drives through approval.

@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
+from app.core.rate_limit import rate_limit
 from app.core.security import TokenError, decode_token
 from app.db.session import get_db
 from app.schemas.auth import (
@@ -23,8 +24,15 @@ from app.services.auth_service import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+_rate_limit_dependency = Depends(
+    rate_limit("auth", limit_setting="RATE_LIMIT_AUTH_PER_MINUTE", window_seconds=60)
+)
 
-@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED,
+    dependencies=[_rate_limit_dependency],
+)
 async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)) -> RegisterResponse:
     org, user = await register_organization(
         db,
@@ -41,7 +49,7 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
     )
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, dependencies=[_rate_limit_dependency])
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     try:
         user = await authenticate(

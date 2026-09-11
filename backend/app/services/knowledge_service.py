@@ -9,12 +9,12 @@ import uuid
 from datetime import datetime, timezone
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
-from app.models.knowledge import KnowledgeFile
+from app.models.knowledge import KnowledgeChunk, KnowledgeFile
 
 logger = structlog.get_logger(__name__)
 
@@ -116,6 +116,12 @@ class KnowledgeService:
             ).scalar_one_or_none()
             if existing is None:
                 return False
+            # Explicit chunk cleanup rather than relying solely on the
+            # database's ON DELETE CASCADE (real on PostgreSQL, but SQLite
+            # only enforces it when foreign_keys=ON is set per-connection,
+            # which this codebase's engine does not currently do) — this
+            # way deletion is correct regardless of engine/pragma state.
+            await session.execute(delete(KnowledgeChunk).where(KnowledgeChunk.file_id == existing.id))
             await session.delete(existing)
             session.add(
                 AuditLog(

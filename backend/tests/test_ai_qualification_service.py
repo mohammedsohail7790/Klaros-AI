@@ -43,7 +43,7 @@ class _FakeAIProvider(AIProvider):
         self._outcome = outcome
         self.last_prompt: str | None = None
 
-    async def enrich_brief(self, headline, insights, *, brand_voice=None):
+    async def enrich_brief(self, headline, insights, *, brand_voice=None, company_memory=None):
         return None
 
     async def generate_structured(self, prompt: str) -> AICallOutcome:
@@ -56,7 +56,7 @@ class _DisconnectedFakeProvider(AIProvider):
     name = "disconnected-fake"
     model = "none"
 
-    async def enrich_brief(self, headline, insights, *, brand_voice=None):
+    async def enrich_brief(self, headline, insights, *, brand_voice=None, company_memory=None):
         return None
 
 
@@ -266,7 +266,7 @@ async def test_successful_call_is_recorded_in_ai_invocation_log() -> None:
         assert row.input_tokens == 50
         assert row.output_tokens == 30
         assert row.estimated_cost_usd is None  # never fabricated
-        assert row.input_metadata == {"lead_id": str(lead.id)}
+        assert row.input_metadata == {"lead_id": str(lead.id), "company_memory_used": False}
 
 
 async def test_failed_call_is_also_recorded_with_error_classification() -> None:

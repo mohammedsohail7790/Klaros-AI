@@ -11,6 +11,7 @@ import uuid
 import pytest
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.crm import Lead
@@ -18,6 +19,12 @@ from app.models.rbac import Role
 from app.tools.base import ExecutionContext
 
 pytestmark = pytest.mark.asyncio
+
+# Phase 31: this tool is wired through the real build_tool_registry() ->
+# get_ai_provider() factory (not a test double), so its "available" outcome
+# genuinely depends on whichever credential state this environment has —
+# honest either way, never asserting a fixed one.
+_LIVE_PROVIDER_CONFIGURED = bool(get_settings().ANTHROPIC_API_KEY or get_settings().OPENAI_API_KEY)
 
 
 async def _make_lead(session_factory, tenant_id: uuid.UUID) -> Lead:
@@ -55,11 +62,17 @@ async def test_ai_actor_execution_goes_through_toolregistry_and_produces_audit(t
         "crm.ai_qualify_lead_advisory", {"lead_id": str(lead.id)}, context
     )
 
-    # No credentials configured in this test environment — the real
-    # deterministic fallback path is what actually runs; must be honest
-    # about that, never a fabricated recommendation.
-    assert output.available is False
-    assert "no ai provider configured" in output.unavailable_reason.lower()
+    # Honest either way: with no credential configured, the real
+    # deterministic fallback runs (available=False); with a real one
+    # (this environment's live OPENAI_API_KEY — Phase 31), the real
+    # provider call runs and produces a genuine recommendation. Never a
+    # fabricated result either way.
+    if _LIVE_PROVIDER_CONFIGURED:
+        assert output.available is True
+        assert output.unavailable_reason is None
+    else:
+        assert output.available is False
+        assert "no ai provider configured" in output.unavailable_reason.lower()
 
     async with async_session_maker() as session:
         rows = (
@@ -87,7 +100,7 @@ async def test_human_actor_can_also_call_the_same_tool(tool_registry) -> None:
     output = await tool_registry.execute(
         "crm.ai_qualify_lead_advisory", {"lead_id": str(lead.id)}, context
     )
-    assert output.available is False  # still honest — no credentials either way
+    assert output.available is _LIVE_PROVIDER_CONFIGURED  # honest either way
 
 
 async def test_unauthorized_tenant_cannot_reach_another_tenants_lead_via_the_tool(tool_registry) -> None:

@@ -1,0 +1,940 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import AppShell from "@/components/AppShell";
+import { useAuth } from "@/lib/useAuth";
+import {
+  ApiError,
+  AutomationExecutionDetail,
+  AutomationExecutionRow,
+  AutomationRow,
+  AutomationStep,
+  AutomationVersionRow,
+  ConditionNode,
+  createAutomation,
+  dispatchScheduledTick,
+  getAutomation,
+  getAutomationExecution,
+  getAutomationTimezone,
+  listAutomationExecutions,
+  listAutomationVersions,
+  listAutomations,
+  publishAutomation,
+  setAutomationEnabled,
+  setAutomationTimezone,
+  triggerAutomation,
+  updateAutomation,
+} from "@/lib/api";
+
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// Every action here is checked against the backend's own ACTION_ALLOWLIST
+// (app/services/automation_service.py) before it can ever run — this list
+// exists only to drive the step editor's per-action param fields, not to
+// grant anything the backend wouldn't already enforce.
+const ACTIONS = [
+  {
+    value: "notifications.create_notification",
+    label: "Send a notification",
+    fields: [
+      { key: "title", label: "Title", type: "text" as const },
+      { key: "body", label: "Body", type: "text" as const },
+    ],
+  },
+  {
+    value: "crm.update_lead",
+    label: "Update a lead",
+    fields: [
+      { key: "lead_id", label: "Lead ID (or {{lead.id}})", type: "text" as const },
+      { key: "status", label: "New status", type: "text" as const },
+    ],
+  },
+  {
+    value: "crm.create_note",
+    label: "Add a customer note",
+    fields: [
+      { key: "customer_id", label: "Customer ID (or {{lead.customer_id}})", type: "text" as const },
+      { key: "body", label: "Note", type: "text" as const },
+    ],
+  },
+  {
+    // Phase 18: the AI Next Action decision layer's own governed entry
+    // point. This action never mutates anything directly itself — it
+    // observes the given quote, consults Company Memory, and lets the AI
+    // propose at most one action from its own separate, narrower
+    // allowlist, validated deterministically and executed only through
+    // the same ActionPolicy/ApprovalRequest boundary every other action
+    // here uses.
+    value: "ai.propose_quote_followup",
+    label: "AI: decide a quote follow-up",
+    fields: [
+      { key: "quote_id", label: "Quote ID (or {{event.entity_id}})", type: "text" as const },
+    ],
+  },
+  {
+    // Phase 20: the second AI Next Action scenario — same governed shape
+    // as ai.propose_quote_followup above, proving the pattern generalizes.
+    value: "ai.propose_invoice_followup",
+    label: "AI: decide an invoice follow-up",
+    fields: [
+      { key: "invoice_id", label: "Invoice ID (or {{event.entity_id}})", type: "text" as const },
+    ],
+  },
+];
+
+const COMPARISON_OPS = ["eq", "ne", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "is_null", "is_not_null"];
+
+const STATUS_COLOR: Record<string, string> = {
+  DRAFT: "border-neutral-700 text-neutral-400",
+  ENABLED: "border-emerald-800 text-emerald-300",
+  DISABLED: "border-amber-800 text-amber-300",
+};
+
+const EXECUTION_COLOR: Record<string, string> = {
+  PENDING: "border-neutral-700 text-neutral-400",
+  RUNNING: "border-blue-800 text-blue-300",
+  WAITING: "border-amber-800 text-amber-300",
+  COMPLETED: "border-emerald-800 text-emerald-300",
+  FAILED: "border-red-800 text-red-300",
+  CANCELLED: "border-neutral-700 text-neutral-400",
+};
+
+interface ConditionRow {
+  field: string;
+  op: string;
+  value: string;
+}
+
+interface FormState {
+  name: string;
+  description: string;
+  triggerType: "MANUAL" | "EVENT" | "SCHEDULE";
+  eventType: string;
+  scheduleFrequency: "DAILY" | "WEEKLY";
+  scheduleTime: string;
+  scheduleWeekdays: number[];
+  hasWait: boolean;
+  waitSeconds: string;
+  conditions: ConditionRow[];
+  steps: { action: string; params: Record<string, string> }[];
+}
+
+function emptyForm(): FormState {
+  return {
+    name: "",
+    description: "",
+    triggerType: "MANUAL",
+    eventType: "lead.created",
+    scheduleFrequency: "DAILY",
+    scheduleTime: "09:00",
+    scheduleWeekdays: [0],
+    hasWait: false,
+    waitSeconds: "900",
+    conditions: [],
+    steps: [{ action: ACTIONS[0].value, params: {} }],
+  };
+}
+
+function formToPayload(form: FormState): {
+  trigger_type: string;
+  trigger_config: Record<string, unknown>;
+  condition: ConditionNode | null;
+  steps: AutomationStep[];
+} {
+  const condition: ConditionNode | null =
+    form.conditions.length === 0
+      ? null
+      : form.conditions.length === 1
+      ? { field: form.conditions[0].field, op: form.conditions[0].op, value: parseConditionValue(form.conditions[0].value) }
+      : {
+          and: form.conditions.map((c) => ({ field: c.field, op: c.op, value: parseConditionValue(c.value) })),
+        };
+
+  const steps: AutomationStep[] = [];
+  if (form.hasWait) {
+    steps.push({ action: "wait", params: { seconds: Number(form.waitSeconds) || 0 } });
+  }
+  for (const s of form.steps) {
+    steps.push({ action: s.action, params: s.params });
+  }
+
+  let trigger_config: Record<string, unknown> = {};
+  if (form.triggerType === "EVENT") {
+    trigger_config = { event_type: form.eventType };
+  } else if (form.triggerType === "SCHEDULE") {
+    trigger_config =
+      form.scheduleFrequency === "WEEKLY"
+        ? { frequency: "WEEKLY", time: form.scheduleTime, weekdays: form.scheduleWeekdays }
+        : { frequency: "DAILY", time: form.scheduleTime };
+  }
+
+  return {
+    trigger_type: form.triggerType,
+    trigger_config,
+    condition,
+    steps,
+  };
+}
+
+function parseConditionValue(raw: string): unknown {
+  if (raw === "") return null;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  const num = Number(raw);
+  if (!Number.isNaN(num) && raw.trim() !== "") return num;
+  return raw;
+}
+
+export default function AutomationsPage() {
+  const { token, user, loading: authLoading } = useAuth();
+  const [automations, setAutomations] = useState<AutomationRow[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [mode, setMode] = useState<"list" | "create" | "edit">("list");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedAutomation, setSelectedAutomation] = useState<AutomationRow | null>(null);
+  const [versions, setVersions] = useState<AutomationVersionRow[] | null>(null);
+  const [executions, setExecutions] = useState<AutomationExecutionRow[] | null>(null);
+  const [selectedExecution, setSelectedExecution] = useState<AutomationExecutionDetail | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm());
+  const [triggerContext, setTriggerContext] = useState("{}");
+  const [tenantTimezone, setTenantTimezone] = useState<string | null>(null);
+  const [timezoneInput, setTimezoneInput] = useState("");
+
+  const load = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await listAutomations(token);
+      setAutomations(result.automations);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to load automations.");
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!token) return;
+    getAutomationTimezone(token)
+      .then((result) => {
+        setTenantTimezone(result.timezone);
+        setTimezoneInput(result.timezone);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  async function handleSaveTimezone() {
+    if (!token || !timezoneInput) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await setAutomationTimezone(token, timezoneInput);
+      setTenantTimezone(result.timezone);
+      setNotice(`Business timezone set to ${result.timezone}.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to set timezone — check the IANA timezone name.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDispatchTickNow() {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await dispatchScheduledTick(token);
+      setNotice(
+        result.dispatched_execution_ids.length > 0
+          ? `Scheduler tick ran — ${result.dispatched_execution_ids.length} automation(s) dispatched.`
+          : "Scheduler tick ran — nothing was due."
+      );
+      if (selectedId) {
+        const executionList = await listAutomationExecutions(token, selectedId);
+        setExecutions(executionList.executions);
+        const automation = await getAutomation(token, selectedId);
+        setSelectedAutomation(automation);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to run the scheduler tick.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openDetail(id: string) {
+    if (!token) return;
+    setError(null);
+    setSelectedExecution(null);
+    try {
+      const [automation, versionList, executionList] = await Promise.all([
+        getAutomation(token, id),
+        listAutomationVersions(token, id),
+        listAutomationExecutions(token, id),
+      ]);
+      setSelectedId(id);
+      setSelectedAutomation(automation);
+      setVersions(versionList.versions);
+      setExecutions(executionList.executions);
+      setMode("edit");
+
+      const latest = versionList.versions[versionList.versions.length - 1];
+      if (latest) {
+        const waitStep = latest.steps[0]?.action === "wait" ? latest.steps[0] : null;
+        const restSteps = waitStep ? latest.steps.slice(1) : latest.steps;
+        const triggerType: FormState["triggerType"] =
+          latest.trigger_type === "EVENT" ? "EVENT" : latest.trigger_type === "SCHEDULE" ? "SCHEDULE" : "MANUAL";
+        setForm({
+          name: automation.name,
+          description: automation.description ?? "",
+          triggerType,
+          eventType: (latest.trigger_config.event_type as string) ?? "lead.created",
+          scheduleFrequency: (latest.trigger_config.frequency as "DAILY" | "WEEKLY") ?? "DAILY",
+          scheduleTime: (latest.trigger_config.time as string) ?? "09:00",
+          scheduleWeekdays: (latest.trigger_config.weekdays as number[]) ?? [0],
+          hasWait: !!waitStep,
+          waitSeconds: waitStep ? String((waitStep.params as { seconds?: number }).seconds ?? 900) : "900",
+          conditions: conditionToRows(latest.condition),
+          steps: restSteps.map((s) => ({
+            action: s.action,
+            params: Object.fromEntries(Object.entries(s.params).map(([k, v]) => [k, String(v ?? "")])),
+          })),
+        });
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to load automation detail.");
+    }
+  }
+
+  function conditionToRows(condition: ConditionNode | null): ConditionRow[] {
+    if (!condition) return [];
+    if (condition.and) {
+      return condition.and
+        .filter((c) => c.field)
+        .map((c) => ({ field: c.field ?? "", op: c.op ?? "eq", value: String(c.value ?? "") }));
+    }
+    if (condition.field) {
+      return [{ field: condition.field, op: condition.op ?? "eq", value: String(condition.value ?? "") }];
+    }
+    return [];
+  }
+
+  function startCreate() {
+    setForm(emptyForm());
+    setSelectedId(null);
+    setSelectedAutomation(null);
+    setVersions(null);
+    setExecutions(null);
+    setSelectedExecution(null);
+    setMode("create");
+  }
+
+  async function handleSave() {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const payload = formToPayload(form);
+      if (mode === "create") {
+        const automation = await createAutomation(token, { name: form.name, description: form.description || null, ...payload });
+        setNotice("Automation created as a draft.");
+        await load();
+        await openDetail(automation.id);
+      } else if (selectedId) {
+        await updateAutomation(token, selectedId, payload);
+        setNotice("Saved as a new version.");
+        await load();
+        await openDetail(selectedId);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to save automation.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePublish() {
+    if (!token || !selectedId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await publishAutomation(token, selectedId);
+      setNotice("Published — this version is now live.");
+      await load();
+      await openDetail(selectedId);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to publish.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleToggleEnabled(enabled: boolean) {
+    if (!token || !selectedId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await setAutomationEnabled(token, selectedId, enabled);
+      setNotice(enabled ? "Enabled." : "Disabled.");
+      await load();
+      await openDetail(selectedId);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to change enabled state.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleManualTrigger() {
+    if (!token || !selectedId) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      let context: Record<string, unknown> = {};
+      try {
+        context = JSON.parse(triggerContext || "{}");
+      } catch {
+        setError("Trigger context must be valid JSON.");
+        setBusy(false);
+        return;
+      }
+      const result = await triggerAutomation(token, selectedId, context);
+      if ("deduplicated" in result) {
+        setNotice("Deduplicated — an execution with this exact context already ran.");
+      } else {
+        setNotice(`Triggered — execution ${result.status.toLowerCase()}.`);
+      }
+      const executionList = await listAutomationExecutions(token, selectedId);
+      setExecutions(executionList.executions);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to trigger automation.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openExecution(id: string) {
+    if (!token) return;
+    setError(null);
+    try {
+      const detail = await getAutomationExecution(token, id);
+      setSelectedExecution(detail);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to load execution detail.");
+    }
+  }
+
+  function updateCondition(index: number, field: keyof ConditionRow, value: string) {
+    setForm((f) => ({
+      ...f,
+      conditions: f.conditions.map((c, i) => (i === index ? { ...c, [field]: value } : c)),
+    }));
+  }
+
+  function updateStepAction(index: number, action: string) {
+    setForm((f) => ({
+      ...f,
+      steps: f.steps.map((s, i) => (i === index ? { action, params: {} } : s)),
+    }));
+  }
+
+  function updateStepParam(index: number, key: string, value: string) {
+    setForm((f) => ({
+      ...f,
+      steps: f.steps.map((s, i) => (i === index ? { ...s, params: { ...s.params, [key]: value } } : s)),
+    }));
+  }
+
+  return (
+    <AppShell user={user}>
+      <div className="px-8 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-xl font-semibold">Automations</h1>
+          {mode !== "list" ? (
+            <button
+              onClick={() => setMode("list")}
+              className="rounded-md border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-900"
+            >
+              Back to list
+            </button>
+          ) : (
+            <button
+              onClick={startCreate}
+              className="rounded-md border border-neutral-400 bg-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-700"
+            >
+              New automation
+            </button>
+          )}
+        </div>
+
+        <p className="mb-4 text-xs text-neutral-500">
+          Event → condition → action, running against the exact same governed Tool Registry pipeline every
+          other part of Klaros uses — no automation can call an action outside a fixed, hardcoded allowlist.
+          Editing an automation always creates a new version; an execution already in flight keeps running
+          against the version it started with.
+        </p>
+
+        <div className="mb-6 flex items-center gap-2 rounded-md border border-neutral-800 bg-neutral-950 p-3 text-xs">
+          <span className="text-neutral-500">Business timezone (used by all Schedule triggers):</span>
+          <input
+            value={timezoneInput}
+            onChange={(e) => setTimezoneInput(e.target.value)}
+            placeholder="America/New_York"
+            className="w-48 rounded-md border border-neutral-700 bg-black px-2 py-1 text-xs"
+          />
+          <button
+            onClick={handleSaveTimezone}
+            disabled={busy || timezoneInput === tenantTimezone}
+            className="rounded-md border border-neutral-400 bg-neutral-800 px-2 py-1 text-xs hover:bg-neutral-700 disabled:opacity-50"
+          >
+            Save
+          </button>
+          {tenantTimezone && <span className="text-neutral-600">Current: {tenantTimezone}</span>}
+        </div>
+
+        {notice && (
+          <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">
+            {notice}
+          </div>
+        )}
+        {error && (
+          <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>
+        )}
+
+        {mode === "list" && (
+          <div>
+            {authLoading || loading ? (
+              <p className="text-sm text-neutral-500">Loading...</p>
+            ) : !automations || automations.length === 0 ? (
+              <p className="text-sm text-neutral-500">No automations yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {automations.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => openDetail(a.id)}
+                    className="block w-full rounded-lg border border-neutral-800 p-3 text-left text-sm hover:bg-neutral-900"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{a.name}</span>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[a.status] ?? "border-neutral-700"}`}>
+                        {a.status}
+                      </span>
+                    </div>
+                    {a.description && <p className="mt-1 text-neutral-400">{a.description}</p>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {(mode === "create" || mode === "edit") && (
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="space-y-4 rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+              <div>
+                <label className="mb-1 block text-xs text-neutral-500">Name</label>
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  disabled={mode === "edit"}
+                  className="w-full rounded-md border border-neutral-700 bg-black px-3 py-2 text-sm disabled:opacity-60"
+                  placeholder="New Lead Follow-up"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-neutral-500">Description</label>
+                <input
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full rounded-md border border-neutral-700 bg-black px-3 py-2 text-sm"
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs text-neutral-500">Trigger</label>
+                <div className="flex gap-2">
+                  {(["MANUAL", "EVENT", "SCHEDULE"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setForm((f) => ({ ...f, triggerType: t }))}
+                      className={`rounded-md border px-3 py-1.5 text-xs ${
+                        form.triggerType === t ? "border-neutral-400 bg-neutral-800" : "border-neutral-700 hover:bg-neutral-900"
+                      }`}
+                    >
+                      {t === "MANUAL" ? "Manual (run on demand)" : t === "EVENT" ? "Event" : "Schedule"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {form.triggerType === "EVENT" && (
+                <div>
+                  <label className="mb-1 block text-xs text-neutral-500">Event type</label>
+                  <input
+                    value={form.eventType}
+                    onChange={(e) => setForm((f) => ({ ...f, eventType: e.target.value }))}
+                    className="w-full rounded-md border border-neutral-700 bg-black px-3 py-2 text-sm"
+                    placeholder="lead.created"
+                  />
+                </div>
+              )}
+
+              {form.triggerType === "SCHEDULE" && (
+                <div className="space-y-2">
+                  <div>
+                    <label className="mb-1 block text-xs text-neutral-500">Frequency</label>
+                    <div className="flex gap-2">
+                      {(["DAILY", "WEEKLY"] as const).map((f) => (
+                        <button
+                          key={f}
+                          onClick={() => setForm((prev) => ({ ...prev, scheduleFrequency: f }))}
+                          className={`rounded-md border px-3 py-1.5 text-xs ${
+                            form.scheduleFrequency === f
+                              ? "border-neutral-400 bg-neutral-800"
+                              : "border-neutral-700 hover:bg-neutral-900"
+                          }`}
+                        >
+                          {f === "DAILY" ? "Daily" : "Weekly"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-neutral-500">Time (business timezone)</label>
+                    <input
+                      type="time"
+                      value={form.scheduleTime}
+                      onChange={(e) => setForm((f) => ({ ...f, scheduleTime: e.target.value }))}
+                      className="w-40 rounded-md border border-neutral-700 bg-black px-3 py-2 text-sm"
+                    />
+                  </div>
+                  {form.scheduleFrequency === "WEEKLY" && (
+                    <div>
+                      <label className="mb-1 block text-xs text-neutral-500">Days</label>
+                      <div className="flex gap-1">
+                        {WEEKDAY_LABELS.map((label, i) => (
+                          <button
+                            key={label}
+                            onClick={() =>
+                              setForm((f) => ({
+                                ...f,
+                                scheduleWeekdays: f.scheduleWeekdays.includes(i)
+                                  ? f.scheduleWeekdays.filter((d) => d !== i)
+                                  : [...f.scheduleWeekdays, i].sort(),
+                              }))
+                            }
+                            className={`rounded-md border px-2 py-1 text-[10px] ${
+                              form.scheduleWeekdays.includes(i)
+                                ? "border-neutral-400 bg-neutral-800"
+                                : "border-neutral-700 hover:bg-neutral-900"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-neutral-600">
+                    Runs in the business timezone set below — currently {tenantTimezone ?? "loading..."}.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="mb-1 flex items-center gap-2 text-xs text-neutral-500">
+                  <input
+                    type="checkbox"
+                    checked={form.hasWait}
+                    onChange={(e) => setForm((f) => ({ ...f, hasWait: e.target.checked }))}
+                  />
+                  Wait before running (durable, survives restarts)
+                </label>
+                {form.hasWait && (
+                  <input
+                    type="number"
+                    value={form.waitSeconds}
+                    onChange={(e) => setForm((f) => ({ ...f, waitSeconds: e.target.value }))}
+                    className="mt-1 w-32 rounded-md border border-neutral-700 bg-black px-3 py-2 text-sm"
+                  />
+                )}
+              </div>
+
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="text-xs text-neutral-500">Conditions (all must match — AND)</label>
+                  <button
+                    onClick={() => setForm((f) => ({ ...f, conditions: [...f.conditions, { field: "", op: "eq", value: "" }] }))}
+                    className="text-[10px] text-neutral-400 underline hover:text-neutral-200"
+                  >
+                    + add condition
+                  </button>
+                </div>
+                {form.conditions.length === 0 && <p className="text-[10px] text-neutral-600">No conditions — always runs.</p>}
+                {form.conditions.map((c, i) => (
+                  <div key={i} className="mb-2 flex gap-2">
+                    <input
+                      value={c.field}
+                      onChange={(e) => updateCondition(i, "field", e.target.value)}
+                      placeholder="lead.score"
+                      className="w-1/3 rounded-md border border-neutral-700 bg-black px-2 py-1.5 text-xs"
+                    />
+                    <select
+                      value={c.op}
+                      onChange={(e) => updateCondition(i, "op", e.target.value)}
+                      className="rounded-md border border-neutral-700 bg-black px-2 py-1.5 text-xs"
+                    >
+                      {COMPARISON_OPS.map((op) => (
+                        <option key={op} value={op}>
+                          {op}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      value={c.value}
+                      onChange={(e) => updateCondition(i, "value", e.target.value)}
+                      placeholder="70"
+                      className="flex-1 rounded-md border border-neutral-700 bg-black px-2 py-1.5 text-xs"
+                    />
+                    <button
+                      onClick={() => setForm((f) => ({ ...f, conditions: f.conditions.filter((_, j) => j !== i) }))}
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="text-xs text-neutral-500">Actions (run in order)</label>
+                  <button
+                    onClick={() => setForm((f) => ({ ...f, steps: [...f.steps, { action: ACTIONS[0].value, params: {} }] }))}
+                    className="text-[10px] text-neutral-400 underline hover:text-neutral-200"
+                  >
+                    + add action
+                  </button>
+                </div>
+                {form.steps.map((s, i) => {
+                  const def = ACTIONS.find((a) => a.value === s.action) ?? ACTIONS[0];
+                  return (
+                    <div key={i} className="mb-2 rounded-md border border-neutral-800 p-2">
+                      <div className="mb-2 flex items-center justify-between">
+                        <select
+                          value={s.action}
+                          onChange={(e) => updateStepAction(i, e.target.value)}
+                          className="rounded-md border border-neutral-700 bg-black px-2 py-1.5 text-xs"
+                        >
+                          {ACTIONS.map((a) => (
+                            <option key={a.value} value={a.value}>
+                              {a.label}
+                            </option>
+                          ))}
+                        </select>
+                        {form.steps.length > 1 && (
+                          <button
+                            onClick={() => setForm((f) => ({ ...f, steps: f.steps.filter((_, j) => j !== i) }))}
+                            className="text-xs text-red-400 hover:text-red-300"
+                          >
+                            remove
+                          </button>
+                        )}
+                      </div>
+                      {def.fields.map((field) => (
+                        <input
+                          key={field.key}
+                          value={s.params[field.key] ?? ""}
+                          onChange={(e) => updateStepParam(i, field.key, e.target.value)}
+                          placeholder={field.label}
+                          className="mb-1 w-full rounded-md border border-neutral-700 bg-black px-2 py-1.5 text-xs"
+                        />
+                      ))}
+                      <p className="text-[10px] text-neutral-600">
+                        Use {"{{"}field.path{"}}"} to reference the trigger context (e.g. {"{{"}lead.name{"}}"}).
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={handleSave}
+                disabled={busy || !form.name}
+                className="w-full rounded-md border border-neutral-400 bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700 disabled:opacity-50"
+              >
+                {mode === "create" ? "Create draft" : "Save as new version"}
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {selectedAutomation && (
+                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="font-medium">{selectedAutomation.name}</h2>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[selectedAutomation.status] ?? "border-neutral-700"}`}>
+                      {selectedAutomation.status}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {selectedAutomation.status === "DRAFT" && (
+                      <button
+                        onClick={handlePublish}
+                        disabled={busy}
+                        className="rounded-md border border-emerald-800 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-950/30"
+                      >
+                        Publish
+                      </button>
+                    )}
+                    {selectedAutomation.published_version_id && selectedAutomation.status !== "ENABLED" && (
+                      <button
+                        onClick={() => handleToggleEnabled(true)}
+                        disabled={busy}
+                        className="rounded-md border border-emerald-800 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-950/30"
+                      >
+                        Enable
+                      </button>
+                    )}
+                    {selectedAutomation.status === "ENABLED" && (
+                      <button
+                        onClick={() => handleToggleEnabled(false)}
+                        disabled={busy}
+                        className="rounded-md border border-amber-800 px-3 py-1.5 text-xs text-amber-300 hover:bg-amber-950/30"
+                      >
+                        Disable
+                      </button>
+                    )}
+                  </div>
+
+                  {versions && (
+                    <p className="mt-3 text-[10px] text-neutral-600">
+                      {versions.length} version{versions.length === 1 ? "" : "s"} — currently editing the latest
+                    </p>
+                  )}
+
+                  {form.triggerType === "MANUAL" && selectedAutomation.status === "ENABLED" && (
+                    <div className="mt-4 border-t border-neutral-800 pt-4">
+                      <label className="mb-1 block text-xs text-neutral-500">Trigger context (JSON, optional)</label>
+                      <textarea
+                        value={triggerContext}
+                        onChange={(e) => setTriggerContext(e.target.value)}
+                        rows={3}
+                        className="w-full rounded-md border border-neutral-700 bg-black px-2 py-1.5 font-mono text-xs"
+                      />
+                      <button
+                        onClick={handleManualTrigger}
+                        disabled={busy}
+                        className="mt-2 rounded-md border border-neutral-400 bg-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-700 disabled:opacity-50"
+                      >
+                        Run now
+                      </button>
+                    </div>
+                  )}
+
+                  {form.triggerType === "SCHEDULE" && selectedAutomation.status === "ENABLED" && (
+                    <div className="mt-4 border-t border-neutral-800 pt-4">
+                      <p className="mb-2 text-xs text-neutral-500">
+                        Next scheduled run:{" "}
+                        <span className="text-neutral-300">
+                          {selectedAutomation.next_scheduled_run
+                            ? new Date(selectedAutomation.next_scheduled_run).toLocaleString()
+                            : "—"}
+                        </span>
+                      </p>
+                      <p className="mb-2 text-[10px] text-neutral-600">
+                        The background scheduler checks every automation once per poll tick automatically. Use
+                        this only to force an immediate check (e.g. for testing) rather than waiting.
+                      </p>
+                      <button
+                        onClick={handleDispatchTickNow}
+                        disabled={busy}
+                        className="rounded-md border border-neutral-400 bg-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-700 disabled:opacity-50"
+                      >
+                        Run scheduler tick now
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {executions && (
+                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+                  <h3 className="mb-3 text-sm font-medium">Execution history</h3>
+                  {executions.length === 0 ? (
+                    <p className="text-xs text-neutral-500">No executions yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {executions.map((e) => (
+                        <button
+                          key={e.id}
+                          onClick={() => openExecution(e.id)}
+                          className={`block w-full rounded-md border p-2 text-left text-xs hover:bg-neutral-900 ${
+                            selectedExecution?.id === e.id ? "border-neutral-400" : "border-neutral-800"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{e.trigger_type}</span>
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[e.status] ?? "border-neutral-700"}`}>
+                              {e.status}
+                            </span>
+                          </div>
+                          <span className="text-neutral-600">{e.started_at ? new Date(e.started_at).toLocaleString() : "—"}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedExecution && (
+                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-medium">Execution detail</h3>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[selectedExecution.status] ?? "border-neutral-700"}`}>
+                      {selectedExecution.status}
+                    </span>
+                  </div>
+                  {selectedExecution.error && (
+                    <p className="mb-2 rounded-md border border-red-900 bg-red-950/30 p-2 text-xs text-red-300">
+                      {selectedExecution.error}
+                    </p>
+                  )}
+                  <div className="space-y-2">
+                    {selectedExecution.steps.map((s) => (
+                      <div key={s.id} className="rounded-md border border-neutral-800 p-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span>
+                            {s.step_index}. {s.action}
+                          </span>
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[s.status] ?? "border-neutral-700"}`}>
+                            {s.status}
+                          </span>
+                        </div>
+                        {s.error && <p className="mt-1 text-red-400">{s.error}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </AppShell>
+  );
+}

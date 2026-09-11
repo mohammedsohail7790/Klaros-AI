@@ -13,6 +13,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import CommunicationProvider, MessageTemplate
@@ -50,6 +51,26 @@ class CollectionService:
     async def schedule_next_action(
         self, tenant_id: uuid.UUID, invoice_id: uuid.UUID, *, days_overdue: int
     ) -> CollectionAction:
+        """Phase 29 fix: the pre-existing check-then-insert (SELECT for an
+        existing row, INSERT if none found) is exactly the same
+        check-then-act shape `ExceptionService.create_exception` already
+        handles safely — but this method was missing the second half of
+        that pattern. A real PostgreSQL concurrency test
+        (`ARService.detect_overdue()` called 10x concurrently for the
+        same overdue invoice) proved two concurrent callers can both pass
+        the "no existing action" check before either commits; the second
+        one's INSERT then hits the real, pre-existing
+        `uq_collection_actions_tenant_invoice_type` unique constraint and
+        raised an *unhandled* `IntegrityError`, crashing the sweep's
+        per-invoice downstream loop (and, since that loop has no
+        try/except, aborting processing of every subsequent invoice in
+        the same batch). The constraint was always correct and already
+        does the real work — this method just never caught the race it
+        makes possible. Fixed with the identical try/except/rollback/
+        re-fetch shape `create_exception` and `CompanyMemoryService`'s
+        supersession logic already use: the loser's INSERT fails, it
+        rolls back its own (otherwise-poisoned) transaction, and returns
+        the winner's real row instead of raising."""
         action_type = _action_for_days_overdue(days_overdue)
         async with self._session_factory() as session:
             existing = (
@@ -72,7 +93,20 @@ class CollectionService:
                 status=CollectionActionStatus.PENDING,
             )
             session.add(action)
-            await session.commit()
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                existing = (
+                    await session.execute(
+                        select(CollectionAction).where(
+                            CollectionAction.tenant_id == tenant_id,
+                            CollectionAction.invoice_id == invoice_id,
+                            CollectionAction.action_type == action_type,
+                        )
+                    )
+                ).scalar_one()
+                return existing
             await session.refresh(action)
         return action
 

@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.events.bus import EventBus
@@ -266,6 +267,18 @@ class RetentionService:
         self, tenant_id: uuid.UUID, *, customer_id: uuid.UUID, type: str, reason: str, priority: str = "MEDIUM",
         source_event: str | None = None, recommended_action: str | None = None,
     ) -> tuple[RetentionOpportunity, bool]:
+        """Phase 30 fix: backed by the real
+        `uq_retention_opportunities_tenant_customer_type_open` unique
+        constraint (tenant_id, customer_id, type, status), but the
+        check-then-insert below never caught the `IntegrityError` a
+        genuine concurrent duplicate trigger would raise — same class of
+        defect as `LeadService.create_lead`/`ContractService.
+        create_from_quote` (this same Phase 30 audit) and Phase 29's
+        `CollectionService.schedule_next_action`. Realistic here because
+        this method backs two real event-triggered callers (`job.closed`
+        post-job-followup and positive-review referral eligibility), both
+        plausible redelivery targets. Fixed with the same try/except/
+        rollback/re-fetch CAS pattern."""
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
             existing = (
@@ -285,13 +298,32 @@ class RetentionService:
                 recommended_action=recommended_action,
             )
             session.add(opp)
-            await session.commit()
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                existing = (
+                    await session.execute(
+                        select(RetentionOpportunity).where(
+                            RetentionOpportunity.tenant_id == tenant_id,
+                            RetentionOpportunity.customer_id == customer_id,
+                            RetentionOpportunity.type == type,
+                            RetentionOpportunity.status == OpportunityStatus.OPEN,
+                        )
+                    )
+                ).scalar_one()
+                return existing, True
             await session.refresh(opp)
 
         await self._bus.publish(
             tenant_id=tenant_id, event_type=EventType.RETENTION_OPPORTUNITY_CREATED, source="retention",
             entity_type="retention_opportunity", entity_id=opp.id,
-            payload={"customer_id": str(customer_id), "type": type},
+            # Phase 24: `reason` added so a consuming automation (e.g. the
+            # referral-opportunity owner notification) has real, useful
+            # content to show without needing to query anything itself —
+            # fixing the payload at the producer rather than having the
+            # automation handler reach into arbitrary data.
+            payload={"customer_id": str(customer_id), "type": type, "reason": reason},
         )
         return opp, False
 

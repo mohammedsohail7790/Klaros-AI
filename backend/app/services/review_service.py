@@ -28,6 +28,10 @@ class ReviewRequestNotFoundError(Exception):
     pass
 
 
+class FeedbackNotFoundError(Exception):
+    pass
+
+
 def _sentiment_for_rating(rating: int | None) -> str | None:
     if rating is None:
         return None
@@ -138,4 +142,24 @@ class ReviewService:
                 tenant_id, customer_id, reason=f"Customer left positive feedback (rating {rating}/5) — good referral candidate."
             )
 
+        return feedback
+
+    async def record_consent(
+        self, tenant_id: uuid.UUID, feedback_id: uuid.UUID, *, consent: bool
+    ) -> CustomerFeedback:
+        """A human recording a fact they've confirmed with the customer
+        (a verbal yes on a call, a reply to an email asking permission,
+        etc.) — this is the ONLY way consent_to_use_publicly is ever set;
+        nothing infers or defaults it to True. Reuses the existing 'staff
+        records what they know to be true' pattern (same shape as
+        recording a manual test payment) rather than inventing an
+        automated consent-collection flow this repository has no
+        requirements for."""
+        async with self._session_factory() as session:
+            feedback = await session.get(CustomerFeedback, feedback_id)
+            if feedback is None or feedback.tenant_id != tenant_id:
+                raise FeedbackNotFoundError("Feedback not found")
+            feedback.consent_to_use_publicly = consent
+            await session.commit()
+            await session.refresh(feedback)
         return feedback

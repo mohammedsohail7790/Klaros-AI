@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -9,6 +10,8 @@ import {
   IntegrationStatusRow,
   connectIntegration,
   disconnectIntegration,
+  getGoogleCalendarAuthorizeUrl,
+  getQuickBooksAuthorizeUrl,
   listIntegrationConnections,
   listIntegrationStatus,
   verifyIntegrationConnection,
@@ -65,17 +68,26 @@ function groupByCategory(rows: IntegrationStatusRow[]): Record<string, Integrati
 // they need the tenant-scoped IntegrationConnection model, not the
 // platform-status list. None have a real OAuth client built yet (see
 // INTEGRATIONS.md) — shown here honestly as NOT_IMPLEMENTED, with no
-// "Connect" button pointed at nothing real.
+// "Connect" button pointed at nothing real. QuickBooks moved OUT of this
+// list in Phase 13, Google Calendar in Phase 14 — both have real OAuth2
+// clients now (see their dedicated sections below).
 const PLANNED_OAUTH_PROVIDERS = [
-  { provider: "quickbooks", name: "QuickBooks", category: "Finance" },
-  { provider: "google_calendar", name: "Google Calendar", category: "Operations" },
   { provider: "gmail_oauth", name: "Gmail (OAuth)", category: "Communications" },
   { provider: "google_ads_oauth", name: "Google Ads (per-tenant)", category: "Marketing" },
   { provider: "meta_ads_oauth", name: "Meta Ads (per-tenant)", category: "Marketing" },
 ];
 
 export default function IntegrationsPage() {
+  return (
+    <Suspense fallback={<p className="p-8 text-sm text-neutral-500">Loading integrations...</p>}>
+      <IntegrationsPageInner />
+    </Suspense>
+  );
+}
+
+function IntegrationsPageInner() {
   const { token, user, loading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
   const [rows, setRows] = useState<IntegrationStatusRow[] | null>(null);
   const [connections, setConnections] = useState<IntegrationConnectionRow[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -84,6 +96,19 @@ export default function IntegrationsPage() {
   const [stripeKeyInput, setStripeKeyInput] = useState("");
   const [stripeActionPending, setStripeActionPending] = useState(false);
   const [stripeActionError, setStripeActionError] = useState<string | null>(null);
+  const [quickbooksActionPending, setQuickbooksActionPending] = useState(false);
+  const [quickbooksActionError, setQuickbooksActionError] = useState<string | null>(null);
+  // Set only from the ?quickbooks=connected|error query param the backend's
+  // real OAuth callback redirects back to after a genuine attempt — never
+  // fabricated locally.
+  const [quickbooksCallbackNotice, setQuickbooksCallbackNotice] = useState<
+    { kind: "connected" | "error"; detail?: string } | null
+  >(null);
+  const [googleCalendarActionPending, setGoogleCalendarActionPending] = useState(false);
+  const [googleCalendarActionError, setGoogleCalendarActionError] = useState<string | null>(null);
+  const [googleCalendarCallbackNotice, setGoogleCalendarCallbackNotice] = useState<
+    { kind: "connected" | "error"; detail?: string } | null
+  >(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -107,6 +132,106 @@ export default function IntegrationsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const qb = searchParams.get("quickbooks");
+    if (qb === "connected") {
+      setQuickbooksCallbackNotice({ kind: "connected" });
+    } else if (qb === "error") {
+      setQuickbooksCallbackNotice({ kind: "error", detail: searchParams.get("detail") ?? undefined });
+    }
+    const gcal = searchParams.get("google_calendar");
+    if (gcal === "connected") {
+      setGoogleCalendarCallbackNotice({ kind: "connected" });
+    } else if (gcal === "error") {
+      setGoogleCalendarCallbackNotice({ kind: "error", detail: searchParams.get("detail") ?? undefined });
+    }
+  }, [searchParams]);
+
+  async function handleConnectGoogleCalendar() {
+    if (!token) return;
+    setGoogleCalendarActionPending(true);
+    setGoogleCalendarActionError(null);
+    try {
+      const { authorization_url } = await getGoogleCalendarAuthorizeUrl(token);
+      window.location.href = authorization_url;
+    } catch (err) {
+      setGoogleCalendarActionError(err instanceof ApiError ? err.message : "Unable to start the Google Calendar connection.");
+      setGoogleCalendarActionPending(false);
+    }
+  }
+
+  async function handleDisconnectGoogleCalendar() {
+    if (!token) return;
+    setGoogleCalendarActionPending(true);
+    setGoogleCalendarActionError(null);
+    try {
+      await disconnectIntegration(token, "google_calendar");
+      await load();
+    } catch (err) {
+      setGoogleCalendarActionError(err instanceof ApiError ? err.message : "Unable to disconnect Google Calendar.");
+    } finally {
+      setGoogleCalendarActionPending(false);
+    }
+  }
+
+  async function handleVerifyGoogleCalendar() {
+    if (!token) return;
+    setGoogleCalendarActionPending(true);
+    setGoogleCalendarActionError(null);
+    try {
+      await verifyIntegrationConnection(token, "google_calendar");
+      await load();
+    } catch (err) {
+      setGoogleCalendarActionError(err instanceof ApiError ? err.message : "Unable to verify the Google Calendar connection.");
+    } finally {
+      setGoogleCalendarActionPending(false);
+    }
+  }
+
+  async function handleConnectQuickBooks() {
+    if (!token) return;
+    setQuickbooksActionPending(true);
+    setQuickbooksActionError(null);
+    try {
+      const { authorization_url } = await getQuickBooksAuthorizeUrl(token);
+      // A real redirect to Intuit's own consent page — the frontend never
+      // collects a QuickBooks credential itself (there is none to collect;
+      // the backend's callback does the real token exchange server-side).
+      window.location.href = authorization_url;
+    } catch (err) {
+      setQuickbooksActionError(err instanceof ApiError ? err.message : "Unable to start the QuickBooks connection.");
+      setQuickbooksActionPending(false);
+    }
+  }
+
+  async function handleDisconnectQuickBooks() {
+    if (!token) return;
+    setQuickbooksActionPending(true);
+    setQuickbooksActionError(null);
+    try {
+      await disconnectIntegration(token, "quickbooks");
+      await load();
+    } catch (err) {
+      setQuickbooksActionError(err instanceof ApiError ? err.message : "Unable to disconnect QuickBooks.");
+    } finally {
+      setQuickbooksActionPending(false);
+    }
+  }
+
+  async function handleVerifyQuickBooks() {
+    if (!token) return;
+    setQuickbooksActionPending(true);
+    setQuickbooksActionError(null);
+    try {
+      await verifyIntegrationConnection(token, "quickbooks");
+      await load();
+    } catch (err) {
+      setQuickbooksActionError(err instanceof ApiError ? err.message : "Unable to verify the QuickBooks connection.");
+    } finally {
+      setQuickbooksActionPending(false);
+    }
+  }
 
   async function handleConnectStripe() {
     if (!token || !stripeKeyInput.trim()) return;
@@ -212,6 +337,36 @@ export default function IntegrationsPage() {
             </div>
           ))}
 
+        {rows && user && (
+          <div className="mb-6">
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              Inbound Twilio Lead Capture
+            </h2>
+            <p className="mb-2 text-xs text-neutral-500">
+              Paste these into your Twilio phone number&apos;s console configuration to capture inbound
+              texts and calls as real leads. The tenant ID in the URL is how requests are routed to
+              your account — Twilio&apos;s own request signature covers the exact URL, so it cannot be
+              reused for another tenant.
+            </p>
+            <div className="space-y-2 rounded border border-neutral-800 p-3 text-xs">
+              <div>
+                <div className="text-neutral-500">Messaging &mdash; &quot;A message comes in&quot;</div>
+                <code className="break-all text-neutral-300">
+                  {(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") +
+                    `/api/v1/webhooks/twilio/inbound-sms/${user.tenant_id}`}
+                </code>
+              </div>
+              <div>
+                <div className="text-neutral-500">Voice &mdash; &quot;A call comes in&quot;</div>
+                <code className="break-all text-neutral-300">
+                  {(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") +
+                    `/api/v1/webhooks/twilio/inbound-voice/${user.tenant_id}`}
+                </code>
+              </div>
+            </div>
+          </div>
+        )}
+
         {rows && (
           <div className="mb-6">
             <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
@@ -282,6 +437,202 @@ export default function IntegrationsPage() {
                           <button
                             onClick={handleDisconnectStripe}
                             disabled={stripeActionPending}
+                            className="rounded border border-red-900 px-3 py-1.5 text-sm text-red-300 hover:bg-red-950 disabled:opacity-50"
+                          >
+                            Disconnect
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {quickbooksCallbackNotice && (
+          <div
+            className={`mb-4 rounded border px-4 py-3 text-sm ${
+              quickbooksCallbackNotice.kind === "connected"
+                ? "border-emerald-800 bg-emerald-950/30 text-emerald-300"
+                : "border-red-800 bg-red-950/30 text-red-300"
+            }`}
+          >
+            {quickbooksCallbackNotice.kind === "connected"
+              ? "QuickBooks connected — verified with a real, live API call."
+              : `QuickBooks connection failed${
+                  quickbooksCallbackNotice.detail ? `: ${quickbooksCallbackNotice.detail}` : "."
+                }`}
+          </div>
+        )}
+
+        {rows && (
+          <div className="mb-6">
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              Your Own QuickBooks Company (Phase 13)
+            </h2>
+            <p className="mb-2 text-xs text-neutral-500">
+              Connect your own QuickBooks Online company to sync approved invoices there. Uses a real
+              OAuth2 flow through Intuit&apos;s own consent page — Klaros never sees or asks for a
+              QuickBooks password, and the connection is verified with a real, live API call the
+              moment it completes.
+            </p>
+            <div className="rounded border border-neutral-800 px-4 py-3">
+              {(() => {
+                const qbConnection = connections?.find((c) => c.provider === "quickbooks");
+                return (
+                  <>
+                    {qbConnection && (
+                      <div className="mb-3 flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-neutral-200">
+                            QuickBooks{qbConnection.external_account_id ? ` (company ${qbConnection.external_account_id})` : ""}
+                          </div>
+                          <div className="mt-0.5 text-xs text-neutral-500">
+                            {qbConnection.last_error ??
+                              (qbConnection.last_verified_at
+                                ? `Last verified ${new Date(qbConnection.last_verified_at).toLocaleString()}`
+                                : "Not yet verified")}
+                          </div>
+                        </div>
+                        <span
+                          className={`rounded border px-2 py-0.5 text-xs font-medium ${
+                            STATUS_COLOR[qbConnection.status] ?? "border-neutral-700 text-neutral-400"
+                          }`}
+                        >
+                          {qbConnection.status}
+                        </span>
+                      </div>
+                    )}
+
+                    {quickbooksActionError && (
+                      <div className="mb-2 rounded border border-red-800 bg-red-950/30 px-3 py-2 text-xs text-red-300">
+                        {quickbooksActionError}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleConnectQuickBooks}
+                        disabled={quickbooksActionPending}
+                        className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+                      >
+                        {quickbooksActionPending
+                          ? "Working..."
+                          : qbConnection && qbConnection.status !== "DISCONNECTED"
+                            ? "Reconnect"
+                            : "Connect with QuickBooks"}
+                      </button>
+                      {qbConnection && qbConnection.status !== "DISCONNECTED" && (
+                        <>
+                          <button
+                            onClick={handleVerifyQuickBooks}
+                            disabled={quickbooksActionPending}
+                            className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+                          >
+                            Verify
+                          </button>
+                          <button
+                            onClick={handleDisconnectQuickBooks}
+                            disabled={quickbooksActionPending}
+                            className="rounded border border-red-900 px-3 py-1.5 text-sm text-red-300 hover:bg-red-950 disabled:opacity-50"
+                          >
+                            Disconnect
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {googleCalendarCallbackNotice && (
+          <div
+            className={`mb-4 rounded border px-4 py-3 text-sm ${
+              googleCalendarCallbackNotice.kind === "connected"
+                ? "border-emerald-800 bg-emerald-950/30 text-emerald-300"
+                : "border-red-800 bg-red-950/30 text-red-300"
+            }`}
+          >
+            {googleCalendarCallbackNotice.kind === "connected"
+              ? "Google Calendar connected — verified with a real, live API call."
+              : `Google Calendar connection failed${
+                  googleCalendarCallbackNotice.detail ? `: ${googleCalendarCallbackNotice.detail}` : "."
+                }`}
+          </div>
+        )}
+
+        {rows && (
+          <div className="mb-6">
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              Your Own Google Calendar (Phase 14)
+            </h2>
+            <p className="mb-2 text-xs text-neutral-500">
+              Connect your own Google Calendar to sync confirmed Klaros appointments there. Uses a
+              real OAuth2 flow through Google&apos;s own consent page — Klaros never sees or asks
+              for a Google password, and the connection is verified with a real, live API call the
+              moment it completes.
+            </p>
+            <div className="rounded border border-neutral-800 px-4 py-3">
+              {(() => {
+                const gcalConnection = connections?.find((c) => c.provider === "google_calendar");
+                return (
+                  <>
+                    {gcalConnection && (
+                      <div className="mb-3 flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-neutral-200">Google Calendar</div>
+                          <div className="mt-0.5 text-xs text-neutral-500">
+                            {gcalConnection.last_error ??
+                              (gcalConnection.last_verified_at
+                                ? `Last verified ${new Date(gcalConnection.last_verified_at).toLocaleString()}`
+                                : "Not yet verified")}
+                          </div>
+                        </div>
+                        <span
+                          className={`rounded border px-2 py-0.5 text-xs font-medium ${
+                            STATUS_COLOR[gcalConnection.status] ?? "border-neutral-700 text-neutral-400"
+                          }`}
+                        >
+                          {gcalConnection.status}
+                        </span>
+                      </div>
+                    )}
+
+                    {googleCalendarActionError && (
+                      <div className="mb-2 rounded border border-red-800 bg-red-950/30 px-3 py-2 text-xs text-red-300">
+                        {googleCalendarActionError}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleConnectGoogleCalendar}
+                        disabled={googleCalendarActionPending}
+                        className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+                      >
+                        {googleCalendarActionPending
+                          ? "Working..."
+                          : gcalConnection && gcalConnection.status !== "DISCONNECTED"
+                            ? "Reconnect"
+                            : "Connect with Google"}
+                      </button>
+                      {gcalConnection && gcalConnection.status !== "DISCONNECTED" && (
+                        <>
+                          <button
+                            onClick={handleVerifyGoogleCalendar}
+                            disabled={googleCalendarActionPending}
+                            className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+                          >
+                            Verify
+                          </button>
+                          <button
+                            onClick={handleDisconnectGoogleCalendar}
+                            disabled={googleCalendarActionPending}
                             className="rounded border border-red-900 px-3 py-1.5 text-sm text-red-300 hover:bg-red-950 disabled:opacity-50"
                           >
                             Disconnect

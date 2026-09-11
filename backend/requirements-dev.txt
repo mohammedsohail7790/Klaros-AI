@@ -1,0 +1,10 @@
+# Development/test-only dependencies — never installed in the production
+# Docker image (backend/Dockerfile installs only requirements.txt).
+# Local development: pip install -r requirements.txt -r requirements-dev.txt
+-r requirements.txt
+
+pytest==9.0.3
+pytest-asyncio==1.4.0
+# CLI dependency-vulnerability scanner (`pip-audit`) — never imported by
+# application code, run manually/in CI only.
+pip-audit==2.10.1

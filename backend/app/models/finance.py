@@ -101,6 +101,21 @@ class Payment(TenantScopedMixin, Base):
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
     external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Phase 15: a deposit payment is tied directly to the Quote it's for —
+    # unlike an invoice payment, there is no Invoice row yet to allocate
+    # against via PaymentAllocation (that only happens once the deposit
+    # converts the quote to a real Job/Invoice downstream). NULL for every
+    # pre-Phase-15 (invoice) payment.
+    quote_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True, index=True)
+    # Phase 17: the QuickBooks Payment this Klaros Payment was synced to,
+    # once it has been. NOT the same slot as provider/external_id above —
+    # those already identify this row's ORIGINATING provider (e.g.
+    # "stripe" + a PaymentIntent id); this is a SEPARATE, secondary
+    # accounting-sync target, the same relationship Invoice has with
+    # QuickBooks via its own external_provider/external_id. NULL until a
+    # real sync succeeds; its presence is this app's own idempotency
+    # boundary against a duplicate sync (see QuickBooksPaymentSyncService).
+    quickbooks_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "provider", "external_id", name="uq_payments_tenant_provider_external"),
@@ -132,6 +147,12 @@ class Refund(TenantScopedMixin, Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=RefundStatus.REQUESTED)
     requested_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     approved_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    # Phase 18: the QuickBooks RefundReceipt this Klaros Refund was synced
+    # to, once it has been. Mirrors Payment.quickbooks_payment_id's role
+    # exactly — its presence is this app's own idempotency boundary
+    # against a duplicate sync. NULL until a real sync succeeds, and for
+    # every pre-Phase-18 row.
+    quickbooks_refund_receipt_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 class CreditNoteStatus(StrEnum):

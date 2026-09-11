@@ -5,9 +5,13 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
+  KnowledgeAskResponse,
   KnowledgeFileRow,
+  KnowledgeSearchResultRow,
+  askKnowledge,
   deleteKnowledgeFile,
   listKnowledgeFiles,
+  searchKnowledge,
   setKnowledgeFile,
 } from "@/lib/api";
 
@@ -32,6 +36,13 @@ export default function KnowledgePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const [mode, setMode] = useState<"browse" | "search">("browse");
+  const [queryDraft, setQueryDraft] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<KnowledgeSearchResultRow[] | null>(null);
+  const [askResult, setAskResult] = useState<KnowledgeAskResponse | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -107,6 +118,46 @@ export default function KnowledgePage() {
     }
   }
 
+  async function handleSearch() {
+    if (!token || !queryDraft.trim()) return;
+    setSearching(true);
+    setSearchError(null);
+    setSearchResults(null);
+    setAskResult(null);
+    try {
+      const result = await searchKnowledge(token, queryDraft.trim());
+      if (!result.available) {
+        setSearchError(result.error_detail ?? "Search is unavailable.");
+      } else {
+        setSearchResults(result.results);
+      }
+    } catch (err) {
+      setSearchError(err instanceof ApiError ? err.message : "Unable to search.");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function handleAsk() {
+    if (!token || !queryDraft.trim()) return;
+    setSearching(true);
+    setSearchError(null);
+    setSearchResults(null);
+    setAskResult(null);
+    try {
+      const result = await askKnowledge(token, queryDraft.trim());
+      if (!result.available) {
+        setSearchError(result.error_detail ?? "AI answering is unavailable.");
+      } else {
+        setAskResult(result);
+      }
+    } catch (err) {
+      setSearchError(err instanceof ApiError ? err.message : "Unable to get an answer.");
+    } finally {
+      setSearching(false);
+    }
+  }
+
   const grouped: Record<string, KnowledgeFileRow[]> = {};
   for (const f of files ?? []) {
     const cat = categoryOf(f.path);
@@ -125,6 +176,21 @@ export default function KnowledgePage() {
           AI provider is connected) — it never invents what should be here instead.
         </p>
 
+        <div className="mb-6 flex gap-2 border-b border-neutral-800">
+          <button
+            onClick={() => setMode("browse")}
+            className={`px-3 py-2 text-sm ${mode === "browse" ? "border-b-2 border-neutral-200 text-neutral-100" : "text-neutral-500"}`}
+          >
+            Browse &amp; edit
+          </button>
+          <button
+            onClick={() => setMode("search")}
+            className={`px-3 py-2 text-sm ${mode === "search" ? "border-b-2 border-neutral-200 text-neutral-100" : "text-neutral-500"}`}
+          >
+            Test retrieval
+          </button>
+        </div>
+
         {notice && (
           <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">
             {notice}
@@ -136,7 +202,72 @@ export default function KnowledgePage() {
           </div>
         )}
 
-        {authLoading || loading ? (
+        {mode === "search" ? (
+          <div className="max-w-3xl">
+            <p className="mb-4 text-sm text-neutral-500">
+              Real, tenant-scoped semantic search over the files on the left — chunked, embedded, and ranked by
+              similarity. &quot;Ask&quot; additionally sends the top matching excerpts to a real AI provider,
+              bounded to only what was actually retrieved, with source citations; if no AI provider is
+              configured it says so honestly rather than fabricating an answer.
+            </p>
+            <div className="mb-4 flex gap-2">
+              <input
+                value={queryDraft}
+                onChange={(e) => setQueryDraft(e.target.value)}
+                placeholder="e.g. what is our plumbing hourly rate?"
+                className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              />
+              <button
+                onClick={handleSearch}
+                disabled={searching || !queryDraft.trim()}
+                className="rounded-md border border-neutral-700 px-3 py-2 text-sm hover:bg-neutral-900 disabled:opacity-50"
+              >
+                Search
+              </button>
+              <button
+                onClick={handleAsk}
+                disabled={searching || !queryDraft.trim()}
+                className="rounded-md border border-emerald-800 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-300 hover:bg-emerald-950/60 disabled:opacity-50"
+              >
+                Ask AI
+              </button>
+            </div>
+
+            {searching && <p className="text-sm text-neutral-500">Working...</p>}
+            {searchError && (
+              <div className="mb-4 rounded-md border border-amber-900 bg-amber-950/30 p-3 text-sm text-amber-300">
+                {searchError}
+              </div>
+            )}
+
+            {askResult && (
+              <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+                <p className="mb-2 text-sm text-neutral-200">{askResult.answer}</p>
+                {askResult.answered_from_excerpts && askResult.sources && askResult.sources.length > 0 && (
+                  <p className="text-xs text-neutral-500">Sources: {askResult.sources.join(", ")}</p>
+                )}
+              </div>
+            )}
+
+            {searchResults && (
+              <div className="space-y-3">
+                {searchResults.length === 0 && (
+                  <p className="text-sm text-neutral-500">No matching knowledge found.</p>
+                )}
+                {searchResults.map((r) => (
+                  <div key={`${r.file_path}-${r.chunk_index}`} className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+                    <div className="mb-1 flex items-center justify-between text-xs text-neutral-500">
+                      <span>{r.file_path}</span>
+                      <span>score {r.score.toFixed(3)}</span>
+                    </div>
+                    <p className="text-sm text-neutral-300">{r.content}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : authLoading || loading ? (
           <p className="text-sm text-neutral-500">Loading...</p>
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

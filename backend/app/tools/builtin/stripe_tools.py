@@ -44,7 +44,7 @@ class CreateStripeCheckoutOutput(BaseModel):
     checkout_session_id: str
 
 
-async def _resolve_stripe_secret_key(
+async def resolve_stripe_secret_key(
     connection_service: IntegrationConnectionService, tenant_id: uuid.UUID
 ) -> str | None:
     """Tenant's own connected Stripe account, if any; else the
@@ -74,7 +74,7 @@ class CreateStripeCheckoutSession(Tool):
     async def execute(
         self, input: CreateStripeCheckoutInput, context: ExecutionContext
     ) -> CreateStripeCheckoutOutput:
-        secret_key = await _resolve_stripe_secret_key(self._connection_service, context.tenant_id)
+        secret_key = await resolve_stripe_secret_key(self._connection_service, context.tenant_id)
         if not secret_key:
             raise ToolError("Stripe is not connected (no tenant connection and STRIPE_SECRET_KEY not configured)")
 
@@ -114,5 +114,5 @@ class CreateStripeCheckoutSession(Tool):
             raise ToolError(f"Stripe checkout session creation failed: {exc}") from exc
 
         return CreateStripeCheckoutOutput(
-            checkout_url=session_obj["url"], checkout_session_id=session_obj["id"]
+            checkout_url=session_obj.url, checkout_session_id=session_obj.id
         )

@@ -5,20 +5,75 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import Link from "next/link";
 import {
+  ActivityFeed,
   ApiError,
+  AttentionItem,
+  AttentionQueue,
+  AutomationSummary,
   AutonomyStats,
+  CommercialPipeline,
   CrmMetrics,
   FinanceSummary,
   MarketingSummary,
   MorningBriefData,
+  OperationsDashboard,
   RetentionSummary,
+  AiHealth,
+  getActivityFeed,
+  getAiHealth,
+  getAttentionQueue,
+  getAutomationSummary,
   getAutonomyStats,
+  getCommercialPipeline,
   getCrmMetrics,
   getFinanceSummary,
   getLatestMorningBrief,
   getMarketingSummary,
+  getOperationsDashboard,
   getRetentionSummary,
+  listApprovals,
+  listCompanyMemories,
 } from "@/lib/api";
+
+const ACTIVITY_CATEGORIES = ["ALL", "CRM", "SALES", "CONTRACT", "OPERATIONS", "QA", "FINANCE", "RETENTION", "REFERRAL", "AUTOMATION", "AI"];
+
+const ACTIVITY_SEVERITY_STYLE: Record<string, string> = {
+  ERROR: "border-red-800 bg-red-950/30 text-red-300",
+  WARNING: "border-amber-800 bg-amber-950/30 text-amber-300",
+  INFO: "border-neutral-800 bg-neutral-950 text-neutral-400",
+};
+
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+const PRIORITY_STYLE: Record<AttentionItem["priority"], string> = {
+  CRITICAL: "border-red-800 bg-red-950/30 text-red-300",
+  HIGH: "border-amber-800 bg-amber-950/30 text-amber-300",
+  MEDIUM: "border-blue-900 bg-blue-950/20 text-blue-300",
+  LOW: "border-neutral-800 bg-neutral-950 text-neutral-400",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  qualified_lead_no_appointment: "Lead",
+  quote_stale: "Quote",
+  contract_pending: "Contract",
+  job_qa_failed: "QA",
+  job_blocked: "Job",
+  invoice_overdue: "Invoice",
+  retention_opportunity: "Retention",
+  referral_opportunity: "Referral",
+  ai_approval_required: "AI approval",
+  ai_feedback_pending: "AI learning",
+  automation_failed: "Automation",
+};
 
 const PENDING_MODULES: string[] = [];
 
@@ -34,34 +89,97 @@ const METRIC_LABELS: { key: keyof CrmMetrics; label: string }[] = [
 export default function DashboardPage() {
   const { token, user, loading: authLoading, error: authError } = useAuth();
   const [metrics, setMetrics] = useState<CrmMetrics | null>(null);
+  const [pipeline, setPipeline] = useState<CommercialPipeline | null>(null);
+  const [operations, setOperations] = useState<OperationsDashboard | null>(null);
   const [finance, setFinance] = useState<FinanceSummary | null>(null);
   const [marketing, setMarketing] = useState<MarketingSummary | null>(null);
   const [retention, setRetention] = useState<RetentionSummary | null>(null);
   const [brief, setBrief] = useState<MorningBriefData | null>(null);
+  const [attention, setAttention] = useState<AttentionQueue | null>(null);
+  const [aiHealth, setAiHealth] = useState<AiHealth | null>(null);
   const [autonomy, setAutonomy] = useState<AutonomyStats | null>(null);
+  const [automations, setAutomations] = useState<AutomationSummary | null>(null);
+  const [aiApprovalsPending, setAiApprovalsPending] = useState<number | null>(null);
+  const [aiFeedbackPending, setAiFeedbackPending] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activity, setActivity] = useState<ActivityFeed | null>(null);
+  const [activityPage, setActivityPage] = useState(1);
+  const [activityCategory, setActivityCategory] = useState("ALL");
+  const [activityLoading, setActivityLoading] = useState(false);
+
+  const loadActivity = useCallback(
+    async (page: number, category: string) => {
+      if (!token) return;
+      setActivityLoading(true);
+      try {
+        const result = await getActivityFeed(token, {
+          page, pageSize: 10, category: category === "ALL" ? undefined : category,
+        });
+        setActivity(result);
+      } catch {
+        // Activity feed failing to load must never block the rest of the
+        // cockpit — it already has its own error boundary implicitly via
+        // the empty/error state rendered below (activity stays null).
+      } finally {
+        setActivityLoading(false);
+      }
+    },
+    [token]
+  );
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const [metricsResult, financeResult, marketingResult, retentionResult, briefResult, autonomyResult] =
-        await Promise.all([
-          getCrmMetrics(token),
-          getFinanceSummary(token),
-          getMarketingSummary(token),
-          getRetentionSummary(token),
-          getLatestMorningBrief(token),
-          getAutonomyStats(token),
-        ]);
+      const [
+        metricsResult,
+        pipelineResult,
+        operationsResult,
+        financeResult,
+        marketingResult,
+        retentionResult,
+        briefResult,
+        autonomyResult,
+        automationsResult,
+        pendingApprovalsResult,
+        aiFeedbackResult,
+        attentionResult,
+        aiHealthResult,
+      ] = await Promise.all([
+        getCrmMetrics(token),
+        getCommercialPipeline(token),
+        getOperationsDashboard(token),
+        getFinanceSummary(token),
+        getMarketingSummary(token),
+        getRetentionSummary(token),
+        getLatestMorningBrief(token),
+        getAutonomyStats(token),
+        getAutomationSummary(token),
+        // Phase 21: small cockpit summary counts, reusing the existing
+        // Approvals/Company Memory list APIs — no new backend endpoint.
+        // AI origin isn't filterable server-side for approvals, so it's
+        // counted client-side from the existing PENDING list.
+        listApprovals(token, "PENDING"),
+        listCompanyMemories(token, { status_filter: "PENDING", memory_type: "AI_FEEDBACK" }),
+        // Phase 26: the single prioritized attention queue.
+        getAttentionQueue(token),
+        getAiHealth(token),
+      ]);
       setMetrics(metricsResult);
+      setPipeline(pipelineResult);
+      setOperations(operationsResult);
       setFinance(financeResult);
       setMarketing(marketingResult);
       setRetention(retentionResult);
       setBrief(briefResult);
       setAutonomy(autonomyResult);
+      setAutomations(automationsResult);
+      setAiApprovalsPending(pendingApprovalsResult.approvals.filter((a) => a.requested_by_type === "AI").length);
+      setAiFeedbackPending(aiFeedbackResult.memories.length);
+      setAttention(attentionResult);
+      setAiHealth(aiHealthResult);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load business metrics.");
     } finally {
@@ -72,6 +190,10 @@ export default function DashboardPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    loadActivity(activityPage, activityCategory);
+  }, [loadActivity, activityPage, activityCategory]);
 
   if (authError) return <p className="p-8 text-sm text-red-400">{authError}</p>;
 
@@ -88,6 +210,53 @@ export default function DashboardPage() {
             )}
           </div>
         </header>
+
+        <section className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-neutral-300">Needs your attention</h2>
+            {attention && attention.items.length > 0 && (
+              <span className="text-xs text-neutral-500">
+                {attention.critical_count > 0 && <span className="text-red-400">{attention.critical_count} critical</span>}
+                {attention.critical_count > 0 && attention.high_count > 0 && " · "}
+                {attention.high_count > 0 && <span className="text-amber-400">{attention.high_count} high</span>}
+              </span>
+            )}
+          </div>
+          {!attention ? (
+            <p className="text-sm text-neutral-500">Loading...</p>
+          ) : attention.items.length === 0 ? (
+            <p className="rounded-lg border border-emerald-900 bg-emerald-950/10 p-4 text-sm text-emerald-300">
+              Nothing needs your attention right now.
+            </p>
+          ) : (
+            <ul className="divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-950">
+              {attention.items.slice(0, 8).map((item) => (
+                <li key={`${item.category}-${item.entity_id}`}>
+                  <Link
+                    href={item.link}
+                    className="flex items-start justify-between gap-4 p-4 transition hover:bg-neutral-900"
+                  >
+                    <div className="min-w-0">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${PRIORITY_STYLE[item.priority]}`}>
+                          {item.priority}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wide text-neutral-500">
+                          {CATEGORY_LABELS[item.category] ?? item.category}
+                        </span>
+                      </div>
+                      <p className="truncate text-sm text-neutral-200">{item.title}</p>
+                      <p className="mt-0.5 truncate text-xs text-neutral-500">{item.reason}</p>
+                    </div>
+                    {item.monetary_value && (
+                      <div className="shrink-0 text-sm font-medium text-neutral-300">${item.monetary_value}</div>
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
@@ -118,6 +287,108 @@ export default function DashboardPage() {
                 <div className="rounded-lg border border-neutral-700 bg-neutral-900/40 p-4">
                   <div className="text-2xl font-semibold text-neutral-300">{autonomy.failed}</div>
                   <div className="text-xs text-neutral-500">Failed</div>
+                </div>
+              </div>
+            )
+          ) : (
+            <p className="text-sm text-neutral-500">Loading...</p>
+          )}
+        </section>
+
+        <section className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-neutral-300">AI Control Center</h2>
+            <Link href="/ai-activity" className="text-xs text-neutral-500 underline">
+              View AI activity
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Link
+              href="/approvals"
+              className={`rounded-lg border p-4 transition hover:border-violet-600 ${
+                (aiApprovalsPending ?? 0) > 0 ? "border-violet-900 bg-violet-950/20" : "border-neutral-800 bg-neutral-950"
+              }`}
+            >
+              <div className="text-2xl font-semibold text-violet-300">{aiApprovalsPending ?? 0}</div>
+              <div className="text-xs text-neutral-500">Awaiting approval</div>
+            </Link>
+            <Link
+              href="/settings/memory"
+              className={`rounded-lg border p-4 transition hover:border-violet-600 ${
+                (aiFeedbackPending ?? 0) > 0 ? "border-violet-900 bg-violet-950/20" : "border-neutral-800 bg-neutral-950"
+              }`}
+            >
+              <div className="text-2xl font-semibold text-violet-300">{aiFeedbackPending ?? 0}</div>
+              <div className="text-xs text-neutral-500">Feedback to review</div>
+            </Link>
+            {aiHealth && (
+              <>
+                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+                  <div className={`text-sm font-semibold ${aiHealth.provider_configured ? "text-emerald-300" : "text-neutral-400"}`}>
+                    {aiHealth.provider_configured ? "Connected" : "Not connected"}
+                  </div>
+                  <div className="mt-1 text-xs text-neutral-500">AI provider ({aiHealth.provider_name})</div>
+                </div>
+                <Link
+                  href="/ai-activity"
+                  className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+                >
+                  <div className="text-2xl font-semibold text-neutral-300">
+                    {aiHealth.invocations_24h_succeeded}/{aiHealth.invocations_24h}
+                  </div>
+                  <div className="text-xs text-neutral-500">Calls succeeded (24h)</div>
+                </Link>
+              </>
+            )}
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-neutral-300">Automations</h2>
+            <Link href="/automations" className="text-xs text-neutral-500 underline">
+              Manage automations
+            </Link>
+          </div>
+          {automations ? (
+            automations.automations_total === 0 ? (
+              <p className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-500">
+                No automations set up yet.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <Link
+                  href="/automations"
+                  className="rounded-lg border border-blue-900 bg-blue-950/20 p-4 transition hover:border-blue-600"
+                >
+                  <div className="text-2xl font-semibold text-blue-300">{automations.executions_running}</div>
+                  <div className="text-xs text-neutral-500">Running now</div>
+                </Link>
+                <Link
+                  href="/automations"
+                  className={`rounded-lg border p-4 transition hover:border-red-600 ${
+                    automations.executions_failed > 0 ? "border-red-900 bg-red-950/20" : "border-neutral-800 bg-neutral-950"
+                  }`}
+                >
+                  <div className="text-2xl font-semibold text-red-300">{automations.executions_failed}</div>
+                  <div className="text-xs text-neutral-500">Failed</div>
+                </Link>
+                <div className="rounded-lg border border-emerald-900 bg-emerald-950/20 p-4">
+                  <div className="text-2xl font-semibold text-emerald-300">{automations.executions_completed_today}</div>
+                  <div className="text-xs text-neutral-500">Completed today</div>
+                </div>
+                <Link
+                  href="/automations"
+                  className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+                >
+                  <div className="text-2xl font-semibold text-neutral-300">{automations.automations_scheduled}</div>
+                  <div className="text-xs text-neutral-500">Scheduled</div>
+                </Link>
+                <div className="rounded-lg border border-neutral-700 bg-neutral-900/40 p-4">
+                  <div className="text-2xl font-semibold text-neutral-300">
+                    {automations.automations_enabled}/{automations.automations_total}
+                  </div>
+                  <div className="text-xs text-neutral-500">Enabled</div>
                 </div>
               </div>
             )
@@ -216,6 +487,143 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : null}
+        </section>
+
+        <section className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-neutral-300">Commercial Pipeline — Quote → Contract → Deposit → Job</h2>
+            <Link href="/quotes" className="text-xs text-neutral-500 underline">
+              View quotes
+            </Link>
+          </div>
+          {pipeline?.needs_attention && (
+            <div className="mb-4 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-300">
+              PIPELINE NEEDS ATTENTION — {pipeline.contracts_awaiting_signature} contract(s) awaiting signature,{" "}
+              {pipeline.deposits_awaiting_payment} deposit(s) outstanding.
+            </div>
+          )}
+          {pipeline ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              <Link
+                href="/quotes"
+                className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+              >
+                <p className="text-2xl font-semibold">{pipeline.quotes_awaiting_response}</p>
+                <p className="mt-1 text-xs text-neutral-500">Quotes awaiting response</p>
+              </Link>
+              <Link
+                href="/quotes"
+                className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+              >
+                <p className="text-2xl font-semibold">${pipeline.quotes_accepted_value}</p>
+                <p className="mt-1 text-xs text-neutral-500">{pipeline.quotes_accepted} quote(s) accepted</p>
+              </Link>
+              <Link
+                href="/contracts"
+                className={`rounded-lg border p-4 transition hover:border-neutral-600 ${
+                  pipeline.contracts_awaiting_signature > 0
+                    ? "border-amber-900 bg-amber-950/20"
+                    : "border-neutral-800 bg-neutral-950"
+                }`}
+              >
+                <p className="text-2xl font-semibold">{pipeline.contracts_awaiting_signature}</p>
+                <p className="mt-1 text-xs text-neutral-500">Contracts awaiting signature</p>
+              </Link>
+              <Link
+                href="/contracts"
+                className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+              >
+                <p className="text-2xl font-semibold">{pipeline.contracts_signed}</p>
+                <p className="mt-1 text-xs text-neutral-500">Contracts signed</p>
+              </Link>
+              <Link
+                href="/quotes"
+                className={`rounded-lg border p-4 transition hover:border-neutral-600 ${
+                  pipeline.deposits_awaiting_payment > 0
+                    ? "border-amber-900 bg-amber-950/20"
+                    : "border-neutral-800 bg-neutral-950"
+                }`}
+              >
+                <p className="text-2xl font-semibold">${pipeline.deposits_awaiting_value}</p>
+                <p className="mt-1 text-xs text-neutral-500">
+                  {pipeline.deposits_awaiting_payment} deposit(s) outstanding
+                </p>
+              </Link>
+              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+                <p className="text-2xl font-semibold">${pipeline.deposits_collected}</p>
+                <p className="mt-1 text-xs text-neutral-500">Deposits collected</p>
+              </div>
+              <Link
+                href="/jobs"
+                className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+              >
+                <p className="text-2xl font-semibold">{pipeline.jobs_from_quotes}</p>
+                <p className="mt-1 text-xs text-neutral-500">Jobs created from quotes</p>
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-neutral-500">Loading...</p>
+          )}
+        </section>
+
+        <section className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-neutral-300">Operations — Jobs in flight</h2>
+            <Link href="/operations" className="text-xs text-neutral-500 underline">
+              View operations
+            </Link>
+          </div>
+          {operations && (operations.blocked_jobs > 0 || operations.at_risk_jobs > 0 || operations.open_exceptions > 0) && (
+            <div className="mb-4 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-300">
+              OPERATIONS NEEDS ATTENTION — {operations.blocked_jobs} blocked job(s), {operations.at_risk_jobs} at-risk
+              job(s), {operations.open_exceptions} open exception(s).
+            </div>
+          )}
+          {operations ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+              <Link href="/jobs" className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600">
+                <p className="text-2xl font-semibold">{operations.jobs_today}</p>
+                <p className="mt-1 text-xs text-neutral-500">Jobs today</p>
+              </Link>
+              <Link href="/jobs" className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600">
+                <p className="text-2xl font-semibold">{operations.unassigned_jobs}</p>
+                <p className="mt-1 text-xs text-neutral-500">Unassigned</p>
+              </Link>
+              <Link
+                href="/operations"
+                className={`rounded-lg border p-4 transition hover:border-neutral-600 ${
+                  operations.at_risk_jobs > 0 ? "border-amber-900 bg-amber-950/20" : "border-neutral-800 bg-neutral-950"
+                }`}
+              >
+                <p className="text-2xl font-semibold">{operations.at_risk_jobs}</p>
+                <p className="mt-1 text-xs text-neutral-500">At risk</p>
+              </Link>
+              <Link
+                href="/operations"
+                className={`rounded-lg border p-4 transition hover:border-neutral-600 ${
+                  operations.blocked_jobs > 0 ? "border-red-900 bg-red-950/20" : "border-neutral-800 bg-neutral-950"
+                }`}
+              >
+                <p className="text-2xl font-semibold">{operations.blocked_jobs}</p>
+                <p className="mt-1 text-xs text-neutral-500">Blocked</p>
+              </Link>
+              <Link href="/jobs" className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600">
+                <p className="text-2xl font-semibold">{operations.qa_pending_jobs}</p>
+                <p className="mt-1 text-xs text-neutral-500">Awaiting QA</p>
+              </Link>
+              <Link
+                href="/exceptions"
+                className={`rounded-lg border p-4 transition hover:border-neutral-600 ${
+                  operations.open_exceptions > 0 ? "border-amber-900 bg-amber-950/20" : "border-neutral-800 bg-neutral-950"
+                }`}
+              >
+                <p className="text-2xl font-semibold">{operations.open_exceptions}</p>
+                <p className="mt-1 text-xs text-neutral-500">Open exceptions</p>
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-neutral-500">Loading...</p>
+          )}
         </section>
 
         <section className="mb-8">
@@ -319,6 +727,96 @@ export default function DashboardPage() {
                 <p className="mt-1 text-xs text-neutral-500">Review issues</p>
               </div>
             </div>
+          )}
+        </section>
+
+        <section className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-neutral-300">Recent Activity</h2>
+            <div className="flex items-center gap-2">
+              <select
+                value={activityCategory}
+                onChange={(e) => {
+                  setActivityCategory(e.target.value);
+                  setActivityPage(1);
+                }}
+                className="rounded-md border border-neutral-800 bg-neutral-950 px-2 py-1 text-xs text-neutral-300"
+              >
+                {ACTIVITY_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c === "ALL" ? "All categories" : c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {!activity && activityLoading ? (
+            <p className="text-sm text-neutral-500">Loading...</p>
+          ) : !activity || activity.items.length === 0 ? (
+            <p className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-500">
+              No activity yet.
+            </p>
+          ) : (
+            <>
+              <ul className="divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-950">
+                {activity.items.map((item) => {
+                  const row = (
+                    <div className="flex items-start justify-between gap-4 p-4 transition hover:bg-neutral-900">
+                      <div className="min-w-0">
+                        <div className="mb-1 flex items-center gap-2">
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                              ACTIVITY_SEVERITY_STYLE[item.severity] ?? ACTIVITY_SEVERITY_STYLE.INFO
+                            }`}
+                          >
+                            {item.category}
+                          </span>
+                          <span className="text-[10px] text-neutral-600">{timeAgo(item.timestamp)}</span>
+                        </div>
+                        <p className="truncate text-sm text-neutral-200">{item.title}</p>
+                        {item.description && (
+                          <p className="mt-0.5 truncate text-xs text-neutral-500">{item.description}</p>
+                        )}
+                      </div>
+                      <div className="shrink-0 text-right text-xs text-neutral-500">
+                        {item.actor_name && <div>{item.actor_name}</div>}
+                        {item.link && <div className="mt-1 text-neutral-400 underline">View</div>}
+                      </div>
+                    </div>
+                  );
+                  return (
+                    <li key={item.id}>
+                      {item.link ? (
+                        <Link href={item.link}>{row}</Link>
+                      ) : (
+                        row
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="mt-3 flex items-center justify-between text-xs text-neutral-500">
+                <span>
+                  Page {activity.page} · {activity.total} total
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setActivityPage((p) => Math.max(1, p - 1))}
+                    disabled={activityPage <= 1 || activityLoading}
+                    className="rounded-md border border-neutral-800 px-2 py-1 disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setActivityPage((p) => p + 1)}
+                    disabled={activityPage * activity.page_size >= activity.total || activityLoading}
+                    className="rounded-md border border-neutral-800 px-2 py-1 disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </section>
 

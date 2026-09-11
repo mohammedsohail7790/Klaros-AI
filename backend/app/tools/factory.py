@@ -30,6 +30,10 @@ from app.services.ar_service import ARService
 from app.services.cash_forecast_service import CashForecastService
 from app.services.collection_service import CollectionService
 from app.services.invoice_service import InvoiceService
+from app.services.google_calendar_sync_service import GoogleCalendarSyncService
+from app.services.quote_deposit_service import QuoteDepositService
+from app.services.quote_service import QuoteService
+from app.services.contract_service import ContractService
 from app.services.job_costing_service import JobCostingService
 from app.services.payment_service import PaymentService
 from app.services.vendor_service import VendorService
@@ -76,6 +80,23 @@ from app.tools.builtin.invoice_tools import (
     VoidInvoice,
 )
 from app.tools.builtin.job_cost_tools import RecordJobCost, SyncMaterialCosts
+from app.tools.builtin.google_calendar_tools import (
+    CheckGoogleAvailability,
+    ListGoogleCalendars,
+    SyncAppointmentToGoogle,
+)
+from app.tools.builtin.quote_tools import (
+    CreateQuoteDraft,
+    DetectExpiredQuotes,
+    GetQuote,
+    SendQuote,
+    UpdateQuoteDraft,
+)
+from app.tools.builtin.contract_tools import DetectPendingContracts, GetContract, SendContract
+from app.tools.builtin.quote_deposit_tools import (
+    CreateQuoteDepositCheckoutSession,
+    GetQuoteDepositStatus,
+)
 from app.tools.builtin.marketing_ads_tools import GetAdsProviderStatus
 from app.tools.builtin.marketing_attribution_tools import (
     AttributeLead,
@@ -91,6 +112,7 @@ from app.tools.builtin.marketing_campaign_tools import (
 from app.tools.builtin.marketing_content_tools import (
     AddContentVariant,
     ApproveContent,
+    CreateContentFromReview,
     CreateContentIdea,
     GenerateDraftFromJob,
     PublishContentVariant,
@@ -204,7 +226,7 @@ from app.tools.builtin.retention_campaign_tools import (
     SetRetentionCampaignStatus,
 )
 from app.tools.builtin.retention_customer_tools import GetCustomerHealth
-from app.tools.builtin.retention_feedback_tools import RecordFeedback
+from app.tools.builtin.retention_feedback_tools import RecordFeedback, RecordReviewConsent
 from app.tools.builtin.retention_lifecycle_tools import (
     DetectAtRiskAndInactive,
     DetectPaymentIssueRisk,
@@ -225,12 +247,14 @@ from app.tools.builtin.retention_reminder_tools import MarkDueReminders, UpdateR
 from app.tools.builtin.retention_review_tools import SendReviewRequest
 from app.tools.builtin.worker_tools import CreateWorker, ListWorkers, UpdateWorkerStatus
 from app.tools.builtin.insight_tools import (
+    GetCommercialPipelineSnapshot,
     GetExceptionSnapshot,
     GetFinanceSnapshot,
     GetMarketingSnapshot,
     GetOperationsSnapshot,
     GetRetentionSnapshot,
     GetSalesSnapshot,
+    GetVoiceSnapshot,
 )
 from app.tools.builtin.morning_brief_tools import (
     DismissRecommendation,
@@ -258,9 +282,12 @@ from app.tools.builtin.notification_orchestration_tools import (
 from app.services.notification_service import NotificationService
 from app.services.knowledge_service import KnowledgeService
 from app.tools.builtin.knowledge_tools import (
+    AskKnowledge,
     DeleteKnowledgeFile,
     GetKnowledgeFile,
+    IndexKnowledgeFile,
     ListKnowledgeFiles,
+    SearchKnowledge,
     SetKnowledgeFile,
 )
 from app.ai.execution_service import AIExecutionService
@@ -291,6 +318,8 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     conversion_service = LeadConversionService(session_factory, bus, calendar, job_service)
 
     invoice_service = InvoiceService(session_factory, bus)
+    quote_service = QuoteService(session_factory, bus)
+    contract_service = ContractService(session_factory, bus)
     payment_service = PaymentService(session_factory, bus)
     adjustments_service = AdjustmentsService(session_factory, bus)
     job_costing_service = JobCostingService(session_factory, exception_service)
@@ -407,6 +436,16 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(VoidInvoice(invoice_service))
     registry.register(GetInvoice(session_factory))
 
+    registry.register(CreateQuoteDraft(quote_service))
+    registry.register(UpdateQuoteDraft(quote_service))
+    registry.register(SendQuote(quote_service, session_factory))
+    registry.register(GetQuote(session_factory))
+    registry.register(DetectExpiredQuotes(quote_service))
+
+    registry.register(GetContract(contract_service))
+    registry.register(SendContract(contract_service))
+    registry.register(DetectPendingContracts(contract_service))
+
     registry.register(RecordTestPayment(payment_service))
     registry.register(CreateRefundRequest(payment_service))
     registry.register(ApproveRefund(payment_service))
@@ -414,6 +453,39 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     from app.api.tool_deps_integrations import get_integration_connection_service
 
     registry.register(CreateStripeCheckoutSession(session_factory, get_integration_connection_service()))
+
+    quote_deposit_service = QuoteDepositService(session_factory, get_integration_connection_service())
+    registry.register(GetQuoteDepositStatus(quote_deposit_service))
+    registry.register(CreateQuoteDepositCheckoutSession(quote_deposit_service))
+
+    from app.services.quickbooks_payment_sync_service import QuickBooksPaymentSyncService
+    from app.services.quickbooks_refund_sync_service import QuickBooksRefundSyncService
+    from app.services.quickbooks_sync_service import QuickBooksSyncService
+    from app.tools.builtin.quickbooks_tools import (
+        SyncDepositPaymentToQuickBooks,
+        SyncInvoicePaymentToQuickBooks,
+        SyncInvoiceToQuickBooks,
+        SyncRefundToQuickBooks,
+    )
+
+    registry.register(
+        SyncInvoiceToQuickBooks(QuickBooksSyncService(session_factory, get_integration_connection_service()))
+    )
+    _quickbooks_payment_sync_service = QuickBooksPaymentSyncService(
+        session_factory, get_integration_connection_service()
+    )
+    registry.register(SyncDepositPaymentToQuickBooks(_quickbooks_payment_sync_service))
+    registry.register(SyncInvoicePaymentToQuickBooks(_quickbooks_payment_sync_service))
+    registry.register(
+        SyncRefundToQuickBooks(
+            QuickBooksRefundSyncService(session_factory, get_integration_connection_service())
+        )
+    )
+
+    google_calendar_sync_service = GoogleCalendarSyncService(session_factory, get_integration_connection_service())
+    registry.register(ListGoogleCalendars(google_calendar_sync_service))
+    registry.register(CheckGoogleAvailability(google_calendar_sync_service))
+    registry.register(SyncAppointmentToGoogle(google_calendar_sync_service))
 
     registry.register(GetARAging(ar_service))
     registry.register(GetCustomerBalance(ar_service))
@@ -447,6 +519,7 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
 
     registry.register(CreateContentIdea(content_service))
     registry.register(GenerateDraftFromJob(content_service))
+    registry.register(CreateContentFromReview(content_service))
     registry.register(AddContentVariant(content_service))
     registry.register(RequestContentApproval(content_service))
     registry.register(ApproveContent(content_service))
@@ -488,6 +561,7 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(UpdateReminderStatus(retention_service))
 
     registry.register(RecordFeedback(review_service))
+    registry.register(RecordReviewConsent(review_service))
     registry.register(SendReviewRequest(review_service))
 
     registry.register(CreateReferralProgram(referral_service))
@@ -513,9 +587,11 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(GetFinanceSnapshot(insight_service))
     registry.register(GetOperationsSnapshot(insight_service))
     registry.register(GetSalesSnapshot(insight_service))
+    registry.register(GetCommercialPipelineSnapshot(insight_service))
     registry.register(GetMarketingSnapshot(insight_service))
     registry.register(GetRetentionSnapshot(insight_service))
     registry.register(GetExceptionSnapshot(insight_service))
+    registry.register(GetVoiceSnapshot(insight_service))
 
     ai_execution_service = AIExecutionService(registry)
     morning_brief_service = MorningBriefService(session_factory, ai_execution_service, bus)
@@ -569,5 +645,31 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(GetKnowledgeFile(knowledge_service))
     registry.register(SetKnowledgeFile(knowledge_service))
     registry.register(DeleteKnowledgeFile(knowledge_service))
+
+    # --- Phase 3 (RAG): semantic search/QA over the Knowledge Layer. ---
+    from app.services.ai_provider import get_ai_provider
+    from app.services.knowledge_qa_service import KnowledgeQAService
+    from app.services.knowledge_retrieval_service import KnowledgeRetrievalService
+
+    knowledge_retrieval_service = KnowledgeRetrievalService(session_factory, knowledge_service)
+    knowledge_qa_service = KnowledgeQAService(session_factory, knowledge_retrieval_service, get_ai_provider())
+    registry.register(IndexKnowledgeFile(knowledge_retrieval_service))
+    registry.register(SearchKnowledge(knowledge_retrieval_service))
+    registry.register(AskKnowledge(knowledge_qa_service))
+
+    # --- Phase 18: AI Next Action — the first real ToolRequest-producing
+    # decision layer. Reuses the `ai_execution_service` built for Morning
+    # Brief above (the same, by-then fully-populated registry every other
+    # tool call goes through) rather than constructing a second one.
+    # Registered last for the same reason ExecuteRecommendation is: it
+    # needs the fully-built registry (via AIExecutionService) to dispatch
+    # its own proposed tool call. ---
+    from app.services.ai_next_action_service import AINextActionService
+    from app.tools.builtin.ai_next_action_tools import ProposeInvoiceFollowup, ProposeQuoteFollowup
+
+    ai_next_action_service = AINextActionService(session_factory, ai_execution_service, get_ai_provider())
+    registry.register(ProposeQuoteFollowup(ai_next_action_service))
+    # Phase 20: the second scenario, same service, same governed boundary.
+    registry.register(ProposeInvoiceFollowup(ai_next_action_service))
 
     return registry

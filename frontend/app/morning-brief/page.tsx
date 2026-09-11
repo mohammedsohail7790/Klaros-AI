@@ -8,6 +8,7 @@ import {
   ApiError,
   MorningBriefData,
   MorningBriefSettings,
+  createCompanyMemory,
   dismissRecommendation,
   executeRecommendation,
   generateMorningBrief,
@@ -27,6 +28,8 @@ const ENTITY_LINK: Record<string, (id: string) => string> = {
   lead: (id) => `/leads/${id}`,
   job: (id) => `/jobs/${id}`,
   invoice: (id) => `/finance/invoices/${id}`,
+  contract: (id) => `/contracts/${id}`,
+  quote: (id) => `/quotes/${id}`,
 };
 
 export default function MorningBriefPage() {
@@ -37,6 +40,8 @@ export default function MorningBriefPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [rememberingId, setRememberingId] = useState<string | null>(null);
+  const [rememberText, setRememberText] = useState("");
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -101,6 +106,29 @@ export default function MorningBriefPage() {
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to dismiss recommendation.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRemember(recommendationId: string) {
+    if (!token || !rememberText.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const key = `feedback_${recommendationId.replace(/-/g, "").slice(0, 16)}`;
+      await createCompanyMemory(token, {
+        memory_type: "AI_FEEDBACK",
+        key,
+        value: rememberText.trim(),
+        source: "OWNER_CORRECTION",
+        reason: `Owner correction on morning brief recommendation ${recommendationId}`,
+      });
+      setNotice("Saved to Company Memory — future AI recommendations will see this.");
+      setRememberingId(null);
+      setRememberText("");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to save to Company Memory.");
     } finally {
       setBusy(false);
     }
@@ -231,7 +259,37 @@ export default function MorningBriefPage() {
                               Dismiss
                             </button>
                           )}
+                          <button
+                            disabled={busy}
+                            onClick={() =>
+                              setRememberingId(rememberingId === r.recommendation_id ? null : r.recommendation_id)
+                            }
+                            className="text-xs underline text-neutral-400 hover:text-white"
+                          >
+                            Remember this
+                          </button>
                         </div>
+                        {rememberingId === r.recommendation_id && (
+                          <div className="mt-3 border-t border-neutral-800 pt-3">
+                            <label className="mb-1 block text-xs text-neutral-500">
+                              Why? This is saved to Company Memory and read by future AI recommendations.
+                            </label>
+                            <textarea
+                              value={rememberText}
+                              onChange={(e) => setRememberText(e.target.value)}
+                              rows={2}
+                              placeholder="e.g. This customer is strategic — always prioritize commercial accounts like this."
+                              className="w-full rounded-md border border-neutral-700 bg-black px-2 py-1.5 text-xs"
+                            />
+                            <button
+                              disabled={busy || !rememberText.trim()}
+                              onClick={() => handleRemember(r.recommendation_id)}
+                              className="mt-2 rounded-md border border-neutral-400 bg-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-700 disabled:opacity-50"
+                            >
+                              Save to memory
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

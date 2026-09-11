@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.events.bus import EventBus
@@ -30,6 +31,7 @@ class CreateJobInput:
     customer_id: uuid.UUID
     lead_id: uuid.UUID | None = None
     appointment_id: uuid.UUID | None = None
+    quote_id: uuid.UUID | None = None
     description: str | None = None
     service_type: str | None = None
     priority: str = JobPriority.NORMAL
@@ -77,6 +79,7 @@ class JobService:
                 customer_id=data.customer_id,
                 lead_id=data.lead_id,
                 appointment_id=data.appointment_id,
+                quote_id=data.quote_id,
                 job_number=await self._next_job_number(session, tenant_id),
                 title=data.title,
                 description=data.description,
@@ -93,7 +96,42 @@ class JobService:
                 idempotency_key=idempotency_key,
             )
             session.add(job)
-            await session.commit()
+            try:
+                await session.commit()
+            except IntegrityError:
+                # Phase 22 fix: a concurrent `create_job` call for the SAME
+                # idempotency_key (e.g. two Stripe webhook deliveries for
+                # the same quote deposit racing, or any other doubled
+                # trigger) can pass the "does a job with this key already
+                # exist?" check above before either commits — the second
+                # commit then hits the real `uq_jobs_tenant_idempotency_key`
+                # constraint. Previously this raised an unhandled
+                # IntegrityError straight out of `create_job`, which (via
+                # `QuoteService._convert_to_job`) could leave a quote
+                # stuck at DEPOSIT_PAID with NO Job ever created despite a
+                # real Stripe deposit having been paid — confirmed by
+                # direct reproduction under `asyncio.gather`. Mirrors the
+                # exact "concurrent delivery raced us to the unique
+                # constraint — the other request is handling it, this is
+                # a genuine duplicate, not an error" pattern already used
+                # for `WebhookEvent` (app/api/v1/webhooks.py) and
+                # `Payment` (implicitly, via its own pre-insert existence
+                # check) elsewhere in this codebase.
+                await session.rollback()
+                if idempotency_key:
+                    # A fresh session for the re-check — reusing the one
+                    # that just failed its commit risks stale/poisoned
+                    # session state rather than a genuinely fresh read of
+                    # what actually got committed.
+                    async with self._session_factory() as fresh_session:
+                        existing = (
+                            await fresh_session.execute(
+                                select(Job).where(Job.tenant_id == tenant_id, Job.idempotency_key == idempotency_key)
+                            )
+                        ).scalar_one_or_none()
+                    if existing is not None:
+                        return existing, True
+                raise
             await session.refresh(job)
 
         await self._bus.publish(

@@ -13,6 +13,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.core.error_monitoring import capture_message
 from app.models.actor import ActorType
 from app.models.ai_invocation import AIInvocationLog
 from app.services.ai_provider import AICallOutcome
@@ -52,4 +53,23 @@ async def record_ai_invocation(
         session.add(row)
         await session.commit()
         await session.refresh(row)
+
+        # Production observability: this is the ONE write path every AI
+        # call in the codebase goes through (Morning Brief, AI Next
+        # Action, Qualification, Marketing, Voice) — a real provider
+        # failure reported here covers all of them without touching each
+        # individual service. Never the raw prompt/response (this table
+        # has no such columns at all — see Phase 31), only the same
+        # safe, already-audited fields already persisted to the row
+        # itself.
+        if not outcome.success:
+            capture_message(
+                f"AI call failed: {operation}", level="warning", component="ai",
+                context={
+                    "tenant_id": str(tenant_id), "operation": operation, "provider": outcome.provider,
+                    "model": outcome.model, "error_type": row.error_type,
+                    "correlation_id": str(correlation_id) if correlation_id else None,
+                },
+            )
+
         return row

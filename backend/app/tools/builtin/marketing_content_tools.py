@@ -6,8 +6,11 @@ from pydantic import BaseModel
 from app.models.marketing import ContentPublication, ContentVariant, MarketingContent
 from app.models.rbac import Permission
 from app.services.content_service import (
+    ConsentRequiredError,
     ContentNotFoundError,
     ContentService,
+    FeedbackNotEligibleError,
+    FeedbackNotFoundError,
     InvalidContentTransitionError,
     JobNotFoundError,
 )
@@ -16,7 +19,8 @@ from app.tools.base import ExecutionContext, Tool
 
 def _content_to_dict(c: MarketingContent) -> dict[str, Any]:
     return {
-        "id": str(c.id), "source_job_id": str(c.source_job_id) if c.source_job_id else None, "title": c.title,
+        "id": str(c.id), "source_job_id": str(c.source_job_id) if c.source_job_id else None,
+        "source_feedback_id": str(c.source_feedback_id) if c.source_feedback_id else None, "title": c.title,
         "summary": c.summary, "status": c.status, "ai_generated": c.ai_generated,
     }
 
@@ -71,8 +75,43 @@ class GenerateDraftFromJob(Tool):
 
     async def execute(self, input: GenerateDraftFromJobInput, context: ExecutionContext) -> ContentOutput:
         try:
-            content = await self._content_service.generate_draft_from_job(context.tenant_id, input.job_id, context.actor_id)
+            content = await self._content_service.generate_draft_from_job(
+                context.tenant_id, input.job_id, context.actor_id,
+                actor_type=context.actor_type, correlation_id=context.correlation_id,
+            )
         except JobNotFoundError as e:
+            raise ValueError(str(e)) from e
+        return ContentOutput(content=_content_to_dict(content))
+
+
+class CreateContentFromReviewInput(BaseModel):
+    feedback_id: uuid.UUID
+
+
+class CreateContentFromReview(Tool):
+    """Turns a real, consented, eligible customer review into a marketing
+    content idea — never rewrites or embellishes the customer's own words
+    beyond PII redaction, never proceeds without recorded consent (see
+    ContentService.create_content_from_feedback / ConsentRequiredError).
+    APPROVAL_REQUIRED by policy: this is the recommended-action step, not
+    the publish step — the resulting IDEA still goes through the existing,
+    separate content-approval-before-publish flow untouched."""
+
+    name = "marketing.create_content_from_review"
+    description = "Create a marketing content idea from a real, consented, eligible customer review."
+    input_schema = CreateContentFromReviewInput
+    output_schema = ContentOutput
+    required_permission = Permission.MANAGE_MARKETING_CONTENT
+
+    def __init__(self, content_service: ContentService) -> None:
+        self._content_service = content_service
+
+    async def execute(self, input: CreateContentFromReviewInput, context: ExecutionContext) -> ContentOutput:
+        try:
+            content = await self._content_service.create_content_from_feedback(
+                context.tenant_id, input.feedback_id, context.actor_id
+            )
+        except (FeedbackNotFoundError, ConsentRequiredError, FeedbackNotEligibleError) as e:
             raise ValueError(str(e)) from e
         return ContentOutput(content=_content_to_dict(content))
 

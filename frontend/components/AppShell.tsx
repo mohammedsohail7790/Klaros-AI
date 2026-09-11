@@ -16,6 +16,8 @@ const NAV_ITEMS = [
   { href: "/jobs", label: "Jobs" },
   { href: "/exceptions", label: "Exceptions" },
   { href: "/finance", label: "Finance" },
+  { href: "/quotes", label: "Quotes" },
+  { href: "/contracts", label: "Contracts" },
   { href: "/finance/invoices", label: "Invoices" },
   { href: "/finance/ar", label: "AR" },
   { href: "/finance/profitability", label: "Profitability" },
@@ -32,10 +34,13 @@ const NAV_ITEMS = [
   { href: "/retention/reviews", label: "Reviews" },
   { href: "/retention/referrals", label: "Referrals" },
   { href: "/events", label: "Events" },
+  { href: "/automations", label: "Automations" },
   { href: "/approvals", label: "Approvals" },
   { href: "/ai-activity", label: "AI Activity" },
   { href: "/settings/automation", label: "Automation Settings" },
   { href: "/settings/knowledge", label: "Knowledge Layer" },
+  { href: "/settings/memory", label: "Company Memory" },
+  { href: "/settings/voice", label: "Voice Receptionist" },
   { href: "/settings/integrations", label: "Integrations" },
 ];
 

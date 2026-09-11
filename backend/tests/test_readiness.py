@@ -19,6 +19,27 @@ async def test_ready_reports_database_ok_against_the_real_test_database(client) 
     body = resp.json()
     assert body["status"] == "ready"
     assert body["checks"]["database"] == "ok"
+    assert body["checks"]["migration"] == "ok"
+
+
+async def test_ready_returns_503_when_migration_head_is_out_of_date(client, monkeypatch) -> None:
+    """Phase 27: found by direct reproduction — pointing /ready at a real,
+    connectable but completely unmigrated Postgres schema (zero tables)
+    previously still reported `database: ok` / HTTP 200, since `SELECT 1`
+    doesn't reference any real table. A connectable database is not the
+    same as a USABLE one; this must be caught and reported as not_ready
+    rather than silently passing traffic to an instance whose first real
+    query will fail with a confusing 'relation does not exist' error."""
+    from alembic.script import ScriptDirectory
+
+    monkeypatch.setattr(ScriptDirectory, "get_current_head", lambda self: "0999_not_a_real_head")
+
+    resp = await client.get("/ready")
+    assert resp.status_code == 503
+    body = resp.json()
+    assert body["status"] == "not_ready"
+    assert "schema out of date" in body["checks"]["migration"]
+    assert "0999_not_a_real_head" in body["checks"]["migration"]
 
 
 async def test_ready_reports_redis_not_applicable_when_using_the_memory_transport(client) -> None:

@@ -35,7 +35,9 @@ from app.models.morning_brief import (
 )
 from app.models.organization import Organization
 from app.models.rbac import Role
+from app.services.ai_invocation_log_service import record_ai_invocation
 from app.services.ai_provider import get_ai_provider
+from app.services.company_memory_service import CompanyMemoryService, format_context_as_text
 from app.services.knowledge_service import KnowledgeService
 
 logger = structlog.get_logger(__name__)
@@ -61,6 +63,8 @@ class MorningBriefService:
         self._bus = bus
         # Phase 12: real Knowledge Layer integration (see generate() below).
         self._knowledge = KnowledgeService(session_factory)
+        # Phase 13: real Company Memory integration (see generate() below).
+        self._memory = CompanyMemoryService(session_factory)
 
     async def _call(self, tool_name: str, tenant_id: uuid.UUID):
         return await self._ai.request_tool_execution(
@@ -75,9 +79,11 @@ class MorningBriefService:
         finance = await self._call("insights.get_finance_snapshot", tenant_id)
         operations = await self._call("insights.get_operations_snapshot", tenant_id)
         sales = await self._call("insights.get_sales_snapshot", tenant_id)
+        commercial_pipeline = await self._call("insights.get_commercial_pipeline_snapshot", tenant_id)
         marketing = await self._call("insights.get_marketing_snapshot", tenant_id)
         retention = await self._call("insights.get_retention_snapshot", tenant_id)
         exceptions = await self._call("insights.get_exception_snapshot", tenant_id)
+        voice = await self._call("insights.get_voice_snapshot", tenant_id)
 
         provider = get_ai_provider()
         mode = MorningBriefMode.DETERMINISTIC  # only upgraded below if a real provider call actually succeeds
@@ -191,6 +197,118 @@ class MorningBriefService:
                 }
             )
 
+        # --- Commercial pipeline (Quote -> Contract -> Deposit) ---
+        for contract in commercial_pipeline.contracts_awaiting_signature[:5]:
+            insights.append(
+                {
+                    "category": InsightCategory.SALES,
+                    "priority": InsightPriority.MEDIUM,
+                    "summary": f"Contract {contract['contract_number']} is {contract['status'].lower()}, awaiting signature.",
+                    "related_entity_type": "contract",
+                    "related_entity_id": contract["contract_id"],
+                    "source_tool": "insights.get_commercial_pipeline_snapshot",
+                }
+            )
+            recommendations.append(
+                {
+                    "what": f"Contract {contract['contract_number']} needs signature",
+                    "why": "The quote was accepted but the agreement remains unsigned.",
+                    "related_entity_type": "contract",
+                    "related_entity_id": contract["contract_id"],
+                    "next_action": "Send a contract reminder or follow up with the customer.",
+                    "executable_tool": None,
+                    "executable_input": None,
+                }
+            )
+        for quote in commercial_pipeline.deposits_awaiting_payment[:5]:
+            insights.append(
+                {
+                    "category": InsightCategory.FINANCE,
+                    "priority": InsightPriority.MEDIUM,
+                    "summary": f"Deposit of ${quote['deposit_amount']} for quote {quote['quote_number']} is still outstanding.",
+                    "related_entity_type": "quote",
+                    "related_entity_id": quote["quote_id"],
+                    "source_tool": "insights.get_commercial_pipeline_snapshot",
+                }
+            )
+            recommendations.append(
+                {
+                    "what": f"Deposit outstanding for {quote['quote_number']}",
+                    "why": "The customer accepted the quote but has not yet paid the deposit.",
+                    "related_entity_type": "quote",
+                    "related_entity_id": quote["quote_id"],
+                    "next_action": "Send a payment reminder.",
+                    "executable_tool": None,
+                    "executable_input": None,
+                }
+            )
+
+        for quote in commercial_pipeline.stale_quotes_awaiting_response[:5]:
+            insights.append(
+                {
+                    "category": InsightCategory.SALES,
+                    "priority": InsightPriority.MEDIUM,
+                    "summary": f"Quote {quote['quote_number']} (${quote['total']}) has had no customer response since it was sent.",
+                    "related_entity_type": "quote",
+                    "related_entity_id": quote["quote_id"],
+                    "source_tool": "insights.get_commercial_pipeline_snapshot",
+                }
+            )
+            recommendations.append(
+                {
+                    "what": f"Quote {quote['quote_number']} is stale, awaiting response",
+                    "why": "The quote was sent but the customer has neither accepted nor declined it within the configured follow-up window.",
+                    "related_entity_type": "quote",
+                    "related_entity_id": quote["quote_id"],
+                    "next_action": "Follow up with the customer to check on the quote.",
+                    "executable_tool": None,
+                    "executable_input": None,
+                }
+            )
+
+        # --- AI Voice Receptionist ---
+        if voice.calls_today > 0:
+            insights.append(
+                {
+                    "category": InsightCategory.SALES,
+                    "priority": InsightPriority.LOW,
+                    "summary": (
+                        f"{voice.calls_today} call(s) handled by the AI receptionist in the last 24h, "
+                        f"{voice.new_leads_from_voice_today} new lead(s) generated."
+                    ),
+                    "source_tool": "insights.get_voice_snapshot",
+                }
+            )
+        if voice.human_handoffs_today > 0:
+            insights.append(
+                {
+                    "category": InsightCategory.SALES,
+                    "priority": InsightPriority.MEDIUM,
+                    "summary": f"{voice.human_handoffs_today} caller(s) requested a human callback in the last 24h.",
+                    "source_tool": "insights.get_voice_snapshot",
+                }
+            )
+            recommendations.append(
+                {
+                    "what": f"{voice.human_handoffs_today} voice call(s) awaiting human callback",
+                    "why": "The AI receptionist could not fully resolve these callers and flagged them for a real person.",
+                    "related_entity_type": None,
+                    "related_entity_id": None,
+                    "next_action": "Review recent calls and call these customers back.",
+                    "executable_tool": None,
+                    "executable_input": None,
+                }
+            )
+        if voice.unresolved_calls_today > 0:
+            insights.append(
+                {
+                    "category": InsightCategory.SALES,
+                    "priority": InsightPriority.MEDIUM,
+                    "summary": f"{voice.unresolved_calls_today} call(s) ended unresolved in the last 24h.",
+                    "source_tool": "insights.get_voice_snapshot",
+                }
+            )
+
         # --- Marketing ---
         if marketing.leads_last_24h > 0 or float(marketing.spend_last_30d) > 0:
             insights.append(
@@ -207,6 +325,65 @@ class MorningBriefService:
             )
 
         # --- Retention ---
+        for opp in retention.open_retention_opportunities_detail:
+            insights.append(
+                {
+                    "category": InsightCategory.RETENTION,
+                    "priority": InsightPriority.LOW,
+                    "summary": opp["reason"],
+                    "related_entity_type": "customer",
+                    "related_entity_id": opp["customer_id"],
+                    "source_tool": "insights.get_retention_snapshot",
+                }
+            )
+            recommendations.append(
+                {
+                    "what": opp["reason"],
+                    "why": f"Detected retention opportunity ({opp['type']}).",
+                    "related_entity_type": "customer",
+                    "related_entity_id": opp["customer_id"],
+                    "next_action": opp["recommended_action"] or "Review this customer's retention opportunity.",
+                    "executable_tool": None,
+                    "executable_input": None,
+                }
+            )
+        for review in retention.eligible_review_requests:
+            recommendations.append(
+                {
+                    "what": "Send a review request",
+                    "why": "A recently closed job is eligible for a review request that hasn't been sent yet.",
+                    "related_entity_type": "customer",
+                    "related_entity_id": review["customer_id"],
+                    "next_action": "Send the review request through the existing review workflow.",
+                    "executable_tool": "retention.send_review_request",
+                    "executable_input": {"review_request_id": review["review_request_id"]},
+                }
+            )
+        for fb in retention.reviews_awaiting_marketing_consent:
+            recommendations.append(
+                {
+                    "what": f"Ask for permission to use a {fb['rating']}/5 review publicly",
+                    "why": "This review is positive enough to be marketing content, but the customer "
+                    "hasn't been asked for consent yet — never used publicly without it.",
+                    "related_entity_type": "customer",
+                    "related_entity_id": fb["customer_id"],
+                    "next_action": "Ask the customer for permission, then record their answer.",
+                    "executable_tool": None,
+                    "executable_input": None,
+                }
+            )
+        for fb in retention.reviews_ready_for_marketing_content:
+            recommendations.append(
+                {
+                    "what": f"Turn a consented {fb['rating']}/5 review into marketing content",
+                    "why": "The customer explicitly consented to their review being used publicly.",
+                    "related_entity_type": "customer",
+                    "related_entity_id": fb["customer_id"],
+                    "next_action": "Create a content idea from this review through the existing content pipeline.",
+                    "executable_tool": "marketing.create_content_from_review",
+                    "executable_input": {"feedback_id": fb["feedback_id"]},
+                }
+            )
         if retention.negative_feedback_last_24h:
             for fb in retention.negative_feedback_last_24h[:5]:
                 insights.append(
@@ -286,7 +463,25 @@ class MorningBriefService:
             # through; the provider treats a missing guide as "no style
             # guidance," never fabricates one.
             brand_voice = await self._knowledge.get_content(tenant_id, "brand/voice-guide.md")
-            result = await provider.enrich_brief(headline, insights, brand_voice=brand_voice)
+            # Phase 13: real Company Memory integration — bounded, active,
+            # in-effect owner preferences/context (never PENDING/REVOKED/
+            # REJECTED/ARCHIVED, never expired, never another tenant's).
+            # Empty list -> None, same "no fabricated guidance" honesty as
+            # brand_voice above.
+            company_memory = format_context_as_text(await self._memory.get_context(tenant_id))
+            result, call_outcome = await provider.enrich_brief(
+                headline, insights, brand_voice=brand_voice, company_memory=company_memory,
+            )
+            if call_outcome is not None:
+                await record_ai_invocation(
+                    self._session_factory,
+                    tenant_id=tenant_id,
+                    actor_type=generated_by,
+                    actor_id=None,
+                    operation="morning_brief_enrichment",
+                    outcome=call_outcome,
+                    input_metadata={"insight_count": len(insights)},
+                )
             if result is not None:
                 enrichment = result.enrichment
                 # The AI may only ever replace *prose* — it can rephrase the
@@ -321,6 +516,7 @@ class MorningBriefService:
             "finance": finance.model_dump(),
             "operations": operations.model_dump(),
             "sales": sales.model_dump(),
+            "commercial_pipeline": commercial_pipeline.model_dump(),
             "marketing": marketing.model_dump(),
             "retention": retention.model_dump(),
             "exceptions": exceptions.model_dump(),

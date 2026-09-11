@@ -1,0 +1,215 @@
+"use client";
+
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { ApiError, PublicContract, declinePublicContract, getPublicContract, signPublicContract } from "@/lib/api";
+
+// Klaros' public, unauthenticated contract page — no AppShell, no useAuth,
+// mirrors app/quotes/view/[id]/page.tsx exactly. The signed `token` query
+// param is the only credential; the backend
+// (app/api/v1/public_contracts.py) is the real trust boundary. Signing
+// here is an INTERNAL ATTESTATION only -- there is no third-party
+// e-signature provider integrated, and this page never implies one.
+export default function PublicContractViewPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-neutral-500">Loading...</div>}>
+      <PublicContractViewInner />
+    </Suspense>
+  );
+}
+
+function PublicContractViewInner() {
+  const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+
+  const [contract, setContract] = useState<PublicContract | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [signerName, setSignerName] = useState("");
+  const [signerEmail, setSignerEmail] = useState("");
+  const [declineReason, setDeclineReason] = useState("");
+  const [confirmingSign, setConfirmingSign] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!id || !token) {
+      setError("This link is missing required information.");
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      setContract(await getPublicContract(id, token));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to load this contract.");
+    } finally {
+      setLoading(false);
+    }
+  }, [id, token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function handleSign() {
+    if (!id || !token || busy || !signerName.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setContract(await signPublicContract(id, token, signerName.trim(), signerEmail.trim() || undefined));
+      setConfirmingSign(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to sign this contract.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDecline() {
+    if (!id || !token || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setContract(await declinePublicContract(id, token, declineReason || undefined));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to decline this contract.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) {
+    return <div className="mx-auto max-w-2xl px-6 py-16 text-sm text-neutral-500">Loading...</div>;
+  }
+
+  if (error && !contract) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-16">
+        <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          {error}
+          <div className="mt-2 text-xs text-red-400">
+            If you followed a link from an email or text message, it may have expired — please contact us for a
+            fresh link.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!contract) return null;
+
+  const decidable = contract.status === "SENT" || contract.status === "VIEWED";
+
+  return (
+    <div className="mx-auto max-w-2xl px-6 py-16">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-neutral-100">Contract {contract.contract_number}</h1>
+        <span className="rounded-full border border-neutral-700 px-3 py-1 text-xs text-neutral-300">
+          {contract.status.replace(/_/g, " ")}
+        </span>
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>
+      )}
+
+      {contract.status === "SIGNED" && (
+        <div className="mb-6 rounded-md border border-emerald-900 bg-emerald-950/30 p-4 text-sm text-emerald-300">
+          Signed by {contract.signer_name} — thank you. This is an internal record of your agreement, not a
+          third-party verified e-signature.
+        </div>
+      )}
+      {contract.status === "DECLINED" && (
+        <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-400">
+          You declined this contract.
+        </div>
+      )}
+      {contract.status === "EXPIRED" && (
+        <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-400">
+          This contract has expired. Please contact us for an updated agreement.
+        </div>
+      )}
+      {contract.status === "CANCELLED" && (
+        <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-400">
+          This contract has been cancelled.
+        </div>
+      )}
+
+      <div className="mb-6 whitespace-pre-wrap rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-300">
+        {contract.content}
+      </div>
+
+      {decidable && !confirmingSign && (
+        <div className="flex flex-col gap-3">
+          <button
+            disabled={busy}
+            onClick={() => setConfirmingSign(true)}
+            className="rounded-md border border-emerald-800 bg-emerald-950/30 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/60 disabled:opacity-50"
+          >
+            Sign this agreement
+          </button>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Reason (optional)"
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              disabled={busy}
+              className="flex-1 rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600"
+            />
+            <button
+              disabled={busy}
+              onClick={handleDecline}
+              className="rounded-md border border-red-900 px-4 py-2 text-sm text-red-300 hover:bg-red-950/30 disabled:opacity-50"
+            >
+              Decline
+            </button>
+          </div>
+        </div>
+      )}
+
+      {decidable && confirmingSign && (
+        <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
+          <p className="mb-3 text-sm text-neutral-300">
+            Typing your name below records your agreement to the terms above. This is an internal record kept by
+            the business, not a third-party verified electronic signature.
+          </p>
+          <input
+            type="text"
+            placeholder="Your full name"
+            value={signerName}
+            onChange={(e) => setSignerName(e.target.value)}
+            disabled={busy}
+            className="mb-2 w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600"
+          />
+          <input
+            type="email"
+            placeholder="Email (optional)"
+            value={signerEmail}
+            onChange={(e) => setSignerEmail(e.target.value)}
+            disabled={busy}
+            className="mb-3 w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600"
+          />
+          <div className="flex gap-2">
+            <button
+              disabled={busy || !signerName.trim()}
+              onClick={handleSign}
+              className="rounded-md border border-emerald-800 bg-emerald-950/30 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/60 disabled:opacity-50"
+            >
+              {busy ? "Signing..." : "Confirm signature"}
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => setConfirmingSign(false)}
+              className="rounded-md border border-neutral-700 px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

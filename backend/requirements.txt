@@ -1,5 +1,9 @@
 fastapi==0.141.1
 uvicorn[standard]==0.30.6
+# Phase 6: real WebSocket CLIENT for streaming STT/TTS providers
+# (app/services/speech_provider.py) — previously only pulled in
+# transitively by uvicorn[standard] for the SERVER side.
+websockets==17.0.1
 pydantic[email]==2.9.2
 pydantic-settings==2.5.2
 sqlalchemy[asyncio]==2.0.35
@@ -12,10 +16,13 @@ python-multipart==0.0.31
 pyasn1==0.6.4
 redis==5.0.8
 structlog==24.4.0
-pytest==9.0.3
-pytest-asyncio==1.4.0
 httpx==0.27.2
 greenlet==3.1.1
+# Real DBAPI driver for the sqlite+aiosqlite DATABASE_URL scheme
+# app/db/session.py genuinely supports at runtime (not test-only) —
+# stays in the production requirements file even though the test suite
+# is its main real-world user today.
 aiosqlite==0.20.0
 temporalio==1.8.0
-pip-audit==2.10.1
+pgvector==0.5.0
+sentry-sdk==2.69.1

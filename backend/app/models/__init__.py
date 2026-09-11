@@ -90,9 +90,14 @@ from app.models.morning_brief import (
     MorningBriefRecommendation,
 )
 from app.models.tool_policy import TenantToolPolicy
-from app.models.knowledge import KnowledgeFile
+from app.models.knowledge import KnowledgeChunk, KnowledgeFile
+from app.models.voice import CallSession, VoiceReceptionistSettings
+from app.models.automation import Automation, AutomationExecution, AutomationExecutionStep, AutomationVersion
 from app.models.integration import IntegrationConnection, WebhookEvent
 from app.models.ai_invocation import AIInvocationLog
+from app.models.quote import Quote, QuoteLineItem
+from app.models.contract import Contract, ContractStatus
+from app.models.company_memory import CompanyMemory
 
 __all__ = [
     "Organization",
@@ -105,6 +110,7 @@ __all__ = [
     "Notification",
     "NotificationPreference",
     "TenantToolPolicy",
+    "KnowledgeChunk",
     "KnowledgeFile",
     "Lead",
     "Customer",
@@ -187,4 +193,15 @@ __all__ = [
     "WebhookEvent",
     "IntegrationConnection",
     "AIInvocationLog",
+    "Quote",
+    "QuoteLineItem",
+    "Contract",
+    "ContractStatus",
+    "CompanyMemory",
+    "CallSession",
+    "VoiceReceptionistSettings",
+    "Automation",
+    "AutomationVersion",
+    "AutomationExecution",
+    "AutomationExecutionStep",
 ]

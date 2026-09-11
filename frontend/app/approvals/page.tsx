@@ -58,6 +58,18 @@ export default function ApprovalsPage() {
     load();
   }, [load]);
 
+  // Phase 21: deep-link support — Company Memory's "View the approval"
+  // link (for a PENDING AI_FEEDBACK proposal's source approval) opens
+  // this page as /approvals?id=<approval_request_id>. Read directly from
+  // the URL (no useSearchParams/Suspense boundary needed) since this page
+  // is already fully client-rendered behind useAuth.
+  useEffect(() => {
+    if (!token) return;
+    const id = new URLSearchParams(window.location.search).get("id");
+    if (id) openDetail(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
   async function openDetail(id: string) {
     if (!token) return;
     setError(null);
@@ -192,7 +204,14 @@ export default function ApprovalsPage() {
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{a.tool_name}</span>
+                      <span className="flex items-center gap-2 font-medium">
+                        {a.tool_name}
+                        {a.requested_by_type === "AI" && (
+                          <span className="rounded-full border border-violet-800 bg-violet-950/30 px-2 py-0.5 text-[10px] font-normal text-violet-300">
+                            AI-proposed
+                          </span>
+                        )}
+                      </span>
                       <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[a.status] ?? "border-neutral-700"}`}>
                         {a.status}
                       </span>
@@ -221,11 +240,17 @@ export default function ApprovalsPage() {
                     {selected.status}
                   </span>
                 </div>
+                {selected.requested_by_type === "AI" && (
+                  <div className="mb-3 rounded-md border border-violet-900 bg-violet-950/20 p-2 text-xs text-violet-300">
+                    Klaros AI proposed this action — it was not executed automatically because this action
+                    type requires your approval. Nothing has happened yet.
+                  </div>
+                )}
                 <p className="text-sm text-neutral-300">{selected.reason}</p>
 
                 <dl className="mt-4 grid grid-cols-2 gap-y-2 text-xs text-neutral-500">
                   <dt>Requested by</dt>
-                  <dd className="text-neutral-300">{selected.requested_by_type}</dd>
+                  <dd className="text-neutral-300">{selected.requested_by_type === "AI" ? "Klaros AI" : selected.requested_by_type}</dd>
                   <dt>Created</dt>
                   <dd className="text-neutral-300">{new Date(selected.created_at).toLocaleString()}</dd>
                   {selected.decided_at && (

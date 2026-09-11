@@ -21,6 +21,10 @@ class Permission(StrEnum):
     APPROVE_SPEND = "APPROVE_SPEND"
     CREATE_INVOICE = "CREATE_INVOICE"
     SEND_INVOICE = "SEND_INVOICE"
+    # Phase 14: quotes/estimates. Reading a quote reuses VIEW_FINANCIALS
+    # (same tier as reading an invoice) rather than a new READ_QUOTES.
+    CREATE_QUOTE = "CREATE_QUOTE"
+    SEND_QUOTE = "SEND_QUOTE"
     COLLECT_PAYMENT = "COLLECT_PAYMENT"
     VIEW_FINANCIALS = "VIEW_FINANCIALS"
     RUN_MARKETING = "RUN_MARKETING"
@@ -91,6 +95,12 @@ class Permission(StrEnum):
     MANAGE_KNOWLEDGE = "MANAGE_KNOWLEDGE"
     READ_NOTIFICATIONS = "READ_NOTIFICATIONS"
     MANAGE_NOTIFICATION_PREFERENCES = "MANAGE_NOTIFICATION_PREFERENCES"
+    READ_VOICE_CALLS = "READ_VOICE_CALLS"
+    MANAGE_VOICE_SETTINGS = "MANAGE_VOICE_SETTINGS"
+    READ_AUTOMATIONS = "READ_AUTOMATIONS"
+    MANAGE_AUTOMATIONS = "MANAGE_AUTOMATIONS"
+    READ_MEMORY = "READ_MEMORY"
+    MANAGE_MEMORY = "MANAGE_MEMORY"
 
 
 # Permission matrix: role -> allowed permissions.
@@ -110,6 +120,8 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.SCHEDULE_JOB,
         Permission.CREATE_INVOICE,
         Permission.SEND_INVOICE,
+        Permission.CREATE_QUOTE,
+        Permission.SEND_QUOTE,
         Permission.VIEW_FINANCIALS,
         Permission.RUN_MARKETING,
         Permission.SEND_CUSTOMER_MESSAGE,
@@ -175,6 +187,12 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.MANAGE_NOTIFICATION_PREFERENCES,
         Permission.READ_KNOWLEDGE,
         Permission.MANAGE_KNOWLEDGE,
+        Permission.READ_VOICE_CALLS,
+        Permission.MANAGE_VOICE_SETTINGS,
+        Permission.READ_AUTOMATIONS,
+        Permission.MANAGE_AUTOMATIONS,
+        Permission.READ_MEMORY,
+        Permission.MANAGE_MEMORY,
     },
     Role.STAFF: {
         Permission.READ_CUSTOMERS,
@@ -212,6 +230,8 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.CREATE_INVOICE,
         Permission.UPDATE_INVOICE,
         Permission.SEND_INVOICE,
+        Permission.CREATE_QUOTE,
+        Permission.SEND_QUOTE,
         Permission.COLLECT_PAYMENT,
         Permission.RECORD_PAYMENT,
         Permission.MANAGE_JOB_COSTS,
@@ -241,6 +261,9 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.READ_AUTOMATION_POLICIES,
         Permission.READ_NOTIFICATIONS,
         Permission.READ_KNOWLEDGE,
+        Permission.READ_VOICE_CALLS,
+        Permission.READ_AUTOMATIONS,
+        Permission.READ_MEMORY,
     },
 }
 

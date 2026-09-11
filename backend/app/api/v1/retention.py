@@ -29,10 +29,11 @@ from app.models.retention import (
     CustomerFeedback,
     OpportunityStatus,
 )
+from app.api.tool_deps import get_wired_event_bus
 from app.services.attribution_service import AttributionService
 from app.services.retention_service import RetentionService
 from app.services.exception_service import ExceptionService
-from app.events.factory import get_event_bus
+from app.events.bus import EventBus
 
 router = APIRouter(prefix="/retention", tags=["retention"])
 
@@ -214,8 +215,10 @@ async def retention_analytics(current_user: CurrentUser = Depends(get_current_us
 
 
 @router.get("/customers/{customer_id}/health")
-async def customer_health(customer_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
-    bus = get_event_bus()
+async def customer_health(
+    customer_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user),
+    bus: EventBus = Depends(get_wired_event_bus),
+) -> dict[str, Any]:
     retention_service = RetentionService(async_session_maker, bus, ExceptionService(async_session_maker, bus))
     h = await retention_service.customer_service_history(current_user.tenant_id, customer_id)
     return {

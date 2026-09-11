@@ -29,6 +29,23 @@ class EventType(StrEnum):
     LEAD_LOST = "lead.lost"
     LEAD_CONVERTED = "lead.converted"
 
+    QUOTE_CREATED = "quote.created"
+    QUOTE_SENT = "quote.sent"
+    QUOTE_VIEWED = "quote.viewed"
+    QUOTE_ACCEPTED = "quote.accepted"
+    QUOTE_DECLINED = "quote.declined"
+    QUOTE_EXPIRED = "quote.expired"
+    QUOTE_CONVERTED_TO_JOB = "quote.converted_to_job"
+    QUOTE_DEPOSIT_REQUIRED = "quote.deposit_required"
+    QUOTE_DEPOSIT_PAID = "quote.deposit_paid"
+
+    CONTRACT_CREATED = "contract.created"
+    CONTRACT_SENT = "contract.sent"
+    CONTRACT_VIEWED = "contract.viewed"
+    CONTRACT_SIGNED = "contract.signed"
+    CONTRACT_DECLINED = "contract.declined"
+    CONTRACT_EXPIRED = "contract.expired"
+
     CUSTOMER_CREATED = "customer.created"
     CUSTOMER_UPDATED = "customer.updated"
     CUSTOMER_MERGED = "customer.merged"

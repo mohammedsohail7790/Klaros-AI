@@ -20,10 +20,12 @@ from typing import Any
 import structlog
 from temporalio import activity
 
+from app.ai.execution_service import AIExecutionService
 from app.core.logging import configure_logging
 from app.db.session import async_session_maker
 from app.events.factory import get_event_bus
 from app.models.actor import ActorType
+from app.models.automation import AutomationVersion
 from app.models.rbac import Role
 from app.tools.base import ExecutionContext
 from app.tools.errors import ToolApprovalRequiredError
@@ -56,6 +58,45 @@ async def execute_tool_activity(
         return output.model_dump(mode="json")
     except ToolApprovalRequiredError as exc:
         return {"pending_approval": True, "approval_request_id": str(exc.approval_request_id)}
+
+
+@activity.defn
+async def resume_automation_execution_activity(execution_id: str, tenant_id: str) -> dict[str, Any]:
+    """The Automation Engine's durable-wait resume point (Rule 7/16 — see
+    app/services/automation_service.py's docstring). Re-fetches the
+    execution's real, CURRENT context and condition from PostgreSQL (never
+    trusts anything cached in the workflow itself) and runs the remaining
+    steps through the exact same `AutomationService.run_steps` a
+    synchronous (no-wait) automation uses — the only difference is that a
+    real Temporal timer, not this activity, is what made the wait itself
+    durable."""
+    configure_logging()
+    from app.models.automation import AutomationExecution, ExecutionStatus
+    from app.services.automation_condition import evaluate_condition
+    from app.services.automation_service import AutomationService
+
+    registry = build_tool_registry(async_session_maker, get_event_bus())
+    ai_execution = AIExecutionService(registry)
+    service = AutomationService(async_session_maker, ai_execution)
+    tenant_uuid = uuid.UUID(tenant_id)
+    execution_uuid = uuid.UUID(execution_id)
+
+    async with async_session_maker() as session:
+        execution = await session.get(AutomationExecution, execution_uuid)
+        if execution is None or execution.tenant_id != tenant_uuid:
+            return {"status": "not_found"}
+        version = await session.get(AutomationVersion, execution.automation_version_id)
+
+    if not evaluate_condition(version.condition, execution.context):
+        async with async_session_maker() as session:
+            row = await session.get(AutomationExecution, execution_uuid)
+            row.status = ExecutionStatus.COMPLETED
+            row.completed_at = datetime.now(timezone.utc)
+            await session.commit()
+        return {"status": "condition_not_met"}
+
+    await service.run_steps(tenant_uuid, execution_uuid, version.steps, start_index=1)
+    return {"status": "resumed"}
 
 
 @activity.defn
@@ -99,4 +140,5 @@ ACTIVITIES = [
     send_reminder_activity,
     check_payment_status_activity,
     qualify_lead_activity,
+    resume_automation_execution_activity,
 ]

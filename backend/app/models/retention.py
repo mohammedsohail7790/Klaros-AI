@@ -27,7 +27,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import Date, DateTime, Integer, Numeric, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import Boolean, Date, DateTime, Integer, Numeric, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TenantScopedMixin
@@ -187,6 +187,10 @@ class CustomerFeedback(TenantScopedMixin, Base):
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # None = never asked; False = declined; True = explicitly granted by
+    # the customer. A review is never eligible for public marketing
+    # content unless this is exactly True — see ContentService.
+    consent_to_use_publicly: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
 
 # --- Referral system -------------------------------------------------------------

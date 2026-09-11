@@ -29,12 +29,34 @@ import time
 
 import structlog
 
+from app.core.error_monitoring import capture_exception
 from app.events.bus import EventBus
 from app.events.metrics import EventWorkerMetrics, worker_metrics
 
 logger = structlog.get_logger(__name__)
 
 DEFAULT_POLL_INTERVAL_SECONDS = 1.0
+
+
+def combine_on_tick(*hooks):
+    """Compose multiple `on_tick` callables (Morning Brief's
+    `check_and_generate_scheduled`, the Automation Engine's
+    `check_and_dispatch_scheduled`, ...) into one — EventWorker only takes
+    a single hook. Each hook's failure is caught independently so one
+    scheduler's bug can never prevent another's tick from running (a
+    stricter guarantee than EventWorker's own single try/except around the
+    whole hook, which is still also in place as a second layer)."""
+
+    async def _combined() -> None:
+        for hook in hooks:
+            try:
+                await hook()
+            except Exception as exc:  # noqa: BLE001 — one hook's failure must never block the others
+                hook_name = getattr(hook, "__qualname__", repr(hook))
+                logger.error("event_worker_on_tick_sub_hook_failed", hook=hook_name, error=str(exc))
+                capture_exception(exc, component="event_worker", context={"hook": hook_name})
+
+    return _combined
 
 
 class EventWorker:
@@ -110,6 +132,7 @@ class EventWorker:
                 await self._on_tick()
             except Exception as exc:  # noqa: BLE001 — a scheduler hiccup must never kill the worker loop
                 logger.error("event_worker_on_tick_hook_failed", error=str(exc))
+                capture_exception(exc, component="event_worker")
         return results
 
     async def run_forever(self, shutdown_event: asyncio.Event | None = None) -> None:
@@ -134,6 +157,7 @@ class EventWorker:
                     await self.tick()
                 except Exception as exc:  # noqa: BLE001 — one bad tick must never crash the worker
                     logger.error("event_worker_tick_failed", error=str(exc))
+                    capture_exception(exc, component="event_worker")
                 try:
                     await asyncio.wait_for(shutdown_event.wait(), timeout=self._poll_interval_seconds)
                 except asyncio.TimeoutError:
@@ -151,14 +175,20 @@ async def _standalone_main() -> None:
     instead in that dev-fallback mode (InMemoryTransport state only exists
     inside one process, so a separate OS process couldn't see it anyway).
     """
-    from app.api.tool_deps import get_morning_brief_service, get_wired_event_bus
+    from app.api.tool_deps import (
+        get_automation_service, get_morning_brief_service, get_tool_registry, get_wired_event_bus,
+    )
     from app.core.config import get_settings
+    from app.core.error_monitoring import init_error_monitoring
     from app.core.logging import configure_logging
 
     configure_logging()
+    init_error_monitoring()
     settings = get_settings()
     bus = get_wired_event_bus()
-    morning_brief_service = get_morning_brief_service()
+    tool_registry = get_tool_registry()
+    morning_brief_service = get_morning_brief_service(tool_registry, bus)
+    automation_service = get_automation_service(tool_registry)
 
     shutdown_event = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -173,7 +203,10 @@ async def _standalone_main() -> None:
     worker = EventWorker(
         bus,
         poll_interval_seconds=settings.EVENT_WORKER_POLL_SECONDS,
-        on_tick=morning_brief_service.check_and_generate_scheduled,
+        on_tick=combine_on_tick(
+            morning_brief_service.check_and_generate_scheduled,
+            automation_service.check_and_dispatch_scheduled,
+        ),
     )
     await worker.run_forever(shutdown_event)
 

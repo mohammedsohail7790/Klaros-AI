@@ -33,6 +33,11 @@ def _invoice_to_dict(inv: Invoice) -> dict[str, Any]:
         "amount_paid": str(inv.amount_paid),
         "amount_due": str(inv.amount_due),
         "notes": inv.notes,
+        # Phase 13: honest sync state for external accounting systems
+        # (QuickBooks, ...) — null/null until a real sync actually sets
+        # these (see QuickBooksSyncService), never fabricated.
+        "external_provider": inv.external_provider,
+        "external_id": inv.external_id,
     }
 
 

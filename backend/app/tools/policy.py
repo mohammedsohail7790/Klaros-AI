@@ -64,6 +64,21 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "knowledge.get_file": ActionPolicy.AUTO,
     "knowledge.set_file": ActionPolicy.AUTO,
     "knowledge.delete_file": ActionPolicy.AUTO,
+    "knowledge.index_file": ActionPolicy.AUTO,
+    "knowledge.search": ActionPolicy.AUTO,
+    "knowledge.ask": ActionPolicy.AUTO,
+    # Phase 18: the AI Next Action decision layer's own entry point is
+    # AUTO — it never mutates anything directly itself (observe + decide +
+    # propose only); the actual protection is the SEPARATE ActionPolicy
+    # resolution the proposed downstream tool goes through a second time,
+    # inside app/services/ai_next_action_service.py's own
+    # AIExecutionService.request_tool_execution() call. Leaving this tool
+    # at the unlisted APPROVAL_REQUIRED default would just create an
+    # approval request to "let the AI think," not a real safety boundary.
+    "ai.propose_quote_followup": ActionPolicy.AUTO,
+    # Phase 20: same reasoning as ai.propose_quote_followup above — this
+    # entry point never mutates anything directly itself either.
+    "ai.propose_invoice_followup": ActionPolicy.AUTO,
     # Phase 10B: notification tools, permission-gated instead of
     # policy-gated (READ_NOTIFICATIONS/MANAGE_NOTIFICATION_PREFERENCES).
     "notifications.list_notifications": ActionPolicy.AUTO,
@@ -161,11 +176,58 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "finance.send_invoice": ActionPolicy.AUTO,
     "finance.void_invoice": ActionPolicy.APPROVAL_REQUIRED,  # destructive to the financial record
     "finance.get_invoice": ActionPolicy.AUTO,
+    # Phase 14: quotes commit no money and no work — creating/editing/
+    # sending a quote is a proposal, not a financial or operational
+    # commitment (unlike finance.void_invoice above); the real commitment
+    # point is the CUSTOMER's own accept decision, made through the
+    # public view, which is not a ToolRegistry call at all (no
+    # ExecutionContext exists for an unauthenticated customer).
+    "quotes.create_quote_draft": ActionPolicy.AUTO,
+    "quotes.update_quote_draft": ActionPolicy.AUTO,
+    "quotes.send_quote": ActionPolicy.AUTO,
+    "quotes.get_quote": ActionPolicy.AUTO,
+    "quotes.detect_expired_quotes": ActionPolicy.AUTO,
+    "contracts.get_contract": ActionPolicy.AUTO,
+    "contracts.send_contract": ActionPolicy.AUTO,
+    # Phase 24: same reasoning as quotes.detect_expired_quotes/
+    # finance.detect_overdue_invoices — a read/sweep-shaped, no-argument-
+    # beyond-tenant-context domain action.
+    "contracts.detect_pending": ActionPolicy.AUTO,
+    # Phase 15: a read-only status check, and a Stripe-hosted deposit
+    # payment LINK generator — same "no money moves until the signed
+    # webhook confirms it" reasoning as finance.create_stripe_checkout_session
+    # just below.
+    "finance.get_quote_deposit_status": ActionPolicy.AUTO,
+    "finance.create_quote_deposit_checkout_session": ActionPolicy.AUTO,
+    # Phase 17: pushes an already-successful, already-recorded deposit
+    # Payment to QuickBooks — moves no new money (the real payment already
+    # happened via Stripe), idempotent by construction, same reasoning as
+    # finance.sync_invoice_to_quickbooks directly below.
+    "finance.sync_deposit_payment_to_quickbooks": ActionPolicy.AUTO,
+    # Phase 19: the ordinary-invoice-payment counterpart — identical
+    # reasoning (idempotent, moves no new money) as the entry above.
+    "finance.sync_invoice_payment_to_quickbooks": ActionPolicy.AUTO,
+    # Phase 18: pushes an already-completed refund (real money already
+    # moved back via Stripe) to QuickBooks — moves no new money, idempotent
+    # by construction, same reasoning as the two entries directly above.
+    "finance.sync_refund_to_quickbooks": ActionPolicy.AUTO,
+    # Phase 14: Google Calendar sync moves no money; pushing/updating a
+    # calendar event is reversible and idempotent by construction (see
+    # GoogleCalendarSyncService.sync_appointment), same reasoning as
+    # finance.sync_invoice_to_quickbooks above.
+    "calendar.list_google_calendars": ActionPolicy.AUTO,
+    "calendar.check_google_availability": ActionPolicy.AUTO,
+    "calendar.sync_appointment_to_google": ActionPolicy.AUTO,
     "finance.record_test_payment": ActionPolicy.AUTO,  # internal test provider only, no real money
     # Phase 12C: generates a Stripe-hosted payment LINK only — no money
     # moves until Stripe's signed webhook confirms payment_intent.succeeded
     # (app/api/v1/webhooks.py). Same reasoning as finance.send_invoice.
     "finance.create_stripe_checkout_session": ActionPolicy.AUTO,
+    # Phase 13: pushes an already-approved invoice to a tenant's own
+    # connected QuickBooks company — moves no money, and idempotent by
+    # construction (an already-synced invoice is a safe no-op, see
+    # QuickBooksSyncService), same reasoning as the two entries above.
+    "finance.sync_invoice_to_quickbooks": ActionPolicy.AUTO,
     "finance.create_refund_request": ActionPolicy.AUTO,  # always lands as a pending request, never issues
     "finance.approve_refund": ActionPolicy.AUTO,  # gated by APPROVE_REFUND permission instead
     "finance.reject_refund": ActionPolicy.AUTO,  # gated by APPROVE_REFUND permission instead
@@ -200,6 +262,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "marketing.detect_performance_exceptions": ActionPolicy.AUTO,
     "marketing.create_content_idea": ActionPolicy.AUTO,
     "marketing.generate_content_draft_from_job": ActionPolicy.AUTO,
+    "marketing.create_content_from_review": ActionPolicy.APPROVAL_REQUIRED,  # real customer testimonial data — owner approval gates content generation itself, on top of the existing separate publish approval
     "marketing.add_content_variant": ActionPolicy.AUTO,
     "marketing.request_content_approval": ActionPolicy.AUTO,
     "marketing.approve_content": ActionPolicy.AUTO,  # gated by APPROVE_MARKETING_CONTENT instead
@@ -254,6 +317,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "retention.mark_due_reminders": ActionPolicy.AUTO,
     "retention.update_reminder_status": ActionPolicy.AUTO,
     "retention.record_feedback": ActionPolicy.AUTO,
+    "retention.record_review_consent": ActionPolicy.AUTO,  # gated by the explicit ActorType.AI guard instead, matching finance.approve_invoice's pattern
     "retention.send_review_request": ActionPolicy.APPROVAL_REQUIRED,  # reaches a real customer channel
     "retention.create_referral_program": ActionPolicy.AUTO,
     "retention.get_or_create_referral_code": ActionPolicy.AUTO,
@@ -279,9 +343,11 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "insights.get_finance_snapshot": ActionPolicy.AUTO,
     "insights.get_operations_snapshot": ActionPolicy.AUTO,
     "insights.get_sales_snapshot": ActionPolicy.AUTO,
+    "insights.get_commercial_pipeline_snapshot": ActionPolicy.AUTO,
     "insights.get_marketing_snapshot": ActionPolicy.AUTO,
     "insights.get_retention_snapshot": ActionPolicy.AUTO,
     "insights.get_exception_snapshot": ActionPolicy.AUTO,
+    "insights.get_voice_snapshot": ActionPolicy.AUTO,
     "insights.generate_morning_brief": ActionPolicy.AUTO,
     "insights.get_latest_morning_brief": ActionPolicy.AUTO,
     "insights.execute_recommendation": ActionPolicy.AUTO,

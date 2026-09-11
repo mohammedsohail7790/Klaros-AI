@@ -13,7 +13,7 @@ from app.core.config import get_settings
 from app.db.session import async_session_maker
 from app.models.integration import ConnectionStatus
 from app.services.integration_connection_service import IntegrationConnectionService
-from app.tools.builtin.stripe_tools import _resolve_stripe_secret_key
+from app.tools.builtin.stripe_tools import resolve_stripe_secret_key
 
 pytestmark = pytest.mark.asyncio
 
@@ -81,7 +81,7 @@ async def test_checkout_tool_prefers_tenant_connection_over_platform_key(connect
     tenant_id = uuid.uuid4()
     await connection_service.connect(tenant_id, "stripe", {"secret_key": "sk_test_tenant_key"}, created_by=None)
 
-    resolved = await _resolve_stripe_secret_key(connection_service, tenant_id)
+    resolved = await resolve_stripe_secret_key(connection_service, tenant_id)
     assert resolved == "sk_test_tenant_key"
 
 
@@ -92,7 +92,7 @@ async def test_checkout_tool_falls_back_to_platform_key_with_no_tenant_connectio
     monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", "sk_test_platform_fallback")
 
     tenant_id = uuid.uuid4()
-    resolved = await _resolve_stripe_secret_key(connection_service, tenant_id)
+    resolved = await resolve_stripe_secret_key(connection_service, tenant_id)
     assert resolved == "sk_test_platform_fallback"
 
 
@@ -113,7 +113,7 @@ async def test_tenant_bs_key_is_never_used_for_tenant_a(connection_service, monk
 
     # Tenant A has no connection of its own — must resolve to the platform
     # key, never tenant B's, even though tenant B's row exists in the DB.
-    resolved_for_a = await _resolve_stripe_secret_key(connection_service, tenant_a)
+    resolved_for_a = await resolve_stripe_secret_key(connection_service, tenant_a)
     assert resolved_for_a == "sk_test_platform_key"
     assert resolved_for_a != "sk_test_tenant_b_key"
 
@@ -133,5 +133,5 @@ async def test_disconnected_tenant_connection_falls_back_to_platform_key(connect
     await connection_service.connect(tenant_id, "stripe", {"secret_key": "sk_test_tenant_key"}, created_by=None)
     await connection_service.disconnect(tenant_id, "stripe")
 
-    resolved = await _resolve_stripe_secret_key(connection_service, tenant_id)
+    resolved = await resolve_stripe_secret_key(connection_service, tenant_id)
     assert resolved == "sk_test_platform_key"

@@ -7,12 +7,14 @@ social/blog publishing API connected — same "internal but real" pattern
 as Phase 5's invoice delivery.
 """
 
+import re
 import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.core.config import get_settings
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.marketing import (
@@ -22,9 +24,19 @@ from app.models.marketing import (
     ContentVariant,
     MarketingContent,
 )
+from app.models.actor import ActorType
 from app.models.operations import Job, JobAttachment
-from app.services.ai_content_service import JobContentInput, generate_job_caption, is_llm_connected
+from app.models.retention import CustomerFeedback, FeedbackSentiment
+from app.services.ai_content_service import (
+    JobContentInput,
+    generate_job_caption,
+    generate_job_caption_via_ai,
+    is_llm_connected,
+)
+from app.services.ai_invocation_log_service import record_ai_invocation
+from app.services.ai_provider import AIProvider
 from app.services.approval_helper import create_approval_request
+from app.services.company_memory_service import CompanyMemoryService, format_context_as_text
 
 
 class JobNotFoundError(Exception):
@@ -39,10 +51,51 @@ class InvalidContentTransitionError(Exception):
     pass
 
 
+class FeedbackNotFoundError(Exception):
+    pass
+
+
+class FeedbackNotEligibleError(Exception):
+    """Raised when a CustomerFeedback row does not meet the deterministic
+    eligibility bar (rating >= settings.REVIEW_MARKETING_MIN_RATING) —
+    never overridden by AI judgment of "how positive" a comment sounds."""
+
+
+class ConsentRequiredError(Exception):
+    """Raised whenever consent_to_use_publicly is not exactly True — this
+    is the one hard, non-negotiable gate: no review becomes marketing
+    content, however positive, without the customer's explicit consent."""
+
+
+_EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+_PHONE_RE = re.compile(r"(\+?\d[\d\-. ()]{7,}\d)")
+
+
+def _redact_pii(text: str) -> str:
+    """Best-effort removal of an email/phone number a customer's free-text
+    review might contain — defense in depth on top of the consent gate,
+    never a substitute for it. Never claims to catch every possible PII
+    pattern; only the two most common, unambiguous ones."""
+    text = _EMAIL_RE.sub("[redacted]", text)
+    text = _PHONE_RE.sub("[redacted]", text)
+    return text
+
+
 class ContentService:
-    def __init__(self, session_factory: async_sessionmaker, bus: EventBus) -> None:
+    def __init__(self, session_factory: async_sessionmaker, bus: EventBus, ai_provider: AIProvider | None = None) -> None:
         self._session_factory = session_factory
         self._bus = bus
+        # Phase 15: real Company Memory integration + the real LLM caption
+        # path (see generate_draft_from_job below). `ai_provider` is
+        # optional/keyword so every existing 2-arg call site (factory.py,
+        # tests) is unaffected; defaults to the same real
+        # get_ai_provider() factory Morning Brief/Qualification use.
+        if ai_provider is None:
+            from app.services.ai_provider import get_ai_provider
+
+            ai_provider = get_ai_provider()
+        self._ai_provider = ai_provider
+        self._memory = CompanyMemoryService(session_factory)
 
     async def create_idea(self, tenant_id: uuid.UUID, *, title: str, summary: str | None, created_by: uuid.UUID | None) -> MarketingContent:
         async with self._session_factory() as session:
@@ -59,10 +112,85 @@ class ContentService:
         )
         return content
 
-    async def generate_draft_from_job(self, tenant_id: uuid.UUID, job_id: uuid.UUID, created_by: uuid.UUID | None) -> MarketingContent:
+    async def create_content_from_feedback(
+        self, tenant_id: uuid.UUID, feedback_id: uuid.UUID, created_by: uuid.UUID | None
+    ) -> MarketingContent:
+        """The reviews -> marketing proof loop, gated hard on two
+        deterministic, server-verified conditions — never trusted from the
+        caller: (1) rating >= settings.REVIEW_MARKETING_MIN_RATING, (2)
+        consent_to_use_publicly is exactly True. Idempotent per feedback
+        row (one content idea per review, mirroring generate_draft_from_job's
+        one-per-job rule). The generated content is the customer's own
+        words, PII-redacted, never rewritten or embellished — this method
+        does not call an LLM."""
+        settings = get_settings()
+        async with self._session_factory() as session:
+            feedback = await session.get(CustomerFeedback, feedback_id)
+            if feedback is None or feedback.tenant_id != tenant_id:
+                raise FeedbackNotFoundError("Feedback not found")
+
+            existing = (
+                await session.execute(
+                    select(MarketingContent).where(
+                        MarketingContent.tenant_id == tenant_id,
+                        MarketingContent.source_feedback_id == feedback_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if existing is not None:
+                return existing
+
+            if feedback.consent_to_use_publicly is not True:
+                raise ConsentRequiredError(
+                    "This review has no recorded customer consent to be used publicly — "
+                    "record consent first (retention.record_review_consent)."
+                )
+            if (
+                feedback.sentiment != FeedbackSentiment.POSITIVE
+                or feedback.rating is None
+                or feedback.rating < settings.REVIEW_MARKETING_MIN_RATING
+            ):
+                raise FeedbackNotEligibleError(
+                    f"Feedback rating {feedback.rating} does not meet the "
+                    f"eligibility threshold ({settings.REVIEW_MARKETING_MIN_RATING})."
+                )
+
+            comment = _redact_pii(feedback.comment) if feedback.comment else None
+            content = MarketingContent(
+                tenant_id=tenant_id,
+                source_feedback_id=feedback_id,
+                title=f"Customer testimonial ({feedback.rating}/5)",
+                summary=comment,
+                status=ContentStatus.DRAFT,
+                created_by=created_by,
+                ai_generated=False,
+            )
+            session.add(content)
+            await session.commit()
+            await session.refresh(content)
+
+        await self._bus.publish(
+            tenant_id=tenant_id, event_type=EventType.MARKETING_CONTENT_CREATED, source="marketing",
+            entity_type="marketing_content", entity_id=content.id, payload={"content_id": str(content.id)},
+        )
+        return content
+
+    async def generate_draft_from_job(
+        self, tenant_id: uuid.UUID, job_id: uuid.UUID, created_by: uuid.UUID | None,
+        *, actor_type: ActorType = ActorType.USER, correlation_id: uuid.UUID | None = None,
+    ) -> MarketingContent:
         """Grounds the draft in real job data — real attachments, real
         notes, real service type/location. Never invents a result, photo,
-        or testimonial. Idempotent per job (one content idea per job)."""
+        or testimonial. Idempotent per job (one content idea per job).
+
+        Phase 15: when `is_llm_connected()`, calls the real
+        `generate_job_caption_via_ai` (governed `AIProvider.
+        generate_structured()` boundary, real `AIInvocationLog` row,
+        Company Memory context fenced as DATA) and falls back to the
+        deterministic template only if that call fails — never a silent
+        downgrade presented as the real thing. When no provider is
+        configured (the only case in this sandbox), behavior is
+        byte-for-byte unchanged from before this phase."""
         async with self._session_factory() as session:
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id:
@@ -87,23 +215,41 @@ class ContentService:
                 )
             ).scalars().all()
 
-            caption = generate_job_caption(
-                JobContentInput(
-                    service_type=job.service_type, city=job.location, job_title=job.title,
-                    notes=job.internal_notes, photo_count=len(attachments),
-                )
+            job_title = job.title
+            attachment_ids = [a.id for a in attachments]
+            job_input = JobContentInput(
+                service_type=job.service_type, city=job.location, job_title=job_title,
+                notes=job.internal_notes, photo_count=len(attachments),
             )
 
+        caption = None
+        if is_llm_connected():
+            company_memory = format_context_as_text(await self._memory.get_context(tenant_id))
+            caption, outcome = await generate_job_caption_via_ai(
+                job_input, self._ai_provider, company_memory=company_memory,
+            )
+            await record_ai_invocation(
+                self._session_factory, tenant_id=tenant_id, actor_type=actor_type, actor_id=created_by,
+                operation="marketing_caption_generation", outcome=outcome, correlation_id=correlation_id,
+                input_metadata={"job_id": str(job_id), "company_memory_used": company_memory is not None},
+            )
+        if caption is None:
+            # Either no provider configured, or the real call failed —
+            # both fall back to the deterministic template honestly
+            # (never silently presented as an LLM result).
+            caption = generate_job_caption(job_input)
+
+        async with self._session_factory() as session:
             content = MarketingContent(
-                tenant_id=tenant_id, source_job_id=job_id, title=job.title, summary=caption.text,
+                tenant_id=tenant_id, source_job_id=job_id, title=job_title, summary=caption.text,
                 status=ContentStatus.DRAFT, created_by=created_by, ai_generated=True,
             )
             session.add(content)
             await session.flush()
 
-            for attachment in attachments:
+            for attachment_id in attachment_ids:
                 session.add(
-                    ContentAsset(tenant_id=tenant_id, content_id=content.id, job_attachment_id=attachment.id)
+                    ContentAsset(tenant_id=tenant_id, content_id=content.id, job_attachment_id=attachment_id)
                 )
 
             await session.commit()
@@ -112,7 +258,10 @@ class ContentService:
         await self._bus.publish(
             tenant_id=tenant_id, event_type=EventType.MARKETING_CONTENT_CREATED, source="marketing",
             entity_type="marketing_content", entity_id=content.id,
-            payload={"content_id": str(content.id), "job_id": str(job_id), "llm_connected": is_llm_connected()},
+            payload={
+                "content_id": str(content.id), "job_id": str(job_id), "llm_connected": is_llm_connected(),
+                "caption_source": caption.source,
+            },
         )
         return content
 

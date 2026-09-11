@@ -14,6 +14,7 @@ import uuid
 from dataclasses import dataclass
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.events.bus import EventBus
@@ -51,7 +52,20 @@ class LeadService:
         self._bus = bus
 
     async def create_lead(self, tenant_id: uuid.UUID, data: CreateLeadInput) -> tuple[Lead, bool]:
-        """Returns (lead, was_deduplicated)."""
+        """Returns (lead, was_deduplicated).
+
+        Phase 30 fix: the `idempotency_key` check-then-insert below is
+        backed by a real `uq_leads_tenant_idempotency_key` unique
+        constraint, but — like `ContractService.create_from_quote` and
+        `RetentionService._create_opportunity` (same audit, same fix) —
+        never caught the `IntegrityError` a genuine concurrent duplicate
+        submission would raise. Public lead intake (`POST /public/leads`)
+        and marketplace webhooks are exactly the kind of caller that
+        realistically retries the same idempotency key concurrently (a
+        sender's timeout-triggered retry racing the original in-flight
+        request). Fixed with the same try/except/rollback/re-fetch CAS
+        pattern already proven in Phase 29's `CollectionService.
+        schedule_next_action` fix."""
         async with self._session_factory() as session:
             if data.idempotency_key:
                 existing = (
@@ -89,7 +103,21 @@ class LeadService:
                 idempotency_key=data.idempotency_key,
             )
             session.add(lead)
-            await session.commit()
+            if data.idempotency_key:
+                try:
+                    await session.commit()
+                except IntegrityError:
+                    await session.rollback()
+                    existing = (
+                        await session.execute(
+                            select(Lead).where(
+                                Lead.tenant_id == tenant_id, Lead.idempotency_key == data.idempotency_key
+                            )
+                        )
+                    ).scalar_one()
+                    return existing, True
+            else:
+                await session.commit()
             await session.refresh(lead)
 
         await self._bus.publish(

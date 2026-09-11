@@ -11,6 +11,7 @@ from app.db.base import Base, TenantScopedMixin
 
 class LeadSource(StrEnum):
     PHONE = "PHONE"
+    VOICE = "VOICE"
     WEB = "WEB"
     CHAT = "CHAT"
     TEXT = "TEXT"
@@ -95,6 +96,18 @@ class Customer(TenantScopedMixin, Base):
     postal_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=CustomerStatus.PROSPECT)
+    # Phase 13: mirrors Invoice.external_provider/external_id exactly — the
+    # id of this customer's matching record in an external accounting
+    # system (QuickBooks Online, ...), once synced. Nullable/unset until a
+    # real sync actually creates one; never fabricated.
+    external_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "external_provider", "external_id", name="uq_customers_tenant_external_provider_id"
+        ),
+    )
 
 
 class CustomerNote(TenantScopedMixin, Base):
@@ -130,7 +143,16 @@ class Appointment(TenantScopedMixin, Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=AppointmentStatus.TENTATIVE)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    # Phase 14: mirrors Invoice/Customer's external_provider/external_id
+    # columns exactly — the id of this appointment's matching event in an
+    # external calendar (Google Calendar, ...), once a real sync creates
+    # one. Nullable/unset until then; never fabricated.
+    external_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "idempotency_key", name="uq_appointments_tenant_idempotency_key"),
+        UniqueConstraint(
+            "tenant_id", "external_provider", "external_id", name="uq_appointments_tenant_external_provider_id"
+        ),
     )

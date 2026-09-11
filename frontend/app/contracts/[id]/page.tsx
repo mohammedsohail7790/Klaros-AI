@@ -1,0 +1,196 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import AppShell from "@/components/AppShell";
+import { useAuth } from "@/lib/useAuth";
+import { ApiError, Contract, Quote, getContract, getQuote, sendContract } from "@/lib/api";
+
+export default function ContractDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const { token, user, loading: authLoading } = useAuth();
+  const [contract, setContract] = useState<Contract | null>(null);
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [viewUrlPath, setViewUrlPath] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!token || !id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const loadedContract = await getContract(token, id);
+      setContract(loadedContract);
+      // The quote's own deposit/payment state is authoritative and
+      // unaffected by contract signing (they are separate, parallel
+      // tracks by design -- deposit collection is already available as
+      // soon as the quote is accepted, not gated on the contract). Shown
+      // here purely so staff can see "what's next" from one screen.
+      try {
+        setQuote(await getQuote(token, loadedContract.quote_id));
+      } catch {
+        // A quote lookup failure here shouldn't block viewing the contract itself.
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to load contract.");
+    } finally {
+      setLoading(false);
+    }
+  }, [token, id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function handleSend() {
+    if (!token || !id) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await sendContract(token, id);
+      setViewUrlPath(result.view_url_path);
+      setNotice("Contract sent — the customer link below is real and ready to share.");
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to send contract.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (authLoading || loading) {
+    return (
+      <AppShell user={user}>
+        <div className="px-8 py-8 text-sm text-neutral-500">Loading...</div>
+      </AppShell>
+    );
+  }
+
+  if (error && !contract) {
+    return (
+      <AppShell user={user}>
+        <div className="px-8 py-8">
+          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">{error}</div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!contract) return null;
+
+  // Real backend state only -- no timestamp is fabricated when absent.
+  const timeline: { label: string; at: string | null }[] = [
+    { label: "Created", at: contract.created_at },
+    { label: "Sent", at: contract.sent_at },
+    { label: "Viewed", at: contract.viewed_at },
+    { label: "Decided", at: contract.decided_at },
+  ];
+
+  return (
+    <AppShell user={user}>
+      <div className="px-8 py-8">
+        <div className="mb-2 flex items-center justify-between">
+          <h1 className="text-xl font-semibold">Contract {contract.contract_number}</h1>
+          <span className="rounded-full border border-neutral-700 px-3 py-1 text-xs">{contract.status}</span>
+        </div>
+        <p className="mb-6 text-sm text-neutral-500">
+          <Link href={`/quotes/${contract.quote_id}`} className="underline hover:text-neutral-300">
+            View originating quote
+          </Link>
+          {" · "}
+          <Link href={`/customers/${contract.customer_id}`} className="underline hover:text-neutral-300">
+            View customer
+          </Link>
+        </p>
+
+        {error && (
+          <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>
+        )}
+        {notice && (
+          <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">
+            {notice}
+          </div>
+        )}
+        {viewUrlPath && (
+          <div className="mb-4 rounded-md border border-neutral-800 bg-neutral-950 p-3 text-sm text-neutral-300">
+            Customer signing link:{" "}
+            <code className="break-all text-neutral-400">
+              {(typeof window !== "undefined" ? window.location.origin : "") + viewUrlPath}
+            </code>
+          </div>
+        )}
+
+        {contract.status === "SIGNED" && (
+          <div className="mb-6 rounded-md border border-emerald-900 bg-emerald-950/30 p-4 text-sm text-emerald-300">
+            <div>Signed by {contract.signer_name} — internal attestation recorded, not a third-party e-signature.</div>
+            {quote && (
+              <div className="mt-2 border-t border-emerald-900/60 pt-2 text-emerald-200">
+                {quote.status === "DEPOSIT_PENDING" ? (
+                  <>
+                    Deposit of ${quote.deposit_amount ?? "—"} is outstanding.{" "}
+                    <Link href={`/quotes/${quote.id}`} className="underline hover:text-white">
+                      View quote / collect deposit
+                    </Link>
+                  </>
+                ) : quote.status === "DEPOSIT_PAID" || quote.status === "CONVERTED" ? (
+                  <>
+                    Deposit received.{" "}
+                    <Link href={`/quotes/${quote.id}`} className="underline hover:text-white">
+                      View quote
+                    </Link>
+                  </>
+                ) : quote.status === "ACCEPTED" ? (
+                  <>
+                    No deposit required — quote already accepted.{" "}
+                    <Link href={`/quotes/${quote.id}`} className="underline hover:text-white">
+                      View quote
+                    </Link>
+                  </>
+                ) : (
+                  <Link href={`/quotes/${quote.id}`} className="underline hover:text-white">
+                    View quote
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {contract.status === "DECLINED" && (
+          <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-400">
+            Declined by the customer{contract.decline_reason ? `: ${contract.decline_reason}` : "."}
+          </div>
+        )}
+
+        <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+          {timeline.map((step) => (
+            <div key={step.label} className="rounded-lg border border-neutral-800 p-4">
+              <div className="text-xs text-neutral-500">{step.label}</div>
+              <div className="mt-1 text-sm font-medium">{step.at ? new Date(step.at).toLocaleString() : "—"}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-6 whitespace-pre-wrap rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-300">
+          {contract.content}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {contract.status === "DRAFT" && (
+            <button
+              disabled={busy}
+              onClick={handleSend}
+              className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+            >
+              {busy ? "Sending..." : "Send to customer"}
+            </button>
+          )}
+        </div>
+      </div>
+    </AppShell>
+  );
+}

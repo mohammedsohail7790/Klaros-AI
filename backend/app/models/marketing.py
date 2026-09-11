@@ -237,11 +237,16 @@ class MarketingContent(TenantScopedMixin, Base):
     blindly create every model" note). `source_job_id` grounds the content
     in a real completed job when one exists; content generated from a job
     must not invent outcomes/photos/testimonials beyond what that job's
-    real `JobAttachment`/notes contain."""
+    real `JobAttachment`/notes contain. `source_feedback_id` plays the
+    identical role for content generated from a real customer review —
+    see ContentService.create_content_from_feedback, which refuses to
+    create this row at all unless that CustomerFeedback's own
+    consent_to_use_publicly is exactly True."""
 
     __tablename__ = "marketing_content"
 
     source_job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True, index=True)
+    source_feedback_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=ContentStatus.IDEA, index=True)

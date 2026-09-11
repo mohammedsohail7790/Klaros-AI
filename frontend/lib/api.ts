@@ -41,6 +41,21 @@ async function trySilentRefresh(): Promise<string | null> {
   return refreshPromise;
 }
 
+// FastAPI's own validation errors (422) put `detail` as an array of
+// Pydantic error objects ({type, loc, msg, ...}) rather than a string —
+// left unhandled, JSON.stringify used to dump that raw structure straight
+// into every error banner in the app. Render the human `msg` instead.
+function formatErrorDetail(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((e) => (e && typeof e === "object" && typeof (e as { msg?: unknown }).msg === "string" ? (e as { msg: string }).msg : null))
+      .filter((m): m is string => m !== null);
+    if (messages.length > 0) return messages.join("; ");
+  }
+  return JSON.stringify(detail);
+}
+
 async function request<T>(path: string, init?: RequestInit, _isRetry = false): Promise<T> {
   const isFormData = init?.body instanceof FormData;
   const res = await fetch(`${API_URL}${path}`, {
@@ -67,7 +82,7 @@ async function request<T>(path: string, init?: RequestInit, _isRetry = false): P
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
-    const detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? body);
+    const detail = formatErrorDetail(body.detail ?? body);
     throw new ApiError(res.status, detail || "Request failed");
   }
 
@@ -290,6 +305,8 @@ export interface Appointment {
   end_time: string;
   status: string;
   notes: string | null;
+  external_provider: string | null;
+  external_id: string | null;
 }
 
 export interface TimeSlot {
@@ -747,6 +764,256 @@ export function triggerInvoiceFromJob(token: string, jobId: string) {
   return request<{ invoice: Invoice; deduplicated: boolean }>(`/api/v1/invoices/trigger-from-job?${qs.toString()}`, {
     method: "POST",
     headers: authHeaders(token),
+  });
+}
+
+// --- Phase 14: Quotes/Estimates. Internal (authenticated, staff-facing)
+// CRUD/send below; the public customer view/accept/decline functions are
+// separate and deliberately never send an Authorization header — the
+// signed `token` query param IS the auth for those (see
+// app/api/v1/public_quotes.py). ---
+
+export interface Quote {
+  id: string;
+  quote_number: string;
+  customer_id: string;
+  lead_id: string | null;
+  job_id: string | null;
+  status: string;
+  currency: string;
+  subtotal: string;
+  tax: string;
+  discount: string;
+  total: string;
+  notes: string | null;
+  terms: string | null;
+  valid_until: string | null;
+  sent_at: string | null;
+  viewed_at: string | null;
+  decided_at: string | null;
+  decline_reason: string | null;
+  deposit_type: string | null;
+  deposit_value: string | null;
+  deposit_amount: string | null;
+}
+
+export interface QuoteLineItem {
+  id: string;
+  description: string;
+  quantity: string;
+  unit_price: string;
+  discount: string;
+  tax_rate: string;
+  line_total: string;
+}
+
+export interface QuoteLineItemInput {
+  description: string;
+  quantity: string;
+  unit_price: string;
+  discount?: string;
+  tax_rate?: string;
+}
+
+export function listQuotes(token: string, params: { status_filter?: string; customer_id?: string } = {}) {
+  const qs = new URLSearchParams(params as Record<string, string>);
+  return request<{ quotes: Quote[] }>(`/api/v1/quotes?${qs.toString()}`, { headers: authHeaders(token) });
+}
+
+export function getQuote(token: string, quoteId: string) {
+  return request<Quote & { line_items: QuoteLineItem[] }>(`/api/v1/quotes/${quoteId}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function createQuoteDraft(
+  token: string,
+  body: { customer_id: string; lead_id?: string; line_items: QuoteLineItemInput[]; notes?: string; terms?: string }
+) {
+  return request<{ quote: Quote; deduplicated: boolean }>("/api/v1/quotes", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateQuoteDraft(
+  token: string,
+  quoteId: string,
+  body: { line_items: QuoteLineItemInput[]; notes?: string; terms?: string }
+) {
+  return request<{ quote: Quote }>(`/api/v1/quotes/${quoteId}`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function sendQuote(token: string, quoteId: string) {
+  return request<{ quote: Quote; view_url_path: string }>(`/api/v1/quotes/${quoteId}/send`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+// --- Public (unauthenticated) quote view — Klaros' first customer-facing
+// surface with no login. Never pass authHeaders here. ---
+
+export interface PublicQuote {
+  id: string;
+  quote_number: string;
+  status: string;
+  currency: string;
+  subtotal: string;
+  tax: string;
+  discount: string;
+  total: string;
+  notes: string | null;
+  terms: string | null;
+  valid_until: string | null;
+  decided_at: string | null;
+  // Phase 15/16: whether a deposit is required, and its frozen amount once
+  // known (set once the customer accepts — null before that). Never
+  // includes deposit_type/deposit_value (internal configuration) or any
+  // Stripe/payment identifier — this is the honest, redacted shape the
+  // backend's public endpoint actually returns (app/api/v1/public_quotes.py).
+  deposit_required: boolean;
+  deposit_amount: string | null;
+  line_items: QuoteLineItem[];
+}
+
+export function getPublicQuote(quoteId: string, token: string) {
+  const qs = new URLSearchParams({ token });
+  return request<PublicQuote>(`/api/v1/public/quotes/${quoteId}?${qs.toString()}`);
+}
+
+export function acceptPublicQuote(quoteId: string, token: string) {
+  const qs = new URLSearchParams({ token });
+  return request<{ quote: PublicQuote; job_created: boolean }>(
+    `/api/v1/public/quotes/${quoteId}/accept?${qs.toString()}`,
+    { method: "POST" }
+  );
+}
+
+export function declinePublicQuote(quoteId: string, token: string, reason?: string) {
+  const qs = new URLSearchParams({ token });
+  return request<{ quote: PublicQuote }>(`/api/v1/public/quotes/${quoteId}/decline?${qs.toString()}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason: reason ?? null }),
+  });
+}
+
+// Phase 16: starts the customer's deposit payment via a real, hosted
+// Stripe Checkout Session. The backend computes the amount from the
+// quote's own frozen deposit_amount and builds success/cancel redirect
+// URLs itself (never accepts them from this client) — this function sends
+// nothing but the same quote_view token already used to view/accept the
+// quote. The browser is expected to navigate to the returned checkout_url
+// itself (e.g. `window.location.href = checkout_url`), not treat this
+// call as payment confirmation.
+export function createPublicQuoteDepositCheckout(quoteId: string, token: string) {
+  const qs = new URLSearchParams({ token });
+  return request<{ checkout_url: string }>(
+    `/api/v1/public/quotes/${quoteId}/deposit/checkout?${qs.toString()}`,
+    { method: "POST" }
+  );
+}
+
+// --- Commercial pipeline (Quote -> Contract -> Deposit -> Job), surfaced
+// on /dashboard. Consumes the existing backend aggregation endpoint —
+// this file never computes these numbers itself. ---
+
+export interface CommercialPipeline {
+  quotes_awaiting_response: number;
+  quotes_accepted: number;
+  quotes_accepted_value: string;
+  contracts_awaiting_signature: number;
+  contracts_signed: number;
+  deposits_awaiting_payment: number;
+  deposits_awaiting_value: string;
+  deposits_collected: string;
+  jobs_from_quotes: number;
+  needs_attention: boolean;
+}
+
+export function getCommercialPipeline(token: string) {
+  return request<CommercialPipeline>("/api/v1/finance/commercial-pipeline", { headers: authHeaders(token) });
+}
+
+// --- Contracts (Phase 30/32): the sales agreement between quote
+// acceptance and payment. Internal attestation only — no third-party
+// e-signature provider is integrated; never represented as one. Staff
+// (authenticated) list/get/send below; the public customer view/sign/
+// decline functions mirror the public quote pattern exactly — never send
+// authHeaders there, the signed `token` query param IS the auth. ---
+
+export interface Contract {
+  id: string;
+  contract_number: string;
+  quote_id: string;
+  customer_id: string;
+  status: string;
+  content: string;
+  sent_at: string | null;
+  viewed_at: string | null;
+  decided_at: string | null;
+  signer_name: string | null;
+  signer_email: string | null;
+  decline_reason: string | null;
+  created_at: string;
+}
+
+export function listContracts(
+  token: string,
+  params: { status_filter?: string; quote_id?: string; customer_id?: string } = {}
+) {
+  const qs = new URLSearchParams(params as Record<string, string>);
+  return request<{ contracts: Contract[] }>(`/api/v1/contracts?${qs.toString()}`, { headers: authHeaders(token) });
+}
+
+export function getContract(token: string, contractId: string) {
+  return request<Contract>(`/api/v1/contracts/${contractId}`, { headers: authHeaders(token) });
+}
+
+export function sendContract(token: string, contractId: string) {
+  return request<{ contract: Record<string, unknown>; view_url_path: string }>(
+    `/api/v1/contracts/${contractId}/send`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+}
+
+// --- Public (unauthenticated) contract view/sign/decline. ---
+
+export interface PublicContract {
+  id: string;
+  contract_number: string;
+  status: string;
+  content: string;
+  sent_at: string | null;
+  viewed_at: string | null;
+  decided_at: string | null;
+  signer_name: string | null;
+}
+
+export function getPublicContract(contractId: string, token: string) {
+  const qs = new URLSearchParams({ token });
+  return request<PublicContract>(`/api/v1/public/contracts/${contractId}?${qs.toString()}`);
+}
+
+export function signPublicContract(contractId: string, token: string, signerName: string, signerEmail?: string) {
+  const qs = new URLSearchParams({ token });
+  return request<PublicContract>(`/api/v1/public/contracts/${contractId}/sign?${qs.toString()}`, {
+    method: "POST",
+    body: JSON.stringify({ signer_name: signerName, signer_email: signerEmail ?? null }),
+  });
+}
+
+export function declinePublicContract(contractId: string, token: string, reason?: string) {
+  const qs = new URLSearchParams({ token });
+  return request<PublicContract>(`/api/v1/public/contracts/${contractId}/decline?${qs.toString()}`, {
+    method: "POST",
+    body: JSON.stringify({ reason: reason ?? null }),
   });
 }
 
@@ -1343,6 +1610,9 @@ export interface FeedbackRow {
   sentiment: string | null;
   comment: string | null;
   received_at: string;
+  // null = never asked, false = declined, true = explicitly granted —
+  // never inferred; see retention.record_review_consent.
+  consent_to_use_publicly: boolean | null;
 }
 
 export function listReviewRequests(token: string) {
@@ -1367,6 +1637,25 @@ export function recordFeedback(token: string, body: { customer_id: string; job_i
     headers: authHeaders(token),
     body: JSON.stringify(body),
   });
+}
+
+// A human recording a fact confirmed with the customer directly (never
+// inferred, never AI-settable — see retention.record_review_consent).
+export function recordReviewConsent(token: string, feedbackId: string, consent: boolean) {
+  return request<{ feedback_id: string; consent_to_use_publicly: boolean | null }>(
+    `/api/v1/retention/reviews/feedback/${feedbackId}/consent`,
+    { method: "POST", headers: authHeaders(token), body: JSON.stringify({ consent }) }
+  );
+}
+
+// Only succeeds server-side when the review is both eligible (real rating
+// bar) and consented (real, human-recorded consent) — APPROVAL_REQUIRED
+// by policy, so a real ApprovalRequest is created, not immediate content.
+export function createContentFromReview(token: string, feedbackId: string) {
+  return request<{ content: Record<string, unknown> } | { status: string; approval_request_id: string }>(
+    `/api/v1/retention/reviews/feedback/${feedbackId}/create-content`,
+    { method: "POST", headers: authHeaders(token) }
+  );
 }
 
 export interface ReferralProgramRow {
@@ -1873,6 +2162,52 @@ export function disconnectIntegration(token: string, provider: string) {
   });
 }
 
+// --- Phase 13: QuickBooks Online OAuth2 connect flow. Distinct from the
+// generic connect() above (that's for a credential the caller already
+// has in hand, like Stripe's secret key) — QuickBooks requires a real
+// browser redirect through Intuit's own consent page, so the frontend
+// only ever asks the backend for that real URL and sends the browser
+// there; the backend's own callback (never called from the frontend
+// directly) does the actual token exchange. ---
+
+export function getQuickBooksAuthorizeUrl(token: string) {
+  return request<{ authorization_url: string }>("/api/v1/integrations/quickbooks/authorize", {
+    headers: authHeaders(token),
+  });
+}
+
+// --- Phase 14: Google Calendar OAuth2 connect flow + appointment sync.
+// Same shape as the QuickBooks flow above (real browser redirect through
+// Google's own consent page; the backend's callback does the token
+// exchange server-side, the frontend never sees a Google credential). ---
+
+export function getGoogleCalendarAuthorizeUrl(token: string) {
+  return request<{ authorization_url: string }>("/api/v1/integrations/google-calendar/authorize", {
+    headers: authHeaders(token),
+  });
+}
+
+export interface GoogleCalendarEntry {
+  id: string;
+  summary: string | null;
+  primary: boolean;
+  time_zone: string | null;
+}
+
+export function listGoogleCalendars(token: string) {
+  return request<{ calendars: GoogleCalendarEntry[] }>("/api/v1/calendar/google/calendars", {
+    headers: authHeaders(token),
+  });
+}
+
+export function syncAppointmentToGoogle(token: string, appointmentId: string, calendarId = "primary") {
+  const qs = new URLSearchParams({ calendar_id: calendarId });
+  return request<{ action: string; google_event_id: string | null }>(
+    `/api/v1/calendar/google/appointments/${appointmentId}/sync?${qs.toString()}`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+}
+
 export interface AutonomyStats {
   date: string;
   automatic: number;
@@ -1916,5 +2251,466 @@ export function deleteKnowledgeFile(token: string, path: string) {
   return request<{ deleted: boolean }>(`/api/v1/knowledge/files/${path}`, {
     method: "DELETE",
     headers: authHeaders(token),
+  });
+}
+
+export interface KnowledgeSearchResultRow {
+  file_path: string;
+  chunk_index: number;
+  content: string;
+  score: number;
+}
+
+export interface KnowledgeSearchResponse {
+  results: KnowledgeSearchResultRow[];
+  available: boolean;
+  error_detail: string | null;
+}
+
+export function searchKnowledge(token: string, query: string) {
+  return request<KnowledgeSearchResponse>(`/api/v1/knowledge/search`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ query }),
+  });
+}
+
+export interface KnowledgeAskCitation {
+  file_path: string;
+  chunk_index: number;
+  score: number;
+}
+
+export interface KnowledgeAskResponse {
+  available: boolean;
+  answer: string | null;
+  answered_from_excerpts: boolean | null;
+  sources: string[] | null;
+  citations: KnowledgeAskCitation[] | null;
+  error_detail: string | null;
+}
+
+export function askKnowledge(token: string, question: string) {
+  return request<KnowledgeAskResponse>(`/api/v1/knowledge/ask`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ question }),
+  });
+}
+
+export interface VoiceSettings {
+  enabled: boolean;
+  greeting: string;
+  business_hours_note: string | null;
+  voice_name: string | null;
+  updated_at: string;
+  stt_provider: string;
+  tts_provider: string;
+}
+
+export function getVoiceSettings(token: string) {
+  return request<VoiceSettings>(`/api/v1/voice/settings`, { headers: authHeaders(token) });
+}
+
+export function updateVoiceSettings(
+  token: string,
+  body: Partial<Pick<VoiceSettings, "enabled" | "greeting" | "business_hours_note" | "voice_name">>
+) {
+  return request<VoiceSettings>(`/api/v1/voice/settings`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export interface VoiceCallRow {
+  id: string;
+  provider: string;
+  external_call_id: string;
+  direction: string;
+  caller_number: string | null;
+  status: string;
+  outcome: string | null;
+  started_at: string;
+  ended_at: string | null;
+  customer_id: string | null;
+  lead_id: string | null;
+  appointment_id: string | null;
+  handoff_requested: boolean;
+  handoff_reason: string | null;
+  failure_reason: string | null;
+  transcript: { role: string; text: string }[];
+  booking: {
+    state: string | null;
+    service_type: string | null;
+    service_summary: string | null;
+    selected_slot: { start_time: string; end_time: string; label: string } | null;
+  } | null;
+  latency_ms: { conversation_ms: number | null; tts_ms: number | null; total_ms: number | null }[];
+}
+
+export function listVoiceCalls(token: string) {
+  return request<{ calls: VoiceCallRow[] }>(`/api/v1/voice/calls`, { headers: authHeaders(token) });
+}
+
+export function getVoiceCall(token: string, callId: string) {
+  return request<VoiceCallRow>(`/api/v1/voice/calls/${callId}`, { headers: authHeaders(token) });
+}
+
+// --- Automation Engine ---
+
+export interface AutomationStep {
+  action: string;
+  params: Record<string, unknown>;
+}
+
+export interface ConditionNode {
+  field?: string;
+  op?: string;
+  value?: unknown;
+  and?: ConditionNode[];
+  or?: ConditionNode[];
+  not?: ConditionNode;
+}
+
+export interface AutomationRow {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string;
+  published_version_id: string | null;
+  created_at: string;
+  next_scheduled_run?: string | null;
+}
+
+export interface AutomationVersionRow {
+  id: string;
+  automation_id: string;
+  version_number: number;
+  trigger_type: string;
+  trigger_config: Record<string, unknown>;
+  condition: ConditionNode | null;
+  steps: AutomationStep[];
+  created_at: string;
+}
+
+export interface AutomationExecutionStepRow {
+  id: string;
+  step_index: number;
+  action: string;
+  status: string;
+  result: Record<string, unknown> | null;
+  error: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface AutomationExecutionRow {
+  id: string;
+  automation_id: string;
+  automation_version_id: string;
+  trigger_type: string;
+  status: string;
+  current_step_index: number;
+  context: Record<string, unknown>;
+  error: string | null;
+  retry_count: number;
+  temporal_workflow_id: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface AutomationExecutionDetail extends AutomationExecutionRow {
+  steps: AutomationExecutionStepRow[];
+}
+
+export interface AutomationSummary {
+  automations_total: number;
+  automations_enabled: number;
+  automations_scheduled: number;
+  executions_running: number;
+  executions_failed: number;
+  executions_completed_today: number;
+  pending_approvals: number;
+}
+
+export function getAutomationSummary(token: string) {
+  return request<AutomationSummary>(`/api/v1/automations/summary`, { headers: authHeaders(token) });
+}
+
+// Phase 26: the Owner Attention Queue — one deterministic, prioritized
+// list of everything across the business that deserves the owner's
+// attention right now, built entirely from existing domain tables.
+export interface AttentionItem {
+  category: string;
+  priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+  score: number;
+  title: string;
+  reason: string;
+  entity_type: string;
+  entity_id: string;
+  link: string;
+  age_days: number | null;
+  monetary_value: string | null;
+}
+
+export interface AttentionQueue {
+  items: AttentionItem[];
+  critical_count: number;
+  high_count: number;
+}
+
+export function getAttentionQueue(token: string) {
+  return request<AttentionQueue>(`/api/v1/dashboard/attention`, { headers: authHeaders(token) });
+}
+
+export interface AiHealth {
+  provider_configured: boolean;
+  provider_name: string;
+  invocations_24h: number;
+  invocations_24h_succeeded: number;
+  invocations_24h_failed: number;
+}
+
+export function getAiHealth(token: string) {
+  return request<AiHealth>(`/api/v1/dashboard/ai-health`, { headers: authHeaders(token) });
+}
+
+// Phase 27: the Owner Activity Feed — read-only, human-readable business
+// history aggregated from existing persisted sources.
+export interface ActivityItem {
+  id: string;
+  timestamp: string;
+  activity_type: string;
+  category: string;
+  title: string;
+  description: string;
+  severity: "INFO" | "WARNING" | "ERROR";
+  actor_type: string;
+  actor_name: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  entity_label: string | null;
+  link: string | null;
+  status: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface ActivityFeed {
+  items: ActivityItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export function getActivityFeed(token: string, opts?: { page?: number; pageSize?: number; category?: string }) {
+  const params = new URLSearchParams();
+  if (opts?.page) params.set("page", String(opts.page));
+  if (opts?.pageSize) params.set("page_size", String(opts.pageSize));
+  if (opts?.category) params.set("category", opts.category);
+  const qs = params.toString();
+  return request<ActivityFeed>(`/api/v1/dashboard/activity${qs ? `?${qs}` : ""}`, { headers: authHeaders(token) });
+}
+
+export function listAutomations(token: string) {
+  return request<{ automations: AutomationRow[] }>(`/api/v1/automations`, { headers: authHeaders(token) });
+}
+
+export function getAutomation(token: string, automationId: string) {
+  return request<AutomationRow>(`/api/v1/automations/${automationId}`, { headers: authHeaders(token) });
+}
+
+export function listAutomationVersions(token: string, automationId: string) {
+  return request<{ versions: AutomationVersionRow[] }>(`/api/v1/automations/${automationId}/versions`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function createAutomation(
+  token: string,
+  body: {
+    name: string;
+    description?: string | null;
+    trigger_type: string;
+    trigger_config: Record<string, unknown>;
+    condition: ConditionNode | null;
+    steps: AutomationStep[];
+  }
+) {
+  return request<AutomationRow>(`/api/v1/automations`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateAutomation(
+  token: string,
+  automationId: string,
+  body: {
+    trigger_type: string;
+    trigger_config: Record<string, unknown>;
+    condition: ConditionNode | null;
+    steps: AutomationStep[];
+  }
+) {
+  return request<AutomationVersionRow>(`/api/v1/automations/${automationId}`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function publishAutomation(token: string, automationId: string) {
+  return request<AutomationRow>(`/api/v1/automations/${automationId}/publish`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function setAutomationEnabled(token: string, automationId: string, enabled: boolean) {
+  return request<AutomationRow>(`/api/v1/automations/${automationId}/enabled`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ enabled }),
+  });
+}
+
+export function triggerAutomation(token: string, automationId: string, context: Record<string, unknown> = {}) {
+  return request<AutomationExecutionRow | { deduplicated: true }>(`/api/v1/automations/${automationId}/trigger`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ context }),
+  });
+}
+
+export function listAutomationExecutions(token: string, automationId: string) {
+  return request<{ executions: AutomationExecutionRow[] }>(`/api/v1/automations/${automationId}/executions`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function getAutomationExecution(token: string, executionId: string) {
+  return request<AutomationExecutionDetail>(`/api/v1/automations/executions/${executionId}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function getAutomationTimezone(token: string) {
+  return request<{ timezone: string }>(`/api/v1/automations/timezone`, { headers: authHeaders(token) });
+}
+
+export function setAutomationTimezone(token: string, tz: string) {
+  return request<{ timezone: string }>(`/api/v1/automations/timezone`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({ timezone: tz }),
+  });
+}
+
+export function dispatchScheduledTick(token: string) {
+  return request<{ dispatched_execution_ids: string[] }>(`/api/v1/automations/scheduled/dispatch-tick`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+// --- Company Memory ---
+
+export interface CompanyMemoryRow {
+  id: string;
+  memory_type: string;
+  key: string;
+  value: string;
+  description: string | null;
+  source: string;
+  source_entity_type: string | null;
+  source_entity_id: string | null;
+  created_by: string | null;
+  status: string;
+  confidence: number | null;
+  effective_from: string | null;
+  effective_until: string | null;
+  supersedes_id: string | null;
+  reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompanyMemoryContextEntry {
+  memory_type: string;
+  key: string;
+  value: string;
+  source: string;
+}
+
+export function listCompanyMemories(
+  token: string,
+  filters?: { memory_type?: string; status_filter?: string; key?: string; source?: string }
+) {
+  const qs = filters
+    ? "?" + new URLSearchParams(Object.entries(filters).filter(([, v]) => v) as [string, string][]).toString()
+    : "";
+  return request<{ memories: CompanyMemoryRow[] }>(`/api/v1/memory${qs}`, { headers: authHeaders(token) });
+}
+
+export function getCompanyMemoryContext(token: string) {
+  return request<{ context: CompanyMemoryContextEntry[] }>(`/api/v1/memory/context`, { headers: authHeaders(token) });
+}
+
+export function getCompanyMemoryHistory(token: string, key: string) {
+  return request<{ history: CompanyMemoryRow[] }>(`/api/v1/memory/history/${encodeURIComponent(key)}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function createCompanyMemory(
+  token: string,
+  body: {
+    memory_type: string;
+    key: string;
+    value: string;
+    description?: string | null;
+    source?: string;
+    effective_from?: string | null;
+    effective_until?: string | null;
+    reason?: string | null;
+  }
+) {
+  return request<CompanyMemoryRow>(`/api/v1/memory`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function updatePendingMemory(token: string, memoryId: string, value: string, description?: string | null) {
+  return request<CompanyMemoryRow>(`/api/v1/memory/${memoryId}`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({ value, description }),
+  });
+}
+
+export function confirmMemory(token: string, memoryId: string) {
+  return request<CompanyMemoryRow>(`/api/v1/memory/${memoryId}/confirm`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function rejectMemory(token: string, memoryId: string, reason?: string) {
+  return request<CompanyMemoryRow>(`/api/v1/memory/${memoryId}/reject`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ reason: reason ?? null }),
+  });
+}
+
+export function revokeMemory(token: string, memoryId: string, reason?: string) {
+  return request<CompanyMemoryRow>(`/api/v1/memory/${memoryId}/revoke`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ reason: reason ?? null }),
   });
 }

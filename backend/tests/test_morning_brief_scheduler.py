@@ -82,7 +82,20 @@ async def test_scheduler_skips_disabled_organizations(tool_registry) -> None:
 
 async def test_scheduler_skips_organizations_whose_local_time_has_not_arrived_yet(tool_registry) -> None:
     now_utc = datetime.now(timezone.utc)
-    future_time = (now_utc + timedelta(hours=2)).strftime("%H:%M")
+    # `morning_brief_local_time` is a fixed daily wall-clock instant, always
+    # compared against TODAY's date (check_and_generate_scheduled builds
+    # `target = local_now.replace(hour=..., minute=...)`) — there is no
+    # concept of "N hours from now" in production. A naive `now + 2h`
+    # simulation of "still in the future" breaks near midnight UTC: once it
+    # wraps to tomorrow, the formatted HH:MM is numerically EARLIER than
+    # today's current time, so the scheduler correctly (per its real,
+    # intended semantics) treats it as already-passed-today. Clamp to the
+    # same calendar day so this test means what it says regardless of what
+    # time of day it happens to run.
+    future_dt = now_utc + timedelta(hours=2)
+    if future_dt.date() != now_utc.date():
+        future_dt = now_utc.replace(hour=23, minute=59, second=0, microsecond=0)
+    future_time = future_dt.strftime("%H:%M")
     org_id = await _make_org(enabled=True, local_time=future_time)
 
     service = MorningBriefService(async_session_maker, AIExecutionService(tool_registry))

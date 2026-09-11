@@ -98,6 +98,31 @@ class GetSalesSnapshot(Tool):
         )
 
 
+class CommercialPipelineSnapshotOutput(BaseModel):
+    contracts_awaiting_signature: list[dict]
+    deposits_awaiting_payment: list[dict]
+    stale_quotes_awaiting_response: list[dict]
+
+
+class GetCommercialPipelineSnapshot(Tool):
+    name = "insights.get_commercial_pipeline_snapshot"
+    description = "Real, read-only commercial pipeline: contracts awaiting signature, deposits awaiting payment, stale quotes."
+    input_schema = EmptyInput
+    output_schema = CommercialPipelineSnapshotOutput
+    required_permission = Permission.SEND_QUOTE
+
+    def __init__(self, insight_service: InsightService) -> None:
+        self._insight_service = insight_service
+
+    async def execute(self, input: EmptyInput, context: ExecutionContext) -> CommercialPipelineSnapshotOutput:
+        s = await self._insight_service.commercial_pipeline_snapshot(context.tenant_id)
+        return CommercialPipelineSnapshotOutput(
+            contracts_awaiting_signature=s.contracts_awaiting_signature,
+            deposits_awaiting_payment=s.deposits_awaiting_payment,
+            stale_quotes_awaiting_response=s.stale_quotes_awaiting_response,
+        )
+
+
 class MarketingSnapshotOutput(BaseModel):
     active_campaign_count: int
     spend_last_30d: str
@@ -126,6 +151,10 @@ class GetMarketingSnapshot(Tool):
 class RetentionSnapshotOutput(BaseModel):
     at_risk_customers: int
     open_retention_opportunities: int
+    open_retention_opportunities_detail: list[dict]
+    eligible_review_requests: list[dict]
+    reviews_awaiting_marketing_consent: list[dict]
+    reviews_ready_for_marketing_content: list[dict]
     negative_feedback_last_24h: list[dict]
     pending_referral_rewards: list[dict]
 
@@ -145,8 +174,41 @@ class GetRetentionSnapshot(Tool):
         return RetentionSnapshotOutput(
             at_risk_customers=s.at_risk_customers,
             open_retention_opportunities=s.open_retention_opportunities,
+            open_retention_opportunities_detail=s.open_retention_opportunities_detail,
+            eligible_review_requests=s.eligible_review_requests,
+            reviews_awaiting_marketing_consent=s.reviews_awaiting_marketing_consent,
+            reviews_ready_for_marketing_content=s.reviews_ready_for_marketing_content,
             negative_feedback_last_24h=s.negative_feedback_last_24h,
             pending_referral_rewards=s.pending_referral_rewards,
+        )
+
+
+class VoiceSnapshotOutput(BaseModel):
+    calls_today: int
+    new_leads_from_voice_today: int
+    human_handoffs_today: int
+    unresolved_calls_today: int
+    recent_calls: list[dict]
+
+
+class GetVoiceSnapshot(Tool):
+    name = "insights.get_voice_snapshot"
+    description = "Real, read-only AI Voice Receptionist activity: calls, new leads, human handoffs, unresolved calls in the last 24h."
+    input_schema = EmptyInput
+    output_schema = VoiceSnapshotOutput
+    required_permission = Permission.READ_VOICE_CALLS
+
+    def __init__(self, insight_service: InsightService) -> None:
+        self._insight_service = insight_service
+
+    async def execute(self, input: EmptyInput, context: ExecutionContext) -> VoiceSnapshotOutput:
+        s = await self._insight_service.voice_snapshot(context.tenant_id)
+        return VoiceSnapshotOutput(
+            calls_today=s.calls_today,
+            new_leads_from_voice_today=s.new_leads_from_voice_today,
+            human_handoffs_today=s.human_handoffs_today,
+            unresolved_calls_today=s.unresolved_calls_today,
+            recent_calls=s.recent_calls,
         )
 
 

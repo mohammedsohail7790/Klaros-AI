@@ -7,9 +7,11 @@ import {
   ApiError,
   FeedbackRow,
   ReviewRequestRow,
+  createContentFromReview,
   listFeedback,
   listReviewRequests,
   recordFeedback,
+  recordReviewConsent,
   sendReviewRequest,
 } from "@/lib/api";
 
@@ -58,6 +60,39 @@ export default function ReviewsPage() {
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to send review request.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleConsent(feedbackId: string, consent: boolean) {
+    if (!token) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      await recordReviewConsent(token, feedbackId, consent);
+      setNotice(consent ? "Consent recorded — this review can now become marketing content." : "Recorded: customer declined.");
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to record consent.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCreateContent(feedbackId: string) {
+    if (!token) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const result = await createContentFromReview(token, feedbackId);
+      if (result && "status" in result && (result as { status?: string }).status === "pending_approval") {
+        setNotice("Creating marketing content requires approval — an ApprovalRequest has been created.");
+      } else {
+        setNotice("Marketing content idea created — review it on the Content page.");
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to create content from this review.");
     } finally {
       setBusy(false);
     }
@@ -202,10 +237,48 @@ export default function ReviewsPage() {
             {positiveFeedback.length === 0 ? (
               <p className="text-sm text-neutral-500">No positive feedback yet.</p>
             ) : (
-              <ul className="space-y-1 text-sm text-neutral-400">
+              <ul className="space-y-2 text-sm text-neutral-400">
                 {positiveFeedback.map((f) => (
-                  <li key={f.id}>
-                    Rating {f.rating}/5{f.comment ? `: "${f.comment}"` : ""}
+                  <li key={f.id} className="rounded-md border border-neutral-800 bg-neutral-950 p-3">
+                    <div>
+                      Rating {f.rating}/5{f.comment ? `: "${f.comment}"` : ""}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                      {f.consent_to_use_publicly === null && (
+                        <>
+                          <span className="text-neutral-500">Use publicly as marketing content?</span>
+                          <button
+                            disabled={busy}
+                            onClick={() => handleConsent(f.id, true)}
+                            className="underline text-emerald-400 hover:text-white"
+                          >
+                            Customer said yes
+                          </button>
+                          <button
+                            disabled={busy}
+                            onClick={() => handleConsent(f.id, false)}
+                            className="underline text-neutral-500 hover:text-white"
+                          >
+                            Customer declined
+                          </button>
+                        </>
+                      )}
+                      {f.consent_to_use_publicly === false && (
+                        <span className="text-neutral-600">Customer declined to have this used publicly.</span>
+                      )}
+                      {f.consent_to_use_publicly === true && (
+                        <>
+                          <span className="text-emerald-500">Consent recorded.</span>
+                          <button
+                            disabled={busy}
+                            onClick={() => handleCreateContent(f.id)}
+                            className="underline text-neutral-300 hover:text-white"
+                          >
+                            Create marketing content from this review
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>

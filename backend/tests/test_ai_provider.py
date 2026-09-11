@@ -39,8 +39,9 @@ _INSIGHTS = [
 async def test_deterministic_provider_never_connected_and_returns_none() -> None:
     provider = DeterministicAIProvider()
     assert provider.is_connected is False
-    result = await provider.enrich_brief("headline", _INSIGHTS)
+    result, call_outcome = await provider.enrich_brief("headline", _INSIGHTS)
     assert result is None
+    assert call_outcome is None
 
 
 async def test_successful_response_is_validated_and_returned() -> None:
@@ -60,7 +61,7 @@ async def test_successful_response_is_validated_and_returned() -> None:
         )
 
     provider._call_api = fake_call  # type: ignore[method-assign]
-    result = await provider.enrich_brief("headline", _INSIGHTS)
+    result, call_outcome = await provider.enrich_brief("headline", _INSIGHTS)
 
     assert result is not None
     assert result.provider == "anthropic"
@@ -68,6 +69,10 @@ async def test_successful_response_is_validated_and_returned() -> None:
     assert result.generation_ms >= 0
     assert result.enrichment.summary == "Two invoices are overdue — worth a look today."
     assert result.enrichment.insights[0].entity_id == "lead-123"
+    assert call_outcome is not None
+    assert call_outcome.success is True
+    assert call_outcome.input_tokens == 42
+    assert call_outcome.output_tokens == 17
 
 
 async def test_malformed_json_falls_back_to_none() -> None:
@@ -76,8 +81,13 @@ async def test_malformed_json_falls_back_to_none() -> None:
         return _ProviderResponse(text="not json at all", input_tokens=None, output_tokens=None)
 
     provider._call_api = fake_call  # type: ignore[method-assign]
-    result = await provider.enrich_brief("headline", _INSIGHTS)
+    result, call_outcome = await provider.enrich_brief("headline", _INSIGHTS)
     assert result is None
+    # The API call itself succeeded (this provider returned real text) —
+    # only parsing it as the expected schema failed. The invocation is
+    # still real and auditable/billable, so call_outcome must reflect that.
+    assert call_outcome is not None
+    assert call_outcome.success is True
 
 
 async def test_schema_violation_falls_back_to_none() -> None:
@@ -88,8 +98,10 @@ async def test_schema_violation_falls_back_to_none() -> None:
         return _ProviderResponse(text=json.dumps({"insights": []}), input_tokens=None, output_tokens=None)
 
     provider._call_api = fake_call  # type: ignore[method-assign]
-    result = await provider.enrich_brief("headline", _INSIGHTS)
+    result, call_outcome = await provider.enrich_brief("headline", _INSIGHTS)
     assert result is None
+    assert call_outcome is not None
+    assert call_outcome.success is True
 
 
 async def test_timeout_falls_back_to_none() -> None:
@@ -99,8 +111,10 @@ async def test_timeout_falls_back_to_none() -> None:
         raise httpx.TimeoutException("timed out")
 
     provider._call_api = fake_call  # type: ignore[method-assign]
-    result = await provider.enrich_brief("headline", _INSIGHTS)
+    result, call_outcome = await provider.enrich_brief("headline", _INSIGHTS)
     assert result is None
+    assert call_outcome is not None
+    assert call_outcome.success is False
 
 
 async def test_provider_error_falls_back_to_none() -> None:
@@ -110,8 +124,10 @@ async def test_provider_error_falls_back_to_none() -> None:
         raise httpx.HTTPStatusError("500", request=None, response=None)  # type: ignore[arg-type]
 
     provider._call_api = fake_call  # type: ignore[method-assign]
-    result = await provider.enrich_brief("headline", _INSIGHTS)
+    result, call_outcome = await provider.enrich_brief("headline", _INSIGHTS)
     assert result is None
+    assert call_outcome is not None
+    assert call_outcome.success is False
 
 
 async def test_no_insights_never_calls_the_network() -> None:
@@ -124,8 +140,9 @@ async def test_no_insights_never_calls_the_network() -> None:
         return _ProviderResponse(text="{}", input_tokens=None, output_tokens=None)
 
     provider._call_api = fake_call  # type: ignore[method-assign]
-    result = await provider.enrich_brief("No significant activity.", [])
+    result, call_outcome = await provider.enrich_brief("No significant activity.", [])
     assert result is None
+    assert call_outcome is None
     assert called is False
 
 
@@ -139,11 +156,17 @@ async def test_provider_selection_prefers_anthropic_then_openai_then_determinist
     get_settings.cache_clear()
     assert isinstance(get_ai_provider(), AnthropicAIProvider)
 
-    monkeypatch.delenv("ANTHROPIC_API_KEY")
+    # Phase 31: setenv("", "") rather than delenv — Settings reads a real
+    # `.env` file (model_config env_file=".env"), so delenv alone lets a
+    # real key configured there (e.g. this environment's live OPENAI_API_KEY)
+    # silently backfill the "unset" value. An explicit empty string is
+    # falsy to get_ai_provider()'s `if settings.X_API_KEY` checks and
+    # can't be shadowed by the dotenv source.
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
     get_settings.cache_clear()
     assert isinstance(get_ai_provider(), OpenAIAIProvider)
 
-    monkeypatch.delenv("OPENAI_API_KEY")
+    monkeypatch.setenv("OPENAI_API_KEY", "")
     get_settings.cache_clear()
     assert isinstance(get_ai_provider(), DeterministicAIProvider)
     get_settings.cache_clear()
@@ -170,8 +193,10 @@ async def test_no_secret_leakage_in_repr_or_error_paths() -> None:
         raise RuntimeError("boom, unrelated to the key")
 
     provider._call_api = fake_call  # type: ignore[method-assign]
-    result = await provider.enrich_brief("headline", _INSIGHTS)
+    result, call_outcome = await provider.enrich_brief("headline", _INSIGHTS)
     assert result is None  # the failure path never raises the key back out
+    assert call_outcome is not None
+    assert call_outcome.success is False
 
 
 async def test_ai_response_referencing_unknown_entity_id_is_caught_by_the_service_layer() -> None:
@@ -194,6 +219,8 @@ async def test_ai_response_referencing_unknown_entity_id_is_caught_by_the_servic
         )
 
     provider._call_api = fake_call  # type: ignore[method-assign]
-    result = await provider.enrich_brief("headline", _INSIGHTS)
+    result, call_outcome = await provider.enrich_brief("headline", _INSIGHTS)
     assert result is not None
     assert result.enrichment.insights[0].entity_id == "not-a-real-entity"
+    assert call_outcome is not None
+    assert call_outcome.success is True

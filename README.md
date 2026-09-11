@@ -111,15 +111,84 @@ honestly `NOT_CONNECTED`/`ERROR`. No adapter fabricates an API response.
 Stripe (real Checkout Session payment links, real webhook-verified payment recording, real
 refunds), Twilio (real SMS + delivery-status webhook), and SendGrid (real email) have working
 API clients as of Phase 12C — see `INTEGRATIONS.md` for full architecture, required
-credentials, and exact testing procedures. QuickBooks, Google Calendar, Gmail, Google Ads, Meta
-Ads, ServiceTitan, Jobber, and outbound-enrichment providers remain honest stubs.
+credentials, and exact testing procedures. QuickBooks Online (real OAuth2 connect flow + invoice
+sync, as of Phase 13) is the first provider with a real tenant-owned OAuth client — see below.
+Google Calendar, Gmail, Google Ads, Meta Ads, ServiceTitan, Jobber, and outbound-enrichment
+providers remain honest stubs.
 
 Phase 12D added a real, tenant-scoped `integration_connections` model + lifecycle service +
 API (`app/services/integration_connection_service.py`, encrypted-at-rest credentials via
-Fernet) for providers where each tenant owns their own external account — used by the QuickBooks/
-Google Calendar/Gmail/Google Ads/Meta Ads providers above once a real OAuth client exists for
-one of them. Real, tested tenant isolation (18 dedicated tests); no OAuth provider is actually
-wired to it yet.
+Fernet) for providers where each tenant owns their own external account. **Phase 13** wired the
+first real OAuth provider to it: QuickBooks Online — a real authorization-code + refresh-token
+OAuth2 flow, a real connection verifier, and a real invoice-sync capability
+(`finance.sync_invoice_to_quickbooks`), all self-contained tested (31 tests) since no real
+Intuit developer-app credentials exist in this environment. **Phase 17** added the matching
+deposit-payment-sync capability (`finance.sync_deposit_payment_to_quickbooks` + an automatic,
+event-driven best-effort attempt) — a real Stripe quote deposit (Phase 15/16) can now be pushed to
+QuickBooks as a Payment applied against its job's invoice, once that invoice exists and has itself
+been synced; also self-contained tested (30 tests), same credential status. **Phase 18** completed
+the loop with refund sync (`finance.sync_refund_to_quickbooks` + the same automatic-attempt
+pattern) — a completed Klaros refund now pushes to QuickBooks as a RefundReceipt against the
+original payment, once that payment has itself been synced; also self-contained tested (30 tests).
+**Phase 19** extended payment sync from deposit-only to ordinary invoice payments too
+(`finance.sync_invoice_payment_to_quickbooks`) — a payment allocated to an invoice now syncs the
+same way a deposit payment does, and refunds against it already flow through the unmodified
+Phase 18 refund sync with zero changes; also self-contained tested (25 tests). **Phase 20** audited
+the full accounting lifecycle, confirmed the underlying model already supports a single payment
+split across multiple invoices, and removed that Phase 19 restriction with real multi-line
+QuickBooks support — also found and fixed a real bug where a payment fully refunded via several
+partial refunds never reached `REFUNDED` status. **Phase 21** performed a full production-readiness
+audit of the accounting lifecycle and found (via direct reproduction, not inference) two real
+concurrency bugs — duplicate payments racing to overpay the same invoice, and duplicate refund
+approvals both calling Stripe's real refund API — plus a single-call duplicate-allocation
+overpayment bug; all three fixed and re-verified, the concurrent-payment fix specifically against
+real PostgreSQL (row-level locking has no SQLite equivalent). **Phase 22** audited the complete
+Stripe payment lifecycle end to end (quote → deposit → Checkout → webhook → Payment → Job →
+Invoice → QuickBooks, and the refund path) and found one real, high-severity bug: `JobService
+.create_job`'s idempotency check had no handling for a concurrent duplicate-key race, so two
+concurrent deposit-payment confirmations for the same quote could leave a quote stuck at
+`DEPOSIT_PAID` with no Job ever created despite a real Stripe deposit being taken — reproduced
+directly under `asyncio.gather` against real PostgreSQL, fixed, and re-verified (4 new tests).
+**Phase 23** attempted live Stripe test-mode verification, the explicit next step Phase 22
+recommended — `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` remain confirmed absent, so no live
+provider call was possible. An independent re-audit found a second real bug, distinct from Phase
+22's concurrency race: a transient (non-duplicate-key) failure inside `JobService.create_job`
+during the deposit webhook path left a customer's deposit charged and the quote stuck at
+`DEPOSIT_PAID` with no Job — permanently, since neither Stripe's own retry nor a manual webhook
+resend could ever recover it, because both the webhook's own dedup check and `QuoteService.
+mark_deposit_paid`'s idempotency check treated the stuck state as final. Fixed in both places;
+re-verified a redelivery now converges to exactly one Payment, one Job, `CONVERTED` (2 new tests),
+with zero regression on a full re-run of both SQLite and real PostgreSQL+Redis. A further audit
+pass in the same phase found and fixed a third bug: `PaymentService.request_refund`'s
+overcommitment check read the Payment row with no lock, so concurrent refund *requests* against
+the same payment could collectively exceed it (5 concurrent $30 requests against a $100 payment
+all succeeded in a reliable real-Postgres reproduction) — fixed with `with_for_update=True`,
+mirroring Phase 21's identical invoice-overpayment fix. A further re-verification pass closed one
+remaining test-coverage gap (no new defect): a new failure-injection test proves QuickBooks
+persistence-failure recovery already works as documented (retry sends the identical `request_id`).
+**Phase 24** audited the Stripe/QuickBooks provider boundary specifically (OAuth CSRF/state
+protection, API contract details, credential encryption, tenant scoping) and found no defect — per
+the mission's own instruction not to manufacture one, zero code changes were made; a fresh full
+regression run matched the pre-phase baseline exactly on both engines. **Phase 25** made the
+provider boundary maximally ready for real credentials: fetched Stripe's current official Checkout
+API reference and confirmed the implementation matches exactly, and closed a real test-coverage gap
+— no existing test had ever decoded and asserted the actual outgoing Checkout/Refund request body
+(amount, currency, metadata), only generic client behavior — 2 new tests now do, both passing on
+the first try. Produced the full step-by-step live-verification runbook for both providers
+(`INTEGRATIONS.md`). No production-code defect found. Classification: internally production-ready
+for controlled live-provider verification, subject to obtaining test/sandbox credentials.
+**Phase 27** shifted from payment/refund correctness to operational readiness and found a real
+defect: `GET /ready` only ran `SELECT 1` against the database, so it reported healthy even against
+a completely unmigrated schema (reproduced directly) — the exact "reports healthy while critical
+functionality is unusable" failure mode. Fixed by adding a migration-head check comparing the DB's
+`alembic_version` against the code's expected Alembic head.
+**Phase 29** found and fixed a real event-loss defect: `PaymentService.record_payment` and
+`QuoteService.mark_deposit_paid` both commit their business state, then publish their event
+(`PAYMENT_RECEIVED`/`QUOTE_DEPOSIT_PAID`) as a separate call — if that publish failed, the event was
+permanently lost even after a fully successful retry, since the retry's own idempotency
+short-circuit never re-attempted the publish. Confirmed by direct reproduction; fixed by publishing
+unconditionally on both paths, relying on `EventBus.publish`'s existing idempotency-key dedup.
+Google Calendar/Gmail/Google Ads/Meta Ads still have no real OAuth client wired to this same model.
 
 Phase 12E hardened the OpenAI/Anthropic provider (`app/services/ai_provider.py`): configurable
 timeout/retries/output-size, real retry-with-backoff, real error classification, real
@@ -161,7 +230,13 @@ and covered by 8 regression tests. Real Stripe credentials remain unconfigured; 
   `NotConnectedCalendarAdapter` (external, e.g. Google Calendar — not configured), and
   `InternalTestCalendarAdapter`, a **real** calendar backed by the `appointments` table (fixed
   09:00–17:00 UTC business hours), labeled INTERNAL TEST CALENDAR everywhere it surfaces.
-  Double-booking prevention is a real overlap check before every insert/reschedule.
+  Double-booking prevention is a real overlap check before every insert/reschedule. **Phase 14**:
+  a real, tenant-scoped Google Calendar OAuth2 connect flow + one-way appointment sync
+  (`app/integrations/google_calendar_client.py`, `app/services/google_calendar_sync_service.py`)
+  pushes already-decided appointments outward to a tenant's own connected Google Calendar —
+  additive, not a replacement for the internal scheduling engine above, which remains the source
+  of truth for availability/double-booking. See "Quotes/Estimates" below for the identical
+  OAuth-state-token/`IntegrationConnection` pattern applied a second time.
 - **Communications**: `backend/app/communications/` — `CommunicationProvider` interface,
   `InternalTestCommunicationAdapter` logs every message to `communication_logs` instead of calling
   Gmail/Twilio/SendGrid. Wired into Operations job-status events in Phase 4 (see below); CRM
@@ -174,6 +249,59 @@ and covered by 8 regression tests. Real Stripe credentials remain unconfigured; 
 Frontend: `/leads`, `/leads/[id]`, `/customers`, `/customers/[id]`, `/calendar` — real pages against
 the real API, no hardcoded data. `/dashboard` now shows real CRM metrics from
 `GET /api/v1/crm/metrics` (zeros for an empty tenant, never sample numbers).
+
+### Quotes/Estimates: the pre-work stage + Klaros' first customer-facing page (Phase 14)
+
+`backend/app/models/quote.py`, `backend/app/services/quote_service.py`,
+`backend/app/tools/builtin/quote_tools.py`, `backend/app/api/v1/quotes.py` +
+`public_quotes.py`. Closes the gap between a Lead and a Job: a `Quote` is a formal, priced
+proposal a customer must approve before any work is scheduled.
+
+- **Internal lifecycle** (staff, authenticated): `quotes.create_quote_draft` →
+  `quotes.update_quote_draft` (DRAFT only) → `quotes.send_quote` (generates a real, signed
+  90-day public view link and delivers it via the existing `InvoiceDeliveryProvider`, extended
+  with a `send_quote` method — same internal-test adapter that logs invoice delivery, not a
+  parallel path).
+- **The public accept/decline flow is Klaros' first page reachable with no login at all** —
+  `GET/POST /api/v1/public/quotes/{id}?token=...`. The token is a signed JWT
+  (`create_quote_view_token`, reusing the same `JWT_SECRET`/signing mechanism as the Phase 13
+  QuickBooks OAuth `state` token) that is the sole source of authority — `tenant_id`/`quote_id`
+  come only from the verified token, and the URL's own `{quote_id}` is checked against the
+  token's rather than trusted directly. Accepting a quote calls the existing
+  `JobService.create_job` to convert it into a real `Job`, idempotently — a replayed accept link
+  can never create two jobs.
+- **Deterministic expiry**: `quotes.detect_expired_quotes` mirrors the existing AR-aging
+  pattern (`ARService.detect_overdue`) rather than a new Temporal workflow.
+- Reuses `InvoiceService`'s pricing math (`LineItemInput`/`compute_line_total`/`compute_totals`)
+  directly rather than re-deriving it.
+
+Frontend: `/quotes` (list), `/quotes/[id]` (staff detail + Send action), `/quotes/view/[id]`
+(the public page — no login, no `AppShell`).
+
+### Quote deposit collection (Phase 15)
+
+`backend/app/services/quote_deposit_service.py`, `backend/app/services/quote_service.py`
+(extended), `backend/app/tools/builtin/quote_deposit_tools.py`. Closes the loop: an accepted
+quote with a configured deposit (fixed amount or percentage, Decimal-safe) holds at a new
+`DEPOSIT_PENDING` status instead of immediately converting to a `Job` — the real `Job` is only
+created once a real Stripe payment for the deposit succeeds. A quote with no deposit configured
+still converts immediately, exactly as in Phase 14 — this is purely additive.
+
+- The customer pays via a real, hosted Stripe Checkout Session (`POST /api/v1/public/quotes/{id}/
+  deposit/checkout`, reusing the existing `quote_view` token — no new token type, no Stripe.js
+  needed). `POST /api/v1/webhooks/stripe`'s existing `payment_intent.succeeded` handler branches
+  on `metadata.purpose == "quote_deposit"`, records the `Payment` (linked via a new nullable
+  `Payment.quote_id`, since a deposit has no `Invoice` to allocate against yet), and advances the
+  quote through `DEPOSIT_PAID` into a real `Job`.
+- `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` are unset in this environment — the flow is fully
+  built and tested against a real `httpx.MockTransport` and the real webhook HTTP endpoint, but
+  live Stripe verification is `BLOCKED BY CREDENTIAL`.
+- **Phase 16**: `/quotes/view/[id]` now has a full customer-facing deposit UX on top of this
+  backend — deposit notice before accept, a "Pay deposit securely with Stripe" button once
+  `DEPOSIT_PENDING`, and paid/converted confirmation views. It never trusts Stripe's return
+  redirect as proof of payment, only a re-fetched, webhook-confirmed quote status. Written and
+  statically reviewed; `node`/`npm` absent from this sandbox, so it has not been typechecked,
+  built, or browser-verified.
 
 ### Operations & Delivery: jobs, dispatch, QA, close-out (Phase 4)
 
@@ -532,9 +660,11 @@ See `.env.example`. Third-party integration credentials (QuickBooks, Stripe, Twi
 Google Ads, OpenAI, Anthropic, etc.) are listed but left blank by default. As of Phase 12C,
 Stripe/Twilio/SendGrid/OpenAI/Anthropic have real, working API clients — setting the matching
 env vars and restarting is enough to connect them for real (see `INTEGRATIONS.md` for exactly
-which vars each provider needs and how to verify). QuickBooks/Google Ads/etc. are not yet
-implemented regardless of what's set. The app must never claim a disconnected integration is
-working.
+which vars each provider needs and how to verify). As of Phase 13, QuickBooks also has a real
+OAuth2 client — set `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_REDIRECT_URI`
+(a real Intuit developer app) and restart to let tenants connect their own QuickBooks company
+via Settings → Integrations. Google Ads/etc. are not yet implemented regardless of what's set.
+The app must never claim a disconnected integration is working.
 
 ## Troubleshooting
 

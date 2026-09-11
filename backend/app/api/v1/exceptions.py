@@ -6,7 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, get_db
-from app.api.tool_deps import execution_context, get_tool_registry, raise_http_for_tool_error
+from app.api.tool_deps import execution_context, get_tool_registry, get_wired_event_bus, raise_http_for_tool_error
+from app.db.session import async_session_maker
+from app.events.bus import EventBus
 from app.models.operations import ExceptionStatus, OperationsException
 from app.services.delay_detection_service import DelayDetectionService
 from app.services.exception_service import ExceptionService
@@ -64,15 +66,13 @@ async def resolve_exception(
 
 
 @router.post("/detect")
-async def run_delay_detection(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, int]:
+async def run_delay_detection(
+    current_user: CurrentUser = Depends(get_current_user), bus: EventBus = Depends(get_wired_event_bus),
+) -> dict[str, int]:
     """section 23: deterministic delay detection, run on demand. Production
     would call this from a scheduler; no such scheduler exists yet, so it's
     exposed here to run manually/on a client-side poll instead of pretending
     an automatic cron job is already wired up."""
-    from app.db.session import async_session_maker
-    from app.events.factory import get_event_bus
-
-    bus = get_event_bus()
     exception_service = ExceptionService(async_session_maker, bus)
     delay_service = DelayDetectionService(async_session_maker, bus, exception_service)
     return await delay_service.run(current_user.tenant_id)

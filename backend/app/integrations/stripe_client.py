@@ -16,16 +16,22 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import json
 import time
-from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
 import httpx
 import structlog
+from pydantic import ValidationError
 
 from app.core.config import get_settings
+from app.integrations.stripe_schemas import (
+    StripeCheckoutSessionResponse,
+    StripePaymentIntentResponse,
+    StripeRefundResponse,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -59,14 +65,39 @@ class StripeWebhookSignatureError(Exception):
     pass
 
 
-@dataclass
-class StripePaymentIntent:
-    id: str
-    status: str
-    amount: int
-    currency: str
-    client_secret: str | None
-    metadata: dict[str, str]
+class StripeWebhookPayloadError(Exception):
+    """Raised when a webhook's signature verifies correctly but the body
+    beneath it isn't valid JSON. Deliberately a different exception type
+    than `StripeWebhookSignatureError` — the trust boundary (is this
+    really from Stripe?) already passed; this is a distinct, later failure
+    (is the body Stripe claims to have sent even well-formed?), and the
+    two deserve different log messages/HTTP details even though both end
+    up as a 400 at the webhook endpoint."""
+
+    pass
+
+
+# Retained as the public name `StripePaymentIntent` (Phase 12C-12F name)
+# for import compatibility, now a real Pydantic model instead of a
+# dataclass — Stripe's response is validated against it instead of
+# trusted via unchecked dict indexing.
+StripePaymentIntent = StripePaymentIntentResponse
+
+
+def _validate_response(model: type[Any], body: dict[str, Any]) -> Any:
+    """Validates a Stripe API response body against the schema this app
+    expects for it. A `ValidationError` here means Stripe's response
+    doesn't have the shape this client relies on (a genuine, if rare,
+    provider-side surprise — e.g. a field this code depends on being
+    absent) — surfaced as a `StripeAPIError` (provider_error) rather than
+    an unhandled `pydantic.ValidationError`, consistent with every other
+    Stripe failure this client raises."""
+    try:
+        return model.model_validate(body)
+    except ValidationError as exc:
+        raise StripeAPIError(
+            f"Stripe returned an unexpected response shape: {exc}", error_type=StripeErrorType.PROVIDER_ERROR
+        ) from exc
 
 
 class StripeClient:
@@ -181,14 +212,7 @@ class StripeClient:
         for k, v in metadata.items():
             data[f"metadata[{k}]"] = v
         body = await self._request("POST", "/payment_intents", data=data, idempotency_key=idempotency_key)
-        return StripePaymentIntent(
-            id=body["id"],
-            status=body["status"],
-            amount=body["amount"],
-            currency=body["currency"],
-            client_secret=body.get("client_secret"),
-            metadata=body.get("metadata", {}),
-        )
+        return _validate_response(StripePaymentIntentResponse, body)
 
     async def create_checkout_session(
         self,
@@ -201,7 +225,7 @@ class StripeClient:
         description: str | None = None,
         customer_email: str | None = None,
         idempotency_key: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> StripeCheckoutSessionResponse:
         """A hosted Stripe Checkout page — the practical, verifiable real
         payment flow for a product with no custom card-collection frontend
         yet: the customer is redirected to Stripe's own page, pays with a
@@ -230,18 +254,12 @@ class StripeClient:
             # webhook we act on is payment_intent.succeeded, not the
             # checkout session event.
             data[f"payment_intent_data[metadata][{k}]"] = v
-        return await self._request("POST", "/checkout/sessions", data=data, idempotency_key=idempotency_key)
+        body = await self._request("POST", "/checkout/sessions", data=data, idempotency_key=idempotency_key)
+        return _validate_response(StripeCheckoutSessionResponse, body)
 
     async def retrieve_payment_intent(self, payment_intent_id: str) -> StripePaymentIntent:
         body = await self._request("GET", f"/payment_intents/{payment_intent_id}")
-        return StripePaymentIntent(
-            id=body["id"],
-            status=body["status"],
-            amount=body["amount"],
-            currency=body["currency"],
-            client_secret=body.get("client_secret"),
-            metadata=body.get("metadata", {}),
-        )
+        return _validate_response(StripePaymentIntentResponse, body)
 
     async def create_refund(
         self,
@@ -250,7 +268,7 @@ class StripeClient:
         amount: Decimal | None = None,
         reason: str | None = None,
         idempotency_key: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> StripeRefundResponse:
         data: dict[str, Any] = {"payment_intent": payment_intent_id}
         if amount is not None:
             data["amount"] = int((amount * 100).to_integral_value())
@@ -262,7 +280,8 @@ class StripeClient:
         # refunds at Stripe — Stripe itself dedupes any request carrying
         # the same key within a 24h window, regardless of this
         # application's own concurrency behavior.
-        return await self._request("POST", "/refunds", data=data, idempotency_key=idempotency_key)
+        body = await self._request("POST", "/refunds", data=data, idempotency_key=idempotency_key)
+        return _validate_response(StripeRefundResponse, body)
 
 
 def verify_webhook_signature(payload: bytes, sig_header: str, webhook_secret: str, *, tolerance_seconds: int = 300) -> dict[str, Any]:
@@ -303,6 +322,12 @@ def verify_webhook_signature(payload: bytes, sig_header: str, webhook_secret: st
     if not any(hmac.compare_digest(expected_sig, sig) for sig in signatures):
         raise StripeWebhookSignatureError("signature mismatch")
 
-    import json
-
-    return json.loads(payload)
+    try:
+        return json.loads(payload)
+    except json.JSONDecodeError as exc:
+        # The signature is genuinely valid — this really is bytes Stripe
+        # (or whoever holds the webhook secret) signed — but the bytes
+        # underneath aren't valid JSON. A different failure mode than a
+        # bad signature, so a distinct exception type; the webhook
+        # endpoint maps both to a 400, with different log messages/detail.
+        raise StripeWebhookPayloadError(f"malformed JSON in webhook payload: {exc}") from exc

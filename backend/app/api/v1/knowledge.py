@@ -68,3 +68,53 @@ async def delete_file(
     except (ToolError, ValueError) as exc:
         raise_http_for_tool_error(exc)
     return output.model_dump(mode="json")
+
+
+@router.post("/files/{path:path}/index")
+async def index_file(
+    path: str,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute("knowledge.index_file", {"path": path}, execution_context(current_user))
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
+class SearchRequest(BaseModel):
+    query: str
+    top_k: int | None = None
+    score_threshold: float | None = None
+    path_prefix: str | None = None
+
+
+@router.post("/search")
+async def search(
+    body: SearchRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute("knowledge.search", body.model_dump(), execution_context(current_user))
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
+class AskRequest(BaseModel):
+    question: str
+
+
+@router.post("/ask")
+async def ask(
+    body: AskRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute("knowledge.ask", body.model_dump(), execution_context(current_user))
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")

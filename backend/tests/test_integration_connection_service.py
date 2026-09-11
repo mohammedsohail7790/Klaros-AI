@@ -35,6 +35,68 @@ def service() -> IntegrationConnectionService:
     return svc
 
 
+# --- Production observability: real-time owner alert on auth failure,
+# with real deduplication (never one alert per re-check). ---
+
+async def test_verify_failure_notifies_owner_once_via_real_notification_service() -> None:
+    from app.models.notification import Notification, NotificationType
+    from app.services.notification_service import NotificationService
+    from sqlalchemy import select
+
+    tenant_id = uuid.uuid4()
+    notifications = NotificationService(async_session_maker)
+    svc = IntegrationConnectionService(async_session_maker, notifications)
+    svc.register_verifier("test_provider_bad", _always_fails)
+    await svc.connect(tenant_id, "test_provider_bad", {"api_key": "whatever"}, created_by=None)
+
+    await svc.verify(tenant_id, "test_provider_bad")
+    await svc.verify(tenant_id, "test_provider_bad")  # a second failure the SAME day
+
+    async with async_session_maker() as session:
+        rows = (
+            await session.execute(
+                select(Notification).where(
+                    Notification.tenant_id == tenant_id, Notification.type == NotificationType.SYSTEM_ERROR,
+                )
+            )
+        ).scalars().all()
+    assert len(rows) == 1  # deduplicated — not one per verify() call
+    assert "test_provider_bad" in rows[0].title
+
+
+async def test_verify_success_never_notifies() -> None:
+    from app.models.notification import Notification
+    from app.services.notification_service import NotificationService
+    from sqlalchemy import select
+
+    tenant_id = uuid.uuid4()
+    notifications = NotificationService(async_session_maker)
+    svc = IntegrationConnectionService(async_session_maker, notifications)
+    svc.register_verifier("test_provider_ok", _always_ok)
+    await svc.connect(tenant_id, "test_provider_ok", {"api_key": "whatever"}, created_by=None)
+
+    await svc.verify(tenant_id, "test_provider_ok")
+
+    async with async_session_maker() as session:
+        rows = (
+            await session.execute(select(Notification).where(Notification.tenant_id == tenant_id))
+        ).scalars().all()
+    assert rows == []
+
+
+async def test_verify_failure_without_a_notification_service_never_raises() -> None:
+    """The optional dependency stays optional — every existing call site
+    that never passes one (all of them, before this phase) keeps working
+    exactly as before."""
+    tenant_id = uuid.uuid4()
+    svc = IntegrationConnectionService(async_session_maker)  # no notification_service, same as every pre-existing test
+    svc.register_verifier("test_provider_bad", _always_fails)
+    await svc.connect(tenant_id, "test_provider_bad", {"api_key": "whatever"}, created_by=None)
+
+    connection = await svc.verify(tenant_id, "test_provider_bad")
+    assert connection.status == ConnectionStatus.ERROR
+
+
 async def test_connect_with_working_credential_reaches_connected(service) -> None:
     tenant_id = uuid.uuid4()
     connection = await service.connect(
