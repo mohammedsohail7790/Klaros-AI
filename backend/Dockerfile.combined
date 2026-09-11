@@ -16,7 +16,7 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev curl bash ca-certificates \
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev curl bash ca-certificates netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Temporal server binaries, config, schema, and its own startup scripts —
