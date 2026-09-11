@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Customer, Job, createJob, searchCustomers, searchJobs } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 const STATUS_TABS = [
   "ALL", "DRAFT", "SCHEDULED", "DISPATCHED", "EN_ROUTE", "ON_SITE",
   "IN_PROGRESS", "BLOCKED", "QA_PENDING", "COMPLETED", "CLOSED",
@@ -44,10 +45,10 @@ export default function JobsPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Jobs ({total})</h1>
+          <h1 className="font-display text-2xl text-foreground">Jobs ({total})</h1>
           <button
             onClick={() => setShowCreate(true)}
-            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface-muted"
+            className="klaros-btn-primary"
           >
             New job
           </button>
@@ -85,8 +86,8 @@ export default function JobsPage() {
         ) : jobs.length === 0 ? (
           <p className="text-sm text-muted">No jobs yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Job #</th>
@@ -106,7 +107,7 @@ export default function JobsPage() {
                     </td>
                     <td className="px-4 py-2">{j.title}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{j.status}</span>
+                      <Badge status={j.status}>{j.status}</Badge>
                     </td>
                     <td className="px-4 py-2 text-muted">{j.priority}</td>
                     <td className="px-4 py-2 text-muted">
@@ -169,7 +170,7 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-background/60 px-4">
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6">
-        <h2 className="text-lg font-semibold">New job</h2>
+        <h2 className="font-display text-xl text-foreground">New job</h2>
         <input
           required
           placeholder="Title"

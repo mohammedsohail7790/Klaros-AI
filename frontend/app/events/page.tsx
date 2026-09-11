@@ -14,6 +14,7 @@ import {
   replayDeadLetter,
 } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 const STATUS_TABS = ["ALL", "PUBLISHED", "PROCESSING", "RETRYING", "PROCESSED", "FAILED", "DEAD_LETTER"];
 
 export default function EventsPage() {
@@ -70,7 +71,7 @@ export default function EventsPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Event Worker</h1>
+          <h1 className="font-display text-2xl text-foreground">Event Worker</h1>
           <button onClick={load} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
             Refresh
           </button>
@@ -125,7 +126,7 @@ export default function EventsPage() {
               <div className="mb-8">
                 <h2 className="mb-3 text-sm font-medium text-red-700">Dead-lettered events ({deadLetters.length})</h2>
                 <div className="overflow-x-auto rounded-lg border border-red-200">
-                  <table className="w-full text-left text-sm">
+                  <table className="klaros-table">
                     <thead className="bg-surface text-muted">
                       <tr>
                         <th className="px-4 py-2">Event type</th>
@@ -172,8 +173,8 @@ export default function EventsPage() {
             {events.length === 0 ? (
               <p className="text-sm text-muted">No events.</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-left text-sm">
+              <div className="klaros-table-wrap">
+                <table className="klaros-table">
                   <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Type</th>
@@ -188,7 +189,7 @@ export default function EventsPage() {
                       <tr key={e.event_id} className="border-t border-border">
                         <td className="px-4 py-2">{e.event_type}</td>
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{e.status}</span>
+                          <Badge status={e.status}>{e.status}</Badge>
                         </td>
                         <td className="px-4 py-2 text-muted">{e.retry_count}</td>
                         <td className="px-4 py-2 text-muted">{e.entity_type ?? "—"}</td>

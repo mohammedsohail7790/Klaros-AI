@@ -150,7 +150,7 @@ export default function CustomerDetailPage() {
           <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="lg:col-span-2 space-y-6">
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h1 className="text-xl font-semibold">{customer.name}</h1>
+                <h1 className="font-display text-2xl text-foreground">{customer.name}</h1>
                 <p className="text-sm text-muted">
                   {customer.email ?? "no email"} · {customer.phone ?? "no phone"}
                 </p>

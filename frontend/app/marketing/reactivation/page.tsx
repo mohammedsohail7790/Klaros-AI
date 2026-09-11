@@ -14,6 +14,7 @@ import {
   listReactivationCandidates,
 } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 export default function ReactivationPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState<ReactivationCampaignRow[]>([]);
@@ -122,8 +123,8 @@ export default function ReactivationPage() {
             {candidates.length === 0 ? (
               <p className="text-sm text-muted">No candidates identified yet.</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-left text-sm">
+              <div className="klaros-table-wrap">
+                <table className="klaros-table">
                   <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Type</th>
@@ -139,7 +140,7 @@ export default function ReactivationPage() {
                         <td className="px-4 py-2">{c.reason}</td>
                         <td className="px-4 py-2 text-muted">{c.score}</td>
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{c.status}</span>
+                          <Badge status={c.status}>{c.status}</Badge>
                         </td>
                       </tr>
                     ))}

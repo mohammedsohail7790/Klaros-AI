@@ -79,4 +79,40 @@ body::before {
   .klaros-btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-muted disabled:opacity-50 disabled:pointer-events-none;
   }
+
+  .klaros-table-wrap {
+    @apply overflow-x-auto rounded-xl border border-border bg-surface shadow-card;
+  }
+
+  .klaros-table {
+    @apply w-full text-left text-sm;
+  }
+
+  .klaros-table thead {
+    @apply bg-surface-muted text-xs font-medium uppercase tracking-wide text-muted;
+  }
+
+  .klaros-table th {
+    @apply px-4 py-3 font-medium;
+  }
+
+  .klaros-table td {
+    @apply px-4 py-3;
+  }
+
+  .klaros-table tbody tr {
+    @apply border-t border-border transition-colors hover:bg-surface-muted/60;
+  }
+
+  .klaros-filter-tab {
+    @apply rounded-full border px-3 py-1 text-xs font-medium transition-colors;
+  }
+
+  .klaros-filter-tab-active {
+    @apply border-accent bg-accent-soft text-accent;
+  }
+
+  .klaros-filter-tab-inactive {
+    @apply border-border-strong text-muted hover:border-accent/40 hover:text-foreground;
+  }
 }

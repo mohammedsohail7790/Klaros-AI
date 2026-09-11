@@ -7,6 +7,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Customer, Quote, QuoteLineItemInput, createQuoteDraft, listQuotes, searchCustomers } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 const STATUS_TABS = ["ALL", "DRAFT", "SENT", "VIEWED", "ACCEPTED", "DECLINED", "EXPIRED", "CONVERTED"];
 
 export default function QuotesPage() {
@@ -39,10 +40,10 @@ export default function QuotesPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Quotes</h1>
+          <h1 className="font-display text-2xl text-foreground">Quotes</h1>
           <button
             onClick={() => setShowCreate(true)}
-            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface-muted"
+            className="klaros-btn-primary"
           >
             New quote
           </button>
@@ -74,8 +75,8 @@ export default function QuotesPage() {
         ) : quotes.length === 0 ? (
           <p className="text-sm text-muted">No quotes.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Number</th>
@@ -93,7 +94,7 @@ export default function QuotesPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{q.status}</span>
+                      <Badge status={q.status}>{q.status}</Badge>
                     </td>
                     <td className="px-4 py-2 text-muted">{q.valid_until ?? "—"}</td>
                     <td className="px-4 py-2">${q.total}</td>
@@ -183,7 +184,7 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
         onSubmit={handleSubmit}
         className="w-full max-w-lg space-y-3 rounded-lg border border-border bg-surface p-6"
       >
-        <h2 className="text-lg font-semibold">New quote</h2>
+        <h2 className="font-display text-xl text-foreground">New quote</h2>
 
         <div>
           <input

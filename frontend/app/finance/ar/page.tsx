@@ -13,6 +13,7 @@ import {
   listCollectionActions,
 } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 function Bucket({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border p-4">
@@ -84,7 +85,7 @@ export default function ARPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Accounts Receivable</h1>
+          <h1 className="font-display text-2xl text-foreground">Accounts Receivable</h1>
           <div className="flex gap-2">
             <button
               disabled={busy}
@@ -134,8 +135,8 @@ export default function ARPage() {
             {actions.length === 0 ? (
               <p className="text-sm text-muted">No collection actions scheduled.</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-left text-sm">
+              <div className="klaros-table-wrap">
+                <table className="klaros-table">
                   <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Invoice</th>
@@ -152,7 +153,7 @@ export default function ARPage() {
                         <td className="px-4 py-2 text-muted">{a.action_type}</td>
                         <td className="px-4 py-2 text-muted">{new Date(a.scheduled_for).toLocaleString()}</td>
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{a.status}</span>
+                          <Badge status={a.status}>{a.status}</Badge>
                         </td>
                         <td className="px-4 py-2 text-muted">{a.attempt}</td>
                       </tr>

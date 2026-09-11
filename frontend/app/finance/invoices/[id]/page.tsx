@@ -86,7 +86,7 @@ export default function InvoiceDetailPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Invoice {invoice.invoice_number}</h1>
+          <h1 className="font-display text-2xl text-foreground">Invoice {invoice.invoice_number}</h1>
           <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{invoice.status}</span>
         </div>
 
@@ -124,8 +124,8 @@ export default function InvoiceDetailPage() {
           </div>
         )}
 
-        <div className="mb-6 overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-left text-sm">
+        <div className="mb-6 klaros-table-wrap">
+          <table className="klaros-table">
             <thead className="bg-surface text-muted">
               <tr>
                 <th className="px-4 py-2">Description</th>

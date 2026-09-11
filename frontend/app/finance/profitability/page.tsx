@@ -54,8 +54,8 @@ export default function ProfitabilityPage() {
             No jobs with actual costs recorded yet — profitability appears once job costs are entered.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Job</th>

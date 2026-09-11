@@ -100,7 +100,7 @@ function CalendarPageInner() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Calendar</h1>
+          <h1 className="font-display text-2xl text-foreground">Calendar</h1>
           <input
             type="date"
             value={date}
@@ -279,7 +279,7 @@ function BookSlotModal({
         onSubmit={handleSubmit}
         className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6"
       >
-        <h2 className="text-lg font-semibold">
+        <h2 className="font-display text-xl text-foreground">
           Book {new Date(slot.start_time).toLocaleString()}
         </h2>
         <input

@@ -34,7 +34,7 @@ export default function CashForecastPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">13-Week Cash Forecast</h1>
+          <h1 className="font-display text-2xl text-foreground">13-Week Cash Forecast</h1>
           <button
             disabled={authLoading || loading}
             onClick={handleGenerate}
@@ -63,8 +63,8 @@ export default function CashForecastPage() {
               <div className="mt-1 text-xs text-muted-foreground">Source: {forecast.starting_cash_source}</div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-left text-sm">
+            <div className="klaros-table-wrap">
+              <table className="klaros-table">
                 <thead className="bg-surface text-muted">
                   <tr>
                     <th className="px-4 py-2">Week of</th>

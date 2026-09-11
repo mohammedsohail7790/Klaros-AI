@@ -184,7 +184,7 @@ export default function AutomationSettingsPage() {
               {!policies || policies.length === 0 ? (
                 <p className="text-sm text-muted">No configurable automation actions found.</p>
               ) : (
-                <div className="overflow-x-auto rounded-lg border border-border">
+                <div className="klaros-table-wrap">
                   <table className="w-full text-sm">
                     <thead className="bg-surface text-left text-xs text-muted">
                       <tr>
@@ -264,7 +264,7 @@ export default function AutomationSettingsPage() {
                 {integrationConnected("twilio") ? "connected" : "NOT CONNECTED — no TWILIO_ACCOUNT_SID configured"}. In-app
                 notifications are always real and always delivered.
               </p>
-              <div className="overflow-x-auto rounded-lg border border-border">
+              <div className="klaros-table-wrap">
                 <table className="w-full text-sm">
                   <thead className="bg-surface text-left text-xs text-muted">
                     <tr>

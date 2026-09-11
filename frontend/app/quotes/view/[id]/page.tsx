@@ -236,8 +236,8 @@ function PublicQuoteViewInner() {
         </div>
       )}
 
-      <div className="mb-6 overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-left text-sm">
+      <div className="mb-6 klaros-table-wrap">
+        <table className="klaros-table">
           <thead className="bg-surface text-muted">
             <tr>
               <th className="px-4 py-2">Description</th>

@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, RetentionOpportunityRow, listRetentionOpportunities, updateOpportunityStatus } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 const STATUS_TABS = ["OPEN", "CONTACTED", "CONVERTED", "DISMISSED", "EXPIRED"];
 
 export default function OpportunitiesPage() {
@@ -72,8 +73,8 @@ export default function OpportunitiesPage() {
         ) : opportunities.length === 0 ? (
           <p className="text-sm text-muted">No {status.toLowerCase()} opportunities.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Type</th>
@@ -90,7 +91,7 @@ export default function OpportunitiesPage() {
                     <td className="px-4 py-2 text-muted">{o.type}</td>
                     <td className="max-w-sm px-4 py-2 text-muted">{o.reason}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{o.priority}</span>
+                      <Badge status={o.priority}>{o.priority}</Badge>
                     </td>
                     <td className="px-4 py-2 text-muted">{new Date(o.detected_at).toLocaleDateString()}</td>
                     <td className="px-4 py-2 text-muted">{o.recommended_action}</td>

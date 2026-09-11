@@ -20,6 +20,7 @@ import {
   rejectReferralReward,
 } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 export default function ReferralsPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [programs, setPrograms] = useState<ReferralProgramRow[]>([]);
@@ -229,8 +230,8 @@ export default function ReferralsPage() {
             {programs.length === 0 ? (
               <p className="mb-6 text-sm text-muted">No referral programs yet.</p>
             ) : (
-              <div className="mb-8 overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-left text-sm">
+              <div className="mb-8 klaros-table-wrap">
+                <table className="klaros-table">
                   <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Name</th>
@@ -244,7 +245,7 @@ export default function ReferralsPage() {
                         <td className="px-4 py-2">{p.name}</td>
                         <td className="px-4 py-2 text-muted">{p.reward_amount ? `$${p.reward_amount} ${p.reward_type}` : p.reward_type}</td>
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{p.status}</span>
+                          <Badge status={p.status}>{p.status}</Badge>
                         </td>
                       </tr>
                     ))}
@@ -331,8 +332,8 @@ export default function ReferralsPage() {
             {referrals.length === 0 ? (
               <p className="mb-6 text-sm text-muted">No referrals yet.</p>
             ) : (
-              <div className="mb-8 overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-left text-sm">
+              <div className="mb-8 klaros-table-wrap">
+                <table className="klaros-table">
                   <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Status</th>
@@ -344,7 +345,7 @@ export default function ReferralsPage() {
                     {referrals.map((r) => (
                       <tr key={r.id} className="border-t border-border">
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{r.status}</span>
+                          <Badge status={r.status}>{r.status}</Badge>
                         </td>
                         <td className="px-4 py-2 text-muted">{r.revenue_amount ? `$${r.revenue_amount}` : "—"}</td>
                         <td className="px-4 py-2 text-muted">{r.collected_amount ? `$${r.collected_amount}` : "—"}</td>
@@ -359,8 +360,8 @@ export default function ReferralsPage() {
             {rewards.length === 0 ? (
               <p className="text-sm text-muted">No referral rewards yet.</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-left text-sm">
+              <div className="klaros-table-wrap">
+                <table className="klaros-table">
                   <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Amount</th>
@@ -373,7 +374,7 @@ export default function ReferralsPage() {
                       <tr key={rw.id} className="border-t border-border">
                         <td className="px-4 py-2">${rw.amount}</td>
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{rw.status}</span>
+                          <Badge status={rw.status}>{rw.status}</Badge>
                         </td>
                         <td className="px-4 py-2 space-x-2">
                           {rw.status === "PENDING" && (

@@ -151,7 +151,7 @@ export default function MorningBriefPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Morning Brief</h1>
+          <h1 className="font-display text-2xl text-foreground">Morning Brief</h1>
           <button
             disabled={busy}
             onClick={handleGenerate}

@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, createLead, Lead, searchLeads } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 const STATUS_TABS = ["ALL", "NEW", "CONTACTED", "QUALIFIED", "BOOKED", "LOST"];
 
 export default function LeadsPage() {
@@ -48,10 +49,10 @@ export default function LeadsPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Leads</h1>
+          <h1 className="font-display text-2xl text-foreground">Leads</h1>
           <button
             onClick={() => setShowCreate(true)}
-            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface-muted"
+            className="klaros-btn-primary"
           >
             New lead
           </button>
@@ -97,8 +98,8 @@ export default function LeadsPage() {
         ) : leads.length === 0 ? (
           <p className="text-sm text-muted">No leads yet. Create one to get started.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Name</th>
@@ -123,9 +124,7 @@ export default function LeadsPage() {
                     <td className="px-4 py-2 text-muted">{lead.urgency}</td>
                     <td className="px-4 py-2 text-muted">{lead.lead_score ?? "—"}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">
-                        {lead.status}
-                      </span>
+                      <Badge status={lead.status}>{lead.status}</Badge>
                     </td>
                     <td className="px-4 py-2 text-muted">
                       {new Date(lead.created_at).toLocaleString()}
@@ -213,7 +212,7 @@ function CreateLeadModal({
         onSubmit={handleSubmit}
         className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6"
       >
-        <h2 className="text-lg font-semibold">New lead</h2>
+        <h2 className="font-display text-xl text-foreground">New lead</h2>
         <input
           required
           placeholder="Name"

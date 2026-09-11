@@ -85,7 +85,7 @@ export default function LeadDetailPage() {
               <div className="rounded-lg border border-border bg-surface p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h1 className="text-xl font-semibold">{lead.name}</h1>
+                    <h1 className="font-display text-2xl text-foreground">{lead.name}</h1>
                     <p className="text-sm text-muted">
                       {lead.source} · {lead.email ?? "no email"} · {lead.phone ?? "no phone"}
                     </p>

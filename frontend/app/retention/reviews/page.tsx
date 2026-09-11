@@ -15,6 +15,7 @@ import {
   sendReviewRequest,
 } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 export default function ReviewsPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [requests, setRequests] = useState<ReviewRequestRow[]>([]);
@@ -199,8 +200,8 @@ export default function ReviewsPage() {
             {requests.length === 0 ? (
               <p className="mb-6 text-sm text-muted">No review requests yet.</p>
             ) : (
-              <div className="mb-6 overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-left text-sm">
+              <div className="mb-6 klaros-table-wrap">
+                <table className="klaros-table">
                   <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Status</th>
@@ -213,7 +214,7 @@ export default function ReviewsPage() {
                     {requests.map((r) => (
                       <tr key={r.id} className="border-t border-border">
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{r.status}</span>
+                          <Badge status={r.status}>{r.status}</Badge>
                         </td>
                         <td className="px-4 py-2 text-muted">{r.channel}</td>
                         <td className="px-4 py-2 text-muted">{r.requested_at ? new Date(r.requested_at).toLocaleString() : "—"}</td>

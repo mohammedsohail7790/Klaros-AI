@@ -35,6 +35,7 @@ import {
   listCompanyMemories,
 } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 const ACTIVITY_CATEGORIES = ["ALL", "CRM", "SALES", "CONTRACT", "OPERATIONS", "QA", "FINANCE", "RETENTION", "REFERRAL", "AUTOMATION", "AI"];
 
 const ACTIVITY_SEVERITY_STYLE: Record<string, string> = {
@@ -202,7 +203,7 @@ export default function DashboardPage() {
       <div className="px-8 py-10">
         <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
           <div>
-            <h1 className="text-xl font-semibold">Owner Cockpit</h1>
+            <h1 className="font-display text-2xl text-foreground">Owner Cockpit</h1>
             {user && (
               <p className="text-sm text-muted">
                 Signed in as {user.full_name} · {user.email} · role {user.role}
@@ -407,9 +408,7 @@ export default function DashboardPage() {
           {brief && brief.brief_id ? (
             <div className="rounded-lg border border-border bg-surface p-6">
               <div className="mb-2 flex items-center gap-2">
-                <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">
-                  {brief.mode === "DETERMINISTIC" ? "DETERMINISTIC SUMMARY — AI NOT CONNECTED" : "AI"}
-                </span>
+                <Badge status={brief.mode === "DETERMINISTIC" ? "DETERMINISTIC SUMMARY — AI NOT CONNECTED" : "AI"}>{brief.mode === "DETERMINISTIC" ? "DETERMINISTIC SUMMARY — AI NOT CONNECTED" : "AI"}</Badge>
               </div>
               <p className="mb-4">{brief.headline}</p>
               {brief.insights.filter((i) => i.priority === "HIGH").length > 0 && (

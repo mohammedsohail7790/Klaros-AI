@@ -154,7 +154,7 @@ export default function ApprovalsPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Approvals</h1>
+          <h1 className="font-display text-2xl text-foreground">Approvals</h1>
           <div className="flex gap-2">
             {STATUS_FILTERS.map((f) => (
               <button

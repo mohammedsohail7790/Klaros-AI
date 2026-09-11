@@ -45,7 +45,7 @@ export default function AIActivityPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-2 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">AI Activity</h1>
+          <h1 className="font-display text-2xl text-foreground">AI Activity</h1>
           <button
             onClick={load}
             className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
@@ -68,7 +68,7 @@ export default function AIActivityPage() {
         ) : !rows || rows.length === 0 ? (
           <p className="text-sm text-muted">No AI activity recorded yet — generate a Morning Brief to see it here.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="klaros-table-wrap">
             <table className="w-full text-sm">
               <thead className="bg-surface text-left text-xs text-muted">
                 <tr>

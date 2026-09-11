@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Campaign, createCampaign, listCampaigns } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 const CHANNELS = ["GOOGLE_ADS", "META_ADS", "YOUTUBE_ADS", "LOCAL_SERVICES_ADS", "SEO", "LOCAL", "CONTENT", "OUTBOUND", "REFERRAL", "OTHER"];
 
 export default function CampaignsPage() {
@@ -57,7 +58,7 @@ export default function CampaignsPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Campaigns</h1>
+          <h1 className="font-display text-2xl text-foreground">Campaigns</h1>
           <button
             onClick={() => setShowCreate((v) => !v)}
             className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
@@ -121,8 +122,8 @@ export default function CampaignsPage() {
         ) : campaigns.length === 0 ? (
           <p className="text-sm text-muted">No campaigns yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Name</th>
@@ -141,7 +142,7 @@ export default function CampaignsPage() {
                     </td>
                     <td className="px-4 py-2 text-muted">{c.channel}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{c.status}</span>
+                      <Badge status={c.status}>{c.status}</Badge>
                     </td>
                     <td className="px-4 py-2 text-muted">{c.total_budget ? `$${c.total_budget}` : "—"}</td>
                   </tr>

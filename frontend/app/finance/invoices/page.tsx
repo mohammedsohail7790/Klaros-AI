@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Invoice, listInvoices } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 const STATUS_TABS = ["ALL", "DRAFT", "PENDING_APPROVAL", "APPROVED", "SENT", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID"];
 
 export default function InvoicesPage() {
@@ -64,8 +65,8 @@ export default function InvoicesPage() {
         ) : invoices.length === 0 ? (
           <p className="text-sm text-muted">No invoices.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Number</th>
@@ -84,7 +85,7 @@ export default function InvoicesPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{inv.status}</span>
+                      <Badge status={inv.status}>{inv.status}</Badge>
                     </td>
                     <td className="px-4 py-2 text-muted">{inv.due_date}</td>
                     <td className="px-4 py-2">${inv.total}</td>

@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, OpsException, listExceptions, resolveException } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 const STATUS_TABS = ["OPEN", "ACKNOWLEDGED", "RESOLVED"];
 
 export default function ExceptionsPage() {
@@ -73,8 +74,8 @@ export default function ExceptionsPage() {
         ) : exceptions.length === 0 ? (
           <p className="text-sm text-muted">No {status.toLowerCase()} exceptions.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Severity</th>
@@ -89,9 +90,7 @@ export default function ExceptionsPage() {
                 {exceptions.map((e) => (
                   <tr key={e.id} className="border-t border-border">
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">
-                        {e.severity}
-                      </span>
+                      <Badge status={e.severity}>{e.severity}</Badge>
                     </td>
                     <td className="px-4 py-2 text-muted">{e.type}</td>
                     <td className="px-4 py-2 text-muted">

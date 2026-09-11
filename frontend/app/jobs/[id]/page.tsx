@@ -209,7 +209,7 @@ export default function JobDetailPage() {
               <div className="rounded-lg border border-border bg-surface p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h1 className="text-xl font-semibold">
+                    <h1 className="font-display text-2xl text-foreground">
                       {job.job_number} — {job.title}
                     </h1>
                     <p className="text-sm text-muted">
@@ -222,7 +222,7 @@ export default function JobDetailPage() {
                         key={a.action}
                         disabled={busy}
                         onClick={() => handleNextAction(a.action)}
-                        className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface-muted disabled:opacity-50"
+                        className="klaros-btn-primary disabled:opacity-50"
                       >
                         {a.label}
                       </button>

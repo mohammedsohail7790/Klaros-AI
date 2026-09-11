@@ -13,6 +13,7 @@ import {
   requestContentApproval,
 } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 const VIEWS = ["ALL", "IDEA", "DRAFT", "PENDING_APPROVAL", "APPROVED", "SCHEDULED", "PUBLISHED"];
 
 export default function ContentPage() {
@@ -117,8 +118,8 @@ export default function ContentPage() {
         ) : items.length === 0 ? (
           <p className="text-sm text-muted">No content items.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Title</th>
@@ -134,7 +135,7 @@ export default function ContentPage() {
                     <td className="px-4 py-2">{c.title}</td>
                     <td className="max-w-md truncate px-4 py-2 text-muted">{c.summary}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{c.status}</span>
+                      <Badge status={c.status}>{c.status}</Badge>
                     </td>
                     <td className="px-4 py-2 text-muted">{c.ai_generated ? "Yes" : "No"}</td>
                     <td className="px-4 py-2 space-x-2">

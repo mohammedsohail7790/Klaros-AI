@@ -78,7 +78,7 @@ export default function OperationsPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Operations</h1>
+          <h1 className="font-display text-2xl text-foreground">Operations</h1>
           <button
             onClick={handleDetectDelays}
             disabled={detecting}

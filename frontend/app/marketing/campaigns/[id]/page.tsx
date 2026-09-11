@@ -97,7 +97,7 @@ export default function CampaignDetailPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">{campaign.name}</h1>
+          <h1 className="font-display text-2xl text-foreground">{campaign.name}</h1>
           <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{campaign.status}</span>
         </div>
 

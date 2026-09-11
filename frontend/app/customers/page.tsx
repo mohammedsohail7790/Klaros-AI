@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Customer, createCustomer, searchCustomers } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 export default function CustomersPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -38,10 +39,10 @@ export default function CustomersPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Customers ({total})</h1>
+          <h1 className="font-display text-2xl text-foreground">Customers ({total})</h1>
           <button
             onClick={() => setShowCreate(true)}
-            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface-muted"
+            className="klaros-btn-primary"
           >
             New customer
           </button>
@@ -66,8 +67,8 @@ export default function CustomersPage() {
         ) : customers.length === 0 ? (
           <p className="text-sm text-muted">No customers yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Name</th>
@@ -87,9 +88,7 @@ export default function CustomersPage() {
                     <td className="px-4 py-2 text-muted">{c.email ?? "—"}</td>
                     <td className="px-4 py-2 text-muted">{c.phone ?? "—"}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">
-                        {c.status}
-                      </span>
+                      <Badge status={c.status}>{c.status}</Badge>
                     </td>
                   </tr>
                 ))}
@@ -142,7 +141,7 @@ function CreateCustomerModal({
         onSubmit={handleSubmit}
         className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6"
       >
-        <h2 className="text-lg font-semibold">New customer</h2>
+        <h2 className="font-display text-xl text-foreground">New customer</h2>
         <input
           required
           placeholder="Name"

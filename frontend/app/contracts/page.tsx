@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Contract, listContracts } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 const STATUS_TABS = ["ALL", "DRAFT", "SENT", "VIEWED", "SIGNED", "DECLINED", "EXPIRED", "CANCELLED"];
 
 export default function ContractsPage() {
@@ -68,8 +69,8 @@ export default function ContractsPage() {
         ) : contracts.length === 0 ? (
           <p className="text-sm text-muted">No contracts.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Number</th>
@@ -88,7 +89,7 @@ export default function ContractsPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{c.status}</span>
+                      <Badge status={c.status}>{c.status}</Badge>
                     </td>
                     <td className="px-4 py-2 text-muted">{c.sent_at ? "Yes" : "—"}</td>
                     <td className="px-4 py-2 text-muted">{c.viewed_at ? "Yes" : "—"}</td>

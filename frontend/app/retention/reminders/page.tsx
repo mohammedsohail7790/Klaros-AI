@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, ServiceReminderRow, listServiceReminders, markDueReminders, updateReminderStatus } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 export default function RemindersPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [reminders, setReminders] = useState<ServiceReminderRow[]>([]);
@@ -62,7 +63,7 @@ export default function RemindersPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Service Reminders</h1>
+          <h1 className="font-display text-2xl text-foreground">Service Reminders</h1>
           <button disabled={busy} onClick={handleMarkDue} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
             Mark due reminders
           </button>
@@ -80,8 +81,8 @@ export default function RemindersPage() {
         ) : reminders.length === 0 ? (
           <p className="text-sm text-muted">No service reminders yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Service</th>
@@ -98,7 +99,7 @@ export default function RemindersPage() {
                     <td className="px-4 py-2 text-muted">{r.reminder_date}</td>
                     <td className="px-4 py-2 text-muted">{r.reason}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{r.status}</span>
+                      <Badge status={r.status}>{r.status}</Badge>
                     </td>
                     <td className="px-4 py-2 space-x-2">
                       {(r.status === "SCHEDULED" || r.status === "DUE") && (

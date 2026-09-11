@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, SEOPageSummary, generateSEOPage, listSEOPages, publishSEOPage } from "@/lib/api";
 
+import { Badge } from "@/components/ui/Badge";
 export default function SEOPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [pages, setPages] = useState<SEOPageSummary[]>([]);
@@ -98,8 +99,8 @@ export default function SEOPage() {
         ) : pages.length === 0 ? (
           <p className="text-sm text-muted">No SEO pages yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-sm">
+          <div className="klaros-table-wrap">
+            <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Service</th>
@@ -116,7 +117,7 @@ export default function SEOPage() {
                     <td className="px-4 py-2 text-muted">{p.location}</td>
                     <td className="px-4 py-2 text-muted">{p.title}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{p.status}</span>
+                      <Badge status={p.status}>{p.status}</Badge>
                       {p.ai_generated && <span className="ml-2 text-xs text-muted">AI GENERATED</span>}
                     </td>
                     <td className="px-4 py-2">
