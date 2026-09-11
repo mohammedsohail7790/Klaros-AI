@@ -123,11 +123,12 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
     ANTHROPIC_API_KEY: str | None = None
     # "auto" (default) picks a real provider only if its key is set, preferring
-    # Anthropic, else falls back to deterministic. "deterministic" forces the
-    # deterministic path even if keys are present (useful for ops/testing).
-    # "anthropic" / "openai" force that provider — get_ai_provider() still
-    # falls back to deterministic if the matching key is missing, it never
-    # fabricates a connection.
+    # anthropic > openai > groq > deepseek > nvidia > google, else falls back
+    # to deterministic. "deterministic" forces the deterministic path even if
+    # keys are present (useful for ops/testing). Any of "anthropic" / "openai"
+    # / "groq" / "deepseek" / "nvidia" / "google" forces that provider —
+    # get_ai_provider() still falls back to deterministic if the matching key
+    # is missing, it never fabricates a connection.
     AI_PROVIDER: str = "auto"
     ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
     OPENAI_MODEL: str = "gpt-4o-mini"
@@ -140,6 +141,20 @@ class Settings(BaseSettings):
     ANTHROPIC_TIMEOUT_SECONDS: float = 20.0
     ANTHROPIC_MAX_RETRIES: int = 2
     ANTHROPIC_MAX_OUTPUT_TOKENS: int = 1024
+
+    # Additional AI providers — each exposes an OpenAI-compatible chat
+    # completions endpoint, so they reuse _OpenAICompatibleProvider in
+    # app/services/ai_provider.py rather than a bespoke client per
+    # provider. Same "real provider if configured, honest fallback
+    # otherwise" rule as every other provider in this file.
+    GROQ_API_KEY: str | None = None
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    DEEPSEEK_API_KEY: str | None = None
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+    NVIDIA_API_KEY: str | None = None
+    NVIDIA_MODEL: str = "meta/llama3-70b-instruct"
+    GOOGLE_API_KEY: str | None = None
+    GOOGLE_MODEL: str = "gemini-2.0-flash"
 
     # Knowledge-layer embeddings (Phase 3 RAG) — see
     # app/services/embedding_provider.py. "auto" (default) uses real

@@ -314,6 +314,86 @@ class OpenAIIntegrationAdapter(AIProvider):
             return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, f"network error verifying OpenAI: {exc}")
 
 
+class _OpenAICompatibleIntegrationAdapter(AIProvider):
+    """Shared status-check logic for any AI provider adapter that exposes
+    an OpenAI-compatible chat completions endpoint — Groq, DeepSeek,
+    NVIDIA, Google all do. Subclasses set `provider_name`, `_settings_key`
+    (the Settings attribute name holding the API key), `_base_url`, and
+    `_model_settings_key`. Real, read-only, minimal (max_tokens=1) chat
+    completion — the same proof-of-life pattern AnthropicIntegrationAdapter
+    already uses, since not all of these expose a cheap models-list
+    endpoint."""
+
+    _base_url: str = ""
+    _settings_key: str = ""
+    _model_settings_key: str = ""
+
+    def get_status(self) -> IntegrationStatus:
+        s = get_settings()
+        if not getattr(s, self._settings_key):
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.NOT_CONNECTED, f"{self._settings_key} not configured"
+            )
+        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "not yet verified against the real API")
+
+    async def check_status(self) -> IntegrationStatus:
+        s = get_settings()
+        api_key = getattr(s, self._settings_key)
+        if not api_key:
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.NOT_CONNECTED, f"{self._settings_key} not configured"
+            )
+        model = getattr(s, self._model_settings_key)
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{self._base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "content-type": "application/json"},
+                    json={"model": model, "max_tokens": 1, "messages": [{"role": "user", "content": "hi"}]},
+                )
+            if response.status_code == 200:
+                return IntegrationStatus(
+                    self.provider_name, ConnectionStatus.CONNECTED,
+                    f"verified via a real chat completion — model={model}",
+                )
+            return IntegrationStatus(
+                self.provider_name, ConnectionStatus.ERROR,
+                f"credentials rejected by {self.provider_name}'s API (HTTP {response.status_code})",
+            )
+        except httpx.HTTPError as exc:
+            return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, f"network error verifying {self.provider_name}: {exc}")
+
+
+class GroqIntegrationAdapter(_OpenAICompatibleIntegrationAdapter):
+    provider_name = "groq"
+    _base_url = "https://api.groq.com/openai/v1"
+    _settings_key = "GROQ_API_KEY"
+    _model_settings_key = "GROQ_MODEL"
+
+
+class DeepSeekIntegrationAdapter(_OpenAICompatibleIntegrationAdapter):
+    provider_name = "deepseek"
+    _base_url = "https://api.deepseek.com"
+    _settings_key = "DEEPSEEK_API_KEY"
+    _model_settings_key = "DEEPSEEK_MODEL"
+
+
+class NvidiaIntegrationAdapter(_OpenAICompatibleIntegrationAdapter):
+    provider_name = "nvidia"
+    _base_url = "https://integrate.api.nvidia.com/v1"
+    _settings_key = "NVIDIA_API_KEY"
+    _model_settings_key = "NVIDIA_MODEL"
+
+
+class GoogleAIIntegrationAdapter(_OpenAICompatibleIntegrationAdapter):
+    provider_name = "google_ai"
+    _base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+    _settings_key = "GOOGLE_API_KEY"
+    _model_settings_key = "GOOGLE_MODEL"
+
+
 class GenericSupplierAdapter(ProcurementProvider):
     provider_name = "supplier_procurement"
 
@@ -335,5 +415,9 @@ ALL_ADAPTERS: list[type] = [
     SendGridAdapter,
     AnthropicIntegrationAdapter,
     OpenAIIntegrationAdapter,
+    GroqIntegrationAdapter,
+    DeepSeekIntegrationAdapter,
+    NvidiaIntegrationAdapter,
+    GoogleAIIntegrationAdapter,
     GenericSupplierAdapter,
 ]

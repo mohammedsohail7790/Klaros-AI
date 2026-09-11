@@ -470,6 +470,96 @@ class OpenAIAIProvider(_HTTPAIProvider):
             )
 
 
+class _OpenAICompatibleProvider(_HTTPAIProvider):
+    """Shared implementation for any provider exposing an OpenAI-compatible
+    `POST {base_url}/chat/completions` endpoint (Groq, DeepSeek, NVIDIA NIM,
+    and Google's Gemini OpenAI-compatibility layer all do) — same request/
+    response shape as OpenAIAIProvider, just a different base URL/model.
+    Subclasses only set `_base_url`; everything else (retry, error
+    classification, key redaction, audit) is the same `_HTTPAIProvider`
+    plumbing every other real provider here uses.
+
+    Not every one of these providers accepts `response_format:
+    {"type": "json_object"}` the exact way OpenAI does, so it is omitted
+    here — `enrich_brief`/`generate_structured` already validate the
+    returned text against the expected schema and treat a non-JSON
+    response as a real (never fabricated) failure, exactly like every
+    other provider's malformed-response path.
+    """
+
+    _base_url: str = ""
+
+    def __init__(self, api_key: str, model: str, base_url: str) -> None:
+        super().__init__(api_key)
+        self.model = model
+        self._base_url = base_url
+
+    async def _call_api(self, prompt: str) -> _ProviderResponse:
+        async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+            response = await client.post(
+                f"{self._base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self._api_key}",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": self.model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": self._max_output_tokens,
+                },
+            )
+            response.raise_for_status()
+            body: dict[str, Any] = response.json()
+            usage = body.get("usage", {})
+            return _ProviderResponse(
+                text=body["choices"][0]["message"]["content"],
+                input_tokens=usage.get("prompt_tokens"),
+                output_tokens=usage.get("completion_tokens"),
+            )
+
+
+class GroqAIProvider(_OpenAICompatibleProvider):
+    name = "groq"
+
+    def __init__(self, api_key: str, model: str | None = None) -> None:
+        settings = get_settings()
+        super().__init__(api_key, model or settings.GROQ_MODEL, "https://api.groq.com/openai/v1")
+        self._timeout_seconds = settings.OPENAI_TIMEOUT_SECONDS
+        self._max_output_tokens = settings.OPENAI_MAX_OUTPUT_TOKENS
+
+
+class DeepSeekAIProvider(_OpenAICompatibleProvider):
+    name = "deepseek"
+
+    def __init__(self, api_key: str, model: str | None = None) -> None:
+        settings = get_settings()
+        super().__init__(api_key, model or settings.DEEPSEEK_MODEL, "https://api.deepseek.com")
+        self._timeout_seconds = settings.OPENAI_TIMEOUT_SECONDS
+        self._max_output_tokens = settings.OPENAI_MAX_OUTPUT_TOKENS
+
+
+class NvidiaAIProvider(_OpenAICompatibleProvider):
+    name = "nvidia"
+
+    def __init__(self, api_key: str, model: str | None = None) -> None:
+        settings = get_settings()
+        super().__init__(api_key, model or settings.NVIDIA_MODEL, "https://integrate.api.nvidia.com/v1")
+        self._timeout_seconds = settings.OPENAI_TIMEOUT_SECONDS
+        self._max_output_tokens = settings.OPENAI_MAX_OUTPUT_TOKENS
+
+
+class GoogleAIProvider(_OpenAICompatibleProvider):
+    name = "google"
+
+    def __init__(self, api_key: str, model: str | None = None) -> None:
+        settings = get_settings()
+        super().__init__(
+            api_key, model or settings.GOOGLE_MODEL, "https://generativelanguage.googleapis.com/v1beta/openai"
+        )
+        self._timeout_seconds = settings.OPENAI_TIMEOUT_SECONDS
+        self._max_output_tokens = settings.OPENAI_MAX_OUTPUT_TOKENS
+
+
 def get_ai_provider() -> AIProvider:
     settings = get_settings()
     choice = (settings.AI_PROVIDER or "auto").lower()
@@ -480,10 +570,29 @@ def get_ai_provider() -> AIProvider:
         return AnthropicAIProvider(settings.ANTHROPIC_API_KEY) if settings.ANTHROPIC_API_KEY else DeterministicAIProvider()
     if choice == "openai":
         return OpenAIAIProvider(settings.OPENAI_API_KEY) if settings.OPENAI_API_KEY else DeterministicAIProvider()
+    if choice == "groq":
+        return GroqAIProvider(settings.GROQ_API_KEY) if settings.GROQ_API_KEY else DeterministicAIProvider()
+    if choice == "deepseek":
+        return DeepSeekAIProvider(settings.DEEPSEEK_API_KEY) if settings.DEEPSEEK_API_KEY else DeterministicAIProvider()
+    if choice == "nvidia":
+        return NvidiaAIProvider(settings.NVIDIA_API_KEY) if settings.NVIDIA_API_KEY else DeterministicAIProvider()
+    if choice == "google":
+        return GoogleAIProvider(settings.GOOGLE_API_KEY) if settings.GOOGLE_API_KEY else DeterministicAIProvider()
 
-    # "auto" (default): prefer Anthropic, then OpenAI, else deterministic.
+    # "auto" (default): prefer Anthropic > OpenAI > Groq > DeepSeek > NVIDIA
+    # > Google, else deterministic. OpenAI is already configured in this
+    # deployment, so this ordering doesn't change current live behavior —
+    # the new providers only ever get chosen if OpenAI's key were removed.
     if settings.ANTHROPIC_API_KEY:
         return AnthropicAIProvider(settings.ANTHROPIC_API_KEY)
     if settings.OPENAI_API_KEY:
         return OpenAIAIProvider(settings.OPENAI_API_KEY)
+    if settings.GROQ_API_KEY:
+        return GroqAIProvider(settings.GROQ_API_KEY)
+    if settings.DEEPSEEK_API_KEY:
+        return DeepSeekAIProvider(settings.DEEPSEEK_API_KEY)
+    if settings.NVIDIA_API_KEY:
+        return NvidiaAIProvider(settings.NVIDIA_API_KEY)
+    if settings.GOOGLE_API_KEY:
+        return GoogleAIProvider(settings.GOOGLE_API_KEY)
     return DeterministicAIProvider()
