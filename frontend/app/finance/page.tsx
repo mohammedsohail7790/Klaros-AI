@@ -7,8 +7,8 @@ import { ApiError, FinanceSummary, getFinanceSummary } from "@/lib/api";
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-neutral-800 p-4">
-      <div className="text-xs text-neutral-500">{label}</div>
+    <div className="rounded-lg border border-border p-4">
+      <div className="text-xs text-muted">{label}</div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
     </div>
   );
@@ -43,9 +43,9 @@ export default function FinancePage() {
         <h1 className="mb-6 text-xl font-semibold">Finance</h1>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -54,7 +54,7 @@ export default function FinancePage() {
         ) : summary ? (
           <>
             {summary.needs_attention && (
-              <div className="mb-6 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-300">
+              <div className="mb-6 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
                 FINANCE NEEDS ATTENTION — {summary.overdue_invoice_count} overdue invoice(s),{" "}
                 {summary.open_finance_exception_count} open finance exception(s).
               </div>

@@ -3,12 +3,53 @@
 @tailwind utilities;
 
 :root {
-  --klaros-bg: #0b0d10;
-  --klaros-panel: #14171c;
-  --klaros-border: #23272e;
+  /* Klaros brand palette — warm, editorial, light. Deliberately not the
+     default cold-gray/purple-gradient SaaS look: a single deep indigo-navy
+     accent, warm stone neutrals, near-black (not pure black) text.
+     Space-separated RGB channels (not hex) so Tailwind can apply opacity
+     modifiers like bg-accent-soft/40 via rgb(var(--x) / <alpha-value>). */
+  --color-background: 250 249 246;
+  --color-surface: 255 255 255;
+  --color-surface-muted: 244 242 236;
+  --color-border: 231 227 217;
+  --color-border-strong: 216 211 196;
+  --color-foreground: 28 26 22;
+  --color-muted: 107 101 88;
+  --color-muted-foreground: 148 141 124;
+  --color-accent: 43 58 99;
+  --color-accent-hover: 32 44 77;
+  --color-accent-foreground: 255 255 255;
+  --color-accent-soft: 232 234 241;
+  --color-success: 47 107 79;
+  --color-warning: 165 105 12;
+  --color-danger: 173 59 44;
+
+  --font-sans: var(--font-geist-sans);
 }
 
 body {
-  background-color: var(--klaros-bg);
-  color: #e6e8eb;
+  background-color: rgb(var(--color-background));
+  color: rgb(var(--color-foreground));
+}
+
+@layer components {
+  .klaros-card {
+    @apply rounded-xl border border-border bg-surface shadow-card;
+  }
+
+  .klaros-input {
+    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft;
+  }
+
+  .klaros-label {
+    @apply text-xs font-medium uppercase tracking-wide text-muted;
+  }
+
+  .klaros-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .klaros-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-muted disabled:opacity-50 disabled:pointer-events-none;
+  }
 }

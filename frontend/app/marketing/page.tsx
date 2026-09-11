@@ -7,10 +7,10 @@ import { AdsProviderStatus, ApiError, MarketingSummary, getAdsProviderStatus, ge
 
 function Stat({ label, value, note }: { label: string; value: string | number; note?: string | null }) {
   return (
-    <div className="rounded-lg border border-neutral-800 p-4">
-      <div className="text-xs text-neutral-500">{label}</div>
+    <div className="rounded-lg border border-border p-4">
+      <div className="text-xs text-muted">{label}</div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
-      {note && <div className="mt-1 text-xs text-amber-400">{note}</div>}
+      {note && <div className="mt-1 text-xs text-amber-700">{note}</div>}
     </div>
   );
 }
@@ -47,9 +47,9 @@ export default function MarketingPage() {
         <h1 className="mb-6 text-xl font-semibold">Marketing &amp; Demand Generation</h1>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -58,7 +58,7 @@ export default function MarketingPage() {
         ) : summary ? (
           <>
             {summary.needs_attention && (
-              <div className="mb-6 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-300">
+              <div className="mb-6 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
                 MARKETING NEEDS ATTENTION — {summary.open_marketing_exception_count} open marketing exception(s).
               </div>
             )}
@@ -87,15 +87,15 @@ export default function MarketingPage() {
               <Stat label="Campaigns" value={summary.campaign_count} />
             </div>
 
-            <h2 className="mb-3 text-sm font-semibold text-neutral-400">Paid ads integration status</h2>
+            <h2 className="mb-3 text-sm font-semibold text-muted">Paid ads integration status</h2>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {providers.map((p) => (
-                <div key={p.provider} className="rounded-lg border border-neutral-800 p-4">
+                <div key={p.provider} className="rounded-lg border border-border p-4">
                   <div className="text-sm font-medium">{p.provider.replace(/_/g, " ")}</div>
-                  <span className="mt-1 inline-block rounded-full border border-neutral-700 px-2 py-0.5 text-xs text-neutral-400">
+                  <span className="mt-1 inline-block rounded-full border border-border-strong px-2 py-0.5 text-xs text-muted">
                     {p.status}
                   </span>
-                  <div className="mt-2 text-xs text-neutral-500">{p.detail}</div>
+                  <div className="mt-2 text-xs text-muted">{p.detail}</div>
                 </div>
               ))}
             </div>

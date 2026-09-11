@@ -65,7 +65,7 @@ export default function InvoiceDetailPage() {
   if (authLoading || loading) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8 text-sm text-neutral-500">Loading...</div>
+        <div className="px-8 py-8 text-sm text-muted">Loading...</div>
       </AppShell>
     );
   }
@@ -74,7 +74,7 @@ export default function InvoiceDetailPage() {
     return (
       <AppShell user={user}>
         <div className="px-8 py-8">
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">{error}</div>
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">{error}</div>
         </div>
       </AppShell>
     );
@@ -87,46 +87,46 @@ export default function InvoiceDetailPage() {
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Invoice {invoice.invoice_number}</h1>
-          <span className="rounded-full border border-neutral-700 px-3 py-1 text-xs">{invoice.status}</span>
+          <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{invoice.status}</span>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
         )}
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">
+          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
             {notice}
           </div>
         )}
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">Total</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">Total</div>
             <div className="mt-1 text-lg font-semibold">${invoice.total}</div>
           </div>
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">Amount paid</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">Amount paid</div>
             <div className="mt-1 text-lg font-semibold">${invoice.amount_paid}</div>
           </div>
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">Amount due</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">Amount due</div>
             <div className="mt-1 text-lg font-semibold">${invoice.amount_due}</div>
           </div>
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">Due date</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">Due date</div>
             <div className="mt-1 text-lg font-semibold">{invoice.due_date}</div>
           </div>
         </div>
 
         {invoice.notes && (
-          <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-3 text-sm text-neutral-400">
+          <div className="mb-6 rounded-md border border-border bg-surface p-3 text-sm text-muted">
             {invoice.notes}
           </div>
         )}
 
-        <div className="mb-6 overflow-x-auto rounded-lg border border-neutral-800">
+        <div className="mb-6 overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-sm">
-            <thead className="bg-neutral-950 text-neutral-500">
+            <thead className="bg-surface text-muted">
               <tr>
                 <th className="px-4 py-2">Description</th>
                 <th className="px-4 py-2">Qty</th>
@@ -136,7 +136,7 @@ export default function InvoiceDetailPage() {
             </thead>
             <tbody>
               {invoice.line_items.map((li) => (
-                <tr key={li.id} className="border-t border-neutral-900">
+                <tr key={li.id} className="border-t border-border">
                   <td className="px-4 py-2">{li.description}</td>
                   <td className="px-4 py-2">{li.quantity}</td>
                   <td className="px-4 py-2">${li.unit_price}</td>
@@ -152,7 +152,7 @@ export default function InvoiceDetailPage() {
             <button
               disabled={busy}
               onClick={() => runAction(() => requestInvoiceApproval(token!, invoice.id), "Approval requested.")}
-              className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
             >
               Request approval
             </button>
@@ -161,7 +161,7 @@ export default function InvoiceDetailPage() {
             <button
               disabled={busy}
               onClick={() => runAction(() => approveInvoice(token!, invoice.id), "Invoice approved.")}
-              className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
             >
               Approve
             </button>
@@ -170,7 +170,7 @@ export default function InvoiceDetailPage() {
             <button
               disabled={busy}
               onClick={() => runAction(() => sendInvoice(token!, invoice.id), "Invoice sent.")}
-              className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
             >
               Send
             </button>
@@ -189,7 +189,7 @@ export default function InvoiceDetailPage() {
                   "Test payment recorded."
                 )
               }
-              className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
             >
               Record test payment (${invoice.amount_due})
             </button>
@@ -198,7 +198,7 @@ export default function InvoiceDetailPage() {
             <button
               disabled={busy}
               onClick={() => runAction(() => voidInvoice(token!, invoice.id, "Voided from invoice detail page"), "Invoice voided.")}
-              className="rounded-md border border-red-900 px-3 py-1.5 text-sm text-red-300 hover:bg-red-950/30 disabled:opacity-50"
+              className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50/30 disabled:opacity-50"
             >
               Void
             </button>

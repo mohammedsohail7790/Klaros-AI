@@ -66,7 +66,7 @@ export default function ContractDetailPage() {
   if (authLoading || loading) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8 text-sm text-neutral-500">Loading...</div>
+        <div className="px-8 py-8 text-sm text-muted">Loading...</div>
       </AppShell>
     );
   }
@@ -75,7 +75,7 @@ export default function ContractDetailPage() {
     return (
       <AppShell user={user}>
         <div className="px-8 py-8">
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">{error}</div>
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">{error}</div>
         </div>
       </AppShell>
     );
@@ -96,63 +96,63 @@ export default function ContractDetailPage() {
       <div className="px-8 py-8">
         <div className="mb-2 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Contract {contract.contract_number}</h1>
-          <span className="rounded-full border border-neutral-700 px-3 py-1 text-xs">{contract.status}</span>
+          <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{contract.status}</span>
         </div>
-        <p className="mb-6 text-sm text-neutral-500">
-          <Link href={`/quotes/${contract.quote_id}`} className="underline hover:text-neutral-300">
+        <p className="mb-6 text-sm text-muted">
+          <Link href={`/quotes/${contract.quote_id}`} className="underline hover:text-muted">
             View originating quote
           </Link>
           {" · "}
-          <Link href={`/customers/${contract.customer_id}`} className="underline hover:text-neutral-300">
+          <Link href={`/customers/${contract.customer_id}`} className="underline hover:text-muted">
             View customer
           </Link>
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
         )}
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">
+          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
             {notice}
           </div>
         )}
         {viewUrlPath && (
-          <div className="mb-4 rounded-md border border-neutral-800 bg-neutral-950 p-3 text-sm text-neutral-300">
+          <div className="mb-4 rounded-md border border-border bg-surface p-3 text-sm text-muted">
             Customer signing link:{" "}
-            <code className="break-all text-neutral-400">
+            <code className="break-all text-muted">
               {(typeof window !== "undefined" ? window.location.origin : "") + viewUrlPath}
             </code>
           </div>
         )}
 
         {contract.status === "SIGNED" && (
-          <div className="mb-6 rounded-md border border-emerald-900 bg-emerald-950/30 p-4 text-sm text-emerald-300">
+          <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50/30 p-4 text-sm text-emerald-700">
             <div>Signed by {contract.signer_name} — internal attestation recorded, not a third-party e-signature.</div>
             {quote && (
-              <div className="mt-2 border-t border-emerald-900/60 pt-2 text-emerald-200">
+              <div className="mt-2 border-t border-emerald-200/60 pt-2 text-emerald-700">
                 {quote.status === "DEPOSIT_PENDING" ? (
                   <>
                     Deposit of ${quote.deposit_amount ?? "—"} is outstanding.{" "}
-                    <Link href={`/quotes/${quote.id}`} className="underline hover:text-white">
+                    <Link href={`/quotes/${quote.id}`} className="underline hover:text-foreground">
                       View quote / collect deposit
                     </Link>
                   </>
                 ) : quote.status === "DEPOSIT_PAID" || quote.status === "CONVERTED" ? (
                   <>
                     Deposit received.{" "}
-                    <Link href={`/quotes/${quote.id}`} className="underline hover:text-white">
+                    <Link href={`/quotes/${quote.id}`} className="underline hover:text-foreground">
                       View quote
                     </Link>
                   </>
                 ) : quote.status === "ACCEPTED" ? (
                   <>
                     No deposit required — quote already accepted.{" "}
-                    <Link href={`/quotes/${quote.id}`} className="underline hover:text-white">
+                    <Link href={`/quotes/${quote.id}`} className="underline hover:text-foreground">
                       View quote
                     </Link>
                   </>
                 ) : (
-                  <Link href={`/quotes/${quote.id}`} className="underline hover:text-white">
+                  <Link href={`/quotes/${quote.id}`} className="underline hover:text-foreground">
                     View quote
                   </Link>
                 )}
@@ -161,21 +161,21 @@ export default function ContractDetailPage() {
           </div>
         )}
         {contract.status === "DECLINED" && (
-          <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-400">
+          <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
             Declined by the customer{contract.decline_reason ? `: ${contract.decline_reason}` : "."}
           </div>
         )}
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           {timeline.map((step) => (
-            <div key={step.label} className="rounded-lg border border-neutral-800 p-4">
-              <div className="text-xs text-neutral-500">{step.label}</div>
+            <div key={step.label} className="rounded-lg border border-border p-4">
+              <div className="text-xs text-muted">{step.label}</div>
               <div className="mt-1 text-sm font-medium">{step.at ? new Date(step.at).toLocaleString() : "—"}</div>
             </div>
           ))}
         </div>
 
-        <div className="mb-6 whitespace-pre-wrap rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-300">
+        <div className="mb-6 whitespace-pre-wrap rounded-lg border border-border bg-surface p-4 text-sm text-muted">
           {contract.content}
         </div>
 
@@ -184,7 +184,7 @@ export default function ContractDetailPage() {
             <button
               disabled={busy}
               onClick={handleSend}
-              className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
             >
               {busy ? "Sending..." : "Send to customer"}
             </button>

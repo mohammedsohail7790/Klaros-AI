@@ -6,10 +6,10 @@ import { useAuth } from "@/lib/useAuth";
 import { ApiError, JobProfitability, listProfitability } from "@/lib/api";
 
 function marginColor(pct: number | null): string {
-  if (pct === null) return "text-neutral-500";
-  if (pct < 15) return "text-red-400";
-  if (pct < 30) return "text-amber-400";
-  return "text-emerald-400";
+  if (pct === null) return "text-muted";
+  if (pct < 15) return "text-red-600";
+  if (pct < 30) return "text-amber-700";
+  return "text-emerald-600";
 }
 
 export default function ProfitabilityPage() {
@@ -41,22 +41,22 @@ export default function ProfitabilityPage() {
         <h1 className="mb-6 text-xl font-semibold">Job Profitability</h1>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
           </div>
         ) : jobs.length === 0 ? (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-muted">
             No jobs with actual costs recorded yet — profitability appears once job costs are entered.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-950 text-neutral-500">
+              <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Job</th>
                   <th className="px-4 py-2">Est. revenue</th>
@@ -69,22 +69,22 @@ export default function ProfitabilityPage() {
               </thead>
               <tbody>
                 {jobs.map((j) => (
-                  <tr key={j.job_id} className="border-t border-neutral-900">
+                  <tr key={j.job_id} className="border-t border-border">
                     <td className="px-4 py-2">
                       {j.job_number} — {j.title}
                     </td>
-                    <td className="px-4 py-2 text-neutral-400">
+                    <td className="px-4 py-2 text-muted">
                       {j.estimated_revenue ? `$${j.estimated_revenue}` : "—"}
                     </td>
                     <td className={`px-4 py-2 ${marginColor(j.estimated_margin_pct)}`}>
                       {j.estimated_margin_pct !== null ? `${j.estimated_margin_pct}%` : "—"}
                     </td>
-                    <td className="px-4 py-2 text-neutral-400">{j.actual_revenue ? `$${j.actual_revenue}` : "—"}</td>
-                    <td className="px-4 py-2 text-neutral-400">{j.actual_cost ? `$${j.actual_cost}` : "—"}</td>
+                    <td className="px-4 py-2 text-muted">{j.actual_revenue ? `$${j.actual_revenue}` : "—"}</td>
+                    <td className="px-4 py-2 text-muted">{j.actual_cost ? `$${j.actual_cost}` : "—"}</td>
                     <td className={`px-4 py-2 font-semibold ${marginColor(j.actual_margin_pct)}`}>
                       {j.actual_margin_pct !== null ? `${j.actual_margin_pct}%` : "—"}
                     </td>
-                    <td className="px-4 py-2 text-xs text-neutral-500">
+                    <td className="px-4 py-2 text-xs text-muted">
                       {Object.entries(j.cost_breakdown)
                         .map(([cat, amt]) => `${cat}: $${amt}`)
                         .join(", ") || "—"}

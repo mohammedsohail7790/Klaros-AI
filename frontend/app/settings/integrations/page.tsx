@@ -18,9 +18,9 @@ import {
 } from "@/lib/api";
 
 const STATUS_COLOR: Record<string, string> = {
-  CONNECTED: "border-emerald-800 text-emerald-300",
-  NOT_CONNECTED: "border-neutral-700 text-neutral-400",
-  ERROR: "border-red-800 text-red-300",
+  CONNECTED: "border-emerald-200 text-emerald-700",
+  NOT_CONNECTED: "border-border-strong text-muted",
+  ERROR: "border-red-200 text-red-700",
 };
 
 const CATEGORY: Record<string, string> = {
@@ -79,7 +79,7 @@ const PLANNED_OAUTH_PROVIDERS = [
 
 export default function IntegrationsPage() {
   return (
-    <Suspense fallback={<p className="p-8 text-sm text-neutral-500">Loading integrations...</p>}>
+    <Suspense fallback={<p className="p-8 text-sm text-muted">Loading integrations...</p>}>
       <IntegrationsPageInner />
     </Suspense>
   );
@@ -286,8 +286,8 @@ function IntegrationsPageInner() {
       <div className="mx-auto max-w-4xl px-6 py-10">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-neutral-100">Integrations</h1>
-            <p className="mt-1 text-sm text-neutral-400">
+            <h1 className="text-xl font-semibold text-foreground">Integrations</h1>
+            <p className="mt-1 text-sm text-muted">
               Every status here is checked live against the real provider — nothing is fabricated.
               {rows && ` ${connectedCount} of ${rows.length} connected.`}
             </p>
@@ -295,38 +295,38 @@ function IntegrationsPageInner() {
           <button
             onClick={load}
             disabled={loading}
-            className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+            className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
           >
             {loading ? "Checking..." : "Recheck all"}
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+          <div className="mb-4 rounded border border-red-200 bg-red-50/30 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        {!rows && !error && <p className="text-sm text-neutral-500">Loading...</p>}
+        {!rows && !error && <p className="text-sm text-muted">Loading...</p>}
 
         {rows &&
           Object.entries(grouped).map(([category, categoryRows]) => (
             <div key={category} className="mb-6">
-              <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
                 {category}
               </h2>
-              <div className="divide-y divide-neutral-800 rounded border border-neutral-800">
+              <div className="divide-y divide-neutral-800 rounded border border-border">
                 {categoryRows.map((row) => (
                   <div key={row.provider} className="flex items-center justify-between px-4 py-3">
                     <div>
-                      <div className="text-sm font-medium text-neutral-200">
+                      <div className="text-sm font-medium text-foreground">
                         {DISPLAY_NAME[row.provider] ?? row.provider}
                       </div>
-                      <div className="mt-0.5 text-xs text-neutral-500">{row.detail}</div>
+                      <div className="mt-0.5 text-xs text-muted">{row.detail}</div>
                     </div>
                     <span
                       className={`rounded border px-2 py-0.5 text-xs font-medium ${
-                        STATUS_COLOR[row.status] ?? "border-neutral-700 text-neutral-400"
+                        STATUS_COLOR[row.status] ?? "border-border-strong text-muted"
                       }`}
                     >
                       {row.status}
@@ -339,26 +339,26 @@ function IntegrationsPageInner() {
 
         {rows && user && (
           <div className="mb-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
               Inbound Twilio Lead Capture
             </h2>
-            <p className="mb-2 text-xs text-neutral-500">
+            <p className="mb-2 text-xs text-muted">
               Paste these into your Twilio phone number&apos;s console configuration to capture inbound
               texts and calls as real leads. The tenant ID in the URL is how requests are routed to
               your account — Twilio&apos;s own request signature covers the exact URL, so it cannot be
               reused for another tenant.
             </p>
-            <div className="space-y-2 rounded border border-neutral-800 p-3 text-xs">
+            <div className="space-y-2 rounded border border-border p-3 text-xs">
               <div>
-                <div className="text-neutral-500">Messaging &mdash; &quot;A message comes in&quot;</div>
-                <code className="break-all text-neutral-300">
+                <div className="text-muted">Messaging &mdash; &quot;A message comes in&quot;</div>
+                <code className="break-all text-muted">
                   {(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") +
                     `/api/v1/webhooks/twilio/inbound-sms/${user.tenant_id}`}
                 </code>
               </div>
               <div>
-                <div className="text-neutral-500">Voice &mdash; &quot;A call comes in&quot;</div>
-                <code className="break-all text-neutral-300">
+                <div className="text-muted">Voice &mdash; &quot;A call comes in&quot;</div>
+                <code className="break-all text-muted">
                   {(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") +
                     `/api/v1/webhooks/twilio/inbound-voice/${user.tenant_id}`}
                 </code>
@@ -369,15 +369,15 @@ function IntegrationsPageInner() {
 
         {rows && (
           <div className="mb-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
               Your Own Stripe Account (Phase 12F)
             </h2>
-            <p className="mb-2 text-xs text-neutral-500">
+            <p className="mb-2 text-xs text-muted">
               Optional — connect your OWN Stripe secret key to use it instead of the platform-shared
               key above for your checkout links. Verified with a real, live API call the moment you
               connect. The key is encrypted at rest and never shown again after submission.
             </p>
-            <div className="rounded border border-neutral-800 px-4 py-3">
+            <div className="rounded border border-border px-4 py-3">
               {(() => {
                 const stripeConnection = connections?.find((c) => c.provider === "stripe");
                 return (
@@ -385,8 +385,8 @@ function IntegrationsPageInner() {
                     {stripeConnection && (
                       <div className="mb-3 flex items-center justify-between">
                         <div>
-                          <div className="text-sm font-medium text-neutral-200">Stripe (your account)</div>
-                          <div className="mt-0.5 text-xs text-neutral-500">
+                          <div className="text-sm font-medium text-foreground">Stripe (your account)</div>
+                          <div className="mt-0.5 text-xs text-muted">
                             {stripeConnection.last_error ??
                               (stripeConnection.last_verified_at
                                 ? `Last verified ${new Date(stripeConnection.last_verified_at).toLocaleString()}`
@@ -395,7 +395,7 @@ function IntegrationsPageInner() {
                         </div>
                         <span
                           className={`rounded border px-2 py-0.5 text-xs font-medium ${
-                            STATUS_COLOR[stripeConnection.status] ?? "border-neutral-700 text-neutral-400"
+                            STATUS_COLOR[stripeConnection.status] ?? "border-border-strong text-muted"
                           }`}
                         >
                           {stripeConnection.status}
@@ -404,7 +404,7 @@ function IntegrationsPageInner() {
                     )}
 
                     {stripeActionError && (
-                      <div className="mb-2 rounded border border-red-800 bg-red-950/30 px-3 py-2 text-xs text-red-300">
+                      <div className="mb-2 rounded border border-red-200 bg-red-50/30 px-3 py-2 text-xs text-red-700">
                         {stripeActionError}
                       </div>
                     )}
@@ -416,12 +416,12 @@ function IntegrationsPageInner() {
                         placeholder="sk_test_... or sk_live_..."
                         value={stripeKeyInput}
                         onChange={(e) => setStripeKeyInput(e.target.value)}
-                        className="flex-1 rounded border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-sm text-neutral-200 placeholder:text-neutral-600"
+                        className="flex-1 rounded border border-border-strong bg-surface px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground"
                       />
                       <button
                         onClick={handleConnectStripe}
                         disabled={stripeActionPending || !stripeKeyInput.trim()}
-                        className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+                        className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
                       >
                         {stripeActionPending ? "Working..." : "Connect"}
                       </button>
@@ -430,14 +430,14 @@ function IntegrationsPageInner() {
                           <button
                             onClick={handleVerifyStripe}
                             disabled={stripeActionPending}
-                            className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+                            className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
                           >
                             Verify
                           </button>
                           <button
                             onClick={handleDisconnectStripe}
                             disabled={stripeActionPending}
-                            className="rounded border border-red-900 px-3 py-1.5 text-sm text-red-300 hover:bg-red-950 disabled:opacity-50"
+                            className="rounded border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
                           >
                             Disconnect
                           </button>
@@ -455,8 +455,8 @@ function IntegrationsPageInner() {
           <div
             className={`mb-4 rounded border px-4 py-3 text-sm ${
               quickbooksCallbackNotice.kind === "connected"
-                ? "border-emerald-800 bg-emerald-950/30 text-emerald-300"
-                : "border-red-800 bg-red-950/30 text-red-300"
+                ? "border-emerald-200 bg-emerald-50/30 text-emerald-700"
+                : "border-red-200 bg-red-50/30 text-red-700"
             }`}
           >
             {quickbooksCallbackNotice.kind === "connected"
@@ -469,16 +469,16 @@ function IntegrationsPageInner() {
 
         {rows && (
           <div className="mb-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
               Your Own QuickBooks Company (Phase 13)
             </h2>
-            <p className="mb-2 text-xs text-neutral-500">
+            <p className="mb-2 text-xs text-muted">
               Connect your own QuickBooks Online company to sync approved invoices there. Uses a real
               OAuth2 flow through Intuit&apos;s own consent page — Klaros never sees or asks for a
               QuickBooks password, and the connection is verified with a real, live API call the
               moment it completes.
             </p>
-            <div className="rounded border border-neutral-800 px-4 py-3">
+            <div className="rounded border border-border px-4 py-3">
               {(() => {
                 const qbConnection = connections?.find((c) => c.provider === "quickbooks");
                 return (
@@ -486,10 +486,10 @@ function IntegrationsPageInner() {
                     {qbConnection && (
                       <div className="mb-3 flex items-center justify-between">
                         <div>
-                          <div className="text-sm font-medium text-neutral-200">
+                          <div className="text-sm font-medium text-foreground">
                             QuickBooks{qbConnection.external_account_id ? ` (company ${qbConnection.external_account_id})` : ""}
                           </div>
-                          <div className="mt-0.5 text-xs text-neutral-500">
+                          <div className="mt-0.5 text-xs text-muted">
                             {qbConnection.last_error ??
                               (qbConnection.last_verified_at
                                 ? `Last verified ${new Date(qbConnection.last_verified_at).toLocaleString()}`
@@ -498,7 +498,7 @@ function IntegrationsPageInner() {
                         </div>
                         <span
                           className={`rounded border px-2 py-0.5 text-xs font-medium ${
-                            STATUS_COLOR[qbConnection.status] ?? "border-neutral-700 text-neutral-400"
+                            STATUS_COLOR[qbConnection.status] ?? "border-border-strong text-muted"
                           }`}
                         >
                           {qbConnection.status}
@@ -507,7 +507,7 @@ function IntegrationsPageInner() {
                     )}
 
                     {quickbooksActionError && (
-                      <div className="mb-2 rounded border border-red-800 bg-red-950/30 px-3 py-2 text-xs text-red-300">
+                      <div className="mb-2 rounded border border-red-200 bg-red-50/30 px-3 py-2 text-xs text-red-700">
                         {quickbooksActionError}
                       </div>
                     )}
@@ -516,7 +516,7 @@ function IntegrationsPageInner() {
                       <button
                         onClick={handleConnectQuickBooks}
                         disabled={quickbooksActionPending}
-                        className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+                        className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
                       >
                         {quickbooksActionPending
                           ? "Working..."
@@ -529,14 +529,14 @@ function IntegrationsPageInner() {
                           <button
                             onClick={handleVerifyQuickBooks}
                             disabled={quickbooksActionPending}
-                            className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+                            className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
                           >
                             Verify
                           </button>
                           <button
                             onClick={handleDisconnectQuickBooks}
                             disabled={quickbooksActionPending}
-                            className="rounded border border-red-900 px-3 py-1.5 text-sm text-red-300 hover:bg-red-950 disabled:opacity-50"
+                            className="rounded border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
                           >
                             Disconnect
                           </button>
@@ -554,8 +554,8 @@ function IntegrationsPageInner() {
           <div
             className={`mb-4 rounded border px-4 py-3 text-sm ${
               googleCalendarCallbackNotice.kind === "connected"
-                ? "border-emerald-800 bg-emerald-950/30 text-emerald-300"
-                : "border-red-800 bg-red-950/30 text-red-300"
+                ? "border-emerald-200 bg-emerald-50/30 text-emerald-700"
+                : "border-red-200 bg-red-50/30 text-red-700"
             }`}
           >
             {googleCalendarCallbackNotice.kind === "connected"
@@ -568,16 +568,16 @@ function IntegrationsPageInner() {
 
         {rows && (
           <div className="mb-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
               Your Own Google Calendar (Phase 14)
             </h2>
-            <p className="mb-2 text-xs text-neutral-500">
+            <p className="mb-2 text-xs text-muted">
               Connect your own Google Calendar to sync confirmed Klaros appointments there. Uses a
               real OAuth2 flow through Google&apos;s own consent page — Klaros never sees or asks
               for a Google password, and the connection is verified with a real, live API call the
               moment it completes.
             </p>
-            <div className="rounded border border-neutral-800 px-4 py-3">
+            <div className="rounded border border-border px-4 py-3">
               {(() => {
                 const gcalConnection = connections?.find((c) => c.provider === "google_calendar");
                 return (
@@ -585,8 +585,8 @@ function IntegrationsPageInner() {
                     {gcalConnection && (
                       <div className="mb-3 flex items-center justify-between">
                         <div>
-                          <div className="text-sm font-medium text-neutral-200">Google Calendar</div>
-                          <div className="mt-0.5 text-xs text-neutral-500">
+                          <div className="text-sm font-medium text-foreground">Google Calendar</div>
+                          <div className="mt-0.5 text-xs text-muted">
                             {gcalConnection.last_error ??
                               (gcalConnection.last_verified_at
                                 ? `Last verified ${new Date(gcalConnection.last_verified_at).toLocaleString()}`
@@ -595,7 +595,7 @@ function IntegrationsPageInner() {
                         </div>
                         <span
                           className={`rounded border px-2 py-0.5 text-xs font-medium ${
-                            STATUS_COLOR[gcalConnection.status] ?? "border-neutral-700 text-neutral-400"
+                            STATUS_COLOR[gcalConnection.status] ?? "border-border-strong text-muted"
                           }`}
                         >
                           {gcalConnection.status}
@@ -604,7 +604,7 @@ function IntegrationsPageInner() {
                     )}
 
                     {googleCalendarActionError && (
-                      <div className="mb-2 rounded border border-red-800 bg-red-950/30 px-3 py-2 text-xs text-red-300">
+                      <div className="mb-2 rounded border border-red-200 bg-red-50/30 px-3 py-2 text-xs text-red-700">
                         {googleCalendarActionError}
                       </div>
                     )}
@@ -613,7 +613,7 @@ function IntegrationsPageInner() {
                       <button
                         onClick={handleConnectGoogleCalendar}
                         disabled={googleCalendarActionPending}
-                        className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+                        className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
                       >
                         {googleCalendarActionPending
                           ? "Working..."
@@ -626,14 +626,14 @@ function IntegrationsPageInner() {
                           <button
                             onClick={handleVerifyGoogleCalendar}
                             disabled={googleCalendarActionPending}
-                            className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+                            className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
                           >
                             Verify
                           </button>
                           <button
                             onClick={handleDisconnectGoogleCalendar}
                             disabled={googleCalendarActionPending}
-                            className="rounded border border-red-900 px-3 py-1.5 text-sm text-red-300 hover:bg-red-950 disabled:opacity-50"
+                            className="rounded border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
                           >
                             Disconnect
                           </button>
@@ -649,30 +649,30 @@ function IntegrationsPageInner() {
 
         {rows && (
           <div className="mb-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
               Tenant-Owned Connections (OAuth)
             </h2>
-            <p className="mb-2 text-xs text-neutral-500">
+            <p className="mb-2 text-xs text-muted">
               Unlike the providers above (one shared credential for the whole platform), each business
               would connect their OWN account for these — real OAuth is not built yet for any of them.
             </p>
-            <div className="divide-y divide-neutral-800 rounded border border-neutral-800">
+            <div className="divide-y divide-neutral-800 rounded border border-border">
               {PLANNED_OAUTH_PROVIDERS.map((p) => {
                 const existing = connections?.find((c) => c.provider === p.provider);
                 const status = existing?.status ?? "NOT_IMPLEMENTED";
                 return (
                   <div key={p.provider} className="flex items-center justify-between px-4 py-3">
                     <div>
-                      <div className="text-sm font-medium text-neutral-200">{p.name}</div>
-                      <div className="mt-0.5 text-xs text-neutral-500">
+                      <div className="text-sm font-medium text-foreground">{p.name}</div>
+                      <div className="mt-0.5 text-xs text-muted">
                         {existing?.last_error ?? "No real OAuth client implemented for this provider yet."}
                       </div>
                     </div>
                     <span
                       className={`rounded border px-2 py-0.5 text-xs font-medium ${
                         status === "NOT_IMPLEMENTED"
-                          ? "border-neutral-800 text-neutral-600"
-                          : STATUS_COLOR[status] ?? "border-neutral-700 text-neutral-400"
+                          ? "border-border text-muted-foreground"
+                          : STATUS_COLOR[status] ?? "border-border-strong text-muted"
                       }`}
                     >
                       {status}
@@ -685,10 +685,10 @@ function IntegrationsPageInner() {
         )}
 
         {lastChecked && (
-          <p className="mt-2 text-xs text-neutral-600">Last checked {lastChecked.toLocaleTimeString()}</p>
+          <p className="mt-2 text-xs text-muted-foreground">Last checked {lastChecked.toLocaleTimeString()}</p>
         )}
 
-        <div className="mt-8 rounded border border-neutral-800 bg-neutral-950 px-4 py-3 text-xs text-neutral-500">
+        <div className="mt-8 rounded border border-border bg-surface px-4 py-3 text-xs text-muted">
           CONNECTED means the configured credential was just verified against the provider&apos;s real
           API (a live, read-only call). NOT_CONNECTED means no credential is configured. ERROR means a
           credential is configured but was rejected, or a required companion setting (e.g. a verified

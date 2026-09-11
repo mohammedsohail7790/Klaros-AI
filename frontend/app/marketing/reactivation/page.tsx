@@ -82,34 +82,34 @@ export default function ReactivationPage() {
 
         <form onSubmit={handleCreate} className="mb-6 flex items-end gap-2">
           <div>
-            <label className="block text-xs text-neutral-500">New reactivation campaign</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="w-64 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm" />
+            <label className="block text-xs text-muted">New reactivation campaign</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} className="w-64 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
           </div>
-          <button type="submit" disabled={busy || !name.trim()} className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50">
+          <button type="submit" disabled={busy || !name.trim()} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
             Create
           </button>
         </form>
 
-        {notice && <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">{notice}</div>}
-        {error && <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>}
+        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
+        {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>}
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : (
           <>
-            <h2 className="mb-3 text-sm font-medium text-neutral-300">Campaigns</h2>
+            <h2 className="mb-3 text-sm font-medium text-muted">Campaigns</h2>
             {campaigns.length === 0 ? (
-              <p className="mb-6 text-sm text-neutral-500">No reactivation campaigns yet.</p>
+              <p className="mb-6 text-sm text-muted">No reactivation campaigns yet.</p>
             ) : (
               <div className="mb-6 space-y-2">
                 {campaigns.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between rounded-lg border border-neutral-800 p-3">
+                  <div key={c.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                     <span className="text-sm">{c.name}</span>
                     <div className="flex gap-2">
-                      <button disabled={busy} onClick={() => handleIdentify(c.id, "customers")} className="text-xs underline text-neutral-400 hover:text-white">
+                      <button disabled={busy} onClick={() => handleIdentify(c.id, "customers")} className="text-xs underline text-muted hover:text-foreground">
                         Identify inactive customers
                       </button>
-                      <button disabled={busy} onClick={() => handleIdentify(c.id, "leads")} className="text-xs underline text-neutral-400 hover:text-white">
+                      <button disabled={busy} onClick={() => handleIdentify(c.id, "leads")} className="text-xs underline text-muted hover:text-foreground">
                         Identify unbooked qualified leads
                       </button>
                     </div>
@@ -118,13 +118,13 @@ export default function ReactivationPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-sm font-medium text-neutral-300">Candidates ({candidates.length})</h2>
+            <h2 className="mb-3 text-sm font-medium text-muted">Candidates ({candidates.length})</h2>
             {candidates.length === 0 ? (
-              <p className="text-sm text-neutral-500">No candidates identified yet.</p>
+              <p className="text-sm text-muted">No candidates identified yet.</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-neutral-800">
+              <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-neutral-950 text-neutral-500">
+                  <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Type</th>
                       <th className="px-4 py-2">Reason</th>
@@ -134,12 +134,12 @@ export default function ReactivationPage() {
                   </thead>
                   <tbody>
                     {candidates.map((c) => (
-                      <tr key={c.id} className="border-t border-neutral-900">
-                        <td className="px-4 py-2 text-neutral-400">{c.customer_id ? "Customer" : "Lead"}</td>
+                      <tr key={c.id} className="border-t border-border">
+                        <td className="px-4 py-2 text-muted">{c.customer_id ? "Customer" : "Lead"}</td>
                         <td className="px-4 py-2">{c.reason}</td>
-                        <td className="px-4 py-2 text-neutral-500">{c.score}</td>
+                        <td className="px-4 py-2 text-muted">{c.score}</td>
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{c.status}</span>
+                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{c.status}</span>
                         </td>
                       </tr>
                     ))}

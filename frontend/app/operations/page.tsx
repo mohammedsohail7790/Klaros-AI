@@ -82,16 +82,16 @@ export default function OperationsPage() {
           <button
             onClick={handleDetectDelays}
             disabled={detecting}
-            className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
           >
             {detecting ? "Scanning..." : "Run delay detection"}
           </button>
         </header>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -102,37 +102,37 @@ export default function OperationsPage() {
             <section className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
               {dashboard &&
                 METRIC_LABELS.map(({ key, label }) => (
-                  <div key={key} className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+                  <div key={key} className="rounded-lg border border-border bg-surface p-4">
                     <p className="text-2xl font-semibold">{dashboard[key]}</p>
-                    <p className="mt-1 text-xs text-neutral-500">{label}</p>
+                    <p className="mt-1 text-xs text-muted">{label}</p>
                   </div>
                 ))}
             </section>
 
             <section>
-              <h2 className="mb-3 text-sm font-medium text-neutral-300">Needs your attention</h2>
+              <h2 className="mb-3 text-sm font-medium text-muted">Needs your attention</h2>
               {exceptions.length === 0 ? (
-                <p className="text-sm text-neutral-500">No open exceptions.</p>
+                <p className="text-sm text-muted">No open exceptions.</p>
               ) : (
                 <ul className="space-y-2">
                   {exceptions.map((e) => (
                     <li
                       key={e.id}
-                      className="flex items-start justify-between rounded-md border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm"
+                      className="flex items-start justify-between rounded-md border border-border bg-surface px-4 py-3 text-sm"
                     >
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-[10px] uppercase text-neutral-400">
+                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-[10px] uppercase text-muted">
                             {e.severity}
                           </span>
                           <span className="font-medium">{e.type}</span>
                         </div>
-                        <p className="mt-1 text-neutral-400">{e.description}</p>
+                        <p className="mt-1 text-muted">{e.description}</p>
                         {e.recommended_action && (
-                          <p className="mt-1 text-xs text-neutral-600">→ {e.recommended_action}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">→ {e.recommended_action}</p>
                         )}
                       </div>
-                      <button onClick={() => handleResolve(e.id)} className="text-xs text-neutral-400 underline hover:text-white">
+                      <button onClick={() => handleResolve(e.id)} className="text-xs text-muted underline hover:text-foreground">
                         Resolve
                       </button>
                     </li>

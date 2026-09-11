@@ -7,8 +7,8 @@ import { ApiError, RetentionAnalytics, RetentionSummary, getRetentionAnalytics, 
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-neutral-800 p-4">
-      <div className="text-xs text-neutral-500">{label}</div>
+    <div className="rounded-lg border border-border p-4">
+      <div className="text-xs text-muted">{label}</div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
     </div>
   );
@@ -16,10 +16,10 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 
 function Metric({ label, value, note }: { label: string; value: string | number | null; note: string }) {
   return (
-    <div className="rounded-lg border border-neutral-800 p-4">
-      <div className="text-xs text-neutral-500">{label}</div>
+    <div className="rounded-lg border border-border p-4">
+      <div className="text-xs text-muted">{label}</div>
       <div className="mt-1 text-xl font-semibold">{value !== null ? value : "INSUFFICIENT DATA"}</div>
-      <div className="mt-1 text-xs text-neutral-600">{note}</div>
+      <div className="mt-1 text-xs text-muted-foreground">{note}</div>
     </div>
   );
 }
@@ -56,9 +56,9 @@ export default function RetentionPage() {
         <h1 className="mb-6 text-xl font-semibold">Retention &amp; Referral</h1>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -67,7 +67,7 @@ export default function RetentionPage() {
         ) : summary ? (
           <>
             {summary.needs_attention && (
-              <div className="mb-6 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-300">
+              <div className="mb-6 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
                 RETENTION NEEDS ATTENTION — {summary.open_retention_exception_count} open retention exception(s).
               </div>
             )}
@@ -89,7 +89,7 @@ export default function RetentionPage() {
 
             {analytics && (
               <>
-                <h2 className="mb-3 text-sm font-semibold text-neutral-400">Analytics</h2>
+                <h2 className="mb-3 text-sm font-semibold text-muted">Analytics</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
                   <Metric label="Retention rate" value={analytics.retention_rate !== null ? `${analytics.retention_rate}%` : null} note={analytics.retention_rate_note} />
                   <Metric label="Repeat customer rate" value={analytics.repeat_customer_rate !== null ? `${analytics.repeat_customer_rate}%` : null} note={analytics.repeat_customer_rate_note} />

@@ -90,7 +90,7 @@ export default function VoiceReceptionistPage() {
     <AppShell user={user}>
       <div className="px-8 py-8">
         <h1 className="mb-2 text-xl font-semibold">AI Voice Receptionist</h1>
-        <p className="mb-6 max-w-2xl text-sm text-neutral-500">
+        <p className="mb-6 max-w-2xl text-sm text-muted">
           A real, governed AI phone receptionist — every action it takes (creating a lead, answering a
           knowledge question, escalating to a human) goes through the same permission/policy/audit
           pipeline as every other Klaros action. Speech-to-text and text-to-speech require real provider
@@ -99,25 +99,25 @@ export default function VoiceReceptionistPage() {
         </p>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">
+          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
             {notice}
           </div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {authLoading || loading || !settings ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+            <div className="rounded-lg border border-border bg-surface p-5">
               <div className="mb-2 flex items-center justify-between">
                 <div>
                   <h2 className="font-medium">Status</h2>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-muted">
                     {settings.enabled ? "Enabled — inbound calls are handled by the AI receptionist." : "Disabled — inbound calls use the standard capture-and-acknowledge flow."}
                   </p>
                 </div>
@@ -126,8 +126,8 @@ export default function VoiceReceptionistPage() {
                   disabled={saving}
                   className={`rounded-md border px-3 py-1.5 text-sm disabled:opacity-50 ${
                     settings.enabled
-                      ? "border-red-900 bg-red-950/30 text-red-300 hover:bg-red-950/60"
-                      : "border-emerald-800 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-950/60"
+                      ? "border-red-200 bg-red-50/30 text-red-700 hover:bg-red-50/60"
+                      : "border-emerald-200 bg-emerald-50/30 text-emerald-700 hover:bg-emerald-50/60"
                   }`}
                 >
                   {settings.enabled ? "Disable" : "Enable"}
@@ -135,35 +135,35 @@ export default function VoiceReceptionistPage() {
               </div>
 
               <div className="mb-4 flex gap-4 text-xs">
-                <span className={settings.stt_provider === "NOT_CONFIGURED" ? "text-amber-400" : "text-emerald-400"}>
+                <span className={settings.stt_provider === "NOT_CONFIGURED" ? "text-amber-700" : "text-emerald-600"}>
                   Speech-to-text: {settings.stt_provider}
                 </span>
-                <span className={settings.tts_provider === "NOT_CONFIGURED" ? "text-amber-400" : "text-emerald-400"}>
+                <span className={settings.tts_provider === "NOT_CONFIGURED" ? "text-amber-700" : "text-emerald-600"}>
                   Text-to-speech: {settings.tts_provider}
                 </span>
               </div>
 
-              <label className="mb-1 block text-xs text-neutral-500">Greeting</label>
+              <label className="mb-1 block text-xs text-muted">Greeting</label>
               <textarea
                 value={draftGreeting}
                 onChange={(e) => setDraftGreeting(e.target.value)}
                 rows={2}
-                className="mb-3 w-full rounded-md border border-neutral-700 bg-black p-2 text-sm text-neutral-200"
+                className="mb-3 w-full rounded-md border border-border-strong bg-background p-2 text-sm text-foreground"
               />
 
-              <label className="mb-1 block text-xs text-neutral-500">Business hours note (optional)</label>
+              <label className="mb-1 block text-xs text-muted">Business hours note (optional)</label>
               <textarea
                 value={draftHours}
                 onChange={(e) => setDraftHours(e.target.value)}
                 rows={2}
                 placeholder="e.g. Mon-Fri 8am-6pm, emergency service available 24/7"
-                className="mb-3 w-full rounded-md border border-neutral-700 bg-black p-2 text-sm text-neutral-200"
+                className="mb-3 w-full rounded-md border border-border-strong bg-background p-2 text-sm text-foreground"
               />
 
               <button
                 onClick={handleSaveText}
                 disabled={saving}
-                className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
               >
                 Save
               </button>
@@ -172,25 +172,25 @@ export default function VoiceReceptionistPage() {
             <div>
               <h2 className="mb-3 font-medium">Recent calls</h2>
               {!calls || calls.length === 0 ? (
-                <p className="text-sm text-neutral-500">No calls yet.</p>
+                <p className="text-sm text-muted">No calls yet.</p>
               ) : (
                 <div className="space-y-2">
                   {calls.map((c) => (
                     <button
                       key={c.id}
                       onClick={() => setSelectedCall(c)}
-                      className="block w-full rounded-md border border-neutral-800 px-3 py-2 text-left text-sm hover:bg-neutral-900"
+                      className="block w-full rounded-md border border-border px-3 py-2 text-left text-sm hover:bg-surface-muted"
                     >
                       <div className="flex items-center justify-between">
                         <span>{c.caller_number ?? "Unknown number"}</span>
-                        <span className="text-xs text-neutral-500">{new Date(c.started_at).toLocaleString()}</span>
+                        <span className="text-xs text-muted">{new Date(c.started_at).toLocaleString()}</span>
                       </div>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500">
+                      <div className="mt-1 flex items-center gap-2 text-xs text-muted">
                         <span>{c.status}</span>
                         <span>&middot;</span>
                         <span>{outcomeLabel(c.outcome)}</span>
-                        {c.handoff_requested && <span className="text-amber-400">&middot; Handoff requested</span>}
-                        {c.appointment_id && <span className="text-emerald-400">&middot; Appointment booked</span>}
+                        {c.handoff_requested && <span className="text-amber-700">&middot; Handoff requested</span>}
+                        {c.appointment_id && <span className="text-emerald-600">&middot; Appointment booked</span>}
                       </div>
                     </button>
                   ))}
@@ -198,44 +198,44 @@ export default function VoiceReceptionistPage() {
               )}
 
               {selectedCall && (
-                <div className="mt-4 rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+                <div className="mt-4 rounded-lg border border-border bg-surface p-4">
                   <div className="mb-2 flex items-center justify-between">
                     <h3 className="text-sm font-medium">Call detail</h3>
-                    <button onClick={() => setSelectedCall(null)} className="text-xs text-neutral-500 hover:text-white">
+                    <button onClick={() => setSelectedCall(null)} className="text-xs text-muted hover:text-foreground">
                       close
                     </button>
                   </div>
 
                   {selectedCall.booking && (
-                    <div className="mb-3 rounded-md border border-neutral-800 bg-black p-3 text-xs">
-                      <div className="mb-1 text-neutral-500">Booking state: <span className="text-neutral-200">{selectedCall.booking.state}</span></div>
+                    <div className="mb-3 rounded-md border border-border bg-background p-3 text-xs">
+                      <div className="mb-1 text-muted">Booking state: <span className="text-foreground">{selectedCall.booking.state}</span></div>
                       {selectedCall.booking.service_summary && (
-                        <div className="mb-1 text-neutral-500">
-                          Service: <span className="text-neutral-200">{selectedCall.booking.service_summary}</span>
+                        <div className="mb-1 text-muted">
+                          Service: <span className="text-foreground">{selectedCall.booking.service_summary}</span>
                           {selectedCall.booking.service_type && ` (${selectedCall.booking.service_type.replace(/_/g, " ")})`}
                         </div>
                       )}
                       {selectedCall.booking.selected_slot && (
-                        <div className="text-neutral-500">
-                          Selected time: <span className="text-neutral-200">{selectedCall.booking.selected_slot.label}</span>
+                        <div className="text-muted">
+                          Selected time: <span className="text-foreground">{selectedCall.booking.selected_slot.label}</span>
                         </div>
                       )}
                       {selectedCall.appointment_id && (
-                        <div className="mt-1 text-emerald-400">Appointment ID: {selectedCall.appointment_id}</div>
+                        <div className="mt-1 text-emerald-600">Appointment ID: {selectedCall.appointment_id}</div>
                       )}
                       {selectedCall.handoff_requested && (
-                        <div className="mt-1 text-amber-400">Handoff reason: {selectedCall.handoff_reason ?? "unspecified"}</div>
+                        <div className="mt-1 text-amber-700">Handoff reason: {selectedCall.handoff_reason ?? "unspecified"}</div>
                       )}
                     </div>
                   )}
 
                   {selectedCall.latency_ms.length > 0 && (
-                    <div className="mb-3 rounded-md border border-neutral-800 bg-black p-3 text-xs">
-                      <div className="mb-1 text-neutral-500">Latency (most recent turn)</div>
+                    <div className="mb-3 rounded-md border border-border bg-background p-3 text-xs">
+                      <div className="mb-1 text-muted">Latency (most recent turn)</div>
                       {(() => {
                         const last = selectedCall.latency_ms[selectedCall.latency_ms.length - 1];
                         return (
-                          <div className="flex gap-4 text-neutral-200">
+                          <div className="flex gap-4 text-foreground">
                             <span>Conversation: {last.conversation_ms ?? "—"}ms</span>
                             <span>TTS: {last.tts_ms ?? "—"}ms</span>
                             <span>Total: {last.total_ms ?? "—"}ms</span>
@@ -245,14 +245,14 @@ export default function VoiceReceptionistPage() {
                     </div>
                   )}
 
-                  <h4 className="mb-2 text-xs font-medium text-neutral-500">Transcript</h4>
+                  <h4 className="mb-2 text-xs font-medium text-muted">Transcript</h4>
                   {selectedCall.transcript.length === 0 ? (
-                    <p className="text-xs text-neutral-500">No transcript captured for this call.</p>
+                    <p className="text-xs text-muted">No transcript captured for this call.</p>
                   ) : (
                     <div className="space-y-2 text-xs">
                       {selectedCall.transcript.map((t, i) => (
-                        <div key={i} className={t.role === "agent" ? "text-emerald-300" : "text-neutral-300"}>
-                          <span className="text-neutral-500">{t.role === "agent" ? "Agent: " : "Caller: "}</span>
+                        <div key={i} className={t.role === "agent" ? "text-emerald-700" : "text-muted"}>
+                          <span className="text-muted">{t.role === "agent" ? "Agent: " : "Caller: "}</span>
                           {t.text}
                         </div>
                       ))}

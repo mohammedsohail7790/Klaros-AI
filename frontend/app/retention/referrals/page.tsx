@@ -173,65 +173,65 @@ export default function ReferralsPage() {
         <h1 className="mb-6 text-xl font-semibold">Referrals</h1>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : (
           <>
             <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-5">
-              <div className="rounded-lg border border-neutral-800 p-4">
-                <div className="text-xs text-neutral-500">Referral leads</div>
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-xs text-muted">Referral leads</div>
                 <div className="mt-1 text-2xl font-semibold">{leads}</div>
               </div>
-              <div className="rounded-lg border border-neutral-800 p-4">
-                <div className="text-xs text-neutral-500">Qualified</div>
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-xs text-muted">Qualified</div>
                 <div className="mt-1 text-2xl font-semibold">{qualified}</div>
               </div>
-              <div className="rounded-lg border border-neutral-800 p-4">
-                <div className="text-xs text-neutral-500">Booked</div>
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-xs text-muted">Booked</div>
                 <div className="mt-1 text-2xl font-semibold">{booked}</div>
               </div>
-              <div className="rounded-lg border border-neutral-800 p-4">
-                <div className="text-xs text-neutral-500">Converted</div>
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-xs text-muted">Converted</div>
                 <div className="mt-1 text-2xl font-semibold">{converted}</div>
               </div>
-              <div className="rounded-lg border border-neutral-800 p-4">
-                <div className="text-xs text-neutral-500">Collected revenue</div>
+              <div className="rounded-lg border border-border p-4">
+                <div className="text-xs text-muted">Collected revenue</div>
                 <div className="mt-1 text-2xl font-semibold">${revenue.toFixed(2)}</div>
               </div>
             </div>
 
-            <h2 className="mb-3 text-sm font-medium text-neutral-300">Programs</h2>
+            <h2 className="mb-3 text-sm font-medium text-muted">Programs</h2>
             <div className="mb-4 flex flex-wrap items-end gap-2">
               <div>
-                <label className="block text-xs text-neutral-500">Program name</label>
+                <label className="block text-xs text-muted">Program name</label>
                 <input
                   value={newProgramName}
                   onChange={(e) => setNewProgramName(e.target.value)}
-                  className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm"
+                  className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs text-neutral-500">Reward amount ($, optional)</label>
+                <label className="block text-xs text-muted">Reward amount ($, optional)</label>
                 <input
                   value={newRewardAmount}
                   onChange={(e) => setNewRewardAmount(e.target.value)}
-                  className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm"
+                  className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 />
               </div>
-              <button disabled={busy || !newProgramName.trim()} onClick={handleCreateProgram} className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50">
+              <button disabled={busy || !newProgramName.trim()} onClick={handleCreateProgram} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
                 Create program
               </button>
             </div>
             {programs.length === 0 ? (
-              <p className="mb-6 text-sm text-neutral-500">No referral programs yet.</p>
+              <p className="mb-6 text-sm text-muted">No referral programs yet.</p>
             ) : (
-              <div className="mb-8 overflow-x-auto rounded-lg border border-neutral-800">
+              <div className="mb-8 overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-neutral-950 text-neutral-500">
+                  <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Name</th>
                       <th className="px-4 py-2">Reward</th>
@@ -240,11 +240,11 @@ export default function ReferralsPage() {
                   </thead>
                   <tbody>
                     {programs.map((p) => (
-                      <tr key={p.id} className="border-t border-neutral-900">
+                      <tr key={p.id} className="border-t border-border">
                         <td className="px-4 py-2">{p.name}</td>
-                        <td className="px-4 py-2 text-neutral-400">{p.reward_amount ? `$${p.reward_amount} ${p.reward_type}` : p.reward_type}</td>
+                        <td className="px-4 py-2 text-muted">{p.reward_amount ? `$${p.reward_amount} ${p.reward_type}` : p.reward_type}</td>
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{p.status}</span>
+                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{p.status}</span>
                         </td>
                       </tr>
                     ))}
@@ -253,41 +253,41 @@ export default function ReferralsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-sm font-medium text-neutral-300">Referral codes</h2>
+            <h2 className="mb-3 text-sm font-medium text-muted">Referral codes</h2>
             <div className="mb-4 flex flex-wrap items-end gap-2">
               <div>
-                <label className="block text-xs text-neutral-500">Program ID</label>
+                <label className="block text-xs text-muted">Program ID</label>
                 <input
                   value={codeProgramId}
                   onChange={(e) => setCodeProgramId(e.target.value)}
-                  className="w-64 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm"
+                  className="w-64 rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs text-neutral-500">Referrer customer ID</label>
+                <label className="block text-xs text-muted">Referrer customer ID</label>
                 <input
                   value={codeCustomerId}
                   onChange={(e) => setCodeCustomerId(e.target.value)}
-                  className="w-64 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm"
+                  className="w-64 rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 />
               </div>
               <button
                 disabled={busy || !codeProgramId.trim() || !codeCustomerId.trim()}
                 onClick={handleGenerateCode}
-                className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
               >
                 Get or create code
               </button>
             </div>
             {generatedCode && (
-              <div className="mb-6 rounded-md border border-neutral-800 p-4 text-sm">
-                <p className="text-neutral-300">
+              <div className="mb-6 rounded-md border border-border p-4 text-sm">
+                <p className="text-muted">
                   Code: <span className="font-mono">{generatedCode.code}</span>
                 </p>
                 <button
                   disabled={busy}
                   onClick={handleCreateReferral}
-                  className="mt-2 rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+                  className="mt-2 rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
                 >
                   Create referral from this code
                 </button>
@@ -295,31 +295,31 @@ export default function ReferralsPage() {
             )}
 
             {newReferralId && (
-              <div className="mb-6 rounded-md border border-neutral-800 p-4">
-                <p className="mb-2 text-sm text-neutral-300">
+              <div className="mb-6 rounded-md border border-border p-4">
+                <p className="mb-2 text-sm text-muted">
                   Referral created ({newReferralId}). Convert to a lead:
                 </p>
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
-                    <label className="block text-xs text-neutral-500">Name</label>
-                    <input value={leadName} onChange={(e) => setLeadName(e.target.value)} className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm" />
+                    <label className="block text-xs text-muted">Name</label>
+                    <input value={leadName} onChange={(e) => setLeadName(e.target.value)} className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                   </div>
                   <div>
-                    <label className="block text-xs text-neutral-500">Phone</label>
-                    <input value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm" />
+                    <label className="block text-xs text-muted">Phone</label>
+                    <input value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                   </div>
                   <div>
-                    <label className="block text-xs text-neutral-500">Email</label>
-                    <input value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm" />
+                    <label className="block text-xs text-muted">Email</label>
+                    <input value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                   </div>
                   <div>
-                    <label className="block text-xs text-neutral-500">Service requested</label>
-                    <input value={leadService} onChange={(e) => setLeadService(e.target.value)} className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm" />
+                    <label className="block text-xs text-muted">Service requested</label>
+                    <input value={leadService} onChange={(e) => setLeadService(e.target.value)} className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                   </div>
                   <button
                     disabled={busy || !leadName.trim()}
                     onClick={handleConvertToLead}
-                    className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+                    className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
                   >
                     Convert to lead
                   </button>
@@ -327,13 +327,13 @@ export default function ReferralsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-sm font-medium text-neutral-300">Referrals</h2>
+            <h2 className="mb-3 text-sm font-medium text-muted">Referrals</h2>
             {referrals.length === 0 ? (
-              <p className="mb-6 text-sm text-neutral-500">No referrals yet.</p>
+              <p className="mb-6 text-sm text-muted">No referrals yet.</p>
             ) : (
-              <div className="mb-8 overflow-x-auto rounded-lg border border-neutral-800">
+              <div className="mb-8 overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-neutral-950 text-neutral-500">
+                  <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Status</th>
                       <th className="px-4 py-2">Revenue</th>
@@ -342,12 +342,12 @@ export default function ReferralsPage() {
                   </thead>
                   <tbody>
                     {referrals.map((r) => (
-                      <tr key={r.id} className="border-t border-neutral-900">
+                      <tr key={r.id} className="border-t border-border">
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{r.status}</span>
+                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{r.status}</span>
                         </td>
-                        <td className="px-4 py-2 text-neutral-400">{r.revenue_amount ? `$${r.revenue_amount}` : "—"}</td>
-                        <td className="px-4 py-2 text-neutral-400">{r.collected_amount ? `$${r.collected_amount}` : "—"}</td>
+                        <td className="px-4 py-2 text-muted">{r.revenue_amount ? `$${r.revenue_amount}` : "—"}</td>
+                        <td className="px-4 py-2 text-muted">{r.collected_amount ? `$${r.collected_amount}` : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -355,13 +355,13 @@ export default function ReferralsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-sm font-medium text-neutral-300">Rewards</h2>
+            <h2 className="mb-3 text-sm font-medium text-muted">Rewards</h2>
             {rewards.length === 0 ? (
-              <p className="text-sm text-neutral-500">No referral rewards yet.</p>
+              <p className="text-sm text-muted">No referral rewards yet.</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-neutral-800">
+              <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-neutral-950 text-neutral-500">
+                  <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Amount</th>
                       <th className="px-4 py-2">Status</th>
@@ -370,20 +370,20 @@ export default function ReferralsPage() {
                   </thead>
                   <tbody>
                     {rewards.map((rw) => (
-                      <tr key={rw.id} className="border-t border-neutral-900">
+                      <tr key={rw.id} className="border-t border-border">
                         <td className="px-4 py-2">${rw.amount}</td>
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{rw.status}</span>
+                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{rw.status}</span>
                         </td>
                         <td className="px-4 py-2 space-x-2">
                           {rw.status === "PENDING" && (
                             <>
-                              <button disabled={busy} onClick={() => handleApprove(rw.id, true)} className="text-xs underline text-emerald-400 hover:text-white">Approve</button>
-                              <button disabled={busy} onClick={() => handleApprove(rw.id, false)} className="text-xs underline text-red-400 hover:text-white">Reject</button>
+                              <button disabled={busy} onClick={() => handleApprove(rw.id, true)} className="text-xs underline text-emerald-600 hover:text-foreground">Approve</button>
+                              <button disabled={busy} onClick={() => handleApprove(rw.id, false)} className="text-xs underline text-red-600 hover:text-foreground">Reject</button>
                             </>
                           )}
                           {rw.status === "APPROVED" && (
-                            <button disabled={busy} onClick={() => handleIssue(rw.id)} className="text-xs underline text-neutral-400 hover:text-white">Issue</button>
+                            <button disabled={busy} onClick={() => handleIssue(rw.id)} className="text-xs underline text-muted hover:text-foreground">Issue</button>
                           )}
                         </td>
                       </tr>

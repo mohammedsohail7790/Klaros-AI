@@ -53,7 +53,7 @@ export default function ExceptionsPage() {
               key={s}
               onClick={() => setStatus(s)}
               className={`rounded-full border px-3 py-1 text-xs ${
-                status === s ? "border-white bg-white text-black" : "border-neutral-700 text-neutral-400"
+                status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"
               }`}
             >
               {s}
@@ -62,20 +62,20 @@ export default function ExceptionsPage() {
         </div>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
           </div>
         ) : exceptions.length === 0 ? (
-          <p className="text-sm text-neutral-500">No {status.toLowerCase()} exceptions.</p>
+          <p className="text-sm text-muted">No {status.toLowerCase()} exceptions.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-950 text-neutral-500">
+              <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Severity</th>
                   <th className="px-4 py-2">Type</th>
@@ -87,21 +87,21 @@ export default function ExceptionsPage() {
               </thead>
               <tbody>
                 {exceptions.map((e) => (
-                  <tr key={e.id} className="border-t border-neutral-900">
+                  <tr key={e.id} className="border-t border-border">
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">
+                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">
                         {e.severity}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-neutral-400">{e.type}</td>
-                    <td className="px-4 py-2 text-neutral-500">
+                    <td className="px-4 py-2 text-muted">{e.type}</td>
+                    <td className="px-4 py-2 text-muted">
                       {e.entity_type}/{e.entity_id.slice(0, 8)}
                     </td>
                     <td className="px-4 py-2">{e.description}</td>
-                    <td className="px-4 py-2 text-neutral-500">{new Date(e.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-2 text-muted">{new Date(e.created_at).toLocaleString()}</td>
                     <td className="px-4 py-2">
                       {status === "OPEN" && (
-                        <button onClick={() => handleResolve(e.id)} className="text-xs underline text-neutral-400 hover:text-white">
+                        <button onClick={() => handleResolve(e.id)} className="text-xs underline text-muted hover:text-foreground">
                           Resolve
                         </button>
                       )}

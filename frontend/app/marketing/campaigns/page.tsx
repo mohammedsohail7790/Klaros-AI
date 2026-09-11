@@ -60,28 +60,28 @@ export default function CampaignsPage() {
           <h1 className="text-xl font-semibold">Campaigns</h1>
           <button
             onClick={() => setShowCreate((v) => !v)}
-            className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900"
+            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
           >
             New campaign
           </button>
         </div>
 
         {showCreate && (
-          <form onSubmit={handleCreate} className="mb-6 flex flex-wrap items-end gap-2 rounded-lg border border-neutral-800 p-4">
+          <form onSubmit={handleCreate} className="mb-6 flex flex-wrap items-end gap-2 rounded-lg border border-border p-4">
             <div>
-              <label className="block text-xs text-neutral-500">Name</label>
+              <label className="block text-xs text-muted">Name</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+                className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs text-neutral-500">Channel</label>
+              <label className="block text-xs text-muted">Channel</label>
               <select
                 value={channel}
                 onChange={(e) => setChannel(e.target.value)}
-                className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+                className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               >
                 {CHANNELS.map((c) => (
                   <option key={c} value={c}>
@@ -91,18 +91,18 @@ export default function CampaignsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-neutral-500">Total budget</label>
+              <label className="block text-xs text-muted">Total budget</label>
               <input
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
                 placeholder="0.00"
-                className="w-28 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+                className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <button
               type="submit"
               disabled={submitting || !name.trim()}
-              className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
             >
               Create
             </button>
@@ -110,20 +110,20 @@ export default function CampaignsPage() {
         )}
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
           </div>
         ) : campaigns.length === 0 ? (
-          <p className="text-sm text-neutral-500">No campaigns yet.</p>
+          <p className="text-sm text-muted">No campaigns yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-950 text-neutral-500">
+              <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Name</th>
                   <th className="px-4 py-2">Channel</th>
@@ -133,17 +133,17 @@ export default function CampaignsPage() {
               </thead>
               <tbody>
                 {campaigns.map((c) => (
-                  <tr key={c.id} className="border-t border-neutral-900">
+                  <tr key={c.id} className="border-t border-border">
                     <td className="px-4 py-2">
-                      <Link href={`/marketing/campaigns/${c.id}`} className="underline hover:text-white">
+                      <Link href={`/marketing/campaigns/${c.id}`} className="underline hover:text-foreground">
                         {c.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-2 text-neutral-400">{c.channel}</td>
+                    <td className="px-4 py-2 text-muted">{c.channel}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{c.status}</span>
+                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{c.status}</span>
                     </td>
-                    <td className="px-4 py-2 text-neutral-400">{c.total_budget ? `$${c.total_budget}` : "—"}</td>
+                    <td className="px-4 py-2 text-muted">{c.total_budget ? `$${c.total_budget}` : "—"}</td>
                   </tr>
                 ))}
               </tbody>

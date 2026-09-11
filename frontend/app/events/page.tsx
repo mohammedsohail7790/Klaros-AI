@@ -71,17 +71,17 @@ export default function EventsPage() {
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Event Worker</h1>
-          <button onClick={load} className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900">
+          <button onClick={load} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
             Refresh
           </button>
         </div>
 
-        {notice && <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">{notice}</div>}
+        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
@@ -89,31 +89,31 @@ export default function EventsPage() {
           <>
             {metrics && (
               <div className="mb-8">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">Worker metrics (real, in-process counters)</h2>
+                <h2 className="mb-3 text-sm font-medium text-muted">Worker metrics (real, in-process counters)</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
-                  <div className="rounded-lg border border-neutral-800 p-4">
-                    <div className="text-xs text-neutral-500">Processed</div>
+                  <div className="rounded-lg border border-border p-4">
+                    <div className="text-xs text-muted">Processed</div>
                     <div className="mt-1 text-2xl font-semibold">{metrics.events_processed}</div>
                   </div>
-                  <div className="rounded-lg border border-neutral-800 p-4">
-                    <div className="text-xs text-neutral-500">Failed (retrying)</div>
+                  <div className="rounded-lg border border-border p-4">
+                    <div className="text-xs text-muted">Failed (retrying)</div>
                     <div className="mt-1 text-2xl font-semibold">{metrics.events_failed}</div>
                   </div>
-                  <div className="rounded-lg border border-neutral-800 p-4">
-                    <div className="text-xs text-neutral-500">Dead-lettered</div>
+                  <div className="rounded-lg border border-border p-4">
+                    <div className="text-xs text-muted">Dead-lettered</div>
                     <div className="mt-1 text-2xl font-semibold">{metrics.events_dead_lettered}</div>
                   </div>
-                  <div className="rounded-lg border border-neutral-800 p-4">
-                    <div className="text-xs text-neutral-500">Deduplicated</div>
+                  <div className="rounded-lg border border-border p-4">
+                    <div className="text-xs text-muted">Deduplicated</div>
                     <div className="mt-1 text-2xl font-semibold">{metrics.events_deduplicated}</div>
                   </div>
-                  <div className="rounded-lg border border-neutral-800 p-4">
-                    <div className="text-xs text-neutral-500">Ticks</div>
+                  <div className="rounded-lg border border-border p-4">
+                    <div className="text-xs text-muted">Ticks</div>
                     <div className="mt-1 text-2xl font-semibold">{metrics.ticks}</div>
                   </div>
-                  <div className="rounded-lg border border-neutral-800 p-4">
-                    <div className="text-xs text-neutral-500">Started</div>
-                    <div className="mt-1 text-xs text-neutral-400">
+                  <div className="rounded-lg border border-border p-4">
+                    <div className="text-xs text-muted">Started</div>
+                    <div className="mt-1 text-xs text-muted">
                       {metrics.started_at ? new Date(metrics.started_at).toLocaleTimeString() : "Not running in this process"}
                     </div>
                   </div>
@@ -123,10 +123,10 @@ export default function EventsPage() {
 
             {deadLetters.length > 0 && (
               <div className="mb-8">
-                <h2 className="mb-3 text-sm font-medium text-red-300">Dead-lettered events ({deadLetters.length})</h2>
-                <div className="overflow-x-auto rounded-lg border border-red-900">
+                <h2 className="mb-3 text-sm font-medium text-red-700">Dead-lettered events ({deadLetters.length})</h2>
+                <div className="overflow-x-auto rounded-lg border border-red-200">
                   <table className="w-full text-left text-sm">
-                    <thead className="bg-neutral-950 text-neutral-500">
+                    <thead className="bg-surface text-muted">
                       <tr>
                         <th className="px-4 py-2">Event type</th>
                         <th className="px-4 py-2">Handler</th>
@@ -136,15 +136,15 @@ export default function EventsPage() {
                     </thead>
                     <tbody>
                       {deadLetters.map((d) => (
-                        <tr key={d.dead_letter_id} className="border-t border-neutral-900">
+                        <tr key={d.dead_letter_id} className="border-t border-border">
                           <td className="px-4 py-2">{d.event_type}</td>
-                          <td className="px-4 py-2 text-neutral-400">{d.handler_name}</td>
-                          <td className="max-w-sm truncate px-4 py-2 text-neutral-500">{d.reason}</td>
+                          <td className="px-4 py-2 text-muted">{d.handler_name}</td>
+                          <td className="max-w-sm truncate px-4 py-2 text-muted">{d.reason}</td>
                           <td className="px-4 py-2">
                             <button
                               disabled={busy}
                               onClick={() => handleReplay(d.dead_letter_id)}
-                              className="text-xs underline text-neutral-400 hover:text-white"
+                              className="text-xs underline text-muted hover:text-foreground"
                             >
                               Retry
                             </button>
@@ -162,7 +162,7 @@ export default function EventsPage() {
                 <button
                   key={s}
                   onClick={() => setStatus(s)}
-                  className={`rounded-full border px-3 py-1 text-xs ${status === s ? "border-white bg-white text-black" : "border-neutral-700 text-neutral-400"}`}
+                  className={`rounded-full border px-3 py-1 text-xs ${status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"}`}
                 >
                   {s}
                 </button>
@@ -170,11 +170,11 @@ export default function EventsPage() {
             </div>
 
             {events.length === 0 ? (
-              <p className="text-sm text-neutral-500">No events.</p>
+              <p className="text-sm text-muted">No events.</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-neutral-800">
+              <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-neutral-950 text-neutral-500">
+                  <thead className="bg-surface text-muted">
                     <tr>
                       <th className="px-4 py-2">Type</th>
                       <th className="px-4 py-2">Status</th>
@@ -185,14 +185,14 @@ export default function EventsPage() {
                   </thead>
                   <tbody>
                     {events.map((e) => (
-                      <tr key={e.event_id} className="border-t border-neutral-900">
+                      <tr key={e.event_id} className="border-t border-border">
                         <td className="px-4 py-2">{e.event_type}</td>
                         <td className="px-4 py-2">
-                          <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{e.status}</span>
+                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{e.status}</span>
                         </td>
-                        <td className="px-4 py-2 text-neutral-400">{e.retry_count}</td>
-                        <td className="px-4 py-2 text-neutral-500">{e.entity_type ?? "—"}</td>
-                        <td className="px-4 py-2 text-neutral-500">{new Date(e.created_at).toLocaleString()}</td>
+                        <td className="px-4 py-2 text-muted">{e.retry_count}</td>
+                        <td className="px-4 py-2 text-muted">{e.entity_type ?? "—"}</td>
+                        <td className="px-4 py-2 text-muted">{new Date(e.created_at).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>

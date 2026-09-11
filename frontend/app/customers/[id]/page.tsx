@@ -131,53 +131,53 @@ export default function CustomerDetailPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <Link href="/customers" className="text-sm text-neutral-500 hover:underline">
+        <Link href="/customers" className="text-sm text-muted hover:underline">
           ← Back to customers
         </Link>
 
         {authLoading || loading ? (
-          <p className="mt-4 text-sm text-neutral-500">Loading customer...</p>
+          <p className="mt-4 text-sm text-muted">Loading customer...</p>
         ) : error ? (
-          <div className="mt-4 rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
           </div>
         ) : !customer ? (
-          <p className="mt-4 text-sm text-neutral-500">Customer not found.</p>
+          <p className="mt-4 text-sm text-muted">Customer not found.</p>
         ) : (
           <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="lg:col-span-2 space-y-6">
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
+              <div className="rounded-lg border border-border bg-surface p-6">
                 <h1 className="text-xl font-semibold">{customer.name}</h1>
-                <p className="text-sm text-neutral-500">
+                <p className="text-sm text-muted">
                   {customer.email ?? "no email"} · {customer.phone ?? "no phone"}
                 </p>
                 {customer.address && (
-                  <p className="mt-1 text-sm text-neutral-500">
+                  <p className="mt-1 text-sm text-muted">
                     {customer.address}, {customer.city} {customer.state} {customer.postal_code}
                   </p>
                 )}
-                <span className="mt-2 inline-block rounded-full border border-neutral-700 px-2 py-0.5 text-xs">
+                <span className="mt-2 inline-block rounded-full border border-border-strong px-2 py-0.5 text-xs">
                   {customer.status}
                 </span>
               </div>
 
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">Timeline</h2>
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-3 text-sm font-medium text-muted">Timeline</h2>
                 {timeline.length === 0 ? (
-                  <p className="text-sm text-neutral-500">No activity recorded yet.</p>
+                  <p className="text-sm text-muted">No activity recorded yet.</p>
                 ) : (
                   <ul className="space-y-3">
                     {timeline.map((entry, i) => (
                       <li key={i} className="flex gap-3 text-sm">
-                        <span className="mt-0.5 rounded-full border border-neutral-700 px-2 py-0.5 text-[10px] uppercase text-neutral-500">
+                        <span className="mt-0.5 rounded-full border border-border-strong px-2 py-0.5 text-[10px] uppercase text-muted">
                           {entry.type}
                         </span>
                         <div>
                           <p>{entry.summary}</p>
-                          <p className="text-xs text-neutral-600">
+                          <p className="text-xs text-muted-foreground">
                             {new Date(entry.timestamp).toLocaleString()}
                           </p>
                         </div>
@@ -187,16 +187,16 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-3 text-sm font-medium text-muted">
                   Appointments ({appointmentEntries.length})
                 </h2>
                 {appointmentEntries.length === 0 ? (
-                  <p className="text-sm text-neutral-500">No appointments yet.</p>
+                  <p className="text-sm text-muted">No appointments yet.</p>
                 ) : (
                   <ul className="space-y-2 text-sm">
                     {appointmentEntries.map((a, i) => (
-                      <li key={i} className="text-neutral-300">
+                      <li key={i} className="text-muted">
                         {a.summary}
                       </li>
                     ))}
@@ -204,18 +204,18 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">Invoices / Payments</h2>
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-3 text-sm font-medium text-muted">Invoices / Payments</h2>
                 {invoices.length === 0 ? (
-                  <p className="text-sm text-neutral-500">No financial history for this customer yet.</p>
+                  <p className="text-sm text-muted">No financial history for this customer yet.</p>
                 ) : (
                   <ul className="space-y-2 text-sm">
                     {invoices.map((inv) => (
                       <li key={inv.id} className="flex items-center justify-between">
-                        <Link href={`/finance/invoices/${inv.id}`} className="underline hover:text-white">
+                        <Link href={`/finance/invoices/${inv.id}`} className="underline hover:text-foreground">
                           {inv.invoice_number}
                         </Link>
-                        <span className="text-neutral-500">
+                        <span className="text-muted">
                           {inv.status} · ${inv.total} (${inv.amount_due} due)
                         </span>
                       </li>
@@ -224,19 +224,19 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">Add note</h2>
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-3 text-sm font-medium text-muted">Add note</h2>
                 <form onSubmit={submitNote} className="flex gap-2">
                   <input
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="Write a note..."
-                    className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+                    className="flex-1 rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
                   />
                   <button
                     type="submit"
                     disabled={noteSubmitting || !note.trim()}
-                    className="rounded-md border border-neutral-700 px-3 py-2 text-sm hover:bg-neutral-900 disabled:opacity-50"
+                    className="rounded-md border border-border-strong px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
                   >
                     {noteSubmitting ? "Saving..." : "Save"}
                   </button>
@@ -246,68 +246,68 @@ export default function CustomerDetailPage() {
 
             <section className="space-y-4">
               {health && (
-                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                  <h2 className="mb-3 text-sm font-medium text-neutral-300">Customer health</h2>
+                <div className="rounded-lg border border-border bg-surface p-6">
+                  <h2 className="mb-3 text-sm font-medium text-muted">Customer health</h2>
                   <dl className="space-y-1.5 text-sm">
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Lifecycle</dt>
-                      <dd className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{health.lifecycle_state}</dd>
+                      <dt className="text-muted">Lifecycle</dt>
+                      <dd className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{health.lifecycle_state}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Jobs completed</dt>
+                      <dt className="text-muted">Jobs completed</dt>
                       <dd>{health.completed_jobs} / {health.total_jobs}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Total collected</dt>
+                      <dt className="text-muted">Total collected</dt>
                       <dd>${health.total_collected}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Open balance</dt>
+                      <dt className="text-muted">Open balance</dt>
                       <dd>${health.open_balance}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Last service</dt>
+                      <dt className="text-muted">Last service</dt>
                       <dd>{health.last_completed_job_at ? new Date(health.last_completed_job_at).toLocaleDateString() : "—"}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Service frequency</dt>
+                      <dt className="text-muted">Service frequency</dt>
                       <dd>{health.average_days_between_jobs !== null ? `~${health.average_days_between_jobs} days` : "INSUFFICIENT DATA"}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Last review request</dt>
+                      <dt className="text-muted">Last review request</dt>
                       <dd>{health.last_review_request_at ? new Date(health.last_review_request_at).toLocaleDateString() : "None"}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-neutral-500">Last referral</dt>
+                      <dt className="text-muted">Last referral</dt>
                       <dd>{health.last_referral_at ? new Date(health.last_referral_at).toLocaleDateString() : "None"}</dd>
                     </div>
                   </dl>
                   {feedback.some((f) => f.sentiment === "NEGATIVE") && (
-                    <p className="mt-3 rounded-md border border-red-900 bg-red-950/30 p-2 text-xs text-red-300">
+                    <p className="mt-3 rounded-md border border-red-200 bg-red-50/30 p-2 text-xs text-red-700">
                       Negative feedback on file — service recovery required.
                     </p>
                   )}
-                  <div className="mt-3 text-xs text-neutral-500">
+                  <div className="mt-3 text-xs text-muted">
                     Next recommended action:{" "}
                     {opportunities[0] ? opportunities[0].recommended_action ?? opportunities[0].reason : "None open"}
                   </div>
                 </div>
               )}
 
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">Retention timeline</h2>
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-3 text-sm font-medium text-muted">Retention timeline</h2>
                 {retentionTimeline.length === 0 ? (
-                  <p className="text-sm text-neutral-500">No retention activity recorded yet.</p>
+                  <p className="text-sm text-muted">No retention activity recorded yet.</p>
                 ) : (
                   <ul className="space-y-3">
                     {retentionTimeline.map((entry, i) => (
                       <li key={i} className="flex gap-3 text-sm">
-                        <span className="mt-0.5 rounded-full border border-neutral-700 px-2 py-0.5 text-[10px] uppercase text-neutral-500">
+                        <span className="mt-0.5 rounded-full border border-border-strong px-2 py-0.5 text-[10px] uppercase text-muted">
                           {entry.type}
                         </span>
                         <div>
                           <p>{entry.summary}</p>
-                          <p className="text-xs text-neutral-600">{new Date(entry.timestamp).toLocaleString()}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</p>
                         </div>
                       </li>
                     ))}
@@ -315,18 +315,18 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-2 text-sm font-medium text-neutral-300">AI summary</h2>
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-2 text-sm font-medium text-muted">AI summary</h2>
                 {summary ? (
-                  <p className="text-sm text-neutral-300">{summary}</p>
+                  <p className="text-sm text-muted">{summary}</p>
                 ) : (
-                  <p className="text-sm text-neutral-500">Not generated yet.</p>
+                  <p className="text-sm text-muted">Not generated yet.</p>
                 )}
-                {summaryError && <p className="mt-2 text-xs text-red-400">{summaryError}</p>}
+                {summaryError && <p className="mt-2 text-xs text-red-600">{summaryError}</p>}
                 <button
                   onClick={loadSummary}
                   disabled={summaryLoading}
-                  className="mt-4 w-full rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+                  className="mt-4 w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
                 >
                   {summaryLoading ? "Generating..." : "Generate summary"}
                 </button>

@@ -38,9 +38,9 @@ import {
 const ACTIVITY_CATEGORIES = ["ALL", "CRM", "SALES", "CONTRACT", "OPERATIONS", "QA", "FINANCE", "RETENTION", "REFERRAL", "AUTOMATION", "AI"];
 
 const ACTIVITY_SEVERITY_STYLE: Record<string, string> = {
-  ERROR: "border-red-800 bg-red-950/30 text-red-300",
-  WARNING: "border-amber-800 bg-amber-950/30 text-amber-300",
-  INFO: "border-neutral-800 bg-neutral-950 text-neutral-400",
+  ERROR: "border-red-200 bg-red-50/30 text-red-700",
+  WARNING: "border-amber-200 bg-amber-50/30 text-amber-700",
+  INFO: "border-border bg-surface text-muted",
 };
 
 function timeAgo(iso: string): string {
@@ -55,10 +55,10 @@ function timeAgo(iso: string): string {
 }
 
 const PRIORITY_STYLE: Record<AttentionItem["priority"], string> = {
-  CRITICAL: "border-red-800 bg-red-950/30 text-red-300",
-  HIGH: "border-amber-800 bg-amber-950/30 text-amber-300",
-  MEDIUM: "border-blue-900 bg-blue-950/20 text-blue-300",
-  LOW: "border-neutral-800 bg-neutral-950 text-neutral-400",
+  CRITICAL: "border-red-200 bg-red-50/30 text-red-700",
+  HIGH: "border-amber-200 bg-amber-50/30 text-amber-700",
+  MEDIUM: "border-blue-200 bg-blue-50/20 text-blue-700",
+  LOW: "border-border bg-surface text-muted",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -195,16 +195,16 @@ export default function DashboardPage() {
     loadActivity(activityPage, activityCategory);
   }, [loadActivity, activityPage, activityCategory]);
 
-  if (authError) return <p className="p-8 text-sm text-red-400">{authError}</p>;
+  if (authError) return <p className="p-8 text-sm text-red-600">{authError}</p>;
 
   return (
     <AppShell user={user}>
       <div className="px-8 py-10">
-        <header className="mb-8 flex items-center justify-between border-b border-neutral-800 pb-4">
+        <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
           <div>
             <h1 className="text-xl font-semibold">Owner Cockpit</h1>
             {user && (
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-muted">
                 Signed in as {user.full_name} · {user.email} · role {user.role}
               </p>
             )}
@@ -213,43 +213,43 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-300">Needs your attention</h2>
+            <h2 className="text-sm font-medium text-muted">Needs your attention</h2>
             {attention && attention.items.length > 0 && (
-              <span className="text-xs text-neutral-500">
-                {attention.critical_count > 0 && <span className="text-red-400">{attention.critical_count} critical</span>}
+              <span className="text-xs text-muted">
+                {attention.critical_count > 0 && <span className="text-red-600">{attention.critical_count} critical</span>}
                 {attention.critical_count > 0 && attention.high_count > 0 && " · "}
-                {attention.high_count > 0 && <span className="text-amber-400">{attention.high_count} high</span>}
+                {attention.high_count > 0 && <span className="text-amber-700">{attention.high_count} high</span>}
               </span>
             )}
           </div>
           {!attention ? (
-            <p className="text-sm text-neutral-500">Loading...</p>
+            <p className="text-sm text-muted">Loading...</p>
           ) : attention.items.length === 0 ? (
-            <p className="rounded-lg border border-emerald-900 bg-emerald-950/10 p-4 text-sm text-emerald-300">
+            <p className="rounded-lg border border-emerald-200 bg-emerald-50/10 p-4 text-sm text-emerald-700">
               Nothing needs your attention right now.
             </p>
           ) : (
-            <ul className="divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-950">
+            <ul className="divide-y divide-neutral-800 rounded-lg border border-border bg-surface">
               {attention.items.slice(0, 8).map((item) => (
                 <li key={`${item.category}-${item.entity_id}`}>
                   <Link
                     href={item.link}
-                    className="flex items-start justify-between gap-4 p-4 transition hover:bg-neutral-900"
+                    className="flex items-start justify-between gap-4 p-4 transition hover:bg-surface-muted"
                   >
                     <div className="min-w-0">
                       <div className="mb-1 flex items-center gap-2">
                         <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${PRIORITY_STYLE[item.priority]}`}>
                           {item.priority}
                         </span>
-                        <span className="text-[10px] uppercase tracking-wide text-neutral-500">
+                        <span className="text-[10px] uppercase tracking-wide text-muted">
                           {CATEGORY_LABELS[item.category] ?? item.category}
                         </span>
                       </div>
-                      <p className="truncate text-sm text-neutral-200">{item.title}</p>
-                      <p className="mt-0.5 truncate text-xs text-neutral-500">{item.reason}</p>
+                      <p className="truncate text-sm text-foreground">{item.title}</p>
+                      <p className="mt-0.5 truncate text-xs text-muted">{item.reason}</p>
                     </div>
                     {item.monetary_value && (
-                      <div className="shrink-0 text-sm font-medium text-neutral-300">${item.monetary_value}</div>
+                      <div className="shrink-0 text-sm font-medium text-muted">${item.monetary_value}</div>
                     )}
                   </Link>
                 </li>
@@ -260,45 +260,45 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-300">Autonomy status — today</h2>
-            <Link href="/settings/automation" className="text-xs text-neutral-500 underline">
+            <h2 className="text-sm font-medium text-muted">Autonomy status — today</h2>
+            <Link href="/settings/automation" className="text-xs text-muted underline">
               Configure automation
             </Link>
           </div>
           {autonomy ? (
             autonomy.total === 0 ? (
-              <p className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-500">
+              <p className="rounded-lg border border-border bg-surface p-4 text-sm text-muted">
                 No actions yet today.
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-lg border border-emerald-900 bg-emerald-950/20 p-4">
-                  <div className="text-2xl font-semibold text-emerald-300">{autonomy.automatic}</div>
-                  <div className="text-xs text-neutral-500">Automatic</div>
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/20 p-4">
+                  <div className="text-2xl font-semibold text-emerald-700">{autonomy.automatic}</div>
+                  <div className="text-xs text-muted">Automatic</div>
                 </div>
-                <div className="rounded-lg border border-amber-900 bg-amber-950/20 p-4">
-                  <div className="text-2xl font-semibold text-amber-300">{autonomy.approval_required}</div>
-                  <div className="text-xs text-neutral-500">Awaiting approval</div>
+                <div className="rounded-lg border border-amber-200 bg-amber-50/20 p-4">
+                  <div className="text-2xl font-semibold text-amber-700">{autonomy.approval_required}</div>
+                  <div className="text-xs text-muted">Awaiting approval</div>
                 </div>
-                <div className="rounded-lg border border-red-900 bg-red-950/20 p-4">
-                  <div className="text-2xl font-semibold text-red-300">{autonomy.blocked}</div>
-                  <div className="text-xs text-neutral-500">Blocked</div>
+                <div className="rounded-lg border border-red-200 bg-red-50/20 p-4">
+                  <div className="text-2xl font-semibold text-red-700">{autonomy.blocked}</div>
+                  <div className="text-xs text-muted">Blocked</div>
                 </div>
-                <div className="rounded-lg border border-neutral-700 bg-neutral-900/40 p-4">
-                  <div className="text-2xl font-semibold text-neutral-300">{autonomy.failed}</div>
-                  <div className="text-xs text-neutral-500">Failed</div>
+                <div className="rounded-lg border border-border-strong bg-surface-muted/40 p-4">
+                  <div className="text-2xl font-semibold text-muted">{autonomy.failed}</div>
+                  <div className="text-xs text-muted">Failed</div>
                 </div>
               </div>
             )
           ) : (
-            <p className="text-sm text-neutral-500">Loading...</p>
+            <p className="text-sm text-muted">Loading...</p>
           )}
         </section>
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-300">AI Control Center</h2>
-            <Link href="/ai-activity" className="text-xs text-neutral-500 underline">
+            <h2 className="text-sm font-medium text-muted">AI Control Center</h2>
+            <Link href="/ai-activity" className="text-xs text-muted underline">
               View AI activity
             </Link>
           </div>
@@ -306,37 +306,37 @@ export default function DashboardPage() {
             <Link
               href="/approvals"
               className={`rounded-lg border p-4 transition hover:border-violet-600 ${
-                (aiApprovalsPending ?? 0) > 0 ? "border-violet-900 bg-violet-950/20" : "border-neutral-800 bg-neutral-950"
+                (aiApprovalsPending ?? 0) > 0 ? "border-violet-900 bg-violet-950/20" : "border-border bg-surface"
               }`}
             >
               <div className="text-2xl font-semibold text-violet-300">{aiApprovalsPending ?? 0}</div>
-              <div className="text-xs text-neutral-500">Awaiting approval</div>
+              <div className="text-xs text-muted">Awaiting approval</div>
             </Link>
             <Link
               href="/settings/memory"
               className={`rounded-lg border p-4 transition hover:border-violet-600 ${
-                (aiFeedbackPending ?? 0) > 0 ? "border-violet-900 bg-violet-950/20" : "border-neutral-800 bg-neutral-950"
+                (aiFeedbackPending ?? 0) > 0 ? "border-violet-900 bg-violet-950/20" : "border-border bg-surface"
               }`}
             >
               <div className="text-2xl font-semibold text-violet-300">{aiFeedbackPending ?? 0}</div>
-              <div className="text-xs text-neutral-500">Feedback to review</div>
+              <div className="text-xs text-muted">Feedback to review</div>
             </Link>
             {aiHealth && (
               <>
-                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
-                  <div className={`text-sm font-semibold ${aiHealth.provider_configured ? "text-emerald-300" : "text-neutral-400"}`}>
+                <div className="rounded-lg border border-border bg-surface p-4">
+                  <div className={`text-sm font-semibold ${aiHealth.provider_configured ? "text-emerald-700" : "text-muted"}`}>
                     {aiHealth.provider_configured ? "Connected" : "Not connected"}
                   </div>
-                  <div className="mt-1 text-xs text-neutral-500">AI provider ({aiHealth.provider_name})</div>
+                  <div className="mt-1 text-xs text-muted">AI provider ({aiHealth.provider_name})</div>
                 </div>
                 <Link
                   href="/ai-activity"
-                  className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+                  className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
                 >
-                  <div className="text-2xl font-semibold text-neutral-300">
+                  <div className="text-2xl font-semibold text-muted">
                     {aiHealth.invocations_24h_succeeded}/{aiHealth.invocations_24h}
                   </div>
-                  <div className="text-xs text-neutral-500">Calls succeeded (24h)</div>
+                  <div className="text-xs text-muted">Calls succeeded (24h)</div>
                 </Link>
               </>
             )}
@@ -345,77 +345,77 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-300">Automations</h2>
-            <Link href="/automations" className="text-xs text-neutral-500 underline">
+            <h2 className="text-sm font-medium text-muted">Automations</h2>
+            <Link href="/automations" className="text-xs text-muted underline">
               Manage automations
             </Link>
           </div>
           {automations ? (
             automations.automations_total === 0 ? (
-              <p className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-500">
+              <p className="rounded-lg border border-border bg-surface p-4 text-sm text-muted">
                 No automations set up yet.
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                 <Link
                   href="/automations"
-                  className="rounded-lg border border-blue-900 bg-blue-950/20 p-4 transition hover:border-blue-600"
+                  className="rounded-lg border border-blue-200 bg-blue-50/20 p-4 transition hover:border-blue-300"
                 >
-                  <div className="text-2xl font-semibold text-blue-300">{automations.executions_running}</div>
-                  <div className="text-xs text-neutral-500">Running now</div>
+                  <div className="text-2xl font-semibold text-blue-700">{automations.executions_running}</div>
+                  <div className="text-xs text-muted">Running now</div>
                 </Link>
                 <Link
                   href="/automations"
-                  className={`rounded-lg border p-4 transition hover:border-red-600 ${
-                    automations.executions_failed > 0 ? "border-red-900 bg-red-950/20" : "border-neutral-800 bg-neutral-950"
+                  className={`rounded-lg border p-4 transition hover:border-red-300 ${
+                    automations.executions_failed > 0 ? "border-red-200 bg-red-50/20" : "border-border bg-surface"
                   }`}
                 >
-                  <div className="text-2xl font-semibold text-red-300">{automations.executions_failed}</div>
-                  <div className="text-xs text-neutral-500">Failed</div>
+                  <div className="text-2xl font-semibold text-red-700">{automations.executions_failed}</div>
+                  <div className="text-xs text-muted">Failed</div>
                 </Link>
-                <div className="rounded-lg border border-emerald-900 bg-emerald-950/20 p-4">
-                  <div className="text-2xl font-semibold text-emerald-300">{automations.executions_completed_today}</div>
-                  <div className="text-xs text-neutral-500">Completed today</div>
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/20 p-4">
+                  <div className="text-2xl font-semibold text-emerald-700">{automations.executions_completed_today}</div>
+                  <div className="text-xs text-muted">Completed today</div>
                 </div>
                 <Link
                   href="/automations"
-                  className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+                  className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
                 >
-                  <div className="text-2xl font-semibold text-neutral-300">{automations.automations_scheduled}</div>
-                  <div className="text-xs text-neutral-500">Scheduled</div>
+                  <div className="text-2xl font-semibold text-muted">{automations.automations_scheduled}</div>
+                  <div className="text-xs text-muted">Scheduled</div>
                 </Link>
-                <div className="rounded-lg border border-neutral-700 bg-neutral-900/40 p-4">
-                  <div className="text-2xl font-semibold text-neutral-300">
+                <div className="rounded-lg border border-border-strong bg-surface-muted/40 p-4">
+                  <div className="text-2xl font-semibold text-muted">
                     {automations.automations_enabled}/{automations.automations_total}
                   </div>
-                  <div className="text-xs text-neutral-500">Enabled</div>
+                  <div className="text-xs text-muted">Enabled</div>
                 </div>
               </div>
             )
           ) : (
-            <p className="text-sm text-neutral-500">Loading...</p>
+            <p className="text-sm text-muted">Loading...</p>
           )}
         </section>
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-300">Morning Brief</h2>
-            <Link href="/morning-brief" className="text-xs text-neutral-500 underline">
+            <h2 className="text-sm font-medium text-muted">Morning Brief</h2>
+            <Link href="/morning-brief" className="text-xs text-muted underline">
               View full brief
             </Link>
           </div>
           {brief && brief.brief_id ? (
-            <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
+            <div className="rounded-lg border border-border bg-surface p-6">
               <div className="mb-2 flex items-center gap-2">
-                <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">
+                <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">
                   {brief.mode === "DETERMINISTIC" ? "DETERMINISTIC SUMMARY — AI NOT CONNECTED" : "AI"}
                 </span>
               </div>
               <p className="mb-4">{brief.headline}</p>
               {brief.insights.filter((i) => i.priority === "HIGH").length > 0 && (
                 <div className="mb-3">
-                  <h3 className="mb-1 text-xs font-medium text-red-300">Needs attention</h3>
-                  <ul className="space-y-1 text-sm text-neutral-400">
+                  <h3 className="mb-1 text-xs font-medium text-red-700">Needs attention</h3>
+                  <ul className="space-y-1 text-sm text-muted">
                     {brief.insights
                       .filter((i) => i.priority === "HIGH")
                       .slice(0, 3)
@@ -427,8 +427,8 @@ export default function DashboardPage() {
               )}
               {brief.recommendations.filter((r) => r.status === "PENDING").length > 0 && (
                 <div>
-                  <h3 className="mb-1 text-xs font-medium text-neutral-300">Recommended actions</h3>
-                  <ul className="space-y-1 text-sm text-neutral-400">
+                  <h3 className="mb-1 text-xs font-medium text-muted">Recommended actions</h3>
+                  <ul className="space-y-1 text-sm text-muted">
                     {brief.recommendations
                       .filter((r) => r.status === "PENDING")
                       .slice(0, 3)
@@ -440,15 +440,15 @@ export default function DashboardPage() {
               )}
               {brief.recommendations.filter((r) => r.status === "APPROVAL_REQUESTED").length > 0 && (
                 <div className="mt-3">
-                  <h3 className="mb-1 text-xs font-medium text-amber-300">Awaiting your approval</h3>
-                  <ul className="space-y-1 text-sm text-neutral-400">
+                  <h3 className="mb-1 text-xs font-medium text-amber-700">Awaiting your approval</h3>
+                  <ul className="space-y-1 text-sm text-muted">
                     {brief.recommendations
                       .filter((r) => r.status === "APPROVAL_REQUESTED")
                       .slice(0, 3)
                       .map((r) => (
                         <li key={r.recommendation_id}>
                           {r.what} —{" "}
-                          <Link href="/approvals" className="underline text-amber-400">
+                          <Link href="/approvals" className="underline text-amber-700">
                             review
                           </Link>
                         </li>
@@ -458,18 +458,18 @@ export default function DashboardPage() {
               )}
             </div>
           ) : (
-            <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6 text-sm text-neutral-500">
+            <div className="rounded-lg border border-border bg-surface p-6 text-sm text-muted">
               No brief generated yet. <Link href="/morning-brief" className="underline">Generate one</Link>.
             </div>
           )}
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-medium text-neutral-300">Today — CRM</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted">Today — CRM</h2>
           {authLoading || loading ? (
-            <p className="text-sm text-neutral-500">Loading metrics...</p>
+            <p className="text-sm text-muted">Loading metrics...</p>
           ) : error ? (
-            <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+            <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
               {error}{" "}
               <button onClick={load} className="ml-2 underline">
                 Retry
@@ -478,11 +478,11 @@ export default function DashboardPage() {
           ) : metrics ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
               {METRIC_LABELS.map(({ key, label }) => (
-                <div key={key} className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+                <div key={key} className="rounded-lg border border-border bg-surface p-4">
                   <p className="text-2xl font-semibold">
                     {key === "conversion_rate_pct" ? `${metrics[key]}%` : metrics[key]}
                   </p>
-                  <p className="mt-1 text-xs text-neutral-500">{label}</p>
+                  <p className="mt-1 text-xs text-muted">{label}</p>
                 </div>
               ))}
             </div>
@@ -491,13 +491,13 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-300">Commercial Pipeline — Quote → Contract → Deposit → Job</h2>
-            <Link href="/quotes" className="text-xs text-neutral-500 underline">
+            <h2 className="text-sm font-medium text-muted">Commercial Pipeline — Quote → Contract → Deposit → Job</h2>
+            <Link href="/quotes" className="text-xs text-muted underline">
               View quotes
             </Link>
           </div>
           {pipeline?.needs_attention && (
-            <div className="mb-4 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-300">
+            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
               PIPELINE NEEDS ATTENTION — {pipeline.contracts_awaiting_signature} contract(s) awaiting signature,{" "}
               {pipeline.deposits_awaiting_payment} deposit(s) outstanding.
             </div>
@@ -506,225 +506,225 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               <Link
                 href="/quotes"
-                className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+                className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
               >
                 <p className="text-2xl font-semibold">{pipeline.quotes_awaiting_response}</p>
-                <p className="mt-1 text-xs text-neutral-500">Quotes awaiting response</p>
+                <p className="mt-1 text-xs text-muted">Quotes awaiting response</p>
               </Link>
               <Link
                 href="/quotes"
-                className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+                className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
               >
                 <p className="text-2xl font-semibold">${pipeline.quotes_accepted_value}</p>
-                <p className="mt-1 text-xs text-neutral-500">{pipeline.quotes_accepted} quote(s) accepted</p>
+                <p className="mt-1 text-xs text-muted">{pipeline.quotes_accepted} quote(s) accepted</p>
               </Link>
               <Link
                 href="/contracts"
-                className={`rounded-lg border p-4 transition hover:border-neutral-600 ${
+                className={`rounded-lg border p-4 transition hover:border-border-strong ${
                   pipeline.contracts_awaiting_signature > 0
-                    ? "border-amber-900 bg-amber-950/20"
-                    : "border-neutral-800 bg-neutral-950"
+                    ? "border-amber-200 bg-amber-50/20"
+                    : "border-border bg-surface"
                 }`}
               >
                 <p className="text-2xl font-semibold">{pipeline.contracts_awaiting_signature}</p>
-                <p className="mt-1 text-xs text-neutral-500">Contracts awaiting signature</p>
+                <p className="mt-1 text-xs text-muted">Contracts awaiting signature</p>
               </Link>
               <Link
                 href="/contracts"
-                className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+                className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
               >
                 <p className="text-2xl font-semibold">{pipeline.contracts_signed}</p>
-                <p className="mt-1 text-xs text-neutral-500">Contracts signed</p>
+                <p className="mt-1 text-xs text-muted">Contracts signed</p>
               </Link>
               <Link
                 href="/quotes"
-                className={`rounded-lg border p-4 transition hover:border-neutral-600 ${
+                className={`rounded-lg border p-4 transition hover:border-border-strong ${
                   pipeline.deposits_awaiting_payment > 0
-                    ? "border-amber-900 bg-amber-950/20"
-                    : "border-neutral-800 bg-neutral-950"
+                    ? "border-amber-200 bg-amber-50/20"
+                    : "border-border bg-surface"
                 }`}
               >
                 <p className="text-2xl font-semibold">${pipeline.deposits_awaiting_value}</p>
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-muted">
                   {pipeline.deposits_awaiting_payment} deposit(s) outstanding
                 </p>
               </Link>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">${pipeline.deposits_collected}</p>
-                <p className="mt-1 text-xs text-neutral-500">Deposits collected</p>
+                <p className="mt-1 text-xs text-muted">Deposits collected</p>
               </div>
               <Link
                 href="/jobs"
-                className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600"
+                className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong"
               >
                 <p className="text-2xl font-semibold">{pipeline.jobs_from_quotes}</p>
-                <p className="mt-1 text-xs text-neutral-500">Jobs created from quotes</p>
+                <p className="mt-1 text-xs text-muted">Jobs created from quotes</p>
               </Link>
             </div>
           ) : (
-            <p className="text-sm text-neutral-500">Loading...</p>
+            <p className="text-sm text-muted">Loading...</p>
           )}
         </section>
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-300">Operations — Jobs in flight</h2>
-            <Link href="/operations" className="text-xs text-neutral-500 underline">
+            <h2 className="text-sm font-medium text-muted">Operations — Jobs in flight</h2>
+            <Link href="/operations" className="text-xs text-muted underline">
               View operations
             </Link>
           </div>
           {operations && (operations.blocked_jobs > 0 || operations.at_risk_jobs > 0 || operations.open_exceptions > 0) && (
-            <div className="mb-4 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-300">
+            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
               OPERATIONS NEEDS ATTENTION — {operations.blocked_jobs} blocked job(s), {operations.at_risk_jobs} at-risk
               job(s), {operations.open_exceptions} open exception(s).
             </div>
           )}
           {operations ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <Link href="/jobs" className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600">
+              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong">
                 <p className="text-2xl font-semibold">{operations.jobs_today}</p>
-                <p className="mt-1 text-xs text-neutral-500">Jobs today</p>
+                <p className="mt-1 text-xs text-muted">Jobs today</p>
               </Link>
-              <Link href="/jobs" className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600">
+              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong">
                 <p className="text-2xl font-semibold">{operations.unassigned_jobs}</p>
-                <p className="mt-1 text-xs text-neutral-500">Unassigned</p>
+                <p className="mt-1 text-xs text-muted">Unassigned</p>
               </Link>
               <Link
                 href="/operations"
-                className={`rounded-lg border p-4 transition hover:border-neutral-600 ${
-                  operations.at_risk_jobs > 0 ? "border-amber-900 bg-amber-950/20" : "border-neutral-800 bg-neutral-950"
+                className={`rounded-lg border p-4 transition hover:border-border-strong ${
+                  operations.at_risk_jobs > 0 ? "border-amber-200 bg-amber-50/20" : "border-border bg-surface"
                 }`}
               >
                 <p className="text-2xl font-semibold">{operations.at_risk_jobs}</p>
-                <p className="mt-1 text-xs text-neutral-500">At risk</p>
+                <p className="mt-1 text-xs text-muted">At risk</p>
               </Link>
               <Link
                 href="/operations"
-                className={`rounded-lg border p-4 transition hover:border-neutral-600 ${
-                  operations.blocked_jobs > 0 ? "border-red-900 bg-red-950/20" : "border-neutral-800 bg-neutral-950"
+                className={`rounded-lg border p-4 transition hover:border-border-strong ${
+                  operations.blocked_jobs > 0 ? "border-red-200 bg-red-50/20" : "border-border bg-surface"
                 }`}
               >
                 <p className="text-2xl font-semibold">{operations.blocked_jobs}</p>
-                <p className="mt-1 text-xs text-neutral-500">Blocked</p>
+                <p className="mt-1 text-xs text-muted">Blocked</p>
               </Link>
-              <Link href="/jobs" className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 transition hover:border-neutral-600">
+              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 transition hover:border-border-strong">
                 <p className="text-2xl font-semibold">{operations.qa_pending_jobs}</p>
-                <p className="mt-1 text-xs text-neutral-500">Awaiting QA</p>
+                <p className="mt-1 text-xs text-muted">Awaiting QA</p>
               </Link>
               <Link
                 href="/exceptions"
-                className={`rounded-lg border p-4 transition hover:border-neutral-600 ${
-                  operations.open_exceptions > 0 ? "border-amber-900 bg-amber-950/20" : "border-neutral-800 bg-neutral-950"
+                className={`rounded-lg border p-4 transition hover:border-border-strong ${
+                  operations.open_exceptions > 0 ? "border-amber-200 bg-amber-50/20" : "border-border bg-surface"
                 }`}
               >
                 <p className="text-2xl font-semibold">{operations.open_exceptions}</p>
-                <p className="mt-1 text-xs text-neutral-500">Open exceptions</p>
+                <p className="mt-1 text-xs text-muted">Open exceptions</p>
               </Link>
             </div>
           ) : (
-            <p className="text-sm text-neutral-500">Loading...</p>
+            <p className="text-sm text-muted">Loading...</p>
           )}
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-medium text-neutral-300">Business Health — Finance</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted">Business Health — Finance</h2>
           {finance?.needs_attention && (
-            <div className="mb-4 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-300">
+            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
               FINANCE NEEDS ATTENTION — {finance.overdue_invoice_count} overdue invoice(s),{" "}
               {finance.open_finance_exception_count} open finance exception(s).
             </div>
           )}
           {finance && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">${finance.total_ar}</p>
-                <p className="mt-1 text-xs text-neutral-500">Total AR outstanding</p>
+                <p className="mt-1 text-xs text-muted">Total AR outstanding</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">{finance.overdue_invoice_count}</p>
-                <p className="mt-1 text-xs text-neutral-500">Overdue invoices</p>
+                <p className="mt-1 text-xs text-muted">Overdue invoices</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">{finance.pending_approval_invoice_count}</p>
-                <p className="mt-1 text-xs text-neutral-500">Pending approval</p>
+                <p className="mt-1 text-xs text-muted">Pending approval</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">${finance.total_paid}</p>
-                <p className="mt-1 text-xs text-neutral-500">Total paid</p>
+                <p className="mt-1 text-xs text-muted">Total paid</p>
               </div>
             </div>
           )}
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-medium text-neutral-300">Marketing &amp; Demand Generation</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted">Marketing &amp; Demand Generation</h2>
           {marketing?.needs_attention && (
-            <div className="mb-4 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-300">
+            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
               MARKETING NEEDS ATTENTION — {marketing.open_marketing_exception_count} open marketing exception(s).
             </div>
           )}
           {marketing && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">${marketing.marketing_spend}</p>
-                <p className="mt-1 text-xs text-neutral-500">Marketing spend</p>
+                <p className="mt-1 text-xs text-muted">Marketing spend</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">{marketing.leads}</p>
-                <p className="mt-1 text-xs text-neutral-500">Leads</p>
+                <p className="mt-1 text-xs text-muted">Leads</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">{marketing.jobs_won}</p>
-                <p className="mt-1 text-xs text-neutral-500">Jobs won</p>
+                <p className="mt-1 text-xs text-muted">Jobs won</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">${marketing.revenue}</p>
-                <p className="mt-1 text-xs text-neutral-500">Revenue attributed</p>
+                <p className="mt-1 text-xs text-muted">Revenue attributed</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">{marketing.cac ? `$${marketing.cac}` : "—"}</p>
-                <p className="mt-1 text-xs text-neutral-500">CAC</p>
+                <p className="mt-1 text-xs text-muted">CAC</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">{marketing.roas ? `${marketing.roas}x` : "—"}</p>
-                <p className="mt-1 text-xs text-neutral-500">ROAS</p>
+                <p className="mt-1 text-xs text-muted">ROAS</p>
               </div>
             </div>
           )}
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-medium text-neutral-300">Retention &amp; Referral</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted">Retention &amp; Referral</h2>
           {retention?.needs_attention && (
-            <div className="mb-4 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-300">
+            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
               RETENTION NEEDS ATTENTION — {retention.open_retention_exception_count} open retention exception(s).
             </div>
           )}
           {retention && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">{retention.at_risk_customers}</p>
-                <p className="mt-1 text-xs text-neutral-500">At-risk customers</p>
+                <p className="mt-1 text-xs text-muted">At-risk customers</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">{retention.retention_opportunities_open}</p>
-                <p className="mt-1 text-xs text-neutral-500">Retention opportunities</p>
+                <p className="mt-1 text-xs text-muted">Retention opportunities</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">${retention.repeat_customer_revenue}</p>
-                <p className="mt-1 text-xs text-neutral-500">Repeat revenue</p>
+                <p className="mt-1 text-xs text-muted">Repeat revenue</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">{retention.referral_leads}</p>
-                <p className="mt-1 text-xs text-neutral-500">Referral leads</p>
+                <p className="mt-1 text-xs text-muted">Referral leads</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">${retention.referral_revenue}</p>
-                <p className="mt-1 text-xs text-neutral-500">Referral revenue</p>
+                <p className="mt-1 text-xs text-muted">Referral revenue</p>
               </div>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+              <div className="rounded-lg border border-border bg-surface p-4">
                 <p className="text-2xl font-semibold">{retention.negative_feedback_count}</p>
-                <p className="mt-1 text-xs text-neutral-500">Review issues</p>
+                <p className="mt-1 text-xs text-muted">Review issues</p>
               </div>
             </div>
           )}
@@ -732,7 +732,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-neutral-300">Recent Activity</h2>
+            <h2 className="text-sm font-medium text-muted">Recent Activity</h2>
             <div className="flex items-center gap-2">
               <select
                 value={activityCategory}
@@ -740,7 +740,7 @@ export default function DashboardPage() {
                   setActivityCategory(e.target.value);
                   setActivityPage(1);
                 }}
-                className="rounded-md border border-neutral-800 bg-neutral-950 px-2 py-1 text-xs text-neutral-300"
+                className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-muted"
               >
                 {ACTIVITY_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -751,17 +751,17 @@ export default function DashboardPage() {
             </div>
           </div>
           {!activity && activityLoading ? (
-            <p className="text-sm text-neutral-500">Loading...</p>
+            <p className="text-sm text-muted">Loading...</p>
           ) : !activity || activity.items.length === 0 ? (
-            <p className="rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-500">
+            <p className="rounded-lg border border-border bg-surface p-4 text-sm text-muted">
               No activity yet.
             </p>
           ) : (
             <>
-              <ul className="divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-950">
+              <ul className="divide-y divide-neutral-800 rounded-lg border border-border bg-surface">
                 {activity.items.map((item) => {
                   const row = (
-                    <div className="flex items-start justify-between gap-4 p-4 transition hover:bg-neutral-900">
+                    <div className="flex items-start justify-between gap-4 p-4 transition hover:bg-surface-muted">
                       <div className="min-w-0">
                         <div className="mb-1 flex items-center gap-2">
                           <span
@@ -771,16 +771,16 @@ export default function DashboardPage() {
                           >
                             {item.category}
                           </span>
-                          <span className="text-[10px] text-neutral-600">{timeAgo(item.timestamp)}</span>
+                          <span className="text-[10px] text-muted-foreground">{timeAgo(item.timestamp)}</span>
                         </div>
-                        <p className="truncate text-sm text-neutral-200">{item.title}</p>
+                        <p className="truncate text-sm text-foreground">{item.title}</p>
                         {item.description && (
-                          <p className="mt-0.5 truncate text-xs text-neutral-500">{item.description}</p>
+                          <p className="mt-0.5 truncate text-xs text-muted">{item.description}</p>
                         )}
                       </div>
-                      <div className="shrink-0 text-right text-xs text-neutral-500">
+                      <div className="shrink-0 text-right text-xs text-muted">
                         {item.actor_name && <div>{item.actor_name}</div>}
-                        {item.link && <div className="mt-1 text-neutral-400 underline">View</div>}
+                        {item.link && <div className="mt-1 text-muted underline">View</div>}
                       </div>
                     </div>
                   );
@@ -795,7 +795,7 @@ export default function DashboardPage() {
                   );
                 })}
               </ul>
-              <div className="mt-3 flex items-center justify-between text-xs text-neutral-500">
+              <div className="mt-3 flex items-center justify-between text-xs text-muted">
                 <span>
                   Page {activity.page} · {activity.total} total
                 </span>
@@ -803,14 +803,14 @@ export default function DashboardPage() {
                   <button
                     onClick={() => setActivityPage((p) => Math.max(1, p - 1))}
                     disabled={activityPage <= 1 || activityLoading}
-                    className="rounded-md border border-neutral-800 px-2 py-1 disabled:opacity-40"
+                    className="rounded-md border border-border px-2 py-1 disabled:opacity-40"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => setActivityPage((p) => p + 1)}
                     disabled={activityPage * activity.page_size >= activity.total || activityLoading}
-                    className="rounded-md border border-neutral-800 px-2 py-1 disabled:opacity-40"
+                    className="rounded-md border border-border px-2 py-1 disabled:opacity-40"
                   >
                     Next
                   </button>
@@ -821,9 +821,9 @@ export default function DashboardPage() {
         </section>
 
         {PENDING_MODULES.length > 0 && (
-          <section className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-            <h2 className="mb-2 text-sm font-medium text-neutral-300">Foundation status</h2>
-            <p className="text-sm text-neutral-500">
+          <section className="rounded-lg border border-border bg-surface p-6">
+            <h2 className="mb-2 text-sm font-medium text-muted">Foundation status</h2>
+            <p className="text-sm text-muted">
               Authentication, multi-tenancy, RBAC, the event bus, and CRM (leads/customers/
               appointments) are live. The modules below are not yet built — this cockpit will never
               show placeholder numbers for them.
@@ -831,8 +831,8 @@ export default function DashboardPage() {
             <ul className="mt-4 space-y-2">
               {PENDING_MODULES.map((m) => (
                 <li key={m} className="flex items-center justify-between text-sm">
-                  <span className="text-neutral-300">{m}</span>
-                  <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs text-neutral-500">
+                  <span className="text-muted">{m}</span>
+                  <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs text-muted">
                     not connected
                   </span>
                 </li>

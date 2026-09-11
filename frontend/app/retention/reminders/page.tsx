@@ -63,26 +63,26 @@ export default function RemindersPage() {
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Service Reminders</h1>
-          <button disabled={busy} onClick={handleMarkDue} className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50">
+          <button disabled={busy} onClick={handleMarkDue} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
             Mark due reminders
           </button>
         </div>
 
-        {notice && <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">{notice}</div>}
+        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : reminders.length === 0 ? (
-          <p className="text-sm text-neutral-500">No service reminders yet.</p>
+          <p className="text-sm text-muted">No service reminders yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-950 text-neutral-500">
+              <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Service</th>
                   <th className="px-4 py-2">Due date</th>
@@ -93,23 +93,23 @@ export default function RemindersPage() {
               </thead>
               <tbody>
                 {reminders.map((r) => (
-                  <tr key={r.id} className="border-t border-neutral-900">
+                  <tr key={r.id} className="border-t border-border">
                     <td className="px-4 py-2">{r.service_type || "—"}</td>
-                    <td className="px-4 py-2 text-neutral-400">{r.reminder_date}</td>
-                    <td className="px-4 py-2 text-neutral-500">{r.reason}</td>
+                    <td className="px-4 py-2 text-muted">{r.reminder_date}</td>
+                    <td className="px-4 py-2 text-muted">{r.reason}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{r.status}</span>
+                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{r.status}</span>
                     </td>
                     <td className="px-4 py-2 space-x-2">
                       {(r.status === "SCHEDULED" || r.status === "DUE") && (
                         <>
-                          <button disabled={busy} onClick={() => handleStatus(r.id, "SENT")} className="text-xs underline text-neutral-400 hover:text-white">Send</button>
-                          <button disabled={busy} onClick={() => handleStatus(r.id, "BOOKED")} className="text-xs underline text-emerald-400 hover:text-white">Book</button>
-                          <button disabled={busy} onClick={() => handleStatus(r.id, "CANCELLED")} className="text-xs underline text-red-400 hover:text-white">Cancel</button>
+                          <button disabled={busy} onClick={() => handleStatus(r.id, "SENT")} className="text-xs underline text-muted hover:text-foreground">Send</button>
+                          <button disabled={busy} onClick={() => handleStatus(r.id, "BOOKED")} className="text-xs underline text-emerald-600 hover:text-foreground">Book</button>
+                          <button disabled={busy} onClick={() => handleStatus(r.id, "CANCELLED")} className="text-xs underline text-red-600 hover:text-foreground">Cancel</button>
                         </>
                       )}
                       {r.status === "SENT" && (
-                        <button disabled={busy} onClick={() => handleStatus(r.id, "RESPONDED")} className="text-xs underline text-neutral-400 hover:text-white">Mark responded</button>
+                        <button disabled={busy} onClick={() => handleStatus(r.id, "RESPONDED")} className="text-xs underline text-muted hover:text-foreground">Mark responded</button>
                       )}
                     </td>
                   </tr>

@@ -75,7 +75,7 @@ export default function CampaignDetailPage() {
   if (authLoading || loading) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8 text-sm text-neutral-500">Loading...</div>
+        <div className="px-8 py-8 text-sm text-muted">Loading...</div>
       </AppShell>
     );
   }
@@ -84,7 +84,7 @@ export default function CampaignDetailPage() {
     return (
       <AppShell user={user}>
         <div className="px-8 py-8">
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">{error}</div>
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">{error}</div>
         </div>
       </AppShell>
     );
@@ -98,80 +98,80 @@ export default function CampaignDetailPage() {
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">{campaign.name}</h1>
-          <span className="rounded-full border border-neutral-700 px-3 py-1 text-xs">{campaign.status}</span>
+          <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{campaign.status}</span>
         </div>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">{notice}</div>
+          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
         )}
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">Spend</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">Spend</div>
             <div className="mt-1 text-lg font-semibold">${perf.spend}</div>
           </div>
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">Leads / Qualified</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">Leads / Qualified</div>
             <div className="mt-1 text-lg font-semibold">{perf.leads} / {perf.qualified_leads}</div>
           </div>
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">Appointments / Jobs</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">Appointments / Jobs</div>
             <div className="mt-1 text-lg font-semibold">{perf.booked} / {perf.jobs_created}</div>
           </div>
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">Jobs closed</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">Jobs closed</div>
             <div className="mt-1 text-lg font-semibold">{perf.jobs_closed}</div>
           </div>
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">Revenue</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">Revenue</div>
             <div className="mt-1 text-lg font-semibold">${perf.revenue}</div>
           </div>
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">Collected revenue</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">Collected revenue</div>
             <div className="mt-1 text-lg font-semibold">${perf.collected_revenue}</div>
           </div>
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">CAC</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">CAC</div>
             <div className="mt-1 text-lg font-semibold">{perf.cac ? `$${perf.cac}` : "—"}</div>
-            {!perf.cac && <div className="mt-1 text-xs text-amber-400">{perf.cac_note}</div>}
+            {!perf.cac && <div className="mt-1 text-xs text-amber-700">{perf.cac_note}</div>}
           </div>
-          <div className="rounded-lg border border-neutral-800 p-4">
-            <div className="text-xs text-neutral-500">ROAS</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="text-xs text-muted">ROAS</div>
             <div className="mt-1 text-lg font-semibold">{perf.roas ? `${perf.roas}x` : "—"}</div>
-            {!perf.roas && <div className="mt-1 text-xs text-amber-400">{perf.roas_note}</div>}
+            {!perf.roas && <div className="mt-1 text-xs text-amber-700">{perf.roas_note}</div>}
           </div>
         </div>
 
         <div className="mb-6 flex flex-wrap items-end gap-4">
           <form onSubmit={handleRecordSpend} className="flex items-end gap-2">
             <div>
-              <label className="block text-xs text-neutral-500">Record spend ({campaign.channel})</label>
+              <label className="block text-xs text-muted">Record spend ({campaign.channel})</label>
               <input
                 value={spendAmount}
                 onChange={(e) => setSpendAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-28 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+                className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <button
               type="submit"
               disabled={busy || !spendAmount}
-              className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
             >
               Record spend
             </button>
           </form>
 
           {campaign.status === "DRAFT" && (
-            <button disabled={busy} onClick={() => handleToggleStatus("ACTIVE")} className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900">
+            <button disabled={busy} onClick={() => handleToggleStatus("ACTIVE")} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
               Activate
             </button>
           )}
           {campaign.status === "ACTIVE" && (
-            <button disabled={busy} onClick={() => handleToggleStatus("PAUSED")} className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900">
+            <button disabled={busy} onClick={() => handleToggleStatus("PAUSED")} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
               Pause
             </button>
           )}

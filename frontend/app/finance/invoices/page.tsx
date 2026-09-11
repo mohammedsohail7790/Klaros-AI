@@ -44,7 +44,7 @@ export default function InvoicesPage() {
               key={s}
               onClick={() => setStatus(s)}
               className={`rounded-full border px-3 py-1 text-xs ${
-                status === s ? "border-white bg-white text-black" : "border-neutral-700 text-neutral-400"
+                status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"
               }`}
             >
               {s}
@@ -53,20 +53,20 @@ export default function InvoicesPage() {
         </div>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
           </div>
         ) : invoices.length === 0 ? (
-          <p className="text-sm text-neutral-500">No invoices.</p>
+          <p className="text-sm text-muted">No invoices.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-950 text-neutral-500">
+              <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Number</th>
                   <th className="px-4 py-2">Status</th>
@@ -77,18 +77,18 @@ export default function InvoicesPage() {
               </thead>
               <tbody>
                 {invoices.map((inv) => (
-                  <tr key={inv.id} className="border-t border-neutral-900">
+                  <tr key={inv.id} className="border-t border-border">
                     <td className="px-4 py-2">
-                      <Link href={`/finance/invoices/${inv.id}`} className="underline hover:text-white">
+                      <Link href={`/finance/invoices/${inv.id}`} className="underline hover:text-foreground">
                         {inv.invoice_number}
                       </Link>
                     </td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{inv.status}</span>
+                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{inv.status}</span>
                     </td>
-                    <td className="px-4 py-2 text-neutral-500">{inv.due_date}</td>
+                    <td className="px-4 py-2 text-muted">{inv.due_date}</td>
                     <td className="px-4 py-2">${inv.total}</td>
-                    <td className="px-4 py-2 text-neutral-400">${inv.amount_due}</td>
+                    <td className="px-4 py-2 text-muted">${inv.amount_due}</td>
                   </tr>
                 ))}
               </tbody>

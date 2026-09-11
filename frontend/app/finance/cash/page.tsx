@@ -38,34 +38,34 @@ export default function CashForecastPage() {
           <button
             disabled={authLoading || loading}
             onClick={handleGenerate}
-            className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
           >
             Generate forecast
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">{error}</div>
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">{error}</div>
         )}
 
         {!forecast ? (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-muted">
             No forecast generated yet. Click &quot;Generate forecast&quot; to build one from real open invoices and
             vendor bills.
           </p>
         ) : (
           <>
-            <div className="mb-6 rounded-lg border border-neutral-800 p-4">
-              <div className="text-xs text-neutral-500">Starting cash</div>
+            <div className="mb-6 rounded-lg border border-border p-4">
+              <div className="text-xs text-muted">Starting cash</div>
               <div className="mt-1 text-lg font-semibold">
                 {forecast.starting_cash ? `$${forecast.starting_cash}` : "Not connected"}
               </div>
-              <div className="mt-1 text-xs text-neutral-600">Source: {forecast.starting_cash_source}</div>
+              <div className="mt-1 text-xs text-muted-foreground">Source: {forecast.starting_cash_source}</div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-neutral-800">
+            <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-left text-sm">
-                <thead className="bg-neutral-950 text-neutral-500">
+                <thead className="bg-surface text-muted">
                   <tr>
                     <th className="px-4 py-2">Week of</th>
                     <th className="px-4 py-2">Inflow</th>
@@ -77,15 +77,15 @@ export default function CashForecastPage() {
                 </thead>
                 <tbody>
                   {forecast.weeks.map((w) => (
-                    <tr key={w.week_start} className="border-t border-neutral-900">
+                    <tr key={w.week_start} className="border-t border-border">
                       <td className="px-4 py-2">{w.week_start}</td>
-                      <td className="px-4 py-2 text-emerald-400">${w.inflow}</td>
-                      <td className="px-4 py-2 text-red-400">${w.outflow}</td>
+                      <td className="px-4 py-2 text-emerald-600">${w.inflow}</td>
+                      <td className="px-4 py-2 text-red-600">${w.outflow}</td>
                       <td className="px-4 py-2">${w.net}</td>
                       <td className="px-4 py-2 font-semibold">
                         {w.projected_balance === "NOT_CONNECTED" ? "Not connected" : `$${w.projected_balance}`}
                       </td>
-                      <td className="px-4 py-2 text-xs text-neutral-500">
+                      <td className="px-4 py-2 text-xs text-muted">
                         {w.items.length === 0
                           ? "—"
                           : w.items.map((i) => `${i.source} (${confidenceLabel(i.confidence)})`).join(", ")}

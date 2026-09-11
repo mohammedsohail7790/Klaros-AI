@@ -12,7 +12,7 @@ import { ApiError, PublicContract, declinePublicContract, getPublicContract, sig
 // e-signature provider integrated, and this page never implies one.
 export default function PublicContractViewPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-neutral-500">Loading...</div>}>
+    <Suspense fallback={<div className="p-8 text-sm text-muted">Loading...</div>}>
       <PublicContractViewInner />
     </Suspense>
   );
@@ -81,15 +81,15 @@ function PublicContractViewInner() {
   }
 
   if (loading) {
-    return <div className="mx-auto max-w-2xl px-6 py-16 text-sm text-neutral-500">Loading...</div>;
+    return <div className="mx-auto max-w-2xl px-6 py-16 text-sm text-muted">Loading...</div>;
   }
 
   if (error && !contract) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-16">
-        <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+        <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
           {error}
-          <div className="mt-2 text-xs text-red-400">
+          <div className="mt-2 text-xs text-red-600">
             If you followed a link from an email or text message, it may have expired — please contact us for a
             fresh link.
           </div>
@@ -105,39 +105,39 @@ function PublicContractViewInner() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-neutral-100">Contract {contract.contract_number}</h1>
-        <span className="rounded-full border border-neutral-700 px-3 py-1 text-xs text-neutral-300">
+        <h1 className="text-xl font-semibold text-foreground">Contract {contract.contract_number}</h1>
+        <span className="rounded-full border border-border-strong px-3 py-1 text-xs text-muted">
           {contract.status.replace(/_/g, " ")}
         </span>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
       )}
 
       {contract.status === "SIGNED" && (
-        <div className="mb-6 rounded-md border border-emerald-900 bg-emerald-950/30 p-4 text-sm text-emerald-300">
+        <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50/30 p-4 text-sm text-emerald-700">
           Signed by {contract.signer_name} — thank you. This is an internal record of your agreement, not a
           third-party verified e-signature.
         </div>
       )}
       {contract.status === "DECLINED" && (
-        <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-400">
+        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
           You declined this contract.
         </div>
       )}
       {contract.status === "EXPIRED" && (
-        <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-400">
+        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
           This contract has expired. Please contact us for an updated agreement.
         </div>
       )}
       {contract.status === "CANCELLED" && (
-        <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-400">
+        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
           This contract has been cancelled.
         </div>
       )}
 
-      <div className="mb-6 whitespace-pre-wrap rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-300">
+      <div className="mb-6 whitespace-pre-wrap rounded-lg border border-border bg-surface p-4 text-sm text-muted">
         {contract.content}
       </div>
 
@@ -146,7 +146,7 @@ function PublicContractViewInner() {
           <button
             disabled={busy}
             onClick={() => setConfirmingSign(true)}
-            className="rounded-md border border-emerald-800 bg-emerald-950/30 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/60 disabled:opacity-50"
+            className="rounded-md border border-emerald-200 bg-emerald-50/30 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
           >
             Sign this agreement
           </button>
@@ -157,12 +157,12 @@ function PublicContractViewInner() {
               value={declineReason}
               onChange={(e) => setDeclineReason(e.target.value)}
               disabled={busy}
-              className="flex-1 rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600"
+              className="flex-1 rounded border border-border-strong bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
             />
             <button
               disabled={busy}
               onClick={handleDecline}
-              className="rounded-md border border-red-900 px-4 py-2 text-sm text-red-300 hover:bg-red-950/30 disabled:opacity-50"
+              className="rounded-md border border-red-200 px-4 py-2 text-sm text-red-700 hover:bg-red-50/30 disabled:opacity-50"
             >
               Decline
             </button>
@@ -171,8 +171,8 @@ function PublicContractViewInner() {
       )}
 
       {decidable && confirmingSign && (
-        <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
-          <p className="mb-3 text-sm text-neutral-300">
+        <div className="rounded-md border border-border bg-surface p-4">
+          <p className="mb-3 text-sm text-muted">
             Typing your name below records your agreement to the terms above. This is an internal record kept by
             the business, not a third-party verified electronic signature.
           </p>
@@ -182,7 +182,7 @@ function PublicContractViewInner() {
             value={signerName}
             onChange={(e) => setSignerName(e.target.value)}
             disabled={busy}
-            className="mb-2 w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600"
+            className="mb-2 w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
           />
           <input
             type="email"
@@ -190,20 +190,20 @@ function PublicContractViewInner() {
             value={signerEmail}
             onChange={(e) => setSignerEmail(e.target.value)}
             disabled={busy}
-            className="mb-3 w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600"
+            className="mb-3 w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
           />
           <div className="flex gap-2">
             <button
               disabled={busy || !signerName.trim()}
               onClick={handleSign}
-              className="rounded-md border border-emerald-800 bg-emerald-950/30 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/60 disabled:opacity-50"
+              className="rounded-md border border-emerald-200 bg-emerald-50/30 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
             >
               {busy ? "Signing..." : "Confirm signature"}
             </button>
             <button
               disabled={busy}
               onClick={() => setConfirmingSign(false)}
-              className="rounded-md border border-neutral-700 px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-900 disabled:opacity-50"
+              className="rounded-md border border-border-strong px-4 py-2 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
             >
               Cancel
             </button>

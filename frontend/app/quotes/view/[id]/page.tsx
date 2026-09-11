@@ -22,7 +22,7 @@ import {
 // counts as confirmation.
 export default function PublicQuoteViewPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-neutral-500">Loading...</div>}>
+    <Suspense fallback={<div className="p-8 text-sm text-muted">Loading...</div>}>
       <PublicQuoteViewInner />
     </Suspense>
   );
@@ -140,15 +140,15 @@ function PublicQuoteViewInner() {
   }
 
   if (loading) {
-    return <div className="mx-auto max-w-2xl px-6 py-16 text-sm text-neutral-500">Loading...</div>;
+    return <div className="mx-auto max-w-2xl px-6 py-16 text-sm text-muted">Loading...</div>;
   }
 
   if (error && !quote) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-16">
-        <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+        <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
           {error}
-          <div className="mt-2 text-xs text-red-400">
+          <div className="mt-2 text-xs text-red-600">
             If you followed a link from an email or text message, it may have expired — please contact us for a
             fresh link.
           </div>
@@ -170,31 +170,31 @@ function PublicQuoteViewInner() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-neutral-100">Quote {quote.quote_number}</h1>
-        <span className="rounded-full border border-neutral-700 px-3 py-1 text-xs text-neutral-300">
+        <h1 className="text-xl font-semibold text-foreground">Quote {quote.quote_number}</h1>
+        <span className="rounded-full border border-border-strong px-3 py-1 text-xs text-muted">
           {quote.status.replace(/_/g, " ")}
         </span>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
       )}
 
       {depositReturn === "cancelled" && depositPending && (
-        <div className="mb-4 rounded-md border border-amber-900 bg-amber-950/30 p-3 text-sm text-amber-300">
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-3 text-sm text-amber-700">
           Checkout was cancelled — no payment was made. You can try again below whenever you&apos;re ready.
         </div>
       )}
 
       {confirming && depositPending && (
-        <div className="mb-6 rounded-md border border-blue-900 bg-blue-950/30 p-4 text-sm text-blue-300">
+        <div className="mb-6 rounded-md border border-blue-200 bg-blue-50/30 p-4 text-sm text-blue-700">
           Confirming your payment with Stripe — this usually takes just a few seconds. This page will update
           automatically once it&apos;s confirmed.
         </div>
       )}
 
       {!confirming && depositReturn === "success" && depositPending && (
-        <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-400">
+        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
           We haven&apos;t received confirmation of your payment yet. If you completed checkout, this can take a
           moment — refresh this page shortly, or contact us if this persists.
           <button
@@ -202,7 +202,7 @@ function PublicQuoteViewInner() {
               pollAttemptsRef.current = 0;
               setConfirming(true);
             }}
-            className="ml-2 underline hover:text-neutral-200"
+            className="ml-2 underline hover:text-foreground"
           >
             Check again
           </button>
@@ -210,7 +210,7 @@ function PublicQuoteViewInner() {
       )}
 
       {(quote.status === "ACCEPTED" || quote.status === "CONVERTED") && !depositPending && (
-        <div className="mb-6 rounded-md border border-emerald-900 bg-emerald-950/30 p-4 text-sm text-emerald-300">
+        <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50/30 p-4 text-sm text-emerald-700">
           You accepted this quote.{jobCreated ? " Work has been scheduled." : ""}
           {quote.status === "CONVERTED" && quote.deposit_required && (
             <div className="mt-1">Your deposit has been received — thank you.</div>
@@ -219,26 +219,26 @@ function PublicQuoteViewInner() {
       )}
 
       {quote.status === "DEPOSIT_PAID" && (
-        <div className="mb-6 rounded-md border border-emerald-900 bg-emerald-950/30 p-4 text-sm text-emerald-300">
+        <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50/30 p-4 text-sm text-emerald-700">
           Your deposit has been received and this quote is accepted. We&apos;re finalizing your job now.
         </div>
       )}
 
       {quote.status === "DECLINED" && (
-        <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-400">
+        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
           You declined this quote.
         </div>
       )}
 
       {quote.status === "EXPIRED" && (
-        <div className="mb-6 rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-400">
+        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
           This quote has expired. Please contact us for an updated quote.
         </div>
       )}
 
-      <div className="mb-6 overflow-x-auto rounded-lg border border-neutral-800">
+      <div className="mb-6 overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-left text-sm">
-          <thead className="bg-neutral-950 text-neutral-500">
+          <thead className="bg-surface text-muted">
             <tr>
               <th className="px-4 py-2">Description</th>
               <th className="px-4 py-2">Qty</th>
@@ -248,7 +248,7 @@ function PublicQuoteViewInner() {
           </thead>
           <tbody>
             {quote.line_items.map((li, i) => (
-              <tr key={i} className="border-t border-neutral-900">
+              <tr key={i} className="border-t border-border">
                 <td className="px-4 py-2">{li.description}</td>
                 <td className="px-4 py-2">{li.quantity}</td>
                 <td className="px-4 py-2">${li.unit_price}</td>
@@ -259,24 +259,24 @@ function PublicQuoteViewInner() {
         </table>
       </div>
 
-      <div className="mb-6 space-y-1 text-right text-sm text-neutral-400">
+      <div className="mb-6 space-y-1 text-right text-sm text-muted">
         <div>Subtotal: ${quote.subtotal}</div>
         {Number(quote.discount) > 0 && <div>Discount: -${quote.discount}</div>}
         {Number(quote.tax) > 0 && <div>Tax: ${quote.tax}</div>}
-        <div className="text-lg font-semibold text-neutral-100">Total: ${quote.total}</div>
+        <div className="text-lg font-semibold text-foreground">Total: ${quote.total}</div>
         {quote.deposit_required && quote.deposit_amount !== null && !depositSettled && (
-          <div className="text-neutral-300">Deposit required: ${quote.deposit_amount}</div>
+          <div className="text-muted">Deposit required: ${quote.deposit_amount}</div>
         )}
         {depositSettled && quote.deposit_amount !== null && (
           <>
-            <div className="text-emerald-400">Deposit paid: ${quote.deposit_amount}</div>
-            {remainingBalance !== null && <div className="text-neutral-300">Remaining balance: ${remainingBalance}</div>}
+            <div className="text-emerald-600">Deposit paid: ${quote.deposit_amount}</div>
+            {remainingBalance !== null && <div className="text-muted">Remaining balance: ${remainingBalance}</div>}
           </>
         )}
       </div>
 
       {quote.terms && (
-        <div className="mb-6 whitespace-pre-wrap rounded-md border border-neutral-800 bg-neutral-950 p-3 text-sm text-neutral-400">
+        <div className="mb-6 whitespace-pre-wrap rounded-md border border-border bg-surface p-3 text-sm text-muted">
           {quote.terms}
         </div>
       )}
@@ -284,7 +284,7 @@ function PublicQuoteViewInner() {
       {decidable && (
         <div className="flex flex-col gap-3">
           {quote.deposit_required && (
-            <div className="rounded-md border border-neutral-800 bg-neutral-950 p-3 text-sm text-neutral-400">
+            <div className="rounded-md border border-border bg-surface p-3 text-sm text-muted">
               This quote requires a deposit to begin work. The exact amount will be shown after you accept, and
               you&apos;ll be able to pay it securely via Stripe.
             </div>
@@ -292,7 +292,7 @@ function PublicQuoteViewInner() {
           <button
             disabled={busy}
             onClick={handleAccept}
-            className="rounded-md border border-emerald-800 bg-emerald-950/30 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/60 disabled:opacity-50"
+            className="rounded-md border border-emerald-200 bg-emerald-50/30 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
           >
             {busy ? "Accepting..." : "Accept quote"}
           </button>
@@ -303,12 +303,12 @@ function PublicQuoteViewInner() {
               value={declineReason}
               onChange={(e) => setDeclineReason(e.target.value)}
               disabled={busy}
-              className="flex-1 rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600"
+              className="flex-1 rounded border border-border-strong bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
             />
             <button
               disabled={busy}
               onClick={handleDecline}
-              className="rounded-md border border-red-900 px-4 py-2 text-sm text-red-300 hover:bg-red-950/30 disabled:opacity-50"
+              className="rounded-md border border-red-200 px-4 py-2 text-sm text-red-700 hover:bg-red-50/30 disabled:opacity-50"
             >
               Decline
             </button>
@@ -318,14 +318,14 @@ function PublicQuoteViewInner() {
 
       {depositPending && !confirming && (
         <div className="flex flex-col gap-3">
-          <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-300">
-            <div className="mb-1 font-medium text-neutral-100">Deposit required: ${quote.deposit_amount ?? "—"}</div>
+          <div className="rounded-md border border-border bg-surface p-4 text-sm text-muted">
+            <div className="mb-1 font-medium text-foreground">Deposit required: ${quote.deposit_amount ?? "—"}</div>
             Payment is handled securely by Stripe — Klaros never sees or stores your card details.
           </div>
           <button
             disabled={busy}
             onClick={handlePayDeposit}
-            className="rounded-md border border-emerald-800 bg-emerald-950/30 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-950/60 disabled:opacity-50"
+            className="rounded-md border border-emerald-200 bg-emerald-50/30 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
           >
             {busy ? "Starting checkout..." : "Pay deposit securely with Stripe"}
           </button>

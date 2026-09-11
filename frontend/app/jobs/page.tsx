@@ -47,7 +47,7 @@ export default function JobsPage() {
           <h1 className="text-xl font-semibold">Jobs ({total})</h1>
           <button
             onClick={() => setShowCreate(true)}
-            className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-black hover:bg-neutral-200"
+            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface-muted"
           >
             New job
           </button>
@@ -59,7 +59,7 @@ export default function JobsPage() {
               key={s}
               onClick={() => setStatus(s)}
               className={`rounded-full border px-3 py-1 text-xs ${
-                status === s ? "border-white bg-white text-black" : "border-neutral-700 text-neutral-400"
+                status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"
               }`}
             >
               {s}
@@ -69,25 +69,25 @@ export default function JobsPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search job # / title..."
-            className="ml-auto w-56 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm"
+            className="ml-auto w-56 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
           />
         </div>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading jobs...</p>
+          <p className="text-sm text-muted">Loading jobs...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
           </div>
         ) : jobs.length === 0 ? (
-          <p className="text-sm text-neutral-500">No jobs yet.</p>
+          <p className="text-sm text-muted">No jobs yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-950 text-neutral-500">
+              <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Job #</th>
                   <th className="px-4 py-2">Title</th>
@@ -98,7 +98,7 @@ export default function JobsPage() {
               </thead>
               <tbody>
                 {jobs.map((j) => (
-                  <tr key={j.id} className="border-t border-neutral-900 hover:bg-neutral-950">
+                  <tr key={j.id} className="border-t border-border hover:bg-surface">
                     <td className="px-4 py-2">
                       <Link href={`/jobs/${j.id}`} className="hover:underline">
                         {j.job_number}
@@ -106,10 +106,10 @@ export default function JobsPage() {
                     </td>
                     <td className="px-4 py-2">{j.title}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{j.status}</span>
+                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{j.status}</span>
                     </td>
-                    <td className="px-4 py-2 text-neutral-400">{j.priority}</td>
-                    <td className="px-4 py-2 text-neutral-500">
+                    <td className="px-4 py-2 text-muted">{j.priority}</td>
+                    <td className="px-4 py-2 text-muted">
                       {j.scheduled_start ? new Date(j.scheduled_start).toLocaleString() : "—"}
                     </td>
                   </tr>
@@ -167,25 +167,25 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/60 px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-3 rounded-lg border border-neutral-800 bg-neutral-950 p-6">
+    <div className="fixed inset-0 flex items-center justify-center bg-background/60 px-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6">
         <h2 className="text-lg font-semibold">New job</h2>
         <input
           required
           placeholder="Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
         />
         <div>
           <input
             placeholder="Search customer by name/email"
             value={customerQuery}
             onChange={(e) => setCustomerQuery(e.target.value)}
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
           />
           {customerResults.length > 0 && (
-            <ul className="mt-1 rounded-md border border-neutral-800 bg-neutral-900 text-sm">
+            <ul className="mt-1 rounded-md border border-border bg-surface-muted text-sm">
               {customerResults.map((c) => (
                 <li
                   key={c.id}
@@ -194,7 +194,7 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
                     setCustomerQuery(c.name);
                     setCustomerResults([]);
                   }}
-                  className={`cursor-pointer px-3 py-2 hover:bg-neutral-800 ${customerId === c.id ? "bg-neutral-800" : ""}`}
+                  className={`cursor-pointer px-3 py-2 hover:bg-surface-muted ${customerId === c.id ? "bg-surface-muted" : ""}`}
                 >
                   {c.name} {c.email && `(${c.email})`}
                 </li>
@@ -205,7 +205,7 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
         <select
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
-          className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
         >
           {["LOW", "NORMAL", "HIGH", "URGENT", "CRITICAL"].map((p) => (
             <option key={p} value={p}>
@@ -213,15 +213,15 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
             </option>
           ))}
         </select>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-neutral-400">
+          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-black disabled:opacity-50"
+            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
           >
             {submitting ? "Creating..." : "Create job"}
           </button>

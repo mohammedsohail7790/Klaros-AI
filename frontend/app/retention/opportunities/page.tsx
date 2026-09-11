@@ -55,7 +55,7 @@ export default function OpportunitiesPage() {
             <button
               key={s}
               onClick={() => setStatus(s)}
-              className={`rounded-full border px-3 py-1 text-xs ${status === s ? "border-white bg-white text-black" : "border-neutral-700 text-neutral-400"}`}
+              className={`rounded-full border px-3 py-1 text-xs ${status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"}`}
             >
               {s}
             </button>
@@ -63,18 +63,18 @@ export default function OpportunitiesPage() {
         </div>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : opportunities.length === 0 ? (
-          <p className="text-sm text-neutral-500">No {status.toLowerCase()} opportunities.</p>
+          <p className="text-sm text-muted">No {status.toLowerCase()} opportunities.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-950 text-neutral-500">
+              <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Type</th>
                   <th className="px-4 py-2">Reason</th>
@@ -86,20 +86,20 @@ export default function OpportunitiesPage() {
               </thead>
               <tbody>
                 {opportunities.map((o) => (
-                  <tr key={o.id} className="border-t border-neutral-900">
-                    <td className="px-4 py-2 text-neutral-300">{o.type}</td>
-                    <td className="max-w-sm px-4 py-2 text-neutral-400">{o.reason}</td>
+                  <tr key={o.id} className="border-t border-border">
+                    <td className="px-4 py-2 text-muted">{o.type}</td>
+                    <td className="max-w-sm px-4 py-2 text-muted">{o.reason}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{o.priority}</span>
+                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{o.priority}</span>
                     </td>
-                    <td className="px-4 py-2 text-neutral-500">{new Date(o.detected_at).toLocaleDateString()}</td>
-                    <td className="px-4 py-2 text-neutral-500">{o.recommended_action}</td>
+                    <td className="px-4 py-2 text-muted">{new Date(o.detected_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-2 text-muted">{o.recommended_action}</td>
                     <td className="px-4 py-2 space-x-2">
                       {status === "OPEN" && (
                         <>
-                          <button disabled={busy} onClick={() => handleUpdate(o.id, "CONTACTED")} className="text-xs underline text-neutral-400 hover:text-white">Contact</button>
-                          <button disabled={busy} onClick={() => handleUpdate(o.id, "CONVERTED")} className="text-xs underline text-emerald-400 hover:text-white">Convert</button>
-                          <button disabled={busy} onClick={() => handleUpdate(o.id, "DISMISSED")} className="text-xs underline text-red-400 hover:text-white">Dismiss</button>
+                          <button disabled={busy} onClick={() => handleUpdate(o.id, "CONTACTED")} className="text-xs underline text-muted hover:text-foreground">Contact</button>
+                          <button disabled={busy} onClick={() => handleUpdate(o.id, "CONVERTED")} className="text-xs underline text-emerald-600 hover:text-foreground">Convert</button>
+                          <button disabled={busy} onClick={() => handleUpdate(o.id, "DISMISSED")} className="text-xs underline text-red-600 hover:text-foreground">Dismiss</button>
                         </>
                       )}
                     </td>

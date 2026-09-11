@@ -41,7 +41,7 @@ export default function CustomersPage() {
           <h1 className="text-xl font-semibold">Customers ({total})</h1>
           <button
             onClick={() => setShowCreate(true)}
-            className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-black hover:bg-neutral-200"
+            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface-muted"
           >
             New customer
           </button>
@@ -51,24 +51,24 @@ export default function CustomersPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name or email..."
-          className="mb-4 w-72 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm"
+          className="mb-4 w-72 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
         />
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading customers...</p>
+          <p className="text-sm text-muted">Loading customers...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
           </div>
         ) : customers.length === 0 ? (
-          <p className="text-sm text-neutral-500">No customers yet.</p>
+          <p className="text-sm text-muted">No customers yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-950 text-neutral-500">
+              <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Name</th>
                   <th className="px-4 py-2">Email</th>
@@ -78,16 +78,16 @@ export default function CustomersPage() {
               </thead>
               <tbody>
                 {customers.map((c) => (
-                  <tr key={c.id} className="border-t border-neutral-900 hover:bg-neutral-950">
+                  <tr key={c.id} className="border-t border-border hover:bg-surface">
                     <td className="px-4 py-2">
                       <Link href={`/customers/${c.id}`} className="hover:underline">
                         {c.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-2 text-neutral-400">{c.email ?? "—"}</td>
-                    <td className="px-4 py-2 text-neutral-400">{c.phone ?? "—"}</td>
+                    <td className="px-4 py-2 text-muted">{c.email ?? "—"}</td>
+                    <td className="px-4 py-2 text-muted">{c.phone ?? "—"}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">
+                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">
                         {c.status}
                       </span>
                     </td>
@@ -137,10 +137,10 @@ function CreateCustomerModal({
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/60 px-4">
+    <div className="fixed inset-0 flex items-center justify-center bg-background/60 px-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md space-y-3 rounded-lg border border-neutral-800 bg-neutral-950 p-6"
+        className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6"
       >
         <h2 className="text-lg font-semibold">New customer</h2>
         <input
@@ -148,29 +148,29 @@ function CreateCustomerModal({
           placeholder="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
         />
         <input
           placeholder="Email (optional)"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
         />
         <input
           placeholder="Phone (optional)"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
         />
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-neutral-400">
+          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-black disabled:opacity-50"
+            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
           >
             {submitting ? "Creating..." : "Create customer"}
           </button>

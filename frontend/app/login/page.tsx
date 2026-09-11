@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiError, login } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { Field, Input } from "@/components/ui/Input";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,53 +32,57 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
-        <h1 className="text-2xl font-semibold">Sign in to Klaros AI</h1>
+    <main className="flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="w-full max-w-sm">
+        <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground">
+          Klaros
+        </Link>
+        <div className="klaros-card p-7">
+          <h1 className="font-display text-2xl text-foreground">Welcome back</h1>
+          <p className="mt-1 text-sm text-muted">Sign in to your Klaros workspace.</p>
 
-        <div className="space-y-1">
-          <label className="text-sm text-neutral-400">Company slug</label>
-          <input
-            required
-            value={organizationSlug}
-            onChange={(e) => setOrganizationSlug(e.target.value)}
-            placeholder="demo-hvac-company"
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
-          />
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <Field label="Company slug">
+              <Input
+                required
+                value={organizationSlug}
+                onChange={(e) => setOrganizationSlug(e.target.value)}
+                placeholder="demo-hvac-company"
+              />
+            </Field>
+
+            <Field label="Email">
+              <Input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
+
+            <Field label="Password">
+              <Input
+                required
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
+
+            {error && <p className="text-sm text-danger">{error}</p>}
+
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? "Signing in..." : "Sign in"}
+            </Button>
+          </form>
         </div>
-
-        <div className="space-y-1">
-          <label className="text-sm text-neutral-400">Email</label>
-          <input
-            required
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-sm text-neutral-400">Password</label>
-          <input
-            required
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
-          />
-        </div>
-
-        {error && <p className="text-sm text-red-400">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-black hover:bg-neutral-200 disabled:opacity-50"
-        >
-          {loading ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
+        <p className="mt-6 text-center text-sm text-muted">
+          New to Klaros?{" "}
+          <Link href="/register" className="font-medium text-accent hover:text-accent-hover">
+            Create your company
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }

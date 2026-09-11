@@ -85,18 +85,18 @@ const ACTIONS = [
 const COMPARISON_OPS = ["eq", "ne", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "is_null", "is_not_null"];
 
 const STATUS_COLOR: Record<string, string> = {
-  DRAFT: "border-neutral-700 text-neutral-400",
-  ENABLED: "border-emerald-800 text-emerald-300",
-  DISABLED: "border-amber-800 text-amber-300",
+  DRAFT: "border-border-strong text-muted",
+  ENABLED: "border-emerald-200 text-emerald-700",
+  DISABLED: "border-amber-200 text-amber-700",
 };
 
 const EXECUTION_COLOR: Record<string, string> = {
-  PENDING: "border-neutral-700 text-neutral-400",
-  RUNNING: "border-blue-800 text-blue-300",
-  WAITING: "border-amber-800 text-amber-300",
-  COMPLETED: "border-emerald-800 text-emerald-300",
-  FAILED: "border-red-800 text-red-300",
-  CANCELLED: "border-neutral-700 text-neutral-400",
+  PENDING: "border-border-strong text-muted",
+  RUNNING: "border-blue-200 text-blue-700",
+  WAITING: "border-amber-200 text-amber-700",
+  COMPLETED: "border-emerald-200 text-emerald-700",
+  FAILED: "border-red-200 text-red-700",
+  CANCELLED: "border-border-strong text-muted",
 };
 
 interface ConditionRow {
@@ -465,75 +465,75 @@ export default function AutomationsPage() {
           {mode !== "list" ? (
             <button
               onClick={() => setMode("list")}
-              className="rounded-md border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-900"
+              className="rounded-md border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-muted"
             >
               Back to list
             </button>
           ) : (
             <button
               onClick={startCreate}
-              className="rounded-md border border-neutral-400 bg-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-700"
+              className="rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-xs hover:bg-surface-muted"
             >
               New automation
             </button>
           )}
         </div>
 
-        <p className="mb-4 text-xs text-neutral-500">
+        <p className="mb-4 text-xs text-muted">
           Event → condition → action, running against the exact same governed Tool Registry pipeline every
           other part of Klaros uses — no automation can call an action outside a fixed, hardcoded allowlist.
           Editing an automation always creates a new version; an execution already in flight keeps running
           against the version it started with.
         </p>
 
-        <div className="mb-6 flex items-center gap-2 rounded-md border border-neutral-800 bg-neutral-950 p-3 text-xs">
-          <span className="text-neutral-500">Business timezone (used by all Schedule triggers):</span>
+        <div className="mb-6 flex items-center gap-2 rounded-md border border-border bg-surface p-3 text-xs">
+          <span className="text-muted">Business timezone (used by all Schedule triggers):</span>
           <input
             value={timezoneInput}
             onChange={(e) => setTimezoneInput(e.target.value)}
             placeholder="America/New_York"
-            className="w-48 rounded-md border border-neutral-700 bg-black px-2 py-1 text-xs"
+            className="w-48 rounded-md border border-border-strong bg-background px-2 py-1 text-xs"
           />
           <button
             onClick={handleSaveTimezone}
             disabled={busy || timezoneInput === tenantTimezone}
-            className="rounded-md border border-neutral-400 bg-neutral-800 px-2 py-1 text-xs hover:bg-neutral-700 disabled:opacity-50"
+            className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-xs hover:bg-surface-muted disabled:opacity-50"
           >
             Save
           </button>
-          {tenantTimezone && <span className="text-neutral-600">Current: {tenantTimezone}</span>}
+          {tenantTimezone && <span className="text-muted-foreground">Current: {tenantTimezone}</span>}
         </div>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">
+          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
             {notice}
           </div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
         )}
 
         {mode === "list" && (
           <div>
             {authLoading || loading ? (
-              <p className="text-sm text-neutral-500">Loading...</p>
+              <p className="text-sm text-muted">Loading...</p>
             ) : !automations || automations.length === 0 ? (
-              <p className="text-sm text-neutral-500">No automations yet.</p>
+              <p className="text-sm text-muted">No automations yet.</p>
             ) : (
               <div className="space-y-2">
                 {automations.map((a) => (
                   <button
                     key={a.id}
                     onClick={() => openDetail(a.id)}
-                    className="block w-full rounded-lg border border-neutral-800 p-3 text-left text-sm hover:bg-neutral-900"
+                    className="block w-full rounded-lg border border-border p-3 text-left text-sm hover:bg-surface-muted"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{a.name}</span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[a.status] ?? "border-neutral-700"}`}>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[a.status] ?? "border-border-strong"}`}>
                         {a.status}
                       </span>
                     </div>
-                    {a.description && <p className="mt-1 text-neutral-400">{a.description}</p>}
+                    {a.description && <p className="mt-1 text-muted">{a.description}</p>}
                   </button>
                 ))}
               </div>
@@ -543,36 +543,36 @@ export default function AutomationsPage() {
 
         {(mode === "create" || mode === "edit") && (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="space-y-4 rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+            <div className="space-y-4 rounded-lg border border-border bg-surface p-5">
               <div>
-                <label className="mb-1 block text-xs text-neutral-500">Name</label>
+                <label className="mb-1 block text-xs text-muted">Name</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   disabled={mode === "edit"}
-                  className="w-full rounded-md border border-neutral-700 bg-black px-3 py-2 text-sm disabled:opacity-60"
+                  className="w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm disabled:opacity-60"
                   placeholder="New Lead Follow-up"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-neutral-500">Description</label>
+                <label className="mb-1 block text-xs text-muted">Description</label>
                 <input
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  className="w-full rounded-md border border-neutral-700 bg-black px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
                   placeholder="Optional"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs text-neutral-500">Trigger</label>
+                <label className="mb-1 block text-xs text-muted">Trigger</label>
                 <div className="flex gap-2">
                   {(["MANUAL", "EVENT", "SCHEDULE"] as const).map((t) => (
                     <button
                       key={t}
                       onClick={() => setForm((f) => ({ ...f, triggerType: t }))}
                       className={`rounded-md border px-3 py-1.5 text-xs ${
-                        form.triggerType === t ? "border-neutral-400 bg-neutral-800" : "border-neutral-700 hover:bg-neutral-900"
+                        form.triggerType === t ? "border-border-strong bg-surface-muted" : "border-border-strong hover:bg-surface-muted"
                       }`}
                     >
                       {t === "MANUAL" ? "Manual (run on demand)" : t === "EVENT" ? "Event" : "Schedule"}
@@ -583,11 +583,11 @@ export default function AutomationsPage() {
 
               {form.triggerType === "EVENT" && (
                 <div>
-                  <label className="mb-1 block text-xs text-neutral-500">Event type</label>
+                  <label className="mb-1 block text-xs text-muted">Event type</label>
                   <input
                     value={form.eventType}
                     onChange={(e) => setForm((f) => ({ ...f, eventType: e.target.value }))}
-                    className="w-full rounded-md border border-neutral-700 bg-black px-3 py-2 text-sm"
+                    className="w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
                     placeholder="lead.created"
                   />
                 </div>
@@ -596,7 +596,7 @@ export default function AutomationsPage() {
               {form.triggerType === "SCHEDULE" && (
                 <div className="space-y-2">
                   <div>
-                    <label className="mb-1 block text-xs text-neutral-500">Frequency</label>
+                    <label className="mb-1 block text-xs text-muted">Frequency</label>
                     <div className="flex gap-2">
                       {(["DAILY", "WEEKLY"] as const).map((f) => (
                         <button
@@ -604,8 +604,8 @@ export default function AutomationsPage() {
                           onClick={() => setForm((prev) => ({ ...prev, scheduleFrequency: f }))}
                           className={`rounded-md border px-3 py-1.5 text-xs ${
                             form.scheduleFrequency === f
-                              ? "border-neutral-400 bg-neutral-800"
-                              : "border-neutral-700 hover:bg-neutral-900"
+                              ? "border-border-strong bg-surface-muted"
+                              : "border-border-strong hover:bg-surface-muted"
                           }`}
                         >
                           {f === "DAILY" ? "Daily" : "Weekly"}
@@ -614,17 +614,17 @@ export default function AutomationsPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-neutral-500">Time (business timezone)</label>
+                    <label className="mb-1 block text-xs text-muted">Time (business timezone)</label>
                     <input
                       type="time"
                       value={form.scheduleTime}
                       onChange={(e) => setForm((f) => ({ ...f, scheduleTime: e.target.value }))}
-                      className="w-40 rounded-md border border-neutral-700 bg-black px-3 py-2 text-sm"
+                      className="w-40 rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
                     />
                   </div>
                   {form.scheduleFrequency === "WEEKLY" && (
                     <div>
-                      <label className="mb-1 block text-xs text-neutral-500">Days</label>
+                      <label className="mb-1 block text-xs text-muted">Days</label>
                       <div className="flex gap-1">
                         {WEEKDAY_LABELS.map((label, i) => (
                           <button
@@ -639,8 +639,8 @@ export default function AutomationsPage() {
                             }
                             className={`rounded-md border px-2 py-1 text-[10px] ${
                               form.scheduleWeekdays.includes(i)
-                                ? "border-neutral-400 bg-neutral-800"
-                                : "border-neutral-700 hover:bg-neutral-900"
+                                ? "border-border-strong bg-surface-muted"
+                                : "border-border-strong hover:bg-surface-muted"
                             }`}
                           >
                             {label}
@@ -649,14 +649,14 @@ export default function AutomationsPage() {
                       </div>
                     </div>
                   )}
-                  <p className="text-[10px] text-neutral-600">
+                  <p className="text-[10px] text-muted-foreground">
                     Runs in the business timezone set below — currently {tenantTimezone ?? "loading..."}.
                   </p>
                 </div>
               )}
 
               <div>
-                <label className="mb-1 flex items-center gap-2 text-xs text-neutral-500">
+                <label className="mb-1 flex items-center gap-2 text-xs text-muted">
                   <input
                     type="checkbox"
                     checked={form.hasWait}
@@ -669,34 +669,34 @@ export default function AutomationsPage() {
                     type="number"
                     value={form.waitSeconds}
                     onChange={(e) => setForm((f) => ({ ...f, waitSeconds: e.target.value }))}
-                    className="mt-1 w-32 rounded-md border border-neutral-700 bg-black px-3 py-2 text-sm"
+                    className="mt-1 w-32 rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
                   />
                 )}
               </div>
 
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <label className="text-xs text-neutral-500">Conditions (all must match — AND)</label>
+                  <label className="text-xs text-muted">Conditions (all must match — AND)</label>
                   <button
                     onClick={() => setForm((f) => ({ ...f, conditions: [...f.conditions, { field: "", op: "eq", value: "" }] }))}
-                    className="text-[10px] text-neutral-400 underline hover:text-neutral-200"
+                    className="text-[10px] text-muted underline hover:text-foreground"
                   >
                     + add condition
                   </button>
                 </div>
-                {form.conditions.length === 0 && <p className="text-[10px] text-neutral-600">No conditions — always runs.</p>}
+                {form.conditions.length === 0 && <p className="text-[10px] text-muted-foreground">No conditions — always runs.</p>}
                 {form.conditions.map((c, i) => (
                   <div key={i} className="mb-2 flex gap-2">
                     <input
                       value={c.field}
                       onChange={(e) => updateCondition(i, "field", e.target.value)}
                       placeholder="lead.score"
-                      className="w-1/3 rounded-md border border-neutral-700 bg-black px-2 py-1.5 text-xs"
+                      className="w-1/3 rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
                     />
                     <select
                       value={c.op}
                       onChange={(e) => updateCondition(i, "op", e.target.value)}
-                      className="rounded-md border border-neutral-700 bg-black px-2 py-1.5 text-xs"
+                      className="rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
                     >
                       {COMPARISON_OPS.map((op) => (
                         <option key={op} value={op}>
@@ -708,11 +708,11 @@ export default function AutomationsPage() {
                       value={c.value}
                       onChange={(e) => updateCondition(i, "value", e.target.value)}
                       placeholder="70"
-                      className="flex-1 rounded-md border border-neutral-700 bg-black px-2 py-1.5 text-xs"
+                      className="flex-1 rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
                     />
                     <button
                       onClick={() => setForm((f) => ({ ...f, conditions: f.conditions.filter((_, j) => j !== i) }))}
-                      className="text-xs text-red-400 hover:text-red-300"
+                      className="text-xs text-red-600 hover:text-red-700"
                     >
                       ✕
                     </button>
@@ -722,10 +722,10 @@ export default function AutomationsPage() {
 
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <label className="text-xs text-neutral-500">Actions (run in order)</label>
+                  <label className="text-xs text-muted">Actions (run in order)</label>
                   <button
                     onClick={() => setForm((f) => ({ ...f, steps: [...f.steps, { action: ACTIONS[0].value, params: {} }] }))}
-                    className="text-[10px] text-neutral-400 underline hover:text-neutral-200"
+                    className="text-[10px] text-muted underline hover:text-foreground"
                   >
                     + add action
                   </button>
@@ -733,12 +733,12 @@ export default function AutomationsPage() {
                 {form.steps.map((s, i) => {
                   const def = ACTIONS.find((a) => a.value === s.action) ?? ACTIONS[0];
                   return (
-                    <div key={i} className="mb-2 rounded-md border border-neutral-800 p-2">
+                    <div key={i} className="mb-2 rounded-md border border-border p-2">
                       <div className="mb-2 flex items-center justify-between">
                         <select
                           value={s.action}
                           onChange={(e) => updateStepAction(i, e.target.value)}
-                          className="rounded-md border border-neutral-700 bg-black px-2 py-1.5 text-xs"
+                          className="rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
                         >
                           {ACTIONS.map((a) => (
                             <option key={a.value} value={a.value}>
@@ -749,7 +749,7 @@ export default function AutomationsPage() {
                         {form.steps.length > 1 && (
                           <button
                             onClick={() => setForm((f) => ({ ...f, steps: f.steps.filter((_, j) => j !== i) }))}
-                            className="text-xs text-red-400 hover:text-red-300"
+                            className="text-xs text-red-600 hover:text-red-700"
                           >
                             remove
                           </button>
@@ -761,10 +761,10 @@ export default function AutomationsPage() {
                           value={s.params[field.key] ?? ""}
                           onChange={(e) => updateStepParam(i, field.key, e.target.value)}
                           placeholder={field.label}
-                          className="mb-1 w-full rounded-md border border-neutral-700 bg-black px-2 py-1.5 text-xs"
+                          className="mb-1 w-full rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
                         />
                       ))}
-                      <p className="text-[10px] text-neutral-600">
+                      <p className="text-[10px] text-muted-foreground">
                         Use {"{{"}field.path{"}}"} to reference the trigger context (e.g. {"{{"}lead.name{"}}"}).
                       </p>
                     </div>
@@ -775,7 +775,7 @@ export default function AutomationsPage() {
               <button
                 onClick={handleSave}
                 disabled={busy || !form.name}
-                className="w-full rounded-md border border-neutral-400 bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700 disabled:opacity-50"
+                className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
               >
                 {mode === "create" ? "Create draft" : "Save as new version"}
               </button>
@@ -783,10 +783,10 @@ export default function AutomationsPage() {
 
             <div className="space-y-4">
               {selectedAutomation && (
-                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+                <div className="rounded-lg border border-border bg-surface p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="font-medium">{selectedAutomation.name}</h2>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[selectedAutomation.status] ?? "border-neutral-700"}`}>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[selectedAutomation.status] ?? "border-border-strong"}`}>
                       {selectedAutomation.status}
                     </span>
                   </div>
@@ -796,7 +796,7 @@ export default function AutomationsPage() {
                       <button
                         onClick={handlePublish}
                         disabled={busy}
-                        className="rounded-md border border-emerald-800 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-950/30"
+                        className="rounded-md border border-emerald-200 px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-50/30"
                       >
                         Publish
                       </button>
@@ -805,7 +805,7 @@ export default function AutomationsPage() {
                       <button
                         onClick={() => handleToggleEnabled(true)}
                         disabled={busy}
-                        className="rounded-md border border-emerald-800 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-950/30"
+                        className="rounded-md border border-emerald-200 px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-50/30"
                       >
                         Enable
                       </button>
@@ -814,7 +814,7 @@ export default function AutomationsPage() {
                       <button
                         onClick={() => handleToggleEnabled(false)}
                         disabled={busy}
-                        className="rounded-md border border-amber-800 px-3 py-1.5 text-xs text-amber-300 hover:bg-amber-950/30"
+                        className="rounded-md border border-amber-200 px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-50/30"
                       >
                         Disable
                       </button>
@@ -822,24 +822,24 @@ export default function AutomationsPage() {
                   </div>
 
                   {versions && (
-                    <p className="mt-3 text-[10px] text-neutral-600">
+                    <p className="mt-3 text-[10px] text-muted-foreground">
                       {versions.length} version{versions.length === 1 ? "" : "s"} — currently editing the latest
                     </p>
                   )}
 
                   {form.triggerType === "MANUAL" && selectedAutomation.status === "ENABLED" && (
-                    <div className="mt-4 border-t border-neutral-800 pt-4">
-                      <label className="mb-1 block text-xs text-neutral-500">Trigger context (JSON, optional)</label>
+                    <div className="mt-4 border-t border-border pt-4">
+                      <label className="mb-1 block text-xs text-muted">Trigger context (JSON, optional)</label>
                       <textarea
                         value={triggerContext}
                         onChange={(e) => setTriggerContext(e.target.value)}
                         rows={3}
-                        className="w-full rounded-md border border-neutral-700 bg-black px-2 py-1.5 font-mono text-xs"
+                        className="w-full rounded-md border border-border-strong bg-background px-2 py-1.5 font-mono text-xs"
                       />
                       <button
                         onClick={handleManualTrigger}
                         disabled={busy}
-                        className="mt-2 rounded-md border border-neutral-400 bg-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-700 disabled:opacity-50"
+                        className="mt-2 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-xs hover:bg-surface-muted disabled:opacity-50"
                       >
                         Run now
                       </button>
@@ -847,23 +847,23 @@ export default function AutomationsPage() {
                   )}
 
                   {form.triggerType === "SCHEDULE" && selectedAutomation.status === "ENABLED" && (
-                    <div className="mt-4 border-t border-neutral-800 pt-4">
-                      <p className="mb-2 text-xs text-neutral-500">
+                    <div className="mt-4 border-t border-border pt-4">
+                      <p className="mb-2 text-xs text-muted">
                         Next scheduled run:{" "}
-                        <span className="text-neutral-300">
+                        <span className="text-muted">
                           {selectedAutomation.next_scheduled_run
                             ? new Date(selectedAutomation.next_scheduled_run).toLocaleString()
                             : "—"}
                         </span>
                       </p>
-                      <p className="mb-2 text-[10px] text-neutral-600">
+                      <p className="mb-2 text-[10px] text-muted-foreground">
                         The background scheduler checks every automation once per poll tick automatically. Use
                         this only to force an immediate check (e.g. for testing) rather than waiting.
                       </p>
                       <button
                         onClick={handleDispatchTickNow}
                         disabled={busy}
-                        className="rounded-md border border-neutral-400 bg-neutral-800 px-3 py-1.5 text-xs hover:bg-neutral-700 disabled:opacity-50"
+                        className="rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-xs hover:bg-surface-muted disabled:opacity-50"
                       >
                         Run scheduler tick now
                       </button>
@@ -873,27 +873,27 @@ export default function AutomationsPage() {
               )}
 
               {executions && (
-                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+                <div className="rounded-lg border border-border bg-surface p-5">
                   <h3 className="mb-3 text-sm font-medium">Execution history</h3>
                   {executions.length === 0 ? (
-                    <p className="text-xs text-neutral-500">No executions yet.</p>
+                    <p className="text-xs text-muted">No executions yet.</p>
                   ) : (
                     <div className="space-y-2">
                       {executions.map((e) => (
                         <button
                           key={e.id}
                           onClick={() => openExecution(e.id)}
-                          className={`block w-full rounded-md border p-2 text-left text-xs hover:bg-neutral-900 ${
-                            selectedExecution?.id === e.id ? "border-neutral-400" : "border-neutral-800"
+                          className={`block w-full rounded-md border p-2 text-left text-xs hover:bg-surface-muted ${
+                            selectedExecution?.id === e.id ? "border-border-strong" : "border-border"
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <span>{e.trigger_type}</span>
-                            <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[e.status] ?? "border-neutral-700"}`}>
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[e.status] ?? "border-border-strong"}`}>
                               {e.status}
                             </span>
                           </div>
-                          <span className="text-neutral-600">{e.started_at ? new Date(e.started_at).toLocaleString() : "—"}</span>
+                          <span className="text-muted-foreground">{e.started_at ? new Date(e.started_at).toLocaleString() : "—"}</span>
                         </button>
                       ))}
                     </div>
@@ -902,30 +902,30 @@ export default function AutomationsPage() {
               )}
 
               {selectedExecution && (
-                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+                <div className="rounded-lg border border-border bg-surface p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-medium">Execution detail</h3>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[selectedExecution.status] ?? "border-neutral-700"}`}>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[selectedExecution.status] ?? "border-border-strong"}`}>
                       {selectedExecution.status}
                     </span>
                   </div>
                   {selectedExecution.error && (
-                    <p className="mb-2 rounded-md border border-red-900 bg-red-950/30 p-2 text-xs text-red-300">
+                    <p className="mb-2 rounded-md border border-red-200 bg-red-50/30 p-2 text-xs text-red-700">
                       {selectedExecution.error}
                     </p>
                   )}
                   <div className="space-y-2">
                     {selectedExecution.steps.map((s) => (
-                      <div key={s.id} className="rounded-md border border-neutral-800 p-2 text-xs">
+                      <div key={s.id} className="rounded-md border border-border p-2 text-xs">
                         <div className="flex items-center justify-between">
                           <span>
                             {s.step_index}. {s.action}
                           </span>
-                          <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[s.status] ?? "border-neutral-700"}`}>
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[s.status] ?? "border-border-strong"}`}>
                             {s.status}
                           </span>
                         </div>
-                        {s.error && <p className="mt-1 text-red-400">{s.error}</p>}
+                        {s.error && <p className="mt-1 text-red-600">{s.error}</p>}
                       </div>
                     ))}
                   </div>

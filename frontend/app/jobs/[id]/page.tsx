@@ -188,31 +188,31 @@ export default function JobDetailPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <Link href="/jobs" className="text-sm text-neutral-500 hover:underline">
+        <Link href="/jobs" className="text-sm text-muted hover:underline">
           ← Back to jobs
         </Link>
 
         {authLoading || loading ? (
-          <p className="mt-4 text-sm text-neutral-500">Loading job...</p>
+          <p className="mt-4 text-sm text-muted">Loading job...</p>
         ) : error ? (
-          <div className="mt-4 rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
           </div>
         ) : !job ? (
-          <p className="mt-4 text-sm text-neutral-500">Job not found.</p>
+          <p className="mt-4 text-sm text-muted">Job not found.</p>
         ) : (
           <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="space-y-6 lg:col-span-2">
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
+              <div className="rounded-lg border border-border bg-surface p-6">
                 <div className="flex items-start justify-between">
                   <div>
                     <h1 className="text-xl font-semibold">
                       {job.job_number} — {job.title}
                     </h1>
-                    <p className="text-sm text-neutral-500">
+                    <p className="text-sm text-muted">
                       {job.status} · {job.priority} · {job.service_type ?? "no service type"}
                     </p>
                   </div>
@@ -222,22 +222,22 @@ export default function JobDetailPage() {
                         key={a.action}
                         disabled={busy}
                         onClick={() => handleNextAction(a.action)}
-                        className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-black hover:bg-neutral-200 disabled:opacity-50"
+                        className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface-muted disabled:opacity-50"
                       >
                         {a.label}
                       </button>
                     ))}
                   </div>
                 </div>
-                {actionError && <p className="mt-3 text-sm text-red-400">{actionError}</p>}
+                {actionError && <p className="mt-3 text-sm text-red-600">{actionError}</p>}
 
                 <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <dt className="text-neutral-500">Scheduled</dt>
+                    <dt className="text-muted">Scheduled</dt>
                     <dd>{job.scheduled_start ? new Date(job.scheduled_start).toLocaleString() : "—"}</dd>
                   </div>
                   <div>
-                    <dt className="text-neutral-500">Assigned worker</dt>
+                    <dt className="text-muted">Assigned worker</dt>
                     <dd>{job.assigned_user_id ? workers.find((w) => w.id === job.assigned_user_id)?.name ?? job.assigned_user_id : "unassigned"}</dd>
                   </div>
                 </dl>
@@ -245,14 +245,14 @@ export default function JobDetailPage() {
                 {job.status === "DRAFT" && (
                   <form onSubmit={handleSchedule} className="mt-4 flex items-end gap-2">
                     <div>
-                      <label className="block text-xs text-neutral-500">Start</label>
-                      <input name="start" type="datetime-local" required className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm" />
+                      <label className="block text-xs text-muted">Start</label>
+                      <input name="start" type="datetime-local" required className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                     </div>
                     <div>
-                      <label className="block text-xs text-neutral-500">End</label>
-                      <input name="end" type="datetime-local" required className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm" />
+                      <label className="block text-xs text-muted">End</label>
+                      <input name="end" type="datetime-local" required className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                     </div>
-                    <button type="submit" className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900">
+                    <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
                       Schedule
                     </button>
                   </form>
@@ -263,7 +263,7 @@ export default function JobDetailPage() {
                     <select
                       onChange={(e) => handleAssign(e.target.value)}
                       defaultValue=""
-                      className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+                      className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                     >
                       <option value="" disabled>
                         Assign worker...
@@ -278,58 +278,58 @@ export default function JobDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">Tasks</h2>
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-3 text-sm font-medium text-muted">Tasks</h2>
                 <ul className="space-y-2">
                   {tasks.map((t) => (
                     <li key={t.id} className="flex items-center justify-between text-sm">
-                      <span className={t.status === "COMPLETED" ? "line-through text-neutral-600" : ""}>
-                        {t.title} {t.required && <span className="text-xs text-neutral-600">(required)</span>}
+                      <span className={t.status === "COMPLETED" ? "line-through text-muted-foreground" : ""}>
+                        {t.title} {t.required && <span className="text-xs text-muted-foreground">(required)</span>}
                       </span>
                       {t.status !== "COMPLETED" && token && (
                         <button
                           onClick={() => runAction(() => completeTask(token, t.id))}
-                          className="text-xs underline text-neutral-400 hover:text-white"
+                          className="text-xs underline text-muted hover:text-foreground"
                         >
                           Complete
                         </button>
                       )}
                     </li>
                   ))}
-                  {tasks.length === 0 && <p className="text-sm text-neutral-500">No tasks yet.</p>}
+                  {tasks.length === 0 && <p className="text-sm text-muted">No tasks yet.</p>}
                 </ul>
                 <form onSubmit={handleAddTask} className="mt-3 flex gap-2">
-                  <input name="title" placeholder="New task" className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm" />
-                  <button type="submit" className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900">
+                  <input name="title" placeholder="New task" className="flex-1 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm" />
+                  <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
                     Add
                   </button>
                 </form>
               </div>
 
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">Materials</h2>
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-3 text-sm font-medium text-muted">Materials</h2>
                 <ul className="space-y-1 text-sm">
                   {materials.map((m) => (
                     <li key={m.id}>
                       {m.name} × {m.quantity} — {m.status}
                     </li>
                   ))}
-                  {materials.length === 0 && <p className="text-neutral-500">No materials recorded.</p>}
+                  {materials.length === 0 && <p className="text-muted">No materials recorded.</p>}
                 </ul>
                 <form onSubmit={handleAddMaterial} className="mt-3 flex gap-2">
-                  <input name="name" placeholder="Material name" className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm" />
-                  <button type="submit" className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900">
+                  <input name="name" placeholder="Material name" className="flex-1 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm" />
+                  <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
                     Add
                   </button>
                 </form>
               </div>
 
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">Photos & documents</h2>
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-3 text-sm font-medium text-muted">Photos & documents</h2>
                 <div className="flex gap-2">
                   <button
                     onClick={() => photoInputRef.current?.click()}
-                    className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900"
+                    className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
                   >
                     Upload photo
                   </button>
@@ -342,7 +342,7 @@ export default function JobDetailPage() {
                   />
                   <button
                     onClick={() => docInputRef.current?.click()}
-                    className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900"
+                    className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
                   >
                     Upload document
                   </button>
@@ -354,7 +354,7 @@ export default function JobDetailPage() {
                     onChange={(e) => handleUpload("documents", e.target.files?.[0])}
                   />
                 </div>
-                <ul className="mt-3 space-y-1 text-sm text-neutral-400">
+                <ul className="mt-3 space-y-1 text-sm text-muted">
                   {attachments.map((a) => (
                     <li key={a.id} className="flex items-center gap-2">
                       <span>
@@ -362,29 +362,29 @@ export default function JobDetailPage() {
                       </span>
                       <button
                         onClick={() => handleViewAttachment(a.id)}
-                        className="text-xs text-emerald-400 underline hover:text-white"
+                        className="text-xs text-emerald-600 underline hover:text-foreground"
                       >
                         View
                       </button>
                     </li>
                   ))}
-                  {attachments.length === 0 && <p className="text-neutral-500">No attachments yet.</p>}
+                  {attachments.length === 0 && <p className="text-muted">No attachments yet.</p>}
                 </ul>
               </div>
 
               {job.status === "QA_PENDING" && token && (
-                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                  <h2 className="mb-3 text-sm font-medium text-neutral-300">QA</h2>
+                <div className="rounded-lg border border-border bg-surface p-6">
+                  <h2 className="mb-3 text-sm font-medium text-muted">QA</h2>
                   <div className="flex gap-2">
-                    <button onClick={() => runAction(() => startQA(token, id))} className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900">
+                    <button onClick={() => runAction(() => startQA(token, id))} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
                       Start QA
                     </button>
-                    <button onClick={() => runAction(() => completeQA(token, id))} className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-black">
+                    <button onClick={() => runAction(() => completeQA(token, id))} className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground">
                       Pass QA
                     </button>
                     <button
                       onClick={() => runAction(() => failQA(token, id, "Failed from Job detail UI"))}
-                      className="rounded-md border border-red-800 px-3 py-1.5 text-sm text-red-400 hover:bg-red-950/30"
+                      className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50/30"
                     >
                       Fail QA
                     </button>
@@ -393,29 +393,29 @@ export default function JobDetailPage() {
               )}
 
               {job.status === "COMPLETED" && token && (
-                <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                  <h2 className="mb-3 text-sm font-medium text-neutral-300">Completion packet</h2>
+                <div className="rounded-lg border border-border bg-surface p-6">
+                  <h2 className="mb-3 text-sm font-medium text-muted">Completion packet</h2>
                   <button
                     onClick={() => runAction(() => generateCompletionPacket(token, id))}
-                    className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900"
+                    className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
                   >
                     Generate packet
                   </button>
                 </div>
               )}
 
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">Finance</h2>
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-3 text-sm font-medium text-muted">Finance</h2>
                 {invoices.length === 0 ? (
                   <div className="space-y-3">
-                    <p className="text-sm text-neutral-500">
+                    <p className="text-sm text-muted">
                       Invoice not created. Invoicing is triggered automatically when the job is closed — it
                       hasn&apos;t simply been triggered yet, not because Finance is broken.
                     </p>
                     {job?.status === "CLOSED" && token && (
                       <button
                         onClick={() => runAction(() => triggerInvoiceFromJob(token, id))}
-                        className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900"
+                        className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
                       >
                         Trigger invoice now
                       </button>
@@ -425,10 +425,10 @@ export default function JobDetailPage() {
                   <ul className="space-y-2 text-sm">
                     {invoices.map((inv) => (
                       <li key={inv.id} className="flex items-center justify-between">
-                        <Link href={`/finance/invoices/${inv.id}`} className="underline hover:text-white">
+                        <Link href={`/finance/invoices/${inv.id}`} className="underline hover:text-foreground">
                           {inv.invoice_number}
                         </Link>
-                        <span className="text-neutral-500">
+                        <span className="text-muted">
                           {inv.status} · ${inv.total} (${inv.amount_due} due)
                         </span>
                       </li>
@@ -438,15 +438,15 @@ export default function JobDetailPage() {
                 {token && <RecordJobCostForm token={token} jobId={id} onRecorded={load} />}
               </div>
 
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-3 text-sm font-medium text-neutral-300">Timeline</h2>
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-3 text-sm font-medium text-muted">Timeline</h2>
                 {timeline.length === 0 ? (
-                  <p className="text-sm text-neutral-500">No activity recorded yet.</p>
+                  <p className="text-sm text-muted">No activity recorded yet.</p>
                 ) : (
                   <ul className="space-y-2 text-sm">
                     {timeline.map((entry, i) => (
                       <li key={i}>
-                        <span className="text-neutral-600">{new Date(entry.timestamp).toLocaleString()}</span>{" "}
+                        <span className="text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</span>{" "}
                         — {entry.summary}
                       </li>
                     ))}
@@ -456,9 +456,9 @@ export default function JobDetailPage() {
             </section>
 
             <section className="space-y-4">
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
-                <h2 className="mb-2 text-sm font-medium text-neutral-300">AI summary</h2>
-                {summary ? <p className="text-sm text-neutral-300">{summary}</p> : <p className="text-sm text-neutral-500">Not generated yet.</p>}
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-2 text-sm font-medium text-muted">AI summary</h2>
+                {summary ? <p className="text-sm text-muted">{summary}</p> : <p className="text-sm text-muted">Not generated yet.</p>}
                 <button
                   onClick={() =>
                     runAction(async () => {
@@ -467,7 +467,7 @@ export default function JobDetailPage() {
                       setSummary(result.summary);
                     })
                   }
-                  className="mt-4 w-full rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900"
+                  className="mt-4 w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
                 >
                   Generate summary
                 </button>
@@ -505,13 +505,13 @@ function RecordJobCostForm({ token, jobId, onRecorded }: { token: string; jobId:
   }
 
   return (
-    <form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-2 border-t border-neutral-900 pt-4">
+    <form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-2 border-t border-border pt-4">
       <div>
-        <label className="block text-xs text-neutral-500">Category</label>
+        <label className="block text-xs text-muted">Category</label>
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+          className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
         >
           {["LABOR", "MATERIAL", "SUBCONTRACTOR", "TRAVEL", "EQUIPMENT", "OTHER"].map((c) => (
             <option key={c} value={c}>
@@ -521,31 +521,31 @@ function RecordJobCostForm({ token, jobId, onRecorded }: { token: string; jobId:
         </select>
       </div>
       <div>
-        <label className="block text-xs text-neutral-500">Description</label>
+        <label className="block text-xs text-muted">Description</label>
         <input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+          className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
         />
       </div>
       <div>
-        <label className="block text-xs text-neutral-500">Cost</label>
+        <label className="block text-xs text-muted">Cost</label>
         <input
           required
           value={unitCost}
           onChange={(e) => setUnitCost(e.target.value)}
           placeholder="0.00"
-          className="w-24 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+          className="w-24 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
         />
       </div>
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+        className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
       >
         Record cost
       </button>
-      {error && <p className="w-full text-xs text-red-400">{error}</p>}
+      {error && <p className="w-full text-xs text-red-600">{error}</p>}
     </form>
   );
 }

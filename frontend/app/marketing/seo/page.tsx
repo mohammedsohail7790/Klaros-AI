@@ -74,33 +74,33 @@ export default function SEOPage() {
 
         <form onSubmit={handleGenerate} className="mb-6 flex flex-wrap items-end gap-2">
           <div>
-            <label className="block text-xs text-neutral-500">Service</label>
-            <input value={service} onChange={(e) => setService(e.target.value)} placeholder="HVAC Repair" className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm" />
+            <label className="block text-xs text-muted">Service</label>
+            <input value={service} onChange={(e) => setService(e.target.value)} placeholder="HVAC Repair" className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
           </div>
           <div>
-            <label className="block text-xs text-neutral-500">Location</label>
-            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Dallas, TX" className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm" />
+            <label className="block text-xs text-muted">Location</label>
+            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Dallas, TX" className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
           </div>
-          <button type="submit" disabled={busy || !service.trim() || !location.trim()} className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50">
+          <button type="submit" disabled={busy || !service.trim() || !location.trim()} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
             Generate draft
           </button>
         </form>
 
-        {notice && <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">{notice}</div>}
+        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : pages.length === 0 ? (
-          <p className="text-sm text-neutral-500">No SEO pages yet.</p>
+          <p className="text-sm text-muted">No SEO pages yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-950 text-neutral-500">
+              <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Service</th>
                   <th className="px-4 py-2">Location</th>
@@ -111,17 +111,17 @@ export default function SEOPage() {
               </thead>
               <tbody>
                 {pages.map((p) => (
-                  <tr key={p.id} className="border-t border-neutral-900">
+                  <tr key={p.id} className="border-t border-border">
                     <td className="px-4 py-2">{p.service}</td>
-                    <td className="px-4 py-2 text-neutral-400">{p.location}</td>
-                    <td className="px-4 py-2 text-neutral-400">{p.title}</td>
+                    <td className="px-4 py-2 text-muted">{p.location}</td>
+                    <td className="px-4 py-2 text-muted">{p.title}</td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{p.status}</span>
-                      {p.ai_generated && <span className="ml-2 text-xs text-neutral-500">AI GENERATED</span>}
+                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{p.status}</span>
+                      {p.ai_generated && <span className="ml-2 text-xs text-muted">AI GENERATED</span>}
                     </td>
                     <td className="px-4 py-2">
                       {p.status === "DRAFT" && (
-                        <button disabled={busy} onClick={() => handlePublish(p.id)} className="text-xs underline text-neutral-400 hover:text-white">
+                        <button disabled={busy} onClick={() => handlePublish(p.id)} className="text-xs underline text-muted hover:text-foreground">
                           Publish
                         </button>
                       )}

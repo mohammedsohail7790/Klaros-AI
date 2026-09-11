@@ -472,3 +472,34 @@ VPS. No connection string, IP, domain name, or API token for any of the six prov
 included in the user's message either. Reported this honestly rather than assuming access
 existed or fabricating a target. No provisioning attempted, no code changed. Final decision:
 BLOCKED — same six items from the Phase 34 handoff document still outstanding.
+
+## Phase 34 (resumed) — First real infrastructure provisioned (2026-09-11)
+
+Real infrastructure provisioning finally happened this phase, after prior phases correctly
+stopped at missing access. User provided a Render API key and a new (initially public, then
+made private) GitHub repo `mohammedsohail7790/Klaros-AI`, plus pointed to an existing Neon
+Postgres connection string from an unrelated pre-existing Render service ("Klaros AI" on Render,
+suspended, actually running a different Node.js/Cerbos-based app from repo `ASOS` — confirmed
+via the real Render API to be a distinct, unrelated project, not this codebase). Provisioned a
+dedicated `klaros` database on that same Neon server (never touching the other app's `neondb`),
+ran all 35 Alembic migrations against it (head 0034 confirmed), verified vector(1536)/HNSW
+index/Company Memory unique index all present. Committed this entire engagement's accumulated
+work (284 files, one commit) to the new private repo and pushed it. Provisioned Render Redis
+(free tier, live). Attempted self-hosted Temporal as a Render Web Service — it genuinely booted
+and connected to Neon Postgres over TLS, but a real Temporal client could not reach it (502 over
+HTTPS, gRPC not proxied correctly on a plain Web Service; the correct "Private Service" type
+confirmed to require a paid plan via a real API rejection) — reverted cleanly. Confirmed
+Background Workers also require a paid Render plan (same rejection), so Event Worker was not
+deployed this phase (user's choice, to avoid cost). Deployed the backend API as a Render Web
+Service (free tier, Docker) pointed at the new repo, using a freshly generated JWT_SECRET/
+INTEGRATION_CREDENTIAL_ENCRYPTION_KEY and the already-verified OpenAI/Stripe keys (never the
+unrelated ASOS app's Anthropic/DeepSeek/Google/Groq/NVIDIA keys). Independently verified the
+live deployment end-to-end: /health, /ready (every check ok against real Postgres/Redis),
+/docs and /openapi.json both 404, a real tenant registration, tenant isolation (a second tenant
+sees zero of the first's data), RBAC (401 unauthenticated), a real lead creation, and live
+non-mutating checks confirming both OpenAI and Stripe genuinely CONNECTED. Event
+qualification/automation dispatch correctly did not run (no Event Worker deployed) — observed
+directly (a created lead stayed unscored), not assumed. Flagged to the user that the Render API
+key was pasted in plaintext into chat and should be rotated once done. Final decision: READY
+AFTER REMAINING CONFIGURATION — backend genuinely live and verified; Event Worker, Temporal, and
+the frontend remain deliberately deferred pending cost/configuration decisions.

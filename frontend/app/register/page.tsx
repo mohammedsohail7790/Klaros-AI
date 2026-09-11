@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiError, register } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { Field, Input } from "@/components/ui/Input";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -30,64 +33,62 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
-        <h1 className="text-2xl font-semibold">Create your company</h1>
+    <main className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
+      <div className="w-full max-w-sm">
+        <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground">
+          Klaros
+        </Link>
+        <div className="klaros-card p-7">
+          <h1 className="font-display text-2xl text-foreground">Create your company</h1>
+          <p className="mt-1 text-sm text-muted">Set up your Klaros workspace in a couple of minutes.</p>
 
-        <div className="space-y-1">
-          <label className="text-sm text-neutral-400">Company name</label>
-          <input
-            required
-            value={organizationName}
-            onChange={(e) => setOrganizationName(e.target.value)}
-            placeholder="Demo HVAC Company"
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
-          />
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <Field label="Company name">
+              <Input
+                required
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
+                placeholder="Demo HVAC Company"
+              />
+            </Field>
+
+            <Field label="Your name">
+              <Input required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            </Field>
+
+            <Field label="Email">
+              <Input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
+
+            <Field label="Password">
+              <Input
+                required
+                minLength={8}
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
+
+            {error && <p className="text-sm text-danger">{error}</p>}
+
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? "Creating..." : "Create company"}
+            </Button>
+          </form>
         </div>
-
-        <div className="space-y-1">
-          <label className="text-sm text-neutral-400">Your name</label>
-          <input
-            required
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-sm text-neutral-400">Email</label>
-          <input
-            required
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-sm text-neutral-400">Password</label>
-          <input
-            required
-            minLength={8}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
-          />
-        </div>
-
-        {error && <p className="text-sm text-red-400">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-black hover:bg-neutral-200 disabled:opacity-50"
-        >
-          {loading ? "Creating..." : "Create company"}
-        </button>
-      </form>
+        <p className="mt-6 text-center text-sm text-muted">
+          Already have a workspace?{" "}
+          <Link href="/login" className="font-medium text-accent hover:text-accent-hover">
+            Sign in
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }

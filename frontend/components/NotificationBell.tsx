@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Bell } from "lucide-react";
 import {
   ApiError,
   NotificationRow,
@@ -21,9 +22,9 @@ const ENTITY_LINK: Record<string, (id: string) => string> = {
 };
 
 const PRIORITY_DOT: Record<string, string> = {
-  HIGH: "bg-red-500",
-  MEDIUM: "bg-amber-500",
-  LOW: "bg-neutral-600",
+  HIGH: "bg-danger",
+  MEDIUM: "bg-warning",
+  LOW: "bg-muted-foreground",
 };
 
 export default function NotificationBell({ token }: { token: string | null }) {
@@ -105,48 +106,48 @@ export default function NotificationBell({ token }: { token: string | null }) {
       <button
         onClick={toggleOpen}
         aria-label="Notifications"
-        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-neutral-700 hover:bg-neutral-900"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface-muted hover:text-foreground"
       >
-        <span aria-hidden="true">🔔</span>
+        <Bell className="h-4 w-4" strokeWidth={2} />
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-medium text-white">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-medium text-white">
             {unread > 99 ? "99+" : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-96 rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl">
-          <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-2">
-            <span className="text-sm font-medium">Notifications</span>
+        <div className="absolute right-0 z-20 mt-2 w-96 rounded-xl border border-border bg-surface shadow-popover">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+            <span className="text-sm font-semibold text-foreground">Notifications</span>
             {items && items.some((n) => !n.read_at) && (
-              <button onClick={handleMarkAllRead} className="text-xs text-neutral-400 underline hover:text-white">
+              <button onClick={handleMarkAllRead} className="text-xs font-medium text-accent hover:text-accent-hover">
                 Mark all read
               </button>
             )}
           </div>
           <div className="max-h-96 overflow-y-auto">
             {loading ? (
-              <p className="p-4 text-sm text-neutral-500">Loading...</p>
+              <p className="p-4 text-sm text-muted">Loading...</p>
             ) : error ? (
-              <p className="p-4 text-sm text-red-400">{error}</p>
+              <p className="p-4 text-sm text-danger">{error}</p>
             ) : !items || items.length === 0 ? (
-              <p className="p-4 text-sm text-neutral-500">No notifications.</p>
+              <p className="p-4 text-sm text-muted">No notifications.</p>
             ) : (
               items.map((n) => (
                 <button
                   key={n.id}
                   onClick={() => handleOpenNotification(n)}
-                  className={`block w-full border-b border-neutral-900 px-4 py-3 text-left hover:bg-neutral-900 ${
-                    !n.read_at ? "bg-neutral-900/40" : ""
+                  className={`block w-full border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-muted ${
+                    !n.read_at ? "bg-accent-soft/40" : ""
                   }`}
                 >
                   <div className="flex items-start gap-2">
-                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${PRIORITY_DOT[n.priority] ?? "bg-neutral-600"}`} />
+                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${PRIORITY_DOT[n.priority] ?? "bg-muted-foreground"}`} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-neutral-100">{n.title}</p>
-                      <p className="mt-0.5 line-clamp-2 text-xs text-neutral-400">{n.body}</p>
-                      <p className="mt-1 text-[10px] text-neutral-600">{new Date(n.created_at).toLocaleString()}</p>
+                      <p className="truncate text-sm font-medium text-foreground">{n.title}</p>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-muted">{n.body}</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleString()}</p>
                     </div>
                   </div>
                 </button>

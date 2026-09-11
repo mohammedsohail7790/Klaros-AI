@@ -42,7 +42,7 @@ export default function QuotesPage() {
           <h1 className="text-xl font-semibold">Quotes</h1>
           <button
             onClick={() => setShowCreate(true)}
-            className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-black hover:bg-neutral-200"
+            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface-muted"
           >
             New quote
           </button>
@@ -54,7 +54,7 @@ export default function QuotesPage() {
               key={s}
               onClick={() => setStatus(s)}
               className={`rounded-full border px-3 py-1 text-xs ${
-                status === s ? "border-white bg-white text-black" : "border-neutral-700 text-neutral-400"
+                status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"
               }`}
             >
               {s}
@@ -63,20 +63,20 @@ export default function QuotesPage() {
         </div>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
           </div>
         ) : quotes.length === 0 ? (
-          <p className="text-sm text-neutral-500">No quotes.</p>
+          <p className="text-sm text-muted">No quotes.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-950 text-neutral-500">
+              <thead className="bg-surface text-muted">
                 <tr>
                   <th className="px-4 py-2">Number</th>
                   <th className="px-4 py-2">Status</th>
@@ -86,16 +86,16 @@ export default function QuotesPage() {
               </thead>
               <tbody>
                 {quotes.map((q) => (
-                  <tr key={q.id} className="border-t border-neutral-900">
+                  <tr key={q.id} className="border-t border-border">
                     <td className="px-4 py-2">
-                      <Link href={`/quotes/${q.id}`} className="underline hover:text-white">
+                      <Link href={`/quotes/${q.id}`} className="underline hover:text-foreground">
                         {q.quote_number}
                       </Link>
                     </td>
                     <td className="px-4 py-2">
-                      <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs">{q.status}</span>
+                      <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{q.status}</span>
                     </td>
-                    <td className="px-4 py-2 text-neutral-500">{q.valid_until ?? "—"}</td>
+                    <td className="px-4 py-2 text-muted">{q.valid_until ?? "—"}</td>
                     <td className="px-4 py-2">${q.total}</td>
                   </tr>
                 ))}
@@ -178,10 +178,10 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center overflow-y-auto bg-black/60 px-4 py-8">
+    <div className="fixed inset-0 flex items-center justify-center overflow-y-auto bg-background/60 px-4 py-8">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-lg space-y-3 rounded-lg border border-neutral-800 bg-neutral-950 p-6"
+        className="w-full max-w-lg space-y-3 rounded-lg border border-border bg-surface p-6"
       >
         <h2 className="text-lg font-semibold">New quote</h2>
 
@@ -194,10 +194,10 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
               setCustomerQuery(e.target.value);
               setCustomerId("");
             }}
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
           />
           {customerResults.length > 0 && (
-            <ul className="mt-1 rounded-md border border-neutral-800 bg-neutral-900 text-sm">
+            <ul className="mt-1 rounded-md border border-border bg-surface-muted text-sm">
               {customerResults.map((c) => (
                 <li
                   key={c.id}
@@ -207,8 +207,8 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
                     setCustomerQuery("");
                     setCustomerResults([]);
                   }}
-                  className={`cursor-pointer px-3 py-2 hover:bg-neutral-800 ${
-                    customerId === c.id ? "bg-neutral-800" : ""
+                  className={`cursor-pointer px-3 py-2 hover:bg-surface-muted ${
+                    customerId === c.id ? "bg-surface-muted" : ""
                   }`}
                 >
                   {c.name} {c.email && `(${c.email})`}
@@ -219,32 +219,32 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs text-neutral-500">Line items</p>
+          <p className="text-xs text-muted">Line items</p>
           {lineItems.map((item, i) => (
             <div key={i} className="flex gap-2">
               <input
                 placeholder="Description"
                 value={item.description}
                 onChange={(e) => updateLineItem(i, { description: e.target.value })}
-                className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+                className="flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
               <input
                 placeholder="Qty"
                 value={item.quantity}
                 onChange={(e) => updateLineItem(i, { quantity: e.target.value })}
-                className="w-16 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+                className="w-16 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
               <input
                 placeholder="Unit price"
                 value={item.unit_price}
                 onChange={(e) => updateLineItem(i, { unit_price: e.target.value })}
-                className="w-24 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+                className="w-24 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
               {lineItems.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeLineItem(i)}
-                  className="px-2 text-sm text-red-400 hover:text-red-300"
+                  className="px-2 text-sm text-red-600 hover:text-red-700"
                 >
                   ✕
                 </button>
@@ -254,7 +254,7 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
           <button
             type="button"
             onClick={() => setLineItems((items) => [...items, emptyLineItem()])}
-            className="text-xs text-neutral-400 underline hover:text-white"
+            className="text-xs text-muted underline hover:text-foreground"
           >
             + Add line item
           </button>
@@ -265,26 +265,26 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
         />
         <textarea
           placeholder="Terms (optional)"
           value={terms}
           onChange={(e) => setTerms(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
         />
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-neutral-400">
+          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-black disabled:opacity-50"
+            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
           >
             {submitting ? "Creating..." : "Create quote"}
           </button>

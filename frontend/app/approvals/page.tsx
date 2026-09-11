@@ -17,16 +17,16 @@ import {
 const STATUS_FILTERS = ["ALL", "PENDING", "APPROVED", "REJECTED"] as const;
 
 const STATUS_COLOR: Record<string, string> = {
-  PENDING: "border-amber-800 text-amber-300",
-  APPROVED: "border-emerald-800 text-emerald-300",
-  REJECTED: "border-red-800 text-red-300",
+  PENDING: "border-amber-200 text-amber-700",
+  APPROVED: "border-emerald-200 text-emerald-700",
+  REJECTED: "border-red-200 text-red-700",
 };
 
 const EXECUTION_COLOR: Record<string, string> = {
-  NOT_STARTED: "border-neutral-700 text-neutral-400",
-  EXECUTING: "border-blue-800 text-blue-300",
-  EXECUTED: "border-emerald-800 text-emerald-300",
-  FAILED: "border-red-800 text-red-300",
+  NOT_STARTED: "border-border-strong text-muted",
+  EXECUTING: "border-blue-200 text-blue-700",
+  EXECUTED: "border-emerald-200 text-emerald-700",
+  FAILED: "border-red-200 text-red-700",
 };
 
 export default function ApprovalsPage() {
@@ -161,7 +161,7 @@ export default function ApprovalsPage() {
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`rounded-md border px-3 py-1.5 text-xs ${
-                  filter === f ? "border-neutral-400 bg-neutral-800" : "border-neutral-700 hover:bg-neutral-900"
+                  filter === f ? "border-border-strong bg-surface-muted" : "border-border-strong hover:bg-surface-muted"
                 }`}
               >
                 {f}
@@ -170,19 +170,19 @@ export default function ApprovalsPage() {
           </div>
         </div>
 
-        <p className="mb-6 text-xs text-neutral-500">
+        <p className="mb-6 text-xs text-muted">
           Every human-required action funnels through here — approving one resumes and executes the
           original action through the same Tool Registry pipeline every other call goes through. Nobody,
           including the AI, can approve their own request.
         </p>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-900 bg-emerald-950/30 p-3 text-sm text-emerald-300">
+          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
             {notice}
           </div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-sm text-red-300">
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -190,17 +190,17 @@ export default function ApprovalsPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>
             {authLoading || loading ? (
-              <p className="text-sm text-neutral-500">Loading...</p>
+              <p className="text-sm text-muted">Loading...</p>
             ) : !approvals || approvals.length === 0 ? (
-              <p className="text-sm text-neutral-500">No {filter === "ALL" ? "" : filter.toLowerCase()} approvals.</p>
+              <p className="text-sm text-muted">No {filter === "ALL" ? "" : filter.toLowerCase()} approvals.</p>
             ) : (
               <div className="space-y-2">
                 {approvals.map((a) => (
                   <button
                     key={a.id}
                     onClick={() => openDetail(a.id)}
-                    className={`block w-full rounded-lg border p-3 text-left text-sm hover:bg-neutral-900 ${
-                      selected?.approval_request_id === a.id ? "border-neutral-400" : "border-neutral-800"
+                    className={`block w-full rounded-lg border p-3 text-left text-sm hover:bg-surface-muted ${
+                      selected?.approval_request_id === a.id ? "border-border-strong" : "border-border"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -212,13 +212,13 @@ export default function ApprovalsPage() {
                           </span>
                         )}
                       </span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[a.status] ?? "border-neutral-700"}`}>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[a.status] ?? "border-border-strong"}`}>
                         {a.status}
                       </span>
                     </div>
-                    <p className="mt-1 text-neutral-400">{a.reason}</p>
-                    <div className="mt-1 flex items-center gap-2 text-[10px] text-neutral-500">
-                      <span className={`rounded-full border px-2 py-0.5 ${EXECUTION_COLOR[a.execution_status] ?? "border-neutral-700"}`}>
+                    <p className="mt-1 text-muted">{a.reason}</p>
+                    <div className="mt-1 flex items-center gap-2 text-[10px] text-muted">
+                      <span className={`rounded-full border px-2 py-0.5 ${EXECUTION_COLOR[a.execution_status] ?? "border-border-strong"}`}>
                         {a.execution_status}
                       </span>
                       <span>{new Date(a.created_at).toLocaleString()}</span>
@@ -231,12 +231,12 @@ export default function ApprovalsPage() {
 
           <div>
             {!selected ? (
-              <p className="text-sm text-neutral-500">Select an approval to see its detail.</p>
+              <p className="text-sm text-muted">Select an approval to see its detail.</p>
             ) : (
-              <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-5">
+              <div className="rounded-lg border border-border bg-surface p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="font-medium">{selected.tool_name}</h2>
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[selected.status] ?? "border-neutral-700"}`}>
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[selected.status] ?? "border-border-strong"}`}>
                     {selected.status}
                   </span>
                 </div>
@@ -246,51 +246,51 @@ export default function ApprovalsPage() {
                     type requires your approval. Nothing has happened yet.
                   </div>
                 )}
-                <p className="text-sm text-neutral-300">{selected.reason}</p>
+                <p className="text-sm text-muted">{selected.reason}</p>
 
-                <dl className="mt-4 grid grid-cols-2 gap-y-2 text-xs text-neutral-500">
+                <dl className="mt-4 grid grid-cols-2 gap-y-2 text-xs text-muted">
                   <dt>Requested by</dt>
-                  <dd className="text-neutral-300">{selected.requested_by_type === "AI" ? "Klaros AI" : selected.requested_by_type}</dd>
+                  <dd className="text-muted">{selected.requested_by_type === "AI" ? "Klaros AI" : selected.requested_by_type}</dd>
                   <dt>Created</dt>
-                  <dd className="text-neutral-300">{new Date(selected.created_at).toLocaleString()}</dd>
+                  <dd className="text-muted">{new Date(selected.created_at).toLocaleString()}</dd>
                   {selected.decided_at && (
                     <>
                       <dt>Decided</dt>
-                      <dd className="text-neutral-300">{new Date(selected.decided_at).toLocaleString()}</dd>
+                      <dd className="text-muted">{new Date(selected.decided_at).toLocaleString()}</dd>
                     </>
                   )}
                   <dt>Execution</dt>
                   <dd>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[selected.execution_status] ?? "border-neutral-700"}`}>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[selected.execution_status] ?? "border-border-strong"}`}>
                       {selected.execution_status}
                     </span>
                   </dd>
                   {selected.execution_attempts > 0 && (
                     <>
                       <dt>Attempts</dt>
-                      <dd className="text-neutral-300">{selected.execution_attempts}</dd>
+                      <dd className="text-muted">{selected.execution_attempts}</dd>
                     </>
                   )}
                 </dl>
 
                 <div className="mt-4">
-                  <p className="mb-1 text-xs text-neutral-500">Input</p>
-                  <pre className="max-h-40 overflow-auto rounded-md border border-neutral-800 bg-black p-2 text-[11px] text-neutral-400">
+                  <p className="mb-1 text-xs text-muted">Input</p>
+                  <pre className="max-h-40 overflow-auto rounded-md border border-border bg-background p-2 text-[11px] text-muted">
                     {JSON.stringify(selected.tool_input, null, 2)}
                   </pre>
                 </div>
 
                 {selected.execution_result && (
                   <div className="mt-4">
-                    <p className="mb-1 text-xs text-neutral-500">Execution result</p>
-                    <pre className="max-h-40 overflow-auto rounded-md border border-emerald-900 bg-emerald-950/20 p-2 text-[11px] text-emerald-300">
+                    <p className="mb-1 text-xs text-muted">Execution result</p>
+                    <pre className="max-h-40 overflow-auto rounded-md border border-emerald-200 bg-emerald-50/20 p-2 text-[11px] text-emerald-700">
                       {JSON.stringify(selected.execution_result, null, 2)}
                     </pre>
                   </div>
                 )}
 
                 {selected.execution_error && (
-                  <div className="mt-4 rounded-md border border-red-900 bg-red-950/30 p-3 text-xs text-red-300">
+                  <div className="mt-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-xs text-red-700">
                     {selected.execution_error}
                   </div>
                 )}
@@ -301,20 +301,20 @@ export default function ApprovalsPage() {
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       placeholder="Decision note (optional)"
-                      className="mb-2 w-full rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+                      className="mb-2 w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                     />
                     <div className="flex gap-2">
                       <button
                         disabled={busy}
                         onClick={handleApprove}
-                        className="rounded-md border border-emerald-800 bg-emerald-950/30 px-3 py-1.5 text-sm text-emerald-300 hover:bg-emerald-950/60 disabled:opacity-50"
+                        className="rounded-md border border-emerald-200 bg-emerald-50/30 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
                       >
                         Approve
                       </button>
                       <button
                         disabled={busy}
                         onClick={handleReject}
-                        className="rounded-md border border-red-800 bg-red-950/30 px-3 py-1.5 text-sm text-red-300 hover:bg-red-950/60 disabled:opacity-50"
+                        className="rounded-md border border-red-200 bg-red-50/30 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50/60 disabled:opacity-50"
                       >
                         Reject
                       </button>
@@ -327,7 +327,7 @@ export default function ApprovalsPage() {
                     <button
                       disabled={busy}
                       onClick={handleRetry}
-                      className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-900 disabled:opacity-50"
+                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
                     >
                       Retry execution
                     </button>

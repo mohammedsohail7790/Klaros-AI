@@ -23,7 +23,7 @@ function todayIso(): string {
 
 export default function CalendarPage() {
   return (
-    <Suspense fallback={<p className="p-8 text-sm text-neutral-500">Loading calendar...</p>}>
+    <Suspense fallback={<p className="p-8 text-sm text-muted">Loading calendar...</p>}>
       <CalendarPageInner />
     </Suspense>
   );
@@ -105,18 +105,18 @@ function CalendarPageInner() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm"
+            className="rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
           />
         </header>
 
-        <p className="mb-4 text-xs text-neutral-500">
+        <p className="mb-4 text-xs text-muted">
           Internal test calendar (no external provider connected). Business hours 09:00-17:00 UTC.
         </p>
 
         {authLoading || loading ? (
-          <p className="text-sm text-neutral-500">Loading calendar...</p>
+          <p className="text-sm text-muted">Loading calendar...</p>
         ) : error ? (
-          <div className="rounded-md border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
+          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -125,26 +125,26 @@ function CalendarPageInner() {
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <section>
-              <h2 className="mb-3 text-sm font-medium text-neutral-300">
+              <h2 className="mb-3 text-sm font-medium text-muted">
                 Appointments ({appointments.length})
               </h2>
               {appointments.length === 0 ? (
-                <p className="text-sm text-neutral-500">Nothing booked for this day.</p>
+                <p className="text-sm text-muted">Nothing booked for this day.</p>
               ) : (
                 <ul className="space-y-2">
                   {appointments.map((a) => (
                     <li
                       key={a.id}
-                      className="flex items-center justify-between rounded-md border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm"
+                      className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3 text-sm"
                     >
                       <div>
                         <p className="font-medium">{a.title}</p>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-muted">
                           {new Date(a.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} –{" "}
                           {new Date(a.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·{" "}
                           {a.status}
                           {a.external_provider === "google_calendar" && (
-                            <span className="ml-2 text-emerald-500">· synced to Google</span>
+                            <span className="ml-2 text-emerald-600">· synced to Google</span>
                           )}
                         </p>
                       </div>
@@ -153,7 +153,7 @@ function CalendarPageInner() {
                           <button
                             onClick={() => handleSyncToGoogle(a.id)}
                             disabled={syncingId === a.id}
-                            className="text-xs text-neutral-400 hover:underline disabled:opacity-50"
+                            className="text-xs text-muted hover:underline disabled:opacity-50"
                           >
                             {syncingId === a.id
                               ? "Syncing..."
@@ -165,7 +165,7 @@ function CalendarPageInner() {
                         {a.status !== "CANCELLED" && (
                           <button
                             onClick={() => handleCancel(a.id)}
-                            className="text-xs text-red-400 hover:underline"
+                            className="text-xs text-red-600 hover:underline"
                           >
                             Cancel
                           </button>
@@ -178,16 +178,16 @@ function CalendarPageInner() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-sm font-medium text-neutral-300">Open slots ({slots.length})</h2>
+              <h2 className="mb-3 text-sm font-medium text-muted">Open slots ({slots.length})</h2>
               {slots.length === 0 ? (
-                <p className="text-sm text-neutral-500">No open slots this day.</p>
+                <p className="text-sm text-muted">No open slots this day.</p>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
                   {slots.map((s) => (
                     <button
                       key={s.start_time}
                       onClick={() => setBookingSlot(s)}
-                      className="rounded-md border border-neutral-700 px-2 py-2 text-xs hover:bg-neutral-900"
+                      className="rounded-md border border-border-strong px-2 py-2 text-xs hover:bg-surface-muted"
                     >
                       {new Date(s.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </button>
@@ -274,10 +274,10 @@ function BookSlotModal({
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/60 px-4">
+    <div className="fixed inset-0 flex items-center justify-center bg-background/60 px-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md space-y-3 rounded-lg border border-neutral-800 bg-neutral-950 p-6"
+        className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6"
       >
         <h2 className="text-lg font-semibold">
           Book {new Date(slot.start_time).toLocaleString()}
@@ -287,7 +287,7 @@ function BookSlotModal({
           placeholder="Title (e.g. AC repair)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
         />
 
         {!initialCustomerId && (
@@ -296,10 +296,10 @@ function BookSlotModal({
               placeholder="Search customer by name/email"
               value={customerQuery}
               onChange={(e) => setCustomerQuery(e.target.value)}
-              className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
             />
             {customerResults.length > 0 && (
-              <ul className="mt-1 rounded-md border border-neutral-800 bg-neutral-900 text-sm">
+              <ul className="mt-1 rounded-md border border-border bg-surface-muted text-sm">
                 {customerResults.map((c) => (
                   <li
                     key={c.id}
@@ -308,8 +308,8 @@ function BookSlotModal({
                       setCustomerQuery(c.name);
                       setCustomerResults([]);
                     }}
-                    className={`cursor-pointer px-3 py-2 hover:bg-neutral-800 ${
-                      customerId === c.id ? "bg-neutral-800" : ""
+                    className={`cursor-pointer px-3 py-2 hover:bg-surface-muted ${
+                      customerId === c.id ? "bg-surface-muted" : ""
                     }`}
                   >
                     {c.name} {c.email && `(${c.email})`}
@@ -320,16 +320,16 @@ function BookSlotModal({
           </div>
         )}
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-neutral-400">
+          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-black disabled:opacity-50"
+            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
           >
             {submitting ? "Booking..." : "Book appointment"}
           </button>
