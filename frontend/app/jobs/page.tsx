@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Wrench } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Customer, Job, createJob, searchCustomers, searchJobs } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 const STATUS_TABS = [
   "ALL", "DRAFT", "SCHEDULED", "DISPATCHED", "EN_ROUTE", "ON_SITE",
   "IN_PROGRESS", "BLOCKED", "QA_PENDING", "COMPLETED", "CLOSED",
@@ -84,7 +86,15 @@ export default function JobsPage() {
             </button>
           </div>
         ) : jobs.length === 0 ? (
-          <p className="text-sm text-muted">No jobs yet.</p>
+          <EmptyState
+            icon={Wrench}
+            title="No jobs yet."
+            action={
+              <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">
+                New job
+              </button>
+            }
+          />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">

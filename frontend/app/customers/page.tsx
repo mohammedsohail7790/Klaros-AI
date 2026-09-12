@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Users } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Customer, createCustomer, searchCustomers } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 export default function CustomersPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -65,7 +67,15 @@ export default function CustomersPage() {
             </button>
           </div>
         ) : customers.length === 0 ? (
-          <p className="text-sm text-muted">No customers yet.</p>
+          <EmptyState
+            icon={Users}
+            title="No customers yet."
+            action={
+              <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">
+                New customer
+              </button>
+            }
+          />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">

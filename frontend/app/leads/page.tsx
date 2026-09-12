@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Users } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, createLead, Lead, searchLeads } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 const STATUS_TABS = ["ALL", "NEW", "CONTACTED", "QUALIFIED", "BOOKED", "LOST"];
 
 export default function LeadsPage() {
@@ -96,7 +98,15 @@ export default function LeadsPage() {
             </button>
           </div>
         ) : leads.length === 0 ? (
-          <p className="text-sm text-muted">No leads yet. Create one to get started.</p>
+          <EmptyState
+            icon={Users}
+            title="No leads yet."
+            action={
+              <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">
+                New lead
+              </button>
+            }
+          />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">

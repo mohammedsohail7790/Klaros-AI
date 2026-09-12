@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { TrendingUp } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, SEOPageSummary, generateSEOPage, listSEOPages, publishSEOPage } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 export default function SEOPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [pages, setPages] = useState<SEOPageSummary[]>([]);
@@ -97,7 +99,7 @@ export default function SEOPage() {
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : pages.length === 0 ? (
-          <p className="text-sm text-muted">No SEO pages yet.</p>
+          <EmptyState icon={TrendingUp} title="No SEO pages yet — generate a draft above to get started." />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">

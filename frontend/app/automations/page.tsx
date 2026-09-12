@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Workflow } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -501,7 +503,15 @@ export default function AutomationsPage() {
             {authLoading || loading ? (
               <p className="text-sm text-muted">Loading...</p>
             ) : !automations || automations.length === 0 ? (
-              <p className="text-sm text-muted">No automations yet.</p>
+              <EmptyState
+                icon={Workflow}
+                title="No automations yet."
+                action={
+                  <button onClick={startCreate} className="klaros-btn-primary text-xs">
+                    New automation
+                  </button>
+                }
+              />
             ) : (
               <div className="space-y-2">
                 {automations.map((a) => (

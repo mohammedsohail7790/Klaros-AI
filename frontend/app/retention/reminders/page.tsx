@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, ServiceReminderRow, listServiceReminders, markDueReminders, updateReminderStatus } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 export default function RemindersPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [reminders, setReminders] = useState<ServiceReminderRow[]>([]);
@@ -79,7 +81,7 @@ export default function RemindersPage() {
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : reminders.length === 0 ? (
-          <p className="text-sm text-muted">No service reminders yet.</p>
+          <EmptyState icon={AlertTriangle} title="No service reminders yet." />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">

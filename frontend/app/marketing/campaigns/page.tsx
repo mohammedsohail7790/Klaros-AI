@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Megaphone } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Campaign, createCampaign, listCampaigns } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 const CHANNELS = ["GOOGLE_ADS", "META_ADS", "YOUTUBE_ADS", "LOCAL_SERVICES_ADS", "SEO", "LOCAL", "CONTENT", "OUTBOUND", "REFERRAL", "OTHER"];
 
 export default function CampaignsPage() {
@@ -117,7 +119,17 @@ export default function CampaignsPage() {
             </button>
           </div>
         ) : campaigns.length === 0 ? (
-          <p className="text-sm text-muted">No campaigns yet.</p>
+          <EmptyState
+            icon={Megaphone}
+            title="No campaigns yet."
+            action={
+              !showCreate && (
+                <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">
+                  New campaign
+                </button>
+              )
+            }
+          />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
