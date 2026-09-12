@@ -25,7 +25,9 @@ const STATUS_VARIANTS: Record<string, string> = {
   BLOCKED: "bg-red-50 text-red-700 border-red-200",
   DECLINED: "bg-red-50 text-red-700 border-red-200",
   CANCELLED: "bg-red-50 text-red-700 border-red-200",
+  ERROR: "bg-red-50 text-red-700 border-red-200",
   NOT_CONNECTED: "bg-surface-muted text-muted border-border-strong",
+  NOT_IMPLEMENTED: "bg-surface-muted text-muted-foreground border-border",
 };
 
 export function Badge({

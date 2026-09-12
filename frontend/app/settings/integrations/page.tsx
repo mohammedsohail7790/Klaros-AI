@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
+import { Badge } from "@/components/ui/Badge";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -17,12 +18,6 @@ import {
   verifyIntegrationConnection,
 } from "@/lib/api";
 
-const STATUS_COLOR: Record<string, string> = {
-  CONNECTED: "border-emerald-200 text-emerald-700",
-  NOT_CONNECTED: "border-border-strong text-muted",
-  ERROR: "border-red-200 text-red-700",
-};
-
 const CATEGORY: Record<string, string> = {
   stripe: "Finance",
   quickbooks: "Finance",
@@ -35,6 +30,10 @@ const CATEGORY: Record<string, string> = {
   sendgrid: "Communications",
   anthropic: "AI",
   openai: "AI",
+  groq: "AI",
+  deepseek: "AI",
+  nvidia: "AI",
+  google_ai: "AI",
   supplier_procurement: "Operations",
 };
 
@@ -50,6 +49,10 @@ const DISPLAY_NAME: Record<string, string> = {
   sendgrid: "SendGrid",
   anthropic: "Anthropic",
   openai: "OpenAI",
+  groq: "Groq",
+  deepseek: "DeepSeek",
+  nvidia: "NVIDIA",
+  google_ai: "Google AI",
   supplier_procurement: "Supplier / Procurement",
 };
 
@@ -286,7 +289,7 @@ function IntegrationsPageInner() {
       <div className="mx-auto max-w-4xl px-6 py-10">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="font-display text-2xl text-foreground text-foreground">Integrations</h1>
+            <h1 className="font-display text-2xl text-foreground">Integrations</h1>
             <p className="mt-1 text-sm text-muted">
               Every status here is checked live against the real provider — nothing is fabricated.
               {rows && ` ${connectedCount} of ${rows.length} connected.`}
@@ -315,7 +318,7 @@ function IntegrationsPageInner() {
               <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
                 {category}
               </h2>
-              <div className="divide-y divide-neutral-800 rounded border border-border">
+              <div className="divide-y divide-border rounded border border-border">
                 {categoryRows.map((row) => (
                   <div key={row.provider} className="flex items-center justify-between px-4 py-3">
                     <div>
@@ -324,13 +327,7 @@ function IntegrationsPageInner() {
                       </div>
                       <div className="mt-0.5 text-xs text-muted">{row.detail}</div>
                     </div>
-                    <span
-                      className={`rounded border px-2 py-0.5 text-xs font-medium ${
-                        STATUS_COLOR[row.status] ?? "border-border-strong text-muted"
-                      }`}
-                    >
-                      {row.status}
-                    </span>
+                    <Badge status={row.status}>{row.status}</Badge>
                   </div>
                 ))}
               </div>
@@ -393,13 +390,7 @@ function IntegrationsPageInner() {
                                 : "Not yet verified")}
                           </div>
                         </div>
-                        <span
-                          className={`rounded border px-2 py-0.5 text-xs font-medium ${
-                            STATUS_COLOR[stripeConnection.status] ?? "border-border-strong text-muted"
-                          }`}
-                        >
-                          {stripeConnection.status}
-                        </span>
+                        <Badge status={stripeConnection.status}>{stripeConnection.status}</Badge>
                       </div>
                     )}
 
@@ -496,13 +487,7 @@ function IntegrationsPageInner() {
                                 : "Not yet verified")}
                           </div>
                         </div>
-                        <span
-                          className={`rounded border px-2 py-0.5 text-xs font-medium ${
-                            STATUS_COLOR[qbConnection.status] ?? "border-border-strong text-muted"
-                          }`}
-                        >
-                          {qbConnection.status}
-                        </span>
+                        <Badge status={qbConnection.status}>{qbConnection.status}</Badge>
                       </div>
                     )}
 
@@ -593,13 +578,7 @@ function IntegrationsPageInner() {
                                 : "Not yet verified")}
                           </div>
                         </div>
-                        <span
-                          className={`rounded border px-2 py-0.5 text-xs font-medium ${
-                            STATUS_COLOR[gcalConnection.status] ?? "border-border-strong text-muted"
-                          }`}
-                        >
-                          {gcalConnection.status}
-                        </span>
+                        <Badge status={gcalConnection.status}>{gcalConnection.status}</Badge>
                       </div>
                     )}
 
@@ -656,7 +635,7 @@ function IntegrationsPageInner() {
               Unlike the providers above (one shared credential for the whole platform), each business
               would connect their OWN account for these — real OAuth is not built yet for any of them.
             </p>
-            <div className="divide-y divide-neutral-800 rounded border border-border">
+            <div className="divide-y divide-border rounded border border-border">
               {PLANNED_OAUTH_PROVIDERS.map((p) => {
                 const existing = connections?.find((c) => c.provider === p.provider);
                 const status = existing?.status ?? "NOT_IMPLEMENTED";
@@ -668,15 +647,7 @@ function IntegrationsPageInner() {
                         {existing?.last_error ?? "No real OAuth client implemented for this provider yet."}
                       </div>
                     </div>
-                    <span
-                      className={`rounded border px-2 py-0.5 text-xs font-medium ${
-                        status === "NOT_IMPLEMENTED"
-                          ? "border-border text-muted-foreground"
-                          : STATUS_COLOR[status] ?? "border-border-strong text-muted"
-                      }`}
-                    >
-                      {status}
-                    </span>
+                    <Badge status={status}>{status}</Badge>
                   </div>
                 );
               })}

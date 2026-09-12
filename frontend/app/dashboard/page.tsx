@@ -230,7 +230,7 @@ export default function DashboardPage() {
               Nothing needs your attention right now.
             </p>
           ) : (
-            <ul className="divide-y divide-neutral-800 rounded-lg border border-border bg-surface">
+            <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
               {attention.items.slice(0, 8).map((item) => (
                 <li key={`${item.category}-${item.entity_id}`}>
                   <Link
@@ -757,7 +757,7 @@ export default function DashboardPage() {
             </p>
           ) : (
             <>
-              <ul className="divide-y divide-neutral-800 rounded-lg border border-border bg-surface">
+              <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
                 {activity.items.map((item) => {
                   const row = (
                     <div className="flex items-start justify-between gap-4 p-4 transition hover:bg-surface-muted">
