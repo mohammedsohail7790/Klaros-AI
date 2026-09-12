@@ -50,7 +50,7 @@ const TIERS = [
       "Dedicated onboarding",
       "Direct line to support",
     ],
-    cta: "Talk to us",
+    cta: "Get started",
     highlighted: false,
   },
 ];
