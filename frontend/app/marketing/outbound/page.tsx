@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Contact } from "lucide-react";
+import { Contact, List } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -97,7 +97,7 @@ export default function OutboundPage() {
             {authLoading || loading ? (
               <p className="text-sm text-muted">Loading...</p>
             ) : lists.length === 0 ? (
-              <p className="text-sm text-muted">No lists yet.</p>
+              <EmptyState icon={List} title="No lists yet." compact />
             ) : (
               <ul className="space-y-1 text-sm">
                 {lists.map((l) => (

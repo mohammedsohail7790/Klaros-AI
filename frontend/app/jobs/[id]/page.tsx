@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { CheckSquare, Clock, Package, Paperclip } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -280,24 +282,27 @@ export default function JobDetailPage() {
 
               <div className="rounded-lg border border-border bg-surface p-6">
                 <h2 className="mb-3 text-sm font-medium text-muted">Tasks</h2>
-                <ul className="space-y-2">
-                  {tasks.map((t) => (
-                    <li key={t.id} className="flex items-center justify-between text-sm">
-                      <span className={t.status === "COMPLETED" ? "line-through text-muted-foreground" : ""}>
-                        {t.title} {t.required && <span className="text-xs text-muted-foreground">(required)</span>}
-                      </span>
-                      {t.status !== "COMPLETED" && token && (
-                        <button
-                          onClick={() => runAction(() => completeTask(token, t.id))}
-                          className="text-xs underline text-muted hover:text-foreground"
-                        >
-                          Complete
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                  {tasks.length === 0 && <p className="text-sm text-muted">No tasks yet.</p>}
-                </ul>
+                {tasks.length === 0 ? (
+                  <EmptyState icon={CheckSquare} title="No tasks yet." compact />
+                ) : (
+                  <ul className="space-y-2">
+                    {tasks.map((t) => (
+                      <li key={t.id} className="flex items-center justify-between text-sm">
+                        <span className={t.status === "COMPLETED" ? "line-through text-muted-foreground" : ""}>
+                          {t.title} {t.required && <span className="text-xs text-muted-foreground">(required)</span>}
+                        </span>
+                        {t.status !== "COMPLETED" && token && (
+                          <button
+                            onClick={() => runAction(() => completeTask(token, t.id))}
+                            className="text-xs underline text-muted hover:text-foreground"
+                          >
+                            Complete
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <form onSubmit={handleAddTask} className="mt-3 flex gap-2">
                   <input name="title" placeholder="New task" className="flex-1 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm" />
                   <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
@@ -308,14 +313,17 @@ export default function JobDetailPage() {
 
               <div className="rounded-lg border border-border bg-surface p-6">
                 <h2 className="mb-3 text-sm font-medium text-muted">Materials</h2>
-                <ul className="space-y-1 text-sm">
-                  {materials.map((m) => (
-                    <li key={m.id}>
-                      {m.name} × {m.quantity} — {m.status}
-                    </li>
-                  ))}
-                  {materials.length === 0 && <p className="text-muted">No materials recorded.</p>}
-                </ul>
+                {materials.length === 0 ? (
+                  <EmptyState icon={Package} title="No materials recorded." compact />
+                ) : (
+                  <ul className="space-y-1 text-sm">
+                    {materials.map((m) => (
+                      <li key={m.id}>
+                        {m.name} × {m.quantity} — {m.status}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <form onSubmit={handleAddMaterial} className="mt-3 flex gap-2">
                   <input name="name" placeholder="Material name" className="flex-1 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm" />
                   <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
@@ -354,22 +362,27 @@ export default function JobDetailPage() {
                     onChange={(e) => handleUpload("documents", e.target.files?.[0])}
                   />
                 </div>
-                <ul className="mt-3 space-y-1 text-sm text-muted">
-                  {attachments.map((a) => (
-                    <li key={a.id} className="flex items-center gap-2">
-                      <span>
-                        {a.kind}: {a.filename} ({a.size_bytes} bytes, {a.storage_provider})
-                      </span>
-                      <button
-                        onClick={() => handleViewAttachment(a.id)}
-                        className="text-xs text-emerald-600 underline hover:text-foreground"
-                      >
-                        View
-                      </button>
-                    </li>
-                  ))}
-                  {attachments.length === 0 && <p className="text-muted">No attachments yet.</p>}
-                </ul>
+                {attachments.length === 0 ? (
+                  <div className="mt-3">
+                    <EmptyState icon={Paperclip} title="No attachments yet." compact />
+                  </div>
+                ) : (
+                  <ul className="mt-3 space-y-1 text-sm text-muted">
+                    {attachments.map((a) => (
+                      <li key={a.id} className="flex items-center gap-2">
+                        <span>
+                          {a.kind}: {a.filename} ({a.size_bytes} bytes, {a.storage_provider})
+                        </span>
+                        <button
+                          onClick={() => handleViewAttachment(a.id)}
+                          className="text-xs text-emerald-600 underline hover:text-foreground"
+                        >
+                          View
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               {job.status === "QA_PENDING" && token && (
@@ -441,7 +454,7 @@ export default function JobDetailPage() {
               <div className="rounded-lg border border-border bg-surface p-6">
                 <h2 className="mb-3 text-sm font-medium text-muted">Timeline</h2>
                 {timeline.length === 0 ? (
-                  <p className="text-sm text-muted">No activity recorded yet.</p>
+                  <EmptyState icon={Clock} title="No activity recorded yet." compact />
                 ) : (
                   <ul className="space-y-2 text-sm">
                     {timeline.map((entry, i) => (

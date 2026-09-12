@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { BookOpen, Search } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -253,7 +255,7 @@ export default function KnowledgePage() {
             {searchResults && (
               <div className="space-y-3">
                 {searchResults.length === 0 && (
-                  <p className="text-sm text-muted">No matching knowledge found.</p>
+                  <EmptyState icon={Search} title="No matching knowledge found." compact />
                 )}
                 {searchResults.map((r) => (
                   <div key={`${r.file_path}-${r.chunk_index}`} className="rounded-lg border border-border bg-surface p-4">
@@ -316,7 +318,7 @@ export default function KnowledgePage() {
                 ) : null
               )}
               {(!files || files.length === 0) && (
-                <p className="text-sm text-muted">No knowledge files yet.</p>
+                <EmptyState icon={BookOpen} title="No knowledge files yet." compact />
               )}
             </div>
 

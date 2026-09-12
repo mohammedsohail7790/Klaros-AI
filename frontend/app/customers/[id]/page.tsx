@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { Calendar, Clock, Heart, Receipt } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -168,7 +170,7 @@ export default function CustomerDetailPage() {
               <div className="rounded-lg border border-border bg-surface p-6">
                 <h2 className="mb-3 text-sm font-medium text-muted">Timeline</h2>
                 {timeline.length === 0 ? (
-                  <p className="text-sm text-muted">No activity recorded yet.</p>
+                  <EmptyState icon={Clock} title="No activity recorded yet." compact />
                 ) : (
                   <ul className="space-y-3">
                     {timeline.map((entry, i) => (
@@ -193,7 +195,7 @@ export default function CustomerDetailPage() {
                   Appointments ({appointmentEntries.length})
                 </h2>
                 {appointmentEntries.length === 0 ? (
-                  <p className="text-sm text-muted">No appointments yet.</p>
+                  <EmptyState icon={Calendar} title="No appointments yet." compact />
                 ) : (
                   <ul className="space-y-2 text-sm">
                     {appointmentEntries.map((a, i) => (
@@ -208,7 +210,7 @@ export default function CustomerDetailPage() {
               <div className="rounded-lg border border-border bg-surface p-6">
                 <h2 className="mb-3 text-sm font-medium text-muted">Invoices / Payments</h2>
                 {invoices.length === 0 ? (
-                  <p className="text-sm text-muted">No financial history for this customer yet.</p>
+                  <EmptyState icon={Receipt} title="No financial history for this customer yet." compact />
                 ) : (
                   <ul className="space-y-2 text-sm">
                     {invoices.map((inv) => (
@@ -298,7 +300,7 @@ export default function CustomerDetailPage() {
               <div className="rounded-lg border border-border bg-surface p-6">
                 <h2 className="mb-3 text-sm font-medium text-muted">Retention timeline</h2>
                 {retentionTimeline.length === 0 ? (
-                  <p className="text-sm text-muted">No retention activity recorded yet.</p>
+                  <EmptyState icon={Heart} title="No retention activity recorded yet." compact />
                 ) : (
                   <ul className="space-y-3">
                     {retentionTimeline.map((entry, i) => (

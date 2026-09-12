@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Settings2 } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -182,7 +184,7 @@ export default function AutomationSettingsPage() {
             <section className="mb-10">
               <h2 className="mb-3 text-sm font-medium text-muted">Automation Policies</h2>
               {!policies || policies.length === 0 ? (
-                <p className="text-sm text-muted">No configurable automation actions found.</p>
+                <EmptyState icon={Settings2} title="No configurable automation actions found." />
               ) : (
                 <div className="klaros-table-wrap">
                   <table className="w-full text-sm">

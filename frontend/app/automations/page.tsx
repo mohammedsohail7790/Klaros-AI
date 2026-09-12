@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Workflow } from "lucide-react";
+import { History, Workflow } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -869,7 +869,7 @@ export default function AutomationsPage() {
                 <div className="rounded-lg border border-border bg-surface p-5">
                   <h3 className="mb-3 text-sm font-medium">Execution history</h3>
                   {executions.length === 0 ? (
-                    <p className="text-xs text-muted">No executions yet.</p>
+                    <EmptyState icon={History} title="No executions yet." compact />
                   ) : (
                     <div className="space-y-2">
                       {executions.map((e) => (

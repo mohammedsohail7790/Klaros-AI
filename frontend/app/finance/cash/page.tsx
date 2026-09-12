@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Wallet } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, CashForecastResult, generateCashForecast } from "@/lib/api";
 
@@ -49,10 +51,10 @@ export default function CashForecastPage() {
         )}
 
         {!forecast ? (
-          <p className="text-sm text-muted">
-            No forecast generated yet. Click &quot;Generate forecast&quot; to build one from real open invoices and
-            vendor bills.
-          </p>
+          <EmptyState
+            icon={Wallet}
+            title="No forecast generated yet — click “Generate forecast” to build one from real open invoices and vendor bills."
+          />
         ) : (
           <>
             <div className="mb-6 rounded-lg border border-border p-4">

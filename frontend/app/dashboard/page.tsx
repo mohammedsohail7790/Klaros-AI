@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Activity, Sunrise, Workflow } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import Link from "next/link";
 import {
@@ -353,9 +355,9 @@ export default function DashboardPage() {
           </div>
           {automations ? (
             automations.automations_total === 0 ? (
-              <p className="rounded-lg border border-border bg-surface p-4 shadow-card text-sm text-muted">
-                No automations set up yet.
-              </p>
+              <div className="rounded-lg border border-border bg-surface shadow-card">
+                <EmptyState icon={Workflow} title="No automations set up yet." compact />
+              </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                 <Link
@@ -459,8 +461,17 @@ export default function DashboardPage() {
               )}
             </div>
           ) : (
-            <div className="rounded-lg border border-border bg-surface p-6 text-sm text-muted">
-              No brief generated yet. <Link href="/morning-brief" className="underline">Generate one</Link>.
+            <div className="rounded-lg border border-border bg-surface shadow-card">
+              <EmptyState
+                icon={Sunrise}
+                title="No brief generated yet."
+                compact
+                action={
+                  <Link href="/morning-brief" className="text-xs text-accent underline">
+                    Generate one
+                  </Link>
+                }
+              />
             </div>
           )}
         </section>
@@ -754,9 +765,9 @@ export default function DashboardPage() {
           {!activity && activityLoading ? (
             <p className="text-sm text-muted">Loading...</p>
           ) : !activity || activity.items.length === 0 ? (
-            <p className="rounded-lg border border-border bg-surface p-4 shadow-card text-sm text-muted">
-              No activity yet.
-            </p>
+            <div className="rounded-lg border border-border bg-surface shadow-card">
+              <EmptyState icon={Activity} title="No activity yet." compact />
+            </div>
           ) : (
             <>
               <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
