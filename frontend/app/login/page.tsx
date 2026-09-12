@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, login } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
+import GradientBackdrop from "@/components/GradientBackdrop";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,12 +33,13 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6">
+    <main className="flex min-h-screen items-center justify-center overflow-hidden bg-background px-6">
+      <GradientBackdrop />
       <div className="w-full max-w-sm">
         <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground">
           Klaros
         </Link>
-        <div className="klaros-card p-7">
+        <div className="klaros-glass rounded-2xl p-7">
           <h1 className="font-display text-2xl text-foreground">Welcome back</h1>
           <p className="mt-1 text-sm text-muted">Sign in to your Klaros workspace.</p>
 

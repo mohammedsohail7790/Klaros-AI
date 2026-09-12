@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, register } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
+import GradientBackdrop from "@/components/GradientBackdrop";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -33,12 +34,13 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
+    <main className="flex min-h-screen items-center justify-center overflow-hidden bg-background px-6 py-12">
+      <GradientBackdrop />
       <div className="w-full max-w-sm">
         <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground">
           Klaros
         </Link>
-        <div className="klaros-card p-7">
+        <div className="klaros-glass rounded-2xl p-7">
           <h1 className="font-display text-2xl text-foreground">Create your company</h1>
           <p className="mt-1 text-sm text-muted">Set up your Klaros workspace in a couple of minutes.</p>
 

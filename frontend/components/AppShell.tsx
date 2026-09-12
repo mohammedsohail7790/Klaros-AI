@@ -202,8 +202,19 @@ export default function AppShell({
           </div>
         )}
       </aside>
-      <div className="flex flex-1 flex-col overflow-x-auto">
-        <header className="flex items-center justify-end border-b border-border bg-surface px-6 py-2.5">
+      <div className="relative flex flex-1 flex-col overflow-x-auto">
+        {/* A faint, fixed accent glow behind just the header — subtle enough
+            not to compete with data below, but enough to give the header's
+            glass something real to blur. Deliberately not repeated over the
+            rest of the page: dense tables/forms need a flat, high-contrast
+            background to stay legible, which is why only chrome (this
+            header, modals) gets the glass treatment, never data views. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 right-0 h-64 w-64 -z-10 rounded-full opacity-[0.08] blur-3xl"
+          style={{ background: "radial-gradient(circle, rgb(var(--color-accent)) 0%, transparent 70%)" }}
+        />
+        <header className="klaros-glass sticky top-0 z-30 flex items-center justify-end px-6 py-2.5">
           <NotificationBell token={token} />
         </header>
         <main className="flex-1">{children}</main>

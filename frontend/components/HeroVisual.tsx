@@ -74,10 +74,16 @@ export default function HeroVisual() {
             </div>
           </div>
         </div>
-        {/* Floating badge for extra depth */}
-        <div className="klaros-card absolute -right-4 -top-4 hidden items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-foreground shadow-raised sm:flex">
+        {/* Floating glass badges — real frosted-glass panels (backdrop-blur
+            over the gradient orbs behind), not a flat card, since these sit
+            on open atmosphere rather than over dense data. */}
+        <div className="klaros-glass absolute -right-6 -top-6 hidden items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium text-foreground sm:flex">
           <span className="h-1.5 w-1.5 rounded-full bg-success" />
           AI provider connected
+        </div>
+        <div className="klaros-glass absolute -bottom-5 -left-6 hidden items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium text-foreground sm:flex">
+          <TrendingUp className="h-3.5 w-3.5 text-accent" strokeWidth={2} />
+          +18% pipeline this week
         </div>
       </div>
     </div>

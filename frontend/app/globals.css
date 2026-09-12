@@ -115,4 +115,17 @@ body::before {
   .klaros-filter-tab-inactive {
     @apply border-border-strong text-muted hover:border-accent/40 hover:text-foreground;
   }
+
+  /* Glassmorphism — reserved for chrome/marketing surfaces (nav bars, hero
+     panels, modals) that sit over the gradient-orb backdrop, never over
+     data tables or forms: a blurred, translucent surface is a genuine
+     readability regression for dense text/numbers, which is why Stripe's
+     and Linear's own dashboards never apply this to their data views. */
+  .klaros-glass {
+    @apply border border-white/40 bg-white/60 shadow-popover backdrop-blur-xl;
+  }
+
+  .klaros-glass-dark {
+    @apply border border-white/10 bg-foreground/70 text-white shadow-popover backdrop-blur-xl;
+  }
 }
