@@ -30,6 +30,8 @@ import {
   Plug,
   ChevronDown,
   Search,
+  Menu,
+  X,
 } from "lucide-react";
 import { UserResponse, logout as logoutRequest } from "@/lib/api";
 import NotificationBell from "./NotificationBell";
@@ -125,6 +127,7 @@ export default function AppShell({
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [expandedLoaded, setExpandedLoaded] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Only the single most specific matching nav item is "active" — without
   // this, a page like /finance/ar matches both the "Finance" item (href
@@ -149,6 +152,13 @@ export default function AppShell({
   useEffect(() => {
     setToken(sessionStorage.getItem("klaros_access_token"));
   }, []);
+
+  // The sidebar is a fixed-position overlay below the lg breakpoint (see
+  // the <aside> below) — close it on every navigation so it doesn't stay
+  // open covering the new page's content.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
 
   // Sections collapse by default — 8 sections / ~35 links at once is a lot
   // to scan. Only the section containing the current page starts open. The
@@ -209,11 +219,30 @@ export default function AppShell({
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-surface">
-        <div className="border-b border-border px-5 py-5">
+      {mobileNavOpen && (
+        <div
+          aria-hidden
+          onClick={() => setMobileNavOpen(false)}
+          className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col border-r border-border bg-surface transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-5">
           <Link href="/dashboard" className="font-display text-lg italic text-foreground">
             Klaros
           </Link>
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen(false)}
+            aria-label="Close menu"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-surface-muted lg:hidden"
+          >
+            <X className="h-4 w-4" strokeWidth={2} />
+          </button>
         </div>
         <div className="border-b border-border px-3 py-3">
           <div className="relative">
@@ -298,8 +327,18 @@ export default function AppShell({
           className="pointer-events-none absolute -top-24 right-0 h-64 w-64 -z-10 rounded-full opacity-[0.08] blur-3xl"
           style={{ background: "radial-gradient(circle, rgb(var(--color-accent)) 0%, transparent 70%)" }}
         />
-        <header className="klaros-glass sticky top-0 z-30 flex items-center justify-end px-6 py-2.5">
-          <NotificationBell token={token} />
+        <header className="klaros-glass sticky top-0 z-30 flex items-center justify-between px-4 py-2.5 sm:px-6">
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen(true)}
+            aria-label="Open menu"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-foreground lg:hidden"
+          >
+            <Menu className="h-5 w-5" strokeWidth={2} />
+          </button>
+          <div className="flex flex-1 justify-end">
+            <NotificationBell token={token} />
+          </div>
         </header>
         <main className="flex-1">{children}</main>
       </div>
