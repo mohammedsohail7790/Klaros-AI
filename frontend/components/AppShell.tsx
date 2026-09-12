@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -28,6 +28,8 @@ import {
   Layers,
   Phone,
   Plug,
+  ChevronDown,
+  Search,
 } from "lucide-react";
 import { UserResponse, logout as logoutRequest } from "@/lib/api";
 import NotificationBell from "./NotificationBell";
@@ -120,6 +122,9 @@ export default function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [expandedLoaded, setExpandedLoaded] = useState(false);
 
   // Only the single most specific matching nav item is "active" — without
   // this, a page like /finance/ar matches both the "Finance" item (href
@@ -139,9 +144,54 @@ export default function AppShell({
     return best;
   })();
 
+  const activeSectionLabel = NAV_SECTIONS.find((s) => s.items.some((i) => i.href === activeHref))?.label ?? null;
+
   useEffect(() => {
     setToken(sessionStorage.getItem("klaros_access_token"));
   }, []);
+
+  // Sections collapse by default — 8 sections / ~35 links at once is a lot
+  // to scan. Only the section containing the current page starts open. The
+  // user's own expand/collapse choices are then remembered across
+  // navigation and reloads via localStorage (per-browser, not synced).
+  useEffect(() => {
+    let stored: Record<string, boolean> = {};
+    try {
+      stored = JSON.parse(localStorage.getItem("klaros_nav_expanded") ?? "{}");
+    } catch {
+      stored = {};
+    }
+    const initial: Record<string, boolean> = {};
+    for (const section of NAV_SECTIONS) {
+      initial[section.label] = stored[section.label] ?? section.label === activeSectionLabel;
+    }
+    setExpanded(initial);
+    setExpandedLoaded(true);
+    // Only ever seed from the section active on first mount — later route
+    // changes shouldn't silently re-expand a section the user collapsed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function toggleSection(label: string) {
+    setExpanded((prev) => {
+      const next = { ...prev, [label]: !prev[label] };
+      try {
+        localStorage.setItem("klaros_nav_expanded", JSON.stringify(next));
+      } catch {
+        // best-effort only
+      }
+      return next;
+    });
+  }
+
+  const filteredSections = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return null;
+    return NAV_SECTIONS.map((section) => ({
+      ...section,
+      items: section.items.filter((item) => item.label.toLowerCase().includes(q)),
+    })).filter((section) => section.items.length > 0);
+  }, [query]);
 
   async function signOut() {
     const currentToken = sessionStorage.getItem("klaros_access_token");
@@ -165,32 +215,66 @@ export default function AppShell({
             Klaros
           </Link>
         </div>
-        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
-          {NAV_SECTIONS.map((section) => (
-            <div key={section.label}>
-              <div className="klaros-label px-2 pb-1.5">{section.label}</div>
-              <div className="space-y-0.5">
-                {section.items.map((item) => {
-                  const active = item.href === activeHref;
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
-                        active
-                          ? "bg-accent-soft font-medium text-accent"
-                          : "text-muted hover:bg-surface-muted hover:text-foreground"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
-                      {item.label}
-                    </Link>
-                  );
-                })}
+        <div className="border-b border-border px-3 py-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" strokeWidth={2} />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Find a page..."
+              className="w-full rounded-lg border border-border-strong bg-surface py-1.5 pl-8 pr-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none"
+            />
+          </div>
+        </div>
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
+          {(filteredSections ?? NAV_SECTIONS).map((section) => {
+            const isOpen = filteredSections ? true : (expandedLoaded ? expanded[section.label] : section.label === activeSectionLabel);
+            return (
+              <div key={section.label} className="py-1">
+                {filteredSections ? (
+                  <div className="klaros-label px-2 pb-1.5">{section.label}</div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.label)}
+                    className="flex w-full items-center justify-between rounded-lg px-2 py-1 text-left"
+                  >
+                    <span className="klaros-label">{section.label}</span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`}
+                      strokeWidth={2}
+                    />
+                  </button>
+                )}
+                {isOpen && (
+                  <div className="space-y-0.5">
+                    {section.items.map((item) => {
+                      const active = item.href === activeHref;
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
+                            active
+                              ? "bg-accent-soft font-medium text-accent"
+                              : "text-muted hover:bg-surface-muted hover:text-foreground"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
+          {filteredSections && filteredSections.length === 0 && (
+            <p className="px-2 py-4 text-center text-xs text-muted-foreground">No pages match &ldquo;{query}&rdquo;.</p>
+          )}
         </nav>
         {user && (
           <div className="border-t border-border px-5 py-4">
