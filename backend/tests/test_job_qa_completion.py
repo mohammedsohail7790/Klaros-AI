@@ -147,4 +147,4 @@ async def test_close_job_emits_invoice_trigger_requested_not_an_invoice(event_bu
             )
         ).scalars().all()
     assert len(rows) == 1
-    assert "Finance module not implemented" in rows[0].payload["note"]
+    assert rows[0].payload["job_id"] == str(job_id)

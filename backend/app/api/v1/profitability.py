@@ -71,12 +71,19 @@ async def list_profitability(
             select(Job).where(Job.tenant_id == current_user.tenant_id, Job.actual_cost.is_not(None))
         )
     ).scalars().all()
-    results = []
-    for job in jobs:
-        costs = (
+
+    costs_by_job: dict[uuid.UUID, list[JobCost]] = {}
+    if jobs:
+        all_costs = (
             await db.execute(
-                select(JobCost).where(JobCost.tenant_id == current_user.tenant_id, JobCost.job_id == job.id)
+                select(JobCost).where(
+                    JobCost.tenant_id == current_user.tenant_id,
+                    JobCost.job_id.in_([job.id for job in jobs]),
+                )
             )
         ).scalars().all()
-        results.append(_job_profitability(job, list(costs)))
+        for cost in all_costs:
+            costs_by_job.setdefault(cost.job_id, []).append(cost)
+
+    results = [_job_profitability(job, costs_by_job.get(job.id, [])) for job in jobs]
     return {"jobs": results}

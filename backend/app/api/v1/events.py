@@ -4,11 +4,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from app.api.deps import CurrentUser, get_current_user
+from app.api.deps import CurrentUser, get_current_user, require_permission
 from app.api.tool_deps import execution_context, get_tool_registry, get_wired_event_bus, raise_http_for_tool_error
 from app.db.session import async_session_maker
 from app.events.bus import EventBus
 from app.models.event import Event
+from app.models.rbac import Permission
 from app.tools.errors import ToolError
 from app.tools.registry import ToolRegistry
 
@@ -129,7 +130,7 @@ async def get_worker_metrics(
 @router.post("/process/{event_type}")
 async def process_pending_events(
     event_type: str,
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_AUTOMATIONS)),
     bus: EventBus = Depends(get_wired_event_bus),
 ) -> dict[str, Any]:
     """Manual override, kept for operators — NOT required for normal
@@ -139,6 +140,13 @@ async def process_pending_events(
     drives this same `EventBus.process_pending` call on a poll loop, so
     published events propagate automatically. This endpoint still exists for
     forcing an immediate pass without waiting for the next poll tick.
+
+    Gated behind MANAGE_AUTOMATIONS (the same permission
+    dispatch_scheduled_tick in automations.py requires) — it forces
+    processing of every tenant's pending events on this event_type's shared
+    stream, not just the caller's own, since the underlying stream isn't
+    partitioned per tenant. Without this gate any authenticated user of any
+    tenant could trigger that global side effect for free.
     """
     del current_user
     stats = await bus.process_pending(event_type)

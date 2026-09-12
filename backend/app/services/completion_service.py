@@ -177,7 +177,6 @@ class CompletionService:
             payload={
                 "job_id": str(job.id),
                 "customer_id": str(job.customer_id),
-                "note": "Finance module not implemented yet (Phase 5) — no invoice was created.",
             },
         )
         return job
