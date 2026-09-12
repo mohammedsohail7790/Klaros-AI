@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Contact } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -12,6 +13,7 @@ import {
   listOutboundContacts,
   listOutboundLists,
 } from "@/lib/api";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function OutboundPage() {
   const { token, user, loading: authLoading } = useAuth();
@@ -125,7 +127,7 @@ export default function OutboundPage() {
 
         <h2 className="mb-3 text-sm font-medium text-muted">Contacts ({contacts.length})</h2>
         {contacts.length === 0 ? (
-          <p className="text-sm text-muted">No contacts yet.</p>
+          <EmptyState icon={Contact} title="No contacts yet." />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">

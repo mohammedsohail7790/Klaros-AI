@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Gift, Users, Award } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 export default function ReferralsPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [programs, setPrograms] = useState<ReferralProgramRow[]>([]);
@@ -228,7 +230,9 @@ export default function ReferralsPage() {
               </button>
             </div>
             {programs.length === 0 ? (
-              <p className="mb-6 text-sm text-muted">No referral programs yet.</p>
+              <div className="mb-6">
+                <EmptyState icon={Gift} title="No referral programs yet." />
+              </div>
             ) : (
               <div className="mb-8 klaros-table-wrap">
                 <table className="klaros-table">
@@ -330,7 +334,9 @@ export default function ReferralsPage() {
 
             <h2 className="mb-3 text-sm font-medium text-muted">Referrals</h2>
             {referrals.length === 0 ? (
-              <p className="mb-6 text-sm text-muted">No referrals yet.</p>
+              <div className="mb-8">
+                <EmptyState icon={Users} title="No referrals yet." />
+              </div>
             ) : (
               <div className="mb-8 klaros-table-wrap">
                 <table className="klaros-table">
@@ -358,7 +364,7 @@ export default function ReferralsPage() {
 
             <h2 className="mb-3 text-sm font-medium text-muted">Rewards</h2>
             {rewards.length === 0 ? (
-              <p className="text-sm text-muted">No referral rewards yet.</p>
+              <EmptyState icon={Award} title="No referral rewards yet." />
             ) : (
               <div className="klaros-table-wrap">
                 <table className="klaros-table">

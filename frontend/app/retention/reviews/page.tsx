@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Star, ThumbsUp } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 export default function ReviewsPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [requests, setRequests] = useState<ReviewRequestRow[]>([]);
@@ -198,7 +200,9 @@ export default function ReviewsPage() {
 
             <h2 className="mb-3 text-sm font-medium text-muted">Review requests</h2>
             {requests.length === 0 ? (
-              <p className="mb-6 text-sm text-muted">No review requests yet.</p>
+              <div className="mb-6">
+                <EmptyState icon={Star} title="No review requests yet." />
+              </div>
             ) : (
               <div className="mb-6 klaros-table-wrap">
                 <table className="klaros-table">
@@ -236,7 +240,7 @@ export default function ReviewsPage() {
               Positive feedback ({positiveFeedback.length})
             </h2>
             {positiveFeedback.length === 0 ? (
-              <p className="text-sm text-muted">No positive feedback yet.</p>
+              <EmptyState icon={ThumbsUp} title="No positive feedback yet." />
             ) : (
               <ul className="space-y-2 text-sm text-muted">
                 {positiveFeedback.map((f) => (

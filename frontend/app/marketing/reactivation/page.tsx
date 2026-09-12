@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Heart, Target } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -15,6 +16,7 @@ import {
 } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 export default function ReactivationPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState<ReactivationCampaignRow[]>([]);
@@ -100,7 +102,9 @@ export default function ReactivationPage() {
           <>
             <h2 className="mb-3 text-sm font-medium text-muted">Campaigns</h2>
             {campaigns.length === 0 ? (
-              <p className="mb-6 text-sm text-muted">No reactivation campaigns yet.</p>
+              <div className="mb-6">
+                <EmptyState icon={Heart} title="No reactivation campaigns yet." />
+              </div>
             ) : (
               <div className="mb-6 space-y-2">
                 {campaigns.map((c) => (
@@ -121,7 +125,7 @@ export default function ReactivationPage() {
 
             <h2 className="mb-3 text-sm font-medium text-muted">Candidates ({candidates.length})</h2>
             {candidates.length === 0 ? (
-              <p className="text-sm text-muted">No candidates identified yet.</p>
+              <EmptyState icon={Target} title="No candidates identified yet." />
             ) : (
               <div className="klaros-table-wrap">
                 <table className="klaros-table">

@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Sunrise } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   ApiError,
   MorningBriefData,
@@ -296,7 +298,9 @@ export default function MorningBriefPage() {
                 )}
               </>
             ) : (
-              <p className="mb-8 text-sm text-muted">No brief generated yet.</p>
+              <div className="mb-8">
+                <EmptyState icon={Sunrise} title="No brief generated yet — click &ldquo;Generate now&rdquo; above." />
+              </div>
             )}
 
             {settings && (

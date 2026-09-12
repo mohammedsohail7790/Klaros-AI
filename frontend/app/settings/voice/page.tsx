@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Phone } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -11,6 +12,7 @@ import {
   listVoiceCalls,
   updateVoiceSettings,
 } from "@/lib/api";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 function outcomeLabel(outcome: string | null): string {
   if (!outcome) return "In progress";
@@ -172,7 +174,7 @@ export default function VoiceReceptionistPage() {
             <div>
               <h2 className="mb-3 font-medium">Recent calls</h2>
               {!calls || calls.length === 0 ? (
-                <p className="text-sm text-muted">No calls yet.</p>
+                <EmptyState icon={Phone} title="No calls yet." />
               ) : (
                 <div className="space-y-2">
                   {calls.map((c) => (
