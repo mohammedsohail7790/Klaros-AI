@@ -34,7 +34,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center overflow-hidden bg-background px-6 py-12">
+    <main className="flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
       <GradientBackdrop />
       <div className="w-full max-w-sm">
         <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground">

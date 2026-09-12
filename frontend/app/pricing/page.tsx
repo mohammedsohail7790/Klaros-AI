@@ -57,7 +57,7 @@ const TIERS = [
 
 export default function PricingPage() {
   return (
-    <main className="min-h-screen overflow-x-hidden bg-background">
+    <main className="min-h-screen overflow-x-hidden">
       <GradientBackdrop />
       <MarketingHeader />
 
