@@ -41,6 +41,7 @@ from app.models.voice import CallOutcome
 from app.services.audio_codec import pcm16_bytes_to_mulaw
 from app.services.openai_realtime_voice_service import RealtimeAudioChunk, RealtimeCallEnded, RealtimeClearAudio
 from app.services.speech_provider import get_streaming_stt_provider, get_streaming_tts_provider
+from app.services.voice_call_service import CallSessionNotFoundError
 from app.services.voice_realtime_service import RealtimeCallState, RealtimeTurnManager, SilenceAction
 
 logger = structlog.get_logger(__name__)
@@ -200,6 +201,18 @@ async def voice_media_stream(websocket: WebSocket) -> None:
                 if start_info.tenant_id is None or start_info.call_session_id is None:
                     logger.error("voice_stream_missing_tenant_or_call_id", call_sid=start_info.call_sid)
                     break
+                # The tenant_id/call_session_id above are client-supplied
+                # (echoed back from the `start` event's customParameters) —
+                # they are the only thing binding this connection to a real
+                # call our own inbound-voice webhook created. Resolve the
+                # CallSession before opening any real STT/TTS provider
+                # session, so a forged/mismatched pair fails closed instead
+                # of spending real money against an arbitrary tenant.
+                try:
+                    await call_service.get_call(start_info.tenant_id, start_info.call_session_id)
+                except CallSessionNotFoundError as exc:
+                    logger.warning("voice_stream_unknown_call_session", error=str(exc))
+                    break
                 logger.info(
                     "voice_stream_started", tenant_id=str(start_info.tenant_id),
                     call_session_id=str(start_info.call_session_id), stream_sid=start_info.stream_sid,
@@ -340,6 +353,16 @@ async def _voice_media_stream_openai_realtime(websocket: WebSocket) -> None:
                 )
                 try:
                     await bridge.open(start_info.tenant_id, start_info.call_session_id)
+                except CallSessionNotFoundError as exc:
+                    # The client-supplied tenant_id/call_session_id on the
+                    # `start` event don't resolve to any real CallSession —
+                    # this is exactly the forged/mismatched-pair case this
+                    # check exists to catch. Nothing real was ever created,
+                    # so there is nothing to end_call(): just refuse to open
+                    # a session and close the connection.
+                    logger.warning("voice_realtime_unknown_call_session", error=str(exc))
+                    final_outcome = CallOutcome.PROVIDER_FAILURE
+                    break
                 except RuntimeError as exc:
                     logger.error("voice_realtime_open_failed", error=str(exc))
                     await call_service.end_call(

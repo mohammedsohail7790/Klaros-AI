@@ -119,7 +119,7 @@ async def test_tool_schemas_built_from_real_allowlisted_tools_only(tool_registry
 
 async def test_open_sends_session_update_with_allowlisted_tools_and_matching_codec(tool_registry) -> None:
     bridge, fake_ws = _build_bridge(tool_registry, incoming=[])
-    tenant_id, call_id = uuid.uuid4(), uuid.uuid4()
+    tenant_id, call_id = await _real_call()
 
     await bridge.open(tenant_id, call_id)
 
@@ -161,7 +161,8 @@ async def test_audio_delta_becomes_a_bridge_audio_chunk(tool_registry) -> None:
     bridge, fake_ws = _build_bridge(tool_registry, incoming=[
         {"type": "response.audio.delta", "delta": base64.b64encode(mulaw).decode()},
     ])
-    await bridge.open(uuid.uuid4(), uuid.uuid4())
+    tenant_id, call_id = await _real_call()
+    await bridge.open(tenant_id, call_id)
 
     events = await _drain(bridge)
     assert events == [RealtimeAudioChunk(mulaw=mulaw)]
@@ -171,7 +172,8 @@ async def test_speech_started_triggers_response_cancel_and_clear_audio(tool_regi
     bridge, fake_ws = _build_bridge(tool_registry, incoming=[
         {"type": "input_audio_buffer.speech_started"},
     ])
-    await bridge.open(uuid.uuid4(), uuid.uuid4())
+    tenant_id, call_id = await _real_call()
+    await bridge.open(tenant_id, call_id)
 
     events = await _drain(bridge)
     assert events == [RealtimeClearAudio()]
@@ -263,7 +265,8 @@ async def test_forbidden_tool_name_is_rejected_before_toolregistry(tool_registry
             "name": "finance.issue_refund", "call_id": "call_1", "arguments": "{}",
         },
     ])
-    await bridge.open(uuid.uuid4(), uuid.uuid4())
+    tenant_id, call_id = await _real_call()
+    await bridge.open(tenant_id, call_id)
 
     await _drain(bridge)
     outputs = [m for m in fake_ws.sent if m.get("type") == "conversation.item.create"]
@@ -273,7 +276,7 @@ async def test_forbidden_tool_name_is_rejected_before_toolregistry(tool_registry
 
 
 async def test_allowed_tool_call_executes_through_real_toolregistry(tool_registry) -> None:
-    tenant_id, call_id = uuid.uuid4(), uuid.uuid4()
+    tenant_id, call_id = await _real_call()
     bridge, fake_ws = _build_bridge(tool_registry, incoming=[
         {
             "type": "response.function_call_arguments.done",
@@ -314,7 +317,8 @@ async def test_appointment_time_not_previously_offered_is_rejected(tool_registry
             }),
         },
     ])
-    await bridge.open(uuid.uuid4(), uuid.uuid4())
+    tenant_id, call_id = await _real_call()
+    await bridge.open(tenant_id, call_id)
 
     await _drain(bridge)
     outputs = [m for m in fake_ws.sent if m.get("type") == "conversation.item.create"]
@@ -323,7 +327,7 @@ async def test_appointment_time_not_previously_offered_is_rejected(tool_registry
 
 
 async def test_appointment_using_a_real_offered_slot_and_known_customer_succeeds(tool_registry) -> None:
-    tenant_id, call_id = uuid.uuid4(), uuid.uuid4()
+    tenant_id, call_id = await _real_call()
     bridge, fake_ws = _build_bridge(tool_registry, incoming=[])
     await bridge.open(tenant_id, call_id)
 
@@ -405,7 +409,8 @@ async def test_malformed_function_call_arguments_do_not_crash_the_bridge(tool_re
             "name": "crm.create_customer", "call_id": "call_5", "arguments": "{not json",
         },
     ])
-    await bridge.open(uuid.uuid4(), uuid.uuid4())
+    tenant_id, call_id = await _real_call()
+    await bridge.open(tenant_id, call_id)
 
     await _drain(bridge)  # must not raise
     outputs = [m for m in fake_ws.sent if m.get("type") == "conversation.item.create"]
@@ -421,7 +426,8 @@ async def test_invalid_schema_arguments_are_rejected(tool_registry) -> None:
             "arguments": json.dumps({"no_name_field": True}),
         },
     ])
-    await bridge.open(uuid.uuid4(), uuid.uuid4())
+    tenant_id, call_id = await _real_call()
+    await bridge.open(tenant_id, call_id)
 
     await _drain(bridge)
     outputs = [m for m in fake_ws.sent if m.get("type") == "conversation.item.create"]
@@ -431,10 +437,27 @@ async def test_invalid_schema_arguments_are_rejected(tool_registry) -> None:
 
 async def test_malformed_realtime_event_is_logged_and_skipped(tool_registry) -> None:
     bridge, fake_ws = _build_bridge(tool_registry, incoming=["not json at all", {"type": "response.done"}])
-    await bridge.open(uuid.uuid4(), uuid.uuid4())
+    tenant_id, call_id = await _real_call()
+    await bridge.open(tenant_id, call_id)
 
     events = await _drain(bridge)  # must not raise
     assert events == []
+
+
+async def test_open_fails_closed_for_a_call_session_that_does_not_exist(tool_registry) -> None:
+    """The tenant_id/call_session_id on a WebSocket `start` event are
+    client-supplied (echoed back from Twilio's customParameters) — they
+    are the only thing binding this connection to a genuine call our own
+    signature-verified inbound-voice webhook created. open() must resolve
+    a real CallSession before opening any real, billed OpenAI Realtime
+    session, not silently proceed with call=None for an unresolvable
+    pair (a real bug this test guards against regressing)."""
+    from app.services.voice_call_service import CallSessionNotFoundError
+
+    bridge, fake_ws = _build_bridge(tool_registry, incoming=[])
+    with pytest.raises(CallSessionNotFoundError):
+        await bridge.open(uuid.uuid4(), uuid.uuid4())
+    assert fake_ws.sent == []  # no session.update was ever sent — no session was opened
 
 
 # --- Caller identification --------------------------------------------------

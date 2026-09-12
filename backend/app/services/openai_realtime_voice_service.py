@@ -281,12 +281,19 @@ class OpenAIRealtimeVoiceBridge:
         self._opened_at_monotonic = time.monotonic()
 
         instructions = _SYSTEM_INSTRUCTIONS
-        try:
-            call = await self._calls.get_call(tenant_id, call_id)
-        except Exception:  # noqa: BLE001 — caller identification is a nice-to-have, never fatal to opening the call
-            call = None
-        if call is not None and call.caller_number:
-            existing_customer = await self._identify_caller(tenant_id, call.caller_number)
+        # Unlike caller-name lookup below (a nice-to-have), resolving the
+        # CallSession itself is a real authorization check: it is the only
+        # thing binding this WebSocket's client-supplied tenant_id/call_id
+        # to a genuine call our own inbound-voice webhook created. Letting
+        # CallSessionNotFoundError propagate here (instead of swallowing it
+        # into call=None) means a forged/mismatched pair fails closed,
+        # before any real, billed OpenAI Realtime session is opened.
+        call = await self._calls.get_call(tenant_id, call_id)
+        if call.caller_number:
+            try:
+                existing_customer = await self._identify_caller(tenant_id, call.caller_number)
+            except Exception:  # noqa: BLE001 — caller identification is a nice-to-have, never fatal to opening the call
+                existing_customer = None
             if existing_customer is not None:
                 self._slots.record_customer_id(str(existing_customer.id))
                 instructions += (
