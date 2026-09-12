@@ -408,7 +408,9 @@ export default function DashboardPage() {
           {brief && brief.brief_id ? (
             <div className="rounded-lg border border-border bg-surface p-6">
               <div className="mb-2 flex items-center gap-2">
-                <Badge status={brief.mode === "DETERMINISTIC" ? "DETERMINISTIC SUMMARY — AI NOT CONNECTED" : "AI"}>{brief.mode === "DETERMINISTIC" ? "DETERMINISTIC SUMMARY — AI NOT CONNECTED" : "AI"}</Badge>
+                <Badge status={brief.mode === "DETERMINISTIC" ? "DRAFT" : "AI"}>
+                  {brief.mode === "DETERMINISTIC" ? "DETERMINISTIC SUMMARY — AI NOT CONNECTED" : "AI"}
+                </Badge>
               </div>
               <p className="mb-4">{brief.headline}</p>
               {brief.insights.filter((i) => i.priority === "HIGH").length > 0 && (

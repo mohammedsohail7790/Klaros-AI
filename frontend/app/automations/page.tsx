@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
+import { Badge } from "@/components/ui/Badge";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -83,21 +84,6 @@ const ACTIONS = [
 ];
 
 const COMPARISON_OPS = ["eq", "ne", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "is_null", "is_not_null"];
-
-const STATUS_COLOR: Record<string, string> = {
-  DRAFT: "border-border-strong text-muted",
-  ENABLED: "border-emerald-200 text-emerald-700",
-  DISABLED: "border-amber-200 text-amber-700",
-};
-
-const EXECUTION_COLOR: Record<string, string> = {
-  PENDING: "border-border-strong text-muted",
-  RUNNING: "border-blue-200 text-blue-700",
-  WAITING: "border-amber-200 text-amber-700",
-  COMPLETED: "border-emerald-200 text-emerald-700",
-  FAILED: "border-red-200 text-red-700",
-  CANCELLED: "border-border-strong text-muted",
-};
 
 interface ConditionRow {
   field: string;
@@ -526,9 +512,9 @@ export default function AutomationsPage() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{a.name}</span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[a.status] ?? "border-border-strong"}`}>
+                      <Badge status={a.status} className="text-[10px]">
                         {a.status}
-                      </span>
+                      </Badge>
                     </div>
                     {a.description && <p className="mt-1 text-muted">{a.description}</p>}
                   </button>
@@ -783,9 +769,9 @@ export default function AutomationsPage() {
                 <div className="rounded-lg border border-border bg-surface p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="font-medium">{selectedAutomation.name}</h2>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[selectedAutomation.status] ?? "border-border-strong"}`}>
+                    <Badge status={selectedAutomation.status} className="text-[10px]">
                       {selectedAutomation.status}
-                    </span>
+                    </Badge>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
@@ -886,9 +872,9 @@ export default function AutomationsPage() {
                         >
                           <div className="flex items-center justify-between">
                             <span>{e.trigger_type}</span>
-                            <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[e.status] ?? "border-border-strong"}`}>
+                            <Badge status={e.status} className="text-[10px]">
                               {e.status}
-                            </span>
+                            </Badge>
                           </div>
                           <span className="text-muted-foreground">{e.started_at ? new Date(e.started_at).toLocaleString() : "—"}</span>
                         </button>
@@ -902,9 +888,9 @@ export default function AutomationsPage() {
                 <div className="rounded-lg border border-border bg-surface p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-medium">Execution detail</h3>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[selectedExecution.status] ?? "border-border-strong"}`}>
+                    <Badge status={selectedExecution.status} className="text-[10px]">
                       {selectedExecution.status}
-                    </span>
+                    </Badge>
                   </div>
                   {selectedExecution.error && (
                     <p className="mb-2 rounded-md border border-red-200 bg-red-50/30 p-2 text-xs text-red-700">
@@ -918,9 +904,9 @@ export default function AutomationsPage() {
                           <span>
                             {s.step_index}. {s.action}
                           </span>
-                          <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[s.status] ?? "border-border-strong"}`}>
+                          <Badge status={s.status} className="text-[10px]">
                             {s.status}
-                          </span>
+                          </Badge>
                         </div>
                         {s.error && <p className="mt-1 text-red-600">{s.error}</p>}
                       </div>

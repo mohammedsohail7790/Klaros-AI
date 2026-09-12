@@ -3,19 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
+import { Badge } from "@/components/ui/Badge";
 import { useAuth } from "@/lib/useAuth";
 import { AIActivityRow, ApiError, listAIActivity } from "@/lib/api";
-
-const RESULT_COLOR: Record<string, string> = {
-  success: "border-emerald-200 text-emerald-700",
-  failure: "border-red-200 text-red-700",
-};
-
-const ACTOR_COLOR: Record<string, string> = {
-  AI: "border-purple-200 text-purple-700",
-  USER: "border-border-strong text-muted",
-  SYSTEM: "border-blue-200 text-blue-700",
-};
 
 export default function AIActivityPage() {
   const { token, user, loading: authLoading } = useAuth();
@@ -86,9 +76,9 @@ export default function AIActivityPage() {
                   <tr key={r.id} className="border-t border-border">
                     <td className="px-3 py-2 text-muted">{new Date(r.created_at).toLocaleString()}</td>
                     <td className="px-3 py-2">
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] ${ACTOR_COLOR[r.actor_type] ?? "border-border-strong"}`}>
+                      <Badge status={r.actor_type} className="text-[10px]">
                         {r.actor_type}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-3 py-2">{r.action}</td>
                     <td className="px-3 py-2 text-muted">{r.tool ?? "—"}</td>
@@ -96,9 +86,9 @@ export default function AIActivityPage() {
                       {r.entity_type ? `${r.entity_type}${r.entity_id ? ` #${r.entity_id.slice(0, 8)}` : ""}` : "—"}
                     </td>
                     <td className="px-3 py-2">
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] ${RESULT_COLOR[r.result] ?? "border-border-strong"}`}>
+                      <Badge status={r.result} className="text-[10px]">
                         {r.result}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-3 py-2">
                       {r.approval_id ? (

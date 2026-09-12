@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { Badge } from "@/components/ui/Badge";
 import { ApiError, PublicContract, declinePublicContract, getPublicContract, signPublicContract } from "@/lib/api";
 
 // Klaros' public, unauthenticated contract page — no AppShell, no useAuth,
@@ -105,10 +106,8 @@ function PublicContractViewInner() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-2xl text-foreground text-foreground">Contract {contract.contract_number}</h1>
-        <span className="rounded-full border border-border-strong px-3 py-1 text-xs text-muted">
-          {contract.status.replace(/_/g, " ")}
-        </span>
+        <h1 className="font-display text-2xl text-foreground">Contract {contract.contract_number}</h1>
+        <Badge status={contract.status}>{contract.status.replace(/_/g, " ")}</Badge>
       </div>
 
       {error && (

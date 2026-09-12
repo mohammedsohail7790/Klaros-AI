@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
+import { Badge } from "@/components/ui/Badge";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -15,19 +16,6 @@ import {
 } from "@/lib/api";
 
 const STATUS_FILTERS = ["ALL", "PENDING", "APPROVED", "REJECTED"] as const;
-
-const STATUS_COLOR: Record<string, string> = {
-  PENDING: "border-amber-200 text-amber-700",
-  APPROVED: "border-emerald-200 text-emerald-700",
-  REJECTED: "border-red-200 text-red-700",
-};
-
-const EXECUTION_COLOR: Record<string, string> = {
-  NOT_STARTED: "border-border-strong text-muted",
-  EXECUTING: "border-blue-200 text-blue-700",
-  EXECUTED: "border-emerald-200 text-emerald-700",
-  FAILED: "border-red-200 text-red-700",
-};
 
 export default function ApprovalsPage() {
   const { token, user, loading: authLoading } = useAuth();
@@ -212,15 +200,15 @@ export default function ApprovalsPage() {
                           </span>
                         )}
                       </span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[a.status] ?? "border-border-strong"}`}>
+                      <Badge status={a.status} className="text-[10px]">
                         {a.status}
-                      </span>
+                      </Badge>
                     </div>
                     <p className="mt-1 text-muted">{a.reason}</p>
                     <div className="mt-1 flex items-center gap-2 text-[10px] text-muted">
-                      <span className={`rounded-full border px-2 py-0.5 ${EXECUTION_COLOR[a.execution_status] ?? "border-border-strong"}`}>
+                      <Badge status={a.execution_status}>
                         {a.execution_status}
-                      </span>
+                      </Badge>
                       <span>{new Date(a.created_at).toLocaleString()}</span>
                     </div>
                   </button>
@@ -236,9 +224,9 @@ export default function ApprovalsPage() {
               <div className="rounded-lg border border-border bg-surface p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="font-medium">{selected.tool_name}</h2>
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[selected.status] ?? "border-border-strong"}`}>
+                  <Badge status={selected.status} className="text-[10px]">
                     {selected.status}
-                  </span>
+                  </Badge>
                 </div>
                 {selected.requested_by_type === "AI" && (
                   <div className="mb-3 rounded-md border border-violet-200 bg-violet-50/20 p-2 text-xs text-violet-700">
@@ -261,9 +249,9 @@ export default function ApprovalsPage() {
                   )}
                   <dt>Execution</dt>
                   <dd>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${EXECUTION_COLOR[selected.execution_status] ?? "border-border-strong"}`}>
+                    <Badge status={selected.execution_status} className="text-[10px]">
                       {selected.execution_status}
-                    </span>
+                    </Badge>
                   </dd>
                   {selected.execution_attempts > 0 && (
                     <>

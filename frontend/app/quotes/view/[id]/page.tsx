@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { Badge } from "@/components/ui/Badge";
 import {
   ApiError,
   PublicQuote,
@@ -170,10 +171,8 @@ function PublicQuoteViewInner() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-2xl text-foreground text-foreground">Quote {quote.quote_number}</h1>
-        <span className="rounded-full border border-border-strong px-3 py-1 text-xs text-muted">
-          {quote.status.replace(/_/g, " ")}
-        </span>
+        <h1 className="font-display text-2xl text-foreground">Quote {quote.quote_number}</h1>
+        <Badge status={quote.status}>{quote.status.replace(/_/g, " ")}</Badge>
       </div>
 
       {error && (

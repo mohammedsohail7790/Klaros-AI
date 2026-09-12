@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
+import { Badge } from "@/components/ui/Badge";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -21,14 +22,6 @@ const MEMORY_TYPES = [
 ] as const;
 
 const STATUS_FILTERS = ["ALL", "ACTIVE", "PENDING", "ARCHIVED", "REVOKED", "REJECTED"] as const;
-
-const STATUS_COLOR: Record<string, string> = {
-  ACTIVE: "border-emerald-200 text-emerald-700",
-  PENDING: "border-amber-200 text-amber-700",
-  ARCHIVED: "border-border-strong text-muted",
-  REVOKED: "border-red-200 text-red-600",
-  REJECTED: "border-red-200 text-red-600",
-};
 
 const SOURCE_LABEL: Record<string, string> = {
   OWNER_EXPLICIT: "Owner (explicit)",
@@ -289,9 +282,9 @@ export default function CompanyMemoryPage() {
                             </span>
                           )}
                         </span>
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[m.status] ?? "border-border-strong"}`}>
+                        <Badge status={m.status} className="text-[10px]">
                           {m.status}
-                        </span>
+                        </Badge>
                       </div>
                       <p className="mt-1 text-muted">{m.value}</p>
                       <p className="mt-1 text-[10px] text-muted-foreground">
@@ -338,9 +331,9 @@ export default function CompanyMemoryPage() {
                     <div key={h.id} className="rounded-md border border-border p-2 text-xs">
                       <div className="flex items-center justify-between">
                         <span>{h.value}</span>
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] ${STATUS_COLOR[h.status] ?? "border-border-strong"}`}>
+                        <Badge status={h.status} className="text-[10px]">
                           {h.status}
-                        </span>
+                        </Badge>
                       </div>
                       <span className="text-muted-foreground">{new Date(h.created_at).toLocaleString()}</span>
                     </div>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
+import { Badge } from "@/components/ui/Badge";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -159,9 +160,9 @@ export default function CustomerDetailPage() {
                     {customer.address}, {customer.city} {customer.state} {customer.postal_code}
                   </p>
                 )}
-                <span className="mt-2 inline-block rounded-full border border-border-strong px-2 py-0.5 text-xs">
+                <Badge status={customer.status} className="mt-2">
                   {customer.status}
-                </span>
+                </Badge>
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
@@ -251,7 +252,7 @@ export default function CustomerDetailPage() {
                   <dl className="space-y-1.5 text-sm">
                     <div className="flex justify-between">
                       <dt className="text-muted">Lifecycle</dt>
-                      <dd className="rounded-full border border-border-strong px-2 py-0.5 text-xs">{health.lifecycle_state}</dd>
+                      <dd><Badge status={health.lifecycle_state}>{health.lifecycle_state}</Badge></dd>
                     </div>
                     <div className="flex justify-between">
                       <dt className="text-muted">Jobs completed</dt>

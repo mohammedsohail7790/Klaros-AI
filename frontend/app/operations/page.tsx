@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
+import { Badge } from "@/components/ui/Badge";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -122,9 +123,9 @@ export default function OperationsPage() {
                     >
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-[10px] uppercase text-muted">
+                          <Badge status={e.severity} className="text-[10px] uppercase">
                             {e.severity}
-                          </span>
+                          </Badge>
                           <span className="font-medium">{e.type}</span>
                         </div>
                         <p className="mt-1 text-muted">{e.description}</p>
