@@ -57,14 +57,14 @@ export default function ContentDetailPage() {
     load();
   }, [load]);
 
-  async function runAction(fn: () => Promise<unknown>) {
+  async function runAction(fn: () => Promise<unknown>, successMessage = "Done.") {
     if (!token) return;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       await fn();
-      setNotice("Done.");
+      setNotice(successMessage);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Action failed.");
@@ -82,13 +82,22 @@ export default function ContentDetailPage() {
 
   async function handlePublish(variantId: string) {
     if (!token) return;
-    await runAction(async () => {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
       const result = await publishContentVariant(token, variantId);
-      if ("approval_request_id" in result) {
-        setNotice("Publish requires approval — an approval request was created.");
-      }
-      return result;
-    });
+      setNotice(
+        "approval_request_id" in result
+          ? "Publish requires approval — an approval request was created."
+          : "Published."
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Action failed.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
