@@ -8,33 +8,55 @@ import {
   ApiError,
   OutboundContactRow,
   OutboundListRow,
+  OutboundSequenceRow,
   addOutboundContact,
+  addOutboundStep,
   createOutboundList,
+  createOutboundSequence,
+  enrollOutboundContact,
+  executeDueOutboundActivities,
   listOutboundContacts,
   listOutboundLists,
+  listOutboundSequences,
 } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Badge } from "@/components/ui/Badge";
 
 export default function OutboundPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [lists, setLists] = useState<OutboundListRow[]>([]);
   const [contacts, setContacts] = useState<OutboundContactRow[]>([]);
+  const [sequences, setSequences] = useState<OutboundSequenceRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [listName, setListName] = useState("");
   const [selectedList, setSelectedList] = useState<string>("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactCompany, setContactCompany] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const [sequenceName, setSequenceName] = useState("");
+  const [stepDayOffset, setStepDayOffset] = useState("0");
+  const [stepChannel, setStepChannel] = useState("EMAIL");
+  const [stepSubject, setStepSubject] = useState("");
+  const [addingStepSequenceId, setAddingStepSequenceId] = useState<string | null>(null);
+  const [enrollingSequenceId, setEnrollingSequenceId] = useState<string | null>(null);
+  const [enrollContactId, setEnrollContactId] = useState("");
+
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const [listsResult, contactsResult] = await Promise.all([listOutboundLists(token), listOutboundContacts(token)]);
+      const [listsResult, contactsResult, sequencesResult] = await Promise.all([
+        listOutboundLists(token),
+        listOutboundContacts(token),
+        listOutboundSequences(token),
+      ]);
       setLists(listsResult.lists);
       setContacts(contactsResult.contacts);
+      setSequences(sequencesResult.sequences);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load outbound data.");
     } finally {
@@ -78,12 +100,90 @@ export default function OutboundPage() {
     }
   }
 
+  async function handleCreateSequence(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !sequenceName.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await createOutboundSequence(token, sequenceName.trim());
+      setSequenceName("");
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to create sequence.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAddStep(sequenceId: string) {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await addOutboundStep(token, sequenceId, {
+        day_offset: Number(stepDayOffset),
+        channel: stepChannel,
+        subject: stepSubject.trim() || undefined,
+      });
+      setNotice("Step added.");
+      setAddingStepSequenceId(null);
+      setStepDayOffset("0");
+      setStepSubject("");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to add step.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleEnroll(sequenceId: string) {
+    if (!token || !enrollContactId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await enrollOutboundContact(token, sequenceId, enrollContactId);
+      setNotice("Contact enrolled.");
+      setEnrollingSequenceId(null);
+      setEnrollContactId("");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to enroll contact.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleExecuteDue() {
+    if (!token) return;
+    setBusy(true);
+    setNotice(null);
+    setError(null);
+    try {
+      const result = await executeDueOutboundActivities(token);
+      setNotice(`${result.executed_activity_ids.length} activity(ies) executed.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to execute due activities.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-6">Outbound &amp; List Building</h1>
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="font-display text-2xl text-foreground">Outbound &amp; List Building</h1>
+          <button
+            disabled={busy}
+            onClick={handleExecuteDue}
+            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+          >
+            Execute due activities
+          </button>
+        </div>
 
         {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>}
+        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
 
         <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
@@ -151,6 +251,123 @@ export default function OutboundPage() {
               </tbody>
             </table>
           </div>
+        )}
+
+        <h2 className="mb-3 mt-10 text-sm font-medium text-muted">Sequences</h2>
+        <form onSubmit={handleCreateSequence} className="mb-3 flex gap-2">
+          <input
+            value={sequenceName}
+            onChange={(e) => setSequenceName(e.target.value)}
+            placeholder="Sequence name"
+            className="flex-1 max-w-sm rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={busy || !sequenceName.trim()}
+            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+          >
+            Create
+          </button>
+        </form>
+        {sequences.length === 0 ? (
+          <EmptyState icon={List} title="No sequences yet." compact />
+        ) : (
+          <ul className="space-y-2">
+            {sequences.map((s) => (
+              <li key={s.id} className="rounded-md border border-border bg-surface p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span>
+                    {s.name} <Badge status={s.status}>{s.status}</Badge>
+                  </span>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setAddingStepSequenceId(addingStepSequenceId === s.id ? null : s.id);
+                        setEnrollingSequenceId(null);
+                      }}
+                      className="text-xs underline text-muted hover:text-foreground"
+                    >
+                      Add step
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEnrollingSequenceId(enrollingSequenceId === s.id ? null : s.id);
+                        setAddingStepSequenceId(null);
+                      }}
+                      className="text-xs underline text-muted hover:text-foreground"
+                    >
+                      Enroll contact
+                    </button>
+                  </div>
+                </div>
+                {addingStepSequenceId === s.id && (
+                  <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-border pt-2">
+                    <div>
+                      <label className="block text-xs text-muted">Day offset</label>
+                      <input
+                        type="number"
+                        value={stepDayOffset}
+                        onChange={(e) => setStepDayOffset(e.target.value)}
+                        className="w-20 rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted">Channel</label>
+                      <select
+                        value={stepChannel}
+                        onChange={(e) => setStepChannel(e.target.value)}
+                        className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                      >
+                        <option value="EMAIL">EMAIL</option>
+                        <option value="SMS">SMS</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs text-muted">Subject (optional)</label>
+                      <input
+                        value={stepSubject}
+                        onChange={(e) => setStepSubject(e.target.value)}
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={() => handleAddStep(s.id)}
+                      disabled={busy}
+                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
+                {enrollingSequenceId === s.id && (
+                  <div className="mt-2 flex items-end gap-2 border-t border-border pt-2">
+                    <div className="flex-1">
+                      <label className="block text-xs text-muted">Contact</label>
+                      <select
+                        value={enrollContactId}
+                        onChange={(e) => setEnrollContactId(e.target.value)}
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      >
+                        <option value="">Select a contact...</option>
+                        {contacts.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.contact_name || c.company || c.email || c.id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      onClick={() => handleEnroll(s.id)}
+                      disabled={busy || !enrollContactId}
+                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                    >
+                      Enroll
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </AppShell>

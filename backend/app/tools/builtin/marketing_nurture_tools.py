@@ -2,6 +2,7 @@ import uuid
 
 from pydantic import BaseModel
 
+from app.models.marketing import NurtureTriggerType
 from app.models.rbac import Permission
 from app.services.nurture_service import NurtureService, SequenceNotFoundError
 from app.tools.base import ExecutionContext, Tool
@@ -31,6 +32,10 @@ class CreateNurtureSequence(Tool):
         self._nurture_service = nurture_service
 
     async def execute(self, input: CreateNurtureSequenceInput, context: ExecutionContext) -> SequenceOutput:
+        try:
+            NurtureTriggerType(input.trigger_type)
+        except ValueError:
+            raise ValueError(f"Invalid nurture trigger type: {input.trigger_type}") from None
         row = await self._nurture_service.create_sequence(context.tenant_id, name=input.name, trigger_type=input.trigger_type)
         return SequenceOutput(sequence_id=str(row.id))
 

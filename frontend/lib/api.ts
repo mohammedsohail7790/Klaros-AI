@@ -1649,6 +1649,101 @@ export function publishSEOPage(token: string, pageId: string) {
   );
 }
 
+export interface SEOKeywordRow {
+  id: string;
+  keyword: string;
+  target_location: string | null;
+  search_volume: number | null;
+  current_ranking: number | null;
+  page_id: string | null;
+}
+
+export function listSEOKeywords(token: string) {
+  return request<{ keywords: SEOKeywordRow[] }>("/api/v1/marketing/seo/keywords", { headers: authHeaders(token) });
+}
+
+export function recordSEOKeyword(
+  token: string,
+  body: { keyword: string; target_location?: string; page_id?: string; search_volume?: number; current_ranking?: number }
+) {
+  return request<{ keyword_id: string; keyword: string }>("/api/v1/marketing/seo/keywords", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function createSEOOpportunity(
+  token: string,
+  body: { service: string; location: string; rationale?: string; priority?: string }
+) {
+  return request<{ opportunity_id: string }>("/api/v1/marketing/seo/opportunities", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export interface LocalListingRow {
+  id: string;
+  business_name: string;
+  city: string | null;
+  state: string | null;
+  provider: string | null;
+}
+
+export function listLocalListings(token: string) {
+  return request<{ listings: LocalListingRow[] }>("/api/v1/marketing/seo/local/listings", {
+    headers: authHeaders(token),
+  });
+}
+
+export function createLocalListing(
+  token: string,
+  body: { business_name: string; address?: string; city?: string; state?: string }
+) {
+  return request<{ listing_id: string }>("/api/v1/marketing/seo/local/listings", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export interface LocalReviewRow {
+  id: string;
+  listing_id: string;
+  rating: number;
+  author: string | null;
+  body: string | null;
+  responded: boolean;
+}
+
+export function listLocalReviews(token: string, listingId?: string) {
+  const qs = listingId ? `?${new URLSearchParams({ listing_id: listingId }).toString()}` : "";
+  return request<{ reviews: LocalReviewRow[] }>(`/api/v1/marketing/seo/local/reviews${qs}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function recordLocalReview(
+  token: string,
+  body: { listing_id: string; rating: number; author?: string; body?: string; source?: string }
+) {
+  return request<{ review_id: string }>("/api/v1/marketing/seo/local/reviews", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function respondToLocalReview(token: string, reviewId: string, responseText: string) {
+  const qs = new URLSearchParams({ response_text: responseText });
+  return request<{ review_id: string } | { status: string; approval_request_id: string }>(
+    `/api/v1/marketing/seo/local/reviews/${reviewId}/respond?${qs.toString()}`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+}
+
 export interface OutboundListRow {
   id: string;
   name: string;
@@ -1692,6 +1787,110 @@ export function addOutboundContact(
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(body),
+  });
+}
+
+export interface OutboundSequenceRow {
+  id: string;
+  name: string;
+  status: string;
+}
+
+export function listOutboundSequences(token: string) {
+  return request<{ sequences: OutboundSequenceRow[] }>("/api/v1/marketing/outbound/sequences", {
+    headers: authHeaders(token),
+  });
+}
+
+export function createOutboundSequence(token: string, name: string, description?: string) {
+  return request<{ sequence_id: string }>("/api/v1/marketing/outbound/sequences", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ name, description }),
+  });
+}
+
+export function addOutboundStep(
+  token: string,
+  sequenceId: string,
+  body: { day_offset: number; channel?: string; subject?: string; body?: string; sort_order?: number }
+) {
+  return request<{ step_id: string }>(`/api/v1/marketing/outbound/sequences/${sequenceId}/steps`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function enrollOutboundContact(token: string, sequenceId: string, contactId: string) {
+  return request<{ enrollment_id: string; status: string }>("/api/v1/marketing/outbound/enrollments", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ sequence_id: sequenceId, contact_id: contactId }),
+  });
+}
+
+export function executeDueOutboundActivities(token: string) {
+  return request<{ executed_activity_ids: string[] }>("/api/v1/marketing/outbound/activities/execute-due", {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+// --- Marketing nurture sequences (stale leads / unbooked qualified leads) ---
+
+export interface NurtureSequenceRow {
+  id: string;
+  name: string;
+  trigger_type: string;
+  status: string;
+}
+
+export function listNurtureSequences(token: string) {
+  return request<{ sequences: NurtureSequenceRow[] }>("/api/v1/marketing/nurture/sequences", {
+    headers: authHeaders(token),
+  });
+}
+
+export function createNurtureSequence(token: string, name: string, triggerType?: string) {
+  return request<{ sequence_id: string }>("/api/v1/marketing/nurture/sequences", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ name, trigger_type: triggerType }),
+  });
+}
+
+export function findStaleLeadCandidates(token: string) {
+  return request<{ lead_ids: string[] }>("/api/v1/marketing/nurture/candidates/stale-leads", {
+    headers: authHeaders(token),
+  });
+}
+
+export function enrollLeadInNurture(token: string, sequenceId: string, leadId: string) {
+  return request<{ enrollment_id: string; status: string }>("/api/v1/marketing/nurture/enrollments", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ sequence_id: sequenceId, lead_id: leadId }),
+  });
+}
+
+export interface NurtureEnrollmentRow {
+  id: string;
+  sequence_id: string;
+  lead_id: string;
+  status: string;
+}
+
+export function listNurtureEnrollments(token: string) {
+  return request<{ enrollments: NurtureEnrollmentRow[] }>("/api/v1/marketing/nurture/enrollments", {
+    headers: authHeaders(token),
+  });
+}
+
+export function executeDueNurtureActivities(token: string) {
+  return request<{ executed_activity_ids: string[] }>("/api/v1/marketing/nurture/activities/execute-due", {
+    method: "POST",
+    headers: authHeaders(token),
   });
 }
 
