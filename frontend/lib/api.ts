@@ -2024,6 +2024,52 @@ export function issueReferralReward(token: string, rewardId: string) {
   });
 }
 
+// --- Retention campaigns (win-back / post-job follow-up / VIP / etc.) ---
+
+export interface RetentionCampaignRow {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+}
+
+export function listRetentionCampaigns(token: string) {
+  return request<{ campaigns: RetentionCampaignRow[] }>("/api/v1/retention/campaigns", {
+    headers: authHeaders(token),
+  });
+}
+
+export function createRetentionCampaign(token: string, name: string, type: string) {
+  return request<{ campaign_id: string; status: string }>("/api/v1/retention/campaigns", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ name, type }),
+  });
+}
+
+export function setRetentionCampaignStatus(token: string, campaignId: string, status: string) {
+  const qs = new URLSearchParams({ status });
+  return request<{ campaign_id: string; status: string }>(
+    `/api/v1/retention/campaigns/${campaignId}/status?${qs.toString()}`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+}
+
+export function enrollCustomerInRetentionCampaign(token: string, campaignId: string, customerId: string) {
+  const qs = new URLSearchParams({ customer_id: customerId });
+  return request<{ enrollment_id: string; status: string }>(
+    `/api/v1/retention/campaigns/${campaignId}/enroll?${qs.toString()}`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+}
+
+export function executeDueRetentionActivities(token: string) {
+  return request<{ executed_activity_ids: string[] }>("/api/v1/retention/campaigns/activities/execute-due", {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
 // --- Phase 8: Event Worker admin ---
 
 export interface EventRow {

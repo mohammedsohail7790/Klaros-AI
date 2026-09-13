@@ -3,6 +3,7 @@ import uuid
 from pydantic import BaseModel
 
 from app.models.rbac import Permission
+from app.models.retention import RetentionCampaignStatus, RetentionCampaignType
 from app.services.retention_campaign_service import CampaignNotFoundError, RetentionCampaignService
 from app.tools.base import ExecutionContext, Tool
 
@@ -32,6 +33,10 @@ class CreateRetentionCampaign(Tool):
         self._retention_campaign_service = retention_campaign_service
 
     async def execute(self, input: CreateCampaignInput, context: ExecutionContext) -> CampaignOutput:
+        try:
+            RetentionCampaignType(input.type)
+        except ValueError:
+            raise ValueError(f"Invalid retention campaign type: {input.type}") from None
         campaign = await self._retention_campaign_service.create_campaign(context.tenant_id, name=input.name, type=input.type)
         return CampaignOutput(campaign_id=str(campaign.id), status=campaign.status)
 
@@ -52,6 +57,10 @@ class SetRetentionCampaignStatus(Tool):
         self._retention_campaign_service = retention_campaign_service
 
     async def execute(self, input: SetCampaignStatusInput, context: ExecutionContext) -> CampaignOutput:
+        try:
+            RetentionCampaignStatus(input.status)
+        except ValueError:
+            raise ValueError(f"Invalid retention campaign status: {input.status}") from None
         try:
             campaign = await self._retention_campaign_service.set_status(context.tenant_id, input.campaign_id, input.status)
         except CampaignNotFoundError as e:
