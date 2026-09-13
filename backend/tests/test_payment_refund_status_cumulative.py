@@ -73,7 +73,8 @@ def _fake_stripe_refund(monkeypatch):
 async def test_two_partial_refunds_summing_to_full_amount_mark_payment_refunded(event_bus) -> None:
     tenant_id = uuid.uuid4()
     _invoice, payment = await _make_paid_invoice_and_payment(tenant_id, amount=Decimal("100.00"))
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     refund_1 = await service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=None, amount=Decimal("40.00"),
@@ -110,7 +111,8 @@ async def test_three_partial_refunds_none_individually_reaching_full_amount(even
     true for every single one of them."""
     tenant_id = uuid.uuid4()
     _invoice, payment = await _make_paid_invoice_and_payment(tenant_id, amount=Decimal("90.00"))
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     for amount in (Decimal("30.00"), Decimal("30.00"), Decimal("30.00")):
         refund = await service.request_refund(
@@ -141,7 +143,8 @@ async def test_single_partial_refund_still_marks_partially_refunded(event_bus) -
     PARTIALLY_REFUNDED, not jump straight to REFUNDED."""
     tenant_id = uuid.uuid4()
     _invoice, payment = await _make_paid_invoice_and_payment(tenant_id, amount=Decimal("100.00"))
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     refund = await service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=None, amount=Decimal("25.00"),
@@ -159,7 +162,8 @@ async def test_single_full_refund_still_marks_refunded_directly(event_bus) -> No
     full amount) must be unaffected by the fix."""
     tenant_id = uuid.uuid4()
     _invoice, payment = await _make_paid_invoice_and_payment(tenant_id, amount=Decimal("50.00"))
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     refund = await service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=None, amount=Decimal("50.00"),
@@ -178,7 +182,8 @@ async def test_rejected_refund_never_counted_toward_cumulative_total(event_bus) 
     incorrectly flip status to REFUNDED early."""
     tenant_id = uuid.uuid4()
     _invoice, payment = await _make_paid_invoice_and_payment(tenant_id, amount=Decimal("100.00"))
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     refund_rejected = await service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=None, amount=Decimal("70.00"),

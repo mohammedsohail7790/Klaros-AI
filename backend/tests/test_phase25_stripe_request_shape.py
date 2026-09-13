@@ -143,7 +143,8 @@ async def test_refund_request_shape_is_correct(event_bus, monkeypatch) -> None:
         await session.commit()
         await session.refresh(payment)
 
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     refund = await service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=None, amount=Decimal("30.00"), reason="test", requested_by=None,
     )

@@ -90,7 +90,9 @@ async def test_stripe_refund_api_failure_leaves_no_db_state_changed(monkeypatch,
     settings = get_settings()
     monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", "sk_test_fake_for_refund_failure")
 
-    service = PaymentService(async_session_maker, get_event_bus())
+    from app.api.tool_deps_integrations import get_integration_connection_service
+
+    service = PaymentService(async_session_maker, get_event_bus(), get_integration_connection_service())
     with pytest.raises(InvalidRefundError, match="Stripe refund failed, no DB state changed"):
         await service.decide_refund(tenant_id, refund.id, approved=True, decided_by=uuid.uuid4())
 
@@ -106,3 +108,48 @@ async def test_stripe_refund_api_failure_leaves_no_db_state_changed(monkeypatch,
         assert refreshed_invoice.amount_paid == Decimal("100.00")
         assert refreshed_invoice.amount_due == Decimal("0.00")
         assert refreshed_invoice.status == InvoiceStatus.PAID
+
+
+async def test_decide_refund_uses_the_tenants_own_connected_stripe_account(monkeypatch, tool_registry) -> None:
+    """decide_refund previously always built StripeClient(settings.
+    STRIPE_SECRET_KEY) — the platform key only — even when the original
+    payment was captured through the tenant's OWN connected Stripe
+    account (exactly what checkout/deposit creation already resolves via
+    resolve_stripe_secret_key). For a tenant with their own connection,
+    refunding against the wrong Stripe account is guaranteed to fail:
+    same class of bug as the QuickBooks float-precision fix — right
+    amount, wrong source-of-truth credential."""
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    from app.core.config import get_settings
+    from app.db.session import async_session_maker
+    from app.events.factory import get_event_bus
+    from app.integrations.stripe_client import StripeClient
+    from app.services.payment_service import PaymentService
+
+    tenant_id = uuid.uuid4()
+    invoice, payment, refund = await _make_stripe_paid_invoice(tool_registry, tenant_id)
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", "sk_test_platform_key_wrong_account")
+
+    captured_keys: list[str] = []
+
+    async def _fake_verify_connection(self) -> bool:
+        return True
+
+    async def _capturing_create_refund(self, **kwargs):
+        captured_keys.append(self._secret_key)
+        return type("R", (), {"id": "re_fake", "status": "succeeded", "amount": 4000, "currency": "usd"})()
+
+    monkeypatch.setattr(StripeClient, "verify_connection", _fake_verify_connection)
+    monkeypatch.setattr(StripeClient, "create_refund", _capturing_create_refund)
+
+    connection_service = get_integration_connection_service()
+    await connection_service.connect(
+        tenant_id, "stripe", {"secret_key": "sk_test_tenants_own_account"}, created_by=None
+    )
+
+    service = PaymentService(async_session_maker, get_event_bus(), connection_service)
+    await service.decide_refund(tenant_id, refund.id, approved=True, decided_by=uuid.uuid4())
+
+    assert captured_keys == ["sk_test_tenants_own_account"]

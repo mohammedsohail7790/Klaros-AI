@@ -109,7 +109,8 @@ async def _build_paid_deposit_quote(tool_registry, event_bus: EventBus, tenant_i
     accept_result = await quote_service.decide(tenant_id, quote_id, accepted=True)
     assert accept_result.quote.status == "DEPOSIT_PENDING"
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     payment, _dedup = await payment_service.record_payment(
         tenant_id, customer_id=uuid.UUID(customer_id), amount=Decimal("400.00"), provider="stripe",
         external_id=f"pi_{uuid.uuid4().hex}", payment_method="card", allocations=[], quote_id=quote_id,
@@ -783,7 +784,8 @@ async def test_quote_deposit_paid_event_triggers_automatic_sync_attempt(
     quote_service = QuoteService(async_session_maker, event_bus)
     await quote_service.decide(tenant_id, quote_id, accepted=True)
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     payment, _dedup = await payment_service.record_payment(
         tenant_id, customer_id=uuid.UUID(customer_result.customer["id"]), amount=Decimal("400.00"), provider="stripe",
         external_id=f"pi_{uuid.uuid4().hex}", payment_method="card", allocations=[], quote_id=quote_id,

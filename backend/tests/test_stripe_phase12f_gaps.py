@@ -180,7 +180,10 @@ async def test_cross_tenant_webhook_metadata_cannot_credit_another_tenants_invoi
             await session.execute(select(WebhookEvent).where(WebhookEvent.provider == "stripe"))
         ).scalars().one()
         assert event.status == "FAILED"
-        assert "record_payment failed" in (event.error_detail or "")
+        # "rejected:" (not "failed:") — a permanent validation rejection,
+        # not a transient failure, so it's deliberately excluded from
+        # Stripe's own webhook retry (see _RETRYABLE_ERROR_PREFIXES).
+        assert "record_payment rejected" in (event.error_detail or "")
         assert event.tenant_id == tenant_a
 
         # Tenant B's invoice is completely untouched — no credit moved in

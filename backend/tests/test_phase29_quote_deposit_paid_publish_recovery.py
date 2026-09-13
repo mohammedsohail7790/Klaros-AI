@@ -49,7 +49,8 @@ async def test_quote_deposit_paid_event_recovers_after_a_publish_failure_and_ret
         quote = await session.get(Quote, uuid.UUID(quote_id))
         customer_id = quote.customer_id
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     payment, _dedup = await payment_service.record_payment(
         tenant_id, customer_id=customer_id, amount=Decimal("40.00"), provider="stripe",
         external_id="pi_phase29_deposit_repro", payment_method="card",
@@ -115,7 +116,8 @@ async def test_a_further_retry_after_genuine_success_does_not_duplicate_the_even
         quote = await session.get(Quote, uuid.UUID(quote_id))
         customer_id = quote.customer_id
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     payment, _dedup = await payment_service.record_payment(
         tenant_id, customer_id=customer_id, amount=Decimal("25.00"), provider="stripe",
         external_id="pi_phase29_no_dup", payment_method="card",

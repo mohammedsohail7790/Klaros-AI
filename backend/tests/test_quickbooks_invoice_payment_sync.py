@@ -152,7 +152,8 @@ async def _sync_invoice_to_quickbooks(connection_service, tenant_id: uuid.UUID, 
 async def _record_stripe_invoice_payment(
     event_bus, tenant_id: uuid.UUID, customer_id: uuid.UUID, invoice_id: uuid.UUID, amount: Decimal,
 ) -> Payment:
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     payment, _dedup = await payment_service.record_payment(
         tenant_id, customer_id=customer_id, amount=amount, provider="stripe",
         external_id=f"pi_{uuid.uuid4().hex}", payment_method="card",
@@ -205,7 +206,8 @@ async def test_deposit_payment_rejected_by_invoice_sync_method(connection_servic
     quote_service = QuoteService(async_session_maker, event_bus)
     await quote_service.decide(tenant_id, quote_id, accepted=True)
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     payment, _ = await payment_service.record_payment(
         tenant_id, customer_id=uuid.UUID(customer_result.customer["id"]), amount=Decimal("50.00"),
         provider="stripe", external_id=f"pi_{uuid.uuid4().hex}", payment_method="card",
@@ -750,7 +752,8 @@ async def test_payment_received_event_for_deposit_payment_is_a_silent_noop_here(
     quote_service = QuoteService(async_session_maker, event_bus)
     await quote_service.decide(tenant_id, quote_id, accepted=True)
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     payment, _ = await payment_service.record_payment(
         tenant_id, customer_id=uuid.UUID(customer_result.customer["id"]), amount=Decimal("50.00"),
         provider="stripe", external_id=f"pi_{uuid.uuid4().hex}", payment_method="card",
@@ -875,7 +878,8 @@ async def test_refund_against_a_synced_invoice_payment_syncs_via_existing_refund
 
     monkeypatch.setattr(StripeClient, "create_refund", _fake_stripe_create_refund)
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     refund = await payment_service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=invoice.id, amount=Decimal("150.00"),
         reason="Partial refund", requested_by=None,

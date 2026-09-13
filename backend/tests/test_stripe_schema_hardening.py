@@ -389,7 +389,9 @@ async def test_payment_service_decide_refund_raises_for_wrong_tenant_directly() 
     tenant_b = uuid.uuid4()
     _invoice, _payment, refund = await _make_refund_awaiting_decision(tenant_a)
 
-    service = PaymentService(async_session_maker, get_event_bus())
+    from app.api.tool_deps_integrations import get_integration_connection_service
+
+    service = PaymentService(async_session_maker, get_event_bus(), get_integration_connection_service())
     with pytest.raises(InvalidRefundError, match="not found"):
         await service.decide_refund(tenant_b, refund.id, approved=True, decided_by=uuid.uuid4())
 

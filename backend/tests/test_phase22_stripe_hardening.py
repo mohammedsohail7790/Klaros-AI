@@ -124,7 +124,8 @@ async def test_concurrent_mark_deposit_paid_creates_exactly_one_job(tool_registr
     quote_service = QuoteService(async_session_maker, event_bus)
     await quote_service.decide(tenant_id, quote_id, accepted=True)
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     # Two REALLY DISTINCT Stripe payments for the same quote deposit — a
     # real, reachable shape (e.g. a customer re-opening the Checkout link
     # and paying twice, or two independently-succeeding PaymentIntents

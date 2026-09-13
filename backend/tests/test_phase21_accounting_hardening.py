@@ -92,7 +92,8 @@ async def _make_customer_and_invoice(
 async def test_duplicate_allocation_to_same_invoice_in_one_call_is_rejected(event_bus) -> None:
     tenant_id = uuid.uuid4()
     customer, invoice = await _make_customer_and_invoice(tenant_id, total=Decimal("100.00"))
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     with pytest.raises(OverpaymentError, match="already allocated to it earlier in this same payment"):
         await service.record_payment(
@@ -116,7 +117,8 @@ async def test_two_allocations_to_same_invoice_within_bounds_is_allowed_and_summ
     only reject when it doesn't."""
     tenant_id = uuid.uuid4()
     customer, invoice = await _make_customer_and_invoice(tenant_id, total=Decimal("100.00"))
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     payment, _dedup = await service.record_payment(
         tenant_id, customer_id=customer.id, amount=Decimal("100.00"), provider="stripe",
@@ -169,7 +171,8 @@ async def test_duplicate_allocation_to_same_invoice_merges_into_one_qbo_line(
     sync_service = QuickBooksSyncService(async_session_maker, connection_service)
     await sync_service.sync_invoice(tenant_id, invoice.id)
 
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     payment, _dedup = await service.record_payment(
         tenant_id, customer_id=customer.id, amount=Decimal("100.00"), provider="stripe",
         external_id="pi_merge_lines", payment_method="card",
@@ -208,7 +211,8 @@ async def test_concurrent_payments_to_same_invoice_do_not_overpay_it(event_bus) 
     smoke test of the code path, not as proof of the fix itself."""
     tenant_id = uuid.uuid4()
     customer, invoice = await _make_customer_and_invoice(tenant_id, total=Decimal("100.00"))
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     results = await asyncio.gather(
         service.record_payment(
@@ -278,7 +282,8 @@ async def test_concurrent_refund_approval_calls_stripe_exactly_once(event_bus, m
         await session.commit()
         await session.refresh(payment)
 
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     refund = await service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=invoice.id, amount=Decimal("100.00"),
         reason="race", requested_by=None,
@@ -333,7 +338,8 @@ async def test_failed_stripe_refund_reverts_the_cas_claim_and_stays_retryable(ev
         await session.commit()
         await session.refresh(payment)
 
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     refund = await service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=invoice.id, amount=Decimal("50.00"),
         reason="will fail then retry", requested_by=None,
@@ -374,7 +380,8 @@ async def test_three_full_hundred_refunds_against_a_300_payment(event_bus, monke
         await session.commit()
         await session.refresh(payment)
 
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     for i in range(3):
         refund = await service.request_refund(

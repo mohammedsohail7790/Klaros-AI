@@ -77,7 +77,8 @@ async def test_concurrent_refund_requests_never_exceed_the_payment_amount(event_
 
     tenant_id = uuid.uuid4()
     payment = await _make_payment(tenant_id, amount=Decimal("100.00"))
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     results = await asyncio.gather(
         *[
@@ -108,7 +109,8 @@ async def test_sequential_refund_requests_within_bounds_still_work(event_bus) ->
     legitimate sequential partial-refund requests that together fit."""
     tenant_id = uuid.uuid4()
     payment = await _make_payment(tenant_id, amount=Decimal("100.00"))
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     r1 = await service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=None, amount=Decimal("40.00"), reason="first", requested_by=None,

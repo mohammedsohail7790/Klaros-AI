@@ -124,7 +124,8 @@ async def _build_paid_deposit_quote(tool_registry, event_bus: EventBus, tenant_i
     accept_result = await quote_service.decide(tenant_id, quote_id, accepted=True)
     assert accept_result.quote.status == "DEPOSIT_PENDING"
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     payment, _dedup = await payment_service.record_payment(
         tenant_id, customer_id=uuid.UUID(customer_id), amount=Decimal("300.00"), provider="stripe",
         external_id=f"pi_{uuid.uuid4().hex}", payment_method="card", allocations=[], quote_id=quote_id,
@@ -194,7 +195,8 @@ async def _build_fully_synced_completed_refund(
 
     monkeypatch.setattr(StripeClient, "create_refund", _fake_stripe_create_refund)
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     refund = await payment_service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=None, amount=refund_amount,
         reason="Customer requested", requested_by=None,
@@ -783,7 +785,8 @@ async def test_failed_automatic_refund_sync_lands_in_dead_letter_and_stays_retry
 
     monkeypatch.setattr(StripeClient, "create_refund", _fake_stripe_create_refund)
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     refund = await payment_service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=None, amount=Decimal("300.00"),
         reason="Customer requested", requested_by=None,
@@ -828,7 +831,8 @@ async def test_replaying_dead_lettered_refund_sync_succeeds_once_payment_is_sync
 
     monkeypatch.setattr(StripeClient, "create_refund", _fake_stripe_create_refund)
 
-    payment_service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
     refund = await payment_service.request_refund(
         tenant_id, payment_id=payment.id, invoice_id=None, amount=Decimal("300.00"),
         reason="Customer requested", requested_by=None,

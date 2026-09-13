@@ -61,10 +61,11 @@ async def _make_paid_invoice_with_refund(tenant_id: uuid.UUID):
 
 
 async def _service() -> PaymentService:
+    from app.api.tool_deps_integrations import get_integration_connection_service
     from app.db.session import async_session_maker
     from app.events.factory import get_event_bus
 
-    return PaymentService(async_session_maker, get_event_bus())
+    return PaymentService(async_session_maker, get_event_bus(), get_integration_connection_service())
 
 
 async def test_deciding_an_already_completed_refund_again_is_rejected() -> None:

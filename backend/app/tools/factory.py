@@ -320,7 +320,9 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     invoice_service = InvoiceService(session_factory, bus)
     quote_service = QuoteService(session_factory, bus)
     contract_service = ContractService(session_factory, bus)
-    payment_service = PaymentService(session_factory, bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+
+    payment_service = PaymentService(session_factory, bus, get_integration_connection_service())
     adjustments_service = AdjustmentsService(session_factory, bus)
     job_costing_service = JobCostingService(session_factory, exception_service)
     collection_comms = get_communication_provider(session_factory)

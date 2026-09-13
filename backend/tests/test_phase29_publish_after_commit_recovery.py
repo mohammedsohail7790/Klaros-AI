@@ -66,7 +66,8 @@ async def test_payment_received_event_recovers_after_a_publish_failure_and_retry
 ) -> None:
     tenant_id = uuid.uuid4()
     customer, invoice = await _make_customer_and_invoice(tenant_id)
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     original_publish = EventBus.publish
 
@@ -124,7 +125,8 @@ async def test_a_second_dedup_retry_after_genuine_success_does_not_duplicate_the
     second Event row."""
     tenant_id = uuid.uuid4()
     customer, invoice = await _make_customer_and_invoice(tenant_id)
-    service = PaymentService(async_session_maker, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    service = PaymentService(async_session_maker, event_bus, get_integration_connection_service())
 
     payment1, deduped1 = await service.record_payment(
         tenant_id, customer_id=customer.id, amount=Decimal("100.00"), provider="stripe",

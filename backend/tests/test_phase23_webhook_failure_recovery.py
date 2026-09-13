@@ -90,7 +90,12 @@ async def test_transient_job_creation_failure_is_recovered_by_a_redelivery(
     monkeypatch.setattr(job_service_module.JobService, "create_job", _transient_failure)
 
     resp1 = await client.post("/api/v1/webhooks/stripe", content=payload, headers=headers)
-    assert resp1.status_code == 200
+    # A "mark_deposit_paid failed" outcome means the payment WAS recorded
+    # but the resulting Job wasn't — a genuinely retryable failure (see
+    # app/api/v1/webhooks.py's _RETRYABLE_ERROR_PREFIXES) — so this now
+    # returns a non-2xx specifically so Stripe's own retry mechanism can
+    # kick in too, not just a manual/operator resend.
+    assert resp1.status_code == 502
     assert resp1.json()["status"] == "failed"
 
     async with async_session_maker() as session:

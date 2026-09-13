@@ -15,11 +15,13 @@ from decimal import Decimal
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.tool_deps import get_wired_event_bus
+from app.api.tool_deps_integrations import get_integration_connection_service
 from app.core.config import get_settings
 from app.core.rate_limit import rate_limit, tenant_and_ip_key
 from app.db.session import async_session_maker
@@ -43,20 +45,36 @@ from app.models.quote import Quote
 from app.services.customer_matching import normalize_phone
 from app.services.lead_service import CreateLeadInput, LeadService
 from app.services.voice_call_service import VoiceCallService
-from app.services.payment_service import AllocationInput, PaymentService
+from app.services.payment_service import AllocationInput, InvoiceNotFoundError, OverpaymentError, PaymentService
 from app.services.quote_service import InvalidQuoteTransitionError, QuoteNotFoundError, QuoteService
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
+# A failure with one of these prefixes means Stripe genuinely captured a
+# payment (or we already told Stripe a quote deposit was paid) and Klaros
+# failed to fully record/act on it — money moved but our own state is
+# incomplete. Every write in this module is idempotency-key/unique-
+# constraint safe against reprocessing (see the module docstring), so
+# these are exactly the cases where Stripe's own webhook retry (triggered
+# by a non-2xx response) should be allowed to happen rather than silently
+# swallowed behind an always-200 response, which previously left a
+# captured customer payment with no Payment row and no automatic
+# redelivery path — recoverable only via a manual Stripe Dashboard resend.
+# Anything else (malformed metadata, a UUID that doesn't parse, a quote
+# that doesn't belong to the claimed tenant) is a permanent, not
+# transient, failure — retrying won't fix a payload that can't change, so
+# those stay a 200 to avoid Stripe retrying forever for no benefit.
+_RETRYABLE_ERROR_PREFIXES = ("record_payment failed:", "mark_deposit_paid failed:")
 
-@router.post("/stripe", status_code=status.HTTP_200_OK)
+
+@router.post("/stripe", status_code=status.HTTP_200_OK, response_model=None)
 async def stripe_webhook(
     request: Request,
     stripe_signature: str | None = Header(default=None, alias="Stripe-Signature"),
     bus: EventBus = Depends(get_wired_event_bus),
-) -> dict[str, str]:
+) -> dict[str, str] | JSONResponse:
     settings = get_settings()
     if not settings.STRIPE_WEBHOOK_SECRET:
         # Never process an unverifiable webhook — no secret configured means
@@ -207,6 +225,18 @@ async def stripe_webhook(
             idempotency_key=f"stripe-webhook-{external_event_id}",
         )
 
+    if (
+        status_value == WebhookProcessingStatus.FAILED
+        and error_detail is not None
+        and error_detail.startswith(_RETRYABLE_ERROR_PREFIXES)
+    ):
+        # Non-2xx so Stripe's own retry/redelivery mechanism kicks in —
+        # everything this failure could retry into is idempotency-key or
+        # unique-constraint safe (see module docstring), so a redelivery
+        # can only complete the recording that failed here, never
+        # double-record it.
+        return JSONResponse(status_code=status.HTTP_502_BAD_GATEWAY, content={"status": "failed"})
+
     return {"status": "processed" if status_value == WebhookProcessingStatus.PROCESSED else "failed"}
 
 
@@ -252,7 +282,7 @@ async def _handle_payment_intent_succeeded(
     except ValueError as exc:
         return None, f"malformed UUID in PaymentIntent metadata: {exc}"
 
-    payment_service = PaymentService(async_session_maker, bus)
+    payment_service = PaymentService(async_session_maker, bus, get_integration_connection_service())
     try:
         await payment_service.record_payment(
             tenant_id,
@@ -263,6 +293,15 @@ async def _handle_payment_intent_succeeded(
             payment_method="card",
             allocations=[AllocationInput(invoice_id=invoice_id, amount=amount)],
         )
+    except (InvoiceNotFoundError, OverpaymentError) as exc:
+        # Permanent, not transient — the exact same payload will raise the
+        # exact same rejection every time (e.g. metadata claims a tenant
+        # that doesn't own this invoice, or the allocation exceeds what's
+        # actually owed). Retrying via Stripe's own redelivery can never
+        # fix a payload that can't change, so this deliberately does NOT
+        # use the "record_payment failed:" prefix _RETRYABLE_ERROR_PREFIXES
+        # matches on above.
+        return tenant_id, f"record_payment rejected: {exc}"
     except Exception as exc:  # noqa: BLE001 — reported to the caller as processing failure, not re-raised past the webhook boundary
         return tenant_id, f"record_payment failed: {exc}"
 
@@ -299,7 +338,7 @@ async def _handle_quote_deposit_succeeded(
     if quote is None or quote.tenant_id != tenant_id:
         return tenant_id, f"quote {quote_id} does not belong to tenant {tenant_id}"
 
-    payment_service = PaymentService(async_session_maker, bus)
+    payment_service = PaymentService(async_session_maker, bus, get_integration_connection_service())
     try:
         payment, _deduped = await payment_service.record_payment(
             tenant_id,
@@ -311,6 +350,11 @@ async def _handle_quote_deposit_succeeded(
             allocations=[],
             quote_id=quote_id,
         )
+    except (InvoiceNotFoundError, OverpaymentError) as exc:
+        # Permanent, not transient — see the identical comment on the
+        # other record_payment call above. Deliberately not the "failed:"
+        # prefix _RETRYABLE_ERROR_PREFIXES matches on.
+        return tenant_id, f"record_payment rejected: {exc}"
     except Exception as exc:  # noqa: BLE001 — reported to the caller as processing failure, not re-raised past the webhook boundary
         return tenant_id, f"record_payment failed: {exc}"
 
@@ -322,8 +366,11 @@ async def _handle_quote_deposit_succeeded(
         # mismatch here (e.g. quote was somehow already CONVERTED) is
         # reported as a processing failure for investigation, never
         # silently swallowed, but it must never be re-attempted as if the
-        # payment itself failed.
-        return tenant_id, f"mark_deposit_paid failed: {exc}"
+        # payment itself failed — this is a permanent state mismatch, not
+        # the transient kind _RETRYABLE_ERROR_PREFIXES' "mark_deposit_paid
+        # failed:" prefix is meant to catch, so this uses "rejected:"
+        # instead and is deliberately excluded from Stripe's retry.
+        return tenant_id, f"mark_deposit_paid rejected: {exc}"
     except Exception as exc:  # noqa: BLE001 — Phase 23 fix: mirrors the
         # record_payment try/except directly above. Previously any OTHER
         # failure here (e.g. a transient error inside JobService.create_job,
@@ -407,7 +454,7 @@ async def _handle_charge_refunded(
 
     total_refunded = Decimal(amount_refunded_cents) / Decimal(100)
 
-    payment_service = PaymentService(async_session_maker, bus)
+    payment_service = PaymentService(async_session_maker, bus, get_integration_connection_service())
     try:
         _refund, error = await payment_service.reconcile_external_refund(
             tenant_id,

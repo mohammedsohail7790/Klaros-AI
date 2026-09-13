@@ -53,9 +53,15 @@ class AllocationInput:
 
 
 class PaymentService:
-    def __init__(self, session_factory: async_sessionmaker, bus: EventBus) -> None:
+    def __init__(self, session_factory: async_sessionmaker, bus: EventBus, connection_service) -> None:
         self._session_factory = session_factory
         self._bus = bus
+        # Needed so decide_refund can resolve a tenant's OWN connected
+        # Stripe account for the refund call, exactly like checkout/deposit
+        # creation already does via resolve_stripe_secret_key — refunding
+        # against the platform key only is wrong (and guaranteed to fail)
+        # for any tenant who paid through their own connected account.
+        self._connection_service = connection_service
 
     async def record_payment(
         self,
@@ -400,20 +406,27 @@ class PaymentService:
                     stripe_payment_intent_id = payment_preview.external_id
 
         if stripe_refund_needed and stripe_payment_intent_id:
-            from app.core.config import get_settings
             from app.integrations.stripe_client import StripeAPIError, StripeClient
+            from app.tools.builtin.stripe_tools import resolve_stripe_secret_key
 
-            settings = get_settings()
-            if not settings.STRIPE_SECRET_KEY:
+            # The tenant's OWN connected Stripe account, if any — the
+            # exact same resolution checkout/deposit creation already uses
+            # (quote_deposit_service.py, stripe_tools.py). The original
+            # payment could have been captured against either the
+            # platform-shared key or a tenant's own account; refunding
+            # must hit the SAME account the charge actually lives in.
+            secret_key = await resolve_stripe_secret_key(self._connection_service, tenant_id)
+            if not secret_key:
                 async with self._session_factory() as session:
                     r = await session.get(Refund, refund_id)
                     if r is not None and r.status == RefundStatus.APPROVED:
                         r.status = RefundStatus.REQUESTED
                         await session.commit()
                 raise InvalidRefundError(
-                    "Cannot complete Stripe refund: STRIPE_SECRET_KEY is not configured"
+                    "Cannot complete Stripe refund: Stripe is not connected (no tenant connection and "
+                    "STRIPE_SECRET_KEY not configured)"
                 )
-            client = StripeClient(settings.STRIPE_SECRET_KEY)
+            client = StripeClient(secret_key)
             try:
                 refund_amount_preview: Decimal | None = None
                 async with self._session_factory() as session:

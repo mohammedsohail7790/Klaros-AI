@@ -151,7 +151,8 @@ async def test_full_finance_lifecycle(event_bus, tool_registry) -> None:
     from app.models.finance import PaymentStatus
     from app.services.payment_service import AllocationInput, PaymentService
 
-    payment_service = PaymentService(event_bus.session_factory, event_bus)
+    from app.api.tool_deps_integrations import get_integration_connection_service
+    payment_service = PaymentService(event_bus.session_factory, event_bus, get_integration_connection_service())
     _, deduped = await payment_service.record_payment(
         tenant_id,
         customer_id=uuid.UUID(customer_id),
