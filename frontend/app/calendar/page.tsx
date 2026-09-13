@@ -2,7 +2,9 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Calendar, CalendarX } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -129,7 +131,7 @@ function CalendarPageInner() {
                 Appointments ({appointments.length})
               </h2>
               {appointments.length === 0 ? (
-                <p className="text-sm text-muted">Nothing booked for this day.</p>
+                <EmptyState icon={Calendar} title="Nothing booked for this day." compact />
               ) : (
                 <ul className="space-y-2">
                   {appointments.map((a) => (
@@ -180,7 +182,7 @@ function CalendarPageInner() {
             <section>
               <h2 className="mb-3 text-sm font-medium text-muted">Open slots ({slots.length})</h2>
               {slots.length === 0 ? (
-                <p className="text-sm text-muted">No open slots this day.</p>
+                <EmptyState icon={CalendarX} title="No open slots this day." compact />
               ) : (
                 <div className="grid grid-cols-3 gap-2">
                   {slots.map((s) => (

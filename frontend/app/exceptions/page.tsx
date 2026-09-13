@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, OpsException, listExceptions, resolveException } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 const STATUS_TABS = ["OPEN", "ACKNOWLEDGED", "RESOLVED"];
 
 export default function ExceptionsPage() {
@@ -72,7 +74,7 @@ export default function ExceptionsPage() {
             </button>
           </div>
         ) : exceptions.length === 0 ? (
-          <p className="text-sm text-muted">No {status.toLowerCase()} exceptions.</p>
+          <EmptyState icon={AlertTriangle} title={`No ${status.toLowerCase()} exceptions.`} />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">

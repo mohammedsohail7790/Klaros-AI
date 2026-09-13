@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { FileSignature } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Contract, listContracts } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 const STATUS_TABS = ["ALL", "DRAFT", "SENT", "VIEWED", "SIGNED", "DECLINED", "EXPIRED", "CANCELLED"];
 
 export default function ContractsPage() {
@@ -67,7 +69,7 @@ export default function ContractsPage() {
             </button>
           </div>
         ) : contracts.length === 0 ? (
-          <p className="text-sm text-muted">No contracts.</p>
+          <EmptyState icon={FileSignature} title="No contracts." />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">

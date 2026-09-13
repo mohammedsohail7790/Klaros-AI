@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FileText } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Customer, Quote, QuoteLineItemInput, createQuoteDraft, listQuotes, searchCustomers } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 const STATUS_TABS = ["ALL", "DRAFT", "SENT", "VIEWED", "ACCEPTED", "DECLINED", "EXPIRED", "CONVERTED"];
 
 export default function QuotesPage() {
@@ -73,7 +75,7 @@ export default function QuotesPage() {
             </button>
           </div>
         ) : quotes.length === 0 ? (
-          <p className="text-sm text-muted">No quotes.</p>
+          <EmptyState icon={FileText} title="No quotes." />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">

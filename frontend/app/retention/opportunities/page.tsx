@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { TrendingUp } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, RetentionOpportunityRow, listRetentionOpportunities, updateOpportunityStatus } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 const STATUS_TABS = ["OPEN", "CONTACTED", "CONVERTED", "DISMISSED", "EXPIRED"];
 
 export default function OpportunitiesPage() {
@@ -71,7 +73,7 @@ export default function OpportunitiesPage() {
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : opportunities.length === 0 ? (
-          <p className="text-sm text-muted">No {status.toLowerCase()} opportunities.</p>
+          <EmptyState icon={TrendingUp} title={`No ${status.toLowerCase()} opportunities.`} />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">

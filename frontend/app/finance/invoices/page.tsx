@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Receipt } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Invoice, listInvoices } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 const STATUS_TABS = ["ALL", "DRAFT", "PENDING_APPROVAL", "APPROVED", "SENT", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID"];
 
 export default function InvoicesPage() {
@@ -63,7 +65,7 @@ export default function InvoicesPage() {
             </button>
           </div>
         ) : invoices.length === 0 ? (
-          <p className="text-sm text-muted">No invoices.</p>
+          <EmptyState icon={Receipt} title="No invoices." />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">

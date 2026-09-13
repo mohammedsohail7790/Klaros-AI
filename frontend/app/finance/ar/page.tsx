@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Landmark } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
   AgingSummary,
@@ -133,7 +135,7 @@ export default function ARPage() {
 
             <h2 className="mb-3 text-sm font-semibold text-muted">Collection actions</h2>
             {actions.length === 0 ? (
-              <p className="text-sm text-muted">No collection actions scheduled.</p>
+              <EmptyState icon={Landmark} title="No collection actions scheduled." />
             ) : (
               <div className="klaros-table-wrap">
                 <table className="klaros-table">

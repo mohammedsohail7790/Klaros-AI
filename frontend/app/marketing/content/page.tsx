@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { FileText } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -116,7 +118,7 @@ export default function ContentPage() {
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : items.length === 0 ? (
-          <p className="text-sm text-muted">No content items.</p>
+          <EmptyState icon={FileText} title="No content items." />
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
