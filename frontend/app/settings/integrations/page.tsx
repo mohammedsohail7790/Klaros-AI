@@ -66,6 +66,30 @@ function groupByCategory(rows: IntegrationStatusRow[]): Record<string, Integrati
   return groups;
 }
 
+// Klaros itself provides the AI — a tenant never brings their own AI key.
+// One platform-wide setting (AI_PROVIDER=auto, see
+// backend/app/services/ai_provider.py's get_ai_provider) picks the first
+// configured engine in this exact priority order and uses it for every AI
+// Next Action, Morning Brief, and voice call; the rest are just optional
+// fallback engines, not something a tenant needs configured. Showing all
+// 6 individually on the main page read as "AI is half-broken" when really
+// only one needs to work — so the main list shows a single synthesized
+// row for whichever engine is actually active, with the raw per-provider
+// breakdown moved behind an owner-only disclosure for real diagnostics.
+const AI_PROVIDER_PRIORITY = ["anthropic", "openai", "groq", "deepseek", "nvidia", "google_ai"];
+
+function getActiveAIRow(aiRows: IntegrationStatusRow[]): IntegrationStatusRow | null {
+  for (const provider of AI_PROVIDER_PRIORITY) {
+    const row = aiRows.find((r) => r.provider === provider);
+    // NOT_CONNECTED means no key is configured for that engine at all, so
+    // the backend cascade skips straight past it — CONNECTED or ERROR both
+    // mean a key IS configured there, which is exactly what the cascade
+    // actually uses to pick the active engine.
+    if (row && row.status !== "NOT_CONNECTED") return row;
+  }
+  return null;
+}
+
 // Phase 12D: each tenant has their OWN account with these providers (unlike
 // Stripe/Twilio/etc. above, which use one shared platform credential) — so
 // they need the tenant-scoped IntegrationConnection model, not the
@@ -282,7 +306,17 @@ function IntegrationsPageInner() {
   if (authLoading) return null;
 
   const grouped = rows ? groupByCategory(rows) : {};
-  const connectedCount = rows?.filter((r) => r.status === "CONNECTED").length ?? 0;
+  const activeAIRow = grouped["AI"] ? getActiveAIRow(grouped["AI"]) : null;
+  // The header count reflects what's actually visible on the page — the 6
+  // raw AI rows collapse into 1 synthesized row here too, so this never
+  // says "N of 16" while only listing a dozen or so rows.
+  const visibleRows = rows
+    ? [
+        ...rows.filter((r) => CATEGORY[r.provider] !== "AI"),
+        activeAIRow ?? { provider: "ai", status: "NOT_CONNECTED", detail: "No AI engine configured." },
+      ]
+    : [];
+  const connectedCount = visibleRows.filter((r) => r.status === "CONNECTED").length;
 
   return (
     <AppShell user={user}>
@@ -292,7 +326,7 @@ function IntegrationsPageInner() {
             <h1 className="font-display text-2xl text-foreground">Integrations</h1>
             <p className="mt-1 text-sm text-muted">
               Every status here is checked live against the real provider — nothing is fabricated.
-              {rows && ` ${connectedCount} of ${rows.length} connected.`}
+              {rows && ` ${connectedCount} of ${visibleRows.length} connected.`}
             </p>
           </div>
           <button
@@ -313,26 +347,76 @@ function IntegrationsPageInner() {
         {!rows && !error && <p className="text-sm text-muted">Loading...</p>}
 
         {rows &&
-          Object.entries(grouped).map(([category, categoryRows]) => (
-            <div key={category} className="mb-6">
-              <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-                {category}
-              </h2>
-              <div className="divide-y divide-border rounded border border-border">
-                {categoryRows.map((row) => (
-                  <div key={row.provider} className="flex items-center justify-between px-4 py-3">
-                    <div>
-                      <div className="text-sm font-medium text-foreground">
-                        {DISPLAY_NAME[row.provider] ?? row.provider}
+          Object.entries(grouped).map(([category, categoryRows]) => {
+            if (category === "AI") {
+              const active = getActiveAIRow(categoryRows);
+              return (
+                <div key={category} className="mb-6">
+                  <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">AI</h2>
+                  <div className="divide-y divide-border rounded border border-border">
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <div className="text-sm font-medium text-foreground">
+                          Klaros AI{active ? ` — powered by ${DISPLAY_NAME[active.provider] ?? active.provider}` : ""}
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted">
+                          {active
+                            ? active.detail
+                            : "No AI engine configured — Klaros falls back to deterministic (non-AI) behavior."}
+                        </div>
                       </div>
-                      <div className="mt-0.5 text-xs text-muted">{row.detail}</div>
+                      <Badge status={active?.status ?? "NOT_CONNECTED"}>{active?.status ?? "NOT_CONNECTED"}</Badge>
                     </div>
-                    <Badge status={row.status}>{row.status}</Badge>
                   </div>
-                ))}
+                  {user?.role === "OWNER" && (
+                    <details className="mt-2 text-xs">
+                      <summary className="cursor-pointer text-muted hover:text-foreground">
+                        Show all {categoryRows.length} AI engines (owner-only diagnostics)
+                      </summary>
+                      <p className="mb-2 mt-2 text-muted-foreground">
+                        Klaros picks ONE of these automatically (Anthropic &gt; OpenAI &gt; Groq &gt; DeepSeek &gt;
+                        NVIDIA &gt; Google AI, first one with a configured key) — the rest are optional fallback
+                        engines, not something you need to configure yourself.
+                      </p>
+                      <div className="divide-y divide-border rounded border border-border">
+                        {categoryRows.map((row) => (
+                          <div key={row.provider} className="flex items-center justify-between px-4 py-3">
+                            <div>
+                              <div className="text-sm font-medium text-foreground">
+                                {DISPLAY_NAME[row.provider] ?? row.provider}
+                              </div>
+                              <div className="mt-0.5 text-xs text-muted">{row.detail}</div>
+                            </div>
+                            <Badge status={row.status}>{row.status}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              );
+            }
+            return (
+              <div key={category} className="mb-6">
+                <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+                  {category}
+                </h2>
+                <div className="divide-y divide-border rounded border border-border">
+                  {categoryRows.map((row) => (
+                    <div key={row.provider} className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <div className="text-sm font-medium text-foreground">
+                          {DISPLAY_NAME[row.provider] ?? row.provider}
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted">{row.detail}</div>
+                      </div>
+                      <Badge status={row.status}>{row.status}</Badge>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
         {rows && user && (
           <div className="mb-6">
