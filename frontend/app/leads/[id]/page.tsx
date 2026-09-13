@@ -392,7 +392,9 @@ export default function LeadDetailPage() {
                 <h2 className="mb-2 text-sm font-medium text-muted">Marketing attribution</h2>
                 <p className="mb-3 text-xs text-muted-foreground">
                   Record where this lead really came from — campaign, source/medium, UTM params — for campaign
-                  performance and CAC reporting. Saving again overwrites the existing record for this lead.
+                  performance and CAC reporting. Only one attribution is kept per lead: with SOURCE_ONLY or
+                  FIRST_TOUCH, saving again never overwrites an existing claim; LAST_TOUCH re-attributes to
+                  whatever you save most recently.
                 </p>
                 {attribution && (
                   <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50/30 p-2 text-xs text-emerald-700">
