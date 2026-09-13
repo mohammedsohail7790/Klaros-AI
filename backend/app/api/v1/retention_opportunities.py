@@ -24,11 +24,14 @@ def _to_dict(o: RetentionOpportunity) -> dict[str, Any]:
 
 @router.get("")
 async def list_opportunities(
-    status: str | None = None, current_user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    status: str | None = None, customer_id: uuid.UUID | None = None,
+    current_user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     query = select(RetentionOpportunity).where(RetentionOpportunity.tenant_id == current_user.tenant_id)
     if status:
         query = query.where(RetentionOpportunity.status == status)
+    if customer_id:
+        query = query.where(RetentionOpportunity.customer_id == customer_id)
     rows = (await db.execute(query.order_by(RetentionOpportunity.detected_at.desc()))).scalars().all()
     return {"opportunities": [_to_dict(o) for o in rows]}
 

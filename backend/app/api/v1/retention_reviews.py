@@ -30,10 +30,14 @@ def _feedback_to_dict(f: CustomerFeedback) -> dict[str, Any]:
 
 
 @router.get("/requests")
-async def list_review_requests(current_user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
-    rows = (
-        await db.execute(select(ReviewRequest).where(ReviewRequest.tenant_id == current_user.tenant_id).order_by(ReviewRequest.created_at.desc()))
-    ).scalars().all()
+async def list_review_requests(
+    customer_id: uuid.UUID | None = None,
+    current_user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    query = select(ReviewRequest).where(ReviewRequest.tenant_id == current_user.tenant_id)
+    if customer_id:
+        query = query.where(ReviewRequest.customer_id == customer_id)
+    rows = (await db.execute(query.order_by(ReviewRequest.created_at.desc()))).scalars().all()
     return {"review_requests": [_review_to_dict(r) for r in rows]}
 
 
@@ -52,11 +56,14 @@ async def send_review_request(
 
 @router.get("/feedback")
 async def list_feedback(
-    sentiment: str | None = None, current_user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    sentiment: str | None = None, customer_id: uuid.UUID | None = None,
+    current_user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     query = select(CustomerFeedback).where(CustomerFeedback.tenant_id == current_user.tenant_id)
     if sentiment:
         query = query.where(CustomerFeedback.sentiment == sentiment)
+    if customer_id:
+        query = query.where(CustomerFeedback.customer_id == customer_id)
     rows = (await db.execute(query.order_by(CustomerFeedback.received_at.desc()))).scalars().all()
     return {"feedback": [_feedback_to_dict(f) for f in rows]}
 

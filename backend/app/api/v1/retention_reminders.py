@@ -22,10 +22,14 @@ def _to_dict(r: ServiceReminder) -> dict[str, Any]:
 
 
 @router.get("")
-async def list_reminders(current_user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
-    rows = (
-        await db.execute(select(ServiceReminder).where(ServiceReminder.tenant_id == current_user.tenant_id).order_by(ServiceReminder.reminder_date))
-    ).scalars().all()
+async def list_reminders(
+    customer_id: uuid.UUID | None = None,
+    current_user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    query = select(ServiceReminder).where(ServiceReminder.tenant_id == current_user.tenant_id)
+    if customer_id:
+        query = query.where(ServiceReminder.customer_id == customer_id)
+    rows = (await db.execute(query.order_by(ServiceReminder.reminder_date))).scalars().all()
     return {"reminders": [_to_dict(r) for r in rows]}
 
 

@@ -270,3 +270,51 @@ async def test_update_reminder_status_rejects_unknown_status(event_bus, tool_reg
         "retention.update_reminder_status", {"reminder_id": str(reminder.id), "status": "CANCELLED"}, ctx
     )
     assert updated.status == "CANCELLED"
+
+
+async def test_retention_list_endpoints_support_a_customer_id_filter(client, tool_registry) -> None:
+    """The customer detail page (Customer 360) needs exactly one
+    customer's opportunities/reminders/review-requests/feedback, but until
+    this filter existed it had no choice but to fetch the WHOLE tenant's
+    rows for every one of these four endpoints and discard almost all of
+    it client-side — real, unbounded over-fetching that gets worse as a
+    tenant grows, for a page that should be cheap (viewing ONE customer).
+    Proves the customer_id query param actually narrows the real HTTP
+    response, not just that the tool/service layer accepts it."""
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "organization_name": "Retention Filter Co", "full_name": "Owner",
+            "email": "retention-filter-owner@example.com", "password": "supersecret1",
+        },
+    )
+    reg_body = reg.json()
+    tenant_id = uuid.UUID(reg_body["user"]["tenant_id"])
+    headers = {"Authorization": f"Bearer {reg_body['tokens']['access_token']}"}
+    ctx = _ctx(tenant_id)
+
+    customer_a = await tool_registry.execute("crm.create_customer", {"name": "Filter Customer A"}, ctx)
+    customer_b = await tool_registry.execute("crm.create_customer", {"name": "Filter Customer B"}, ctx)
+    customer_a_id = customer_a.customer["id"]
+    customer_b_id = customer_b.customer["id"]
+
+    await tool_registry.execute(
+        "retention.record_feedback", {"customer_id": customer_a_id, "rating": 5, "comment": "great"}, ctx
+    )
+    await tool_registry.execute(
+        "retention.record_feedback", {"customer_id": customer_b_id, "rating": 2, "comment": "meh"}, ctx
+    )
+
+    resp = await client.get(
+        "/api/v1/retention/reviews/feedback", params={"customer_id": customer_a_id}, headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()["feedback"]
+    assert len(rows) == 1
+    assert rows[0]["customer_id"] == customer_a_id
+
+    # The unfiltered call still returns both — proves the filter is
+    # additive (an opt-in narrowing), not a behavior change for every
+    # other caller of this same endpoint.
+    resp_all = await client.get("/api/v1/retention/reviews/feedback", headers=headers)
+    assert len(resp_all.json()["feedback"]) == 2
