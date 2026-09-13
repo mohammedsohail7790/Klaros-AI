@@ -894,6 +894,13 @@ export function approveInvoice(token: string, invoiceId: string) {
   });
 }
 
+export function rejectInvoice(token: string, invoiceId: string) {
+  return request<{ invoice: Invoice }>(`/api/v1/invoices/${invoiceId}/reject`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
 export function sendInvoice(token: string, invoiceId: string) {
   return request<{ invoice: Invoice } | { status: string; approval_request_id: string }>(
     `/api/v1/invoices/${invoiceId}/send`,
@@ -906,6 +913,67 @@ export function voidInvoice(token: string, invoiceId: string, reason: string) {
   return request<{ invoice: Invoice }>(`/api/v1/invoices/${invoiceId}/void?${qs.toString()}`, {
     method: "POST",
     headers: authHeaders(token),
+  });
+}
+
+export interface Refund {
+  id: string;
+  payment_id: string;
+  invoice_id: string | null;
+  amount: string;
+  reason: string;
+  status: string;
+}
+
+// Refunds/write-offs/credit-notes always land as a pending request with a
+// real ApprovalRequest attached (see backend/app/services/adjustments_service.py,
+// payment_service.py) -- approve/reject happens generically via the
+// existing /approvals page (approveApproval/rejectApproval below), not a
+// dedicated endpoint here.
+export function createRefundRequest(
+  token: string,
+  body: { payment_id: string; invoice_id?: string; amount: string; reason: string }
+) {
+  return request<{ refund: Refund }>("/api/v1/refunds", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export interface WriteOff {
+  id: string;
+  invoice_id: string;
+  amount: string;
+  reason: string;
+  status: string;
+}
+
+export function createWriteOffRequest(token: string, body: { invoice_id: string; amount: string; reason: string }) {
+  return request<{ writeoff: WriteOff }>("/api/v1/writeoffs", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export interface CreditNote {
+  id: string;
+  invoice_id: string;
+  credit_note_number: string | null;
+  reason: string;
+  total: string;
+  status: string;
+}
+
+export function createCreditNoteRequest(
+  token: string,
+  body: { invoice_id: string; reason: string; line_items: { description: string; amount: string }[] }
+) {
+  return request<{ credit_note: CreditNote }>("/api/v1/credit-notes", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
   });
 }
 
@@ -1258,6 +1326,17 @@ export function getJobProfitability(token: string, jobId: string) {
   return request<JobProfitability>(`/api/v1/profitability/jobs/${jobId}`, { headers: authHeaders(token) });
 }
 
+export interface JobCost {
+  id: string;
+  job_id: string;
+  category: string;
+  description: string | null;
+  quantity: string;
+  unit_cost: string;
+  total_cost: string;
+  source: string;
+}
+
 export function recordJobCost(
   token: string,
   body: { job_id: string; category: string; description?: string; quantity?: string; unit_cost: string }
@@ -1266,6 +1345,19 @@ export function recordJobCost(
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(body),
+  });
+}
+
+export function listJobCosts(token: string, jobId: string) {
+  const qs = new URLSearchParams({ job_id: jobId });
+  return request<{ job_costs: JobCost[] }>(`/api/v1/job-costs?${qs.toString()}`, { headers: authHeaders(token) });
+}
+
+export function syncMaterialCosts(token: string, jobId: string) {
+  const qs = new URLSearchParams({ job_id: jobId });
+  return request<{ created: number }>(`/api/v1/job-costs/sync-materials?${qs.toString()}`, {
+    method: "POST",
+    headers: authHeaders(token),
   });
 }
 
@@ -2410,6 +2502,13 @@ export function deleteKnowledgeFile(token: string, path: string) {
     method: "DELETE",
     headers: authHeaders(token),
   });
+}
+
+export function indexKnowledgeFile(token: string, path: string) {
+  return request<{ file_path: string; status: string; chunk_count: number }>(
+    `/api/v1/knowledge/files/${path}/index`,
+    { method: "POST", headers: authHeaders(token) }
+  );
 }
 
 export interface KnowledgeSearchResultRow {

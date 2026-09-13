@@ -9,8 +9,11 @@ import {
   Invoice,
   InvoiceLineItem,
   approveInvoice,
+  createCreditNoteRequest,
+  createWriteOffRequest,
   getInvoice,
   recordTestPayment,
+  rejectInvoice,
   requestInvoiceApproval,
   sendInvoice,
   voidInvoice,
@@ -24,6 +27,12 @@ export default function InvoiceDetailPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showWriteOffForm, setShowWriteOffForm] = useState(false);
+  const [writeOffAmount, setWriteOffAmount] = useState("");
+  const [writeOffReason, setWriteOffReason] = useState("");
+  const [showCreditNoteForm, setShowCreditNoteForm] = useState(false);
+  const [creditNoteAmount, setCreditNoteAmount] = useState("");
+  const [creditNoteReason, setCreditNoteReason] = useState("");
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -81,6 +90,35 @@ export default function InvoiceDetailPage() {
   }
 
   if (!invoice) return null;
+
+  async function submitWriteOff(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !invoice || !writeOffAmount || !writeOffReason.trim()) return;
+    await runAction(
+      () => createWriteOffRequest(token, { invoice_id: invoice.id, amount: writeOffAmount, reason: writeOffReason.trim() }),
+      "Write-off requested — pending approval."
+    );
+    setShowWriteOffForm(false);
+    setWriteOffAmount("");
+    setWriteOffReason("");
+  }
+
+  async function submitCreditNote(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !invoice || !creditNoteAmount || !creditNoteReason.trim()) return;
+    await runAction(
+      () =>
+        createCreditNoteRequest(token, {
+          invoice_id: invoice.id,
+          reason: creditNoteReason.trim(),
+          line_items: [{ description: creditNoteReason.trim(), amount: creditNoteAmount }],
+        }),
+      "Credit note requested — pending approval."
+    );
+    setShowCreditNoteForm(false);
+    setCreditNoteAmount("");
+    setCreditNoteReason("");
+  }
 
   return (
     <AppShell user={user}>
@@ -158,13 +196,22 @@ export default function InvoiceDetailPage() {
             </button>
           )}
           {invoice.status === "PENDING_APPROVAL" && (
-            <button
-              disabled={busy}
-              onClick={() => runAction(() => approveInvoice(token!, invoice.id), "Invoice approved.")}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
-            >
-              Approve
-            </button>
+            <>
+              <button
+                disabled={busy}
+                onClick={() => runAction(() => approveInvoice(token!, invoice.id), "Invoice approved.")}
+                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              >
+                Approve
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => runAction(() => rejectInvoice(token!, invoice.id), "Invoice rejected — returned to draft.")}
+                className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50/30 disabled:opacity-50"
+              >
+                Reject
+              </button>
+            </>
           )}
           {invoice.status === "APPROVED" && (
             <button
@@ -203,7 +250,87 @@ export default function InvoiceDetailPage() {
               Void
             </button>
           )}
+          {!["DRAFT", "VOID", "CANCELLED"].includes(invoice.status) && (
+            <>
+              <button
+                disabled={busy}
+                onClick={() => setShowWriteOffForm((v) => !v)}
+                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              >
+                Request write-off
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => setShowCreditNoteForm((v) => !v)}
+                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              >
+                Request credit note
+              </button>
+            </>
+          )}
         </div>
+
+        {showWriteOffForm && (
+          <form onSubmit={submitWriteOff} className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-border bg-surface p-4">
+            <div>
+              <label className="block text-xs text-muted">Amount</label>
+              <input
+                value={writeOffAmount}
+                onChange={(e) => setWriteOffAmount(e.target.value)}
+                placeholder={invoice.amount_due}
+                required
+                className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-muted">Reason</label>
+              <input
+                value={writeOffReason}
+                onChange={(e) => setWriteOffReason(e.target.value)}
+                required
+                className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+            >
+              Submit
+            </button>
+          </form>
+        )}
+
+        {showCreditNoteForm && (
+          <form onSubmit={submitCreditNote} className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-border bg-surface p-4">
+            <div>
+              <label className="block text-xs text-muted">Amount</label>
+              <input
+                value={creditNoteAmount}
+                onChange={(e) => setCreditNoteAmount(e.target.value)}
+                placeholder={invoice.total}
+                required
+                className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-muted">Reason</label>
+              <input
+                value={creditNoteReason}
+                onChange={(e) => setCreditNoteReason(e.target.value)}
+                required
+                className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+            >
+              Submit
+            </button>
+          </form>
+        )}
       </div>
     </AppShell>
   );

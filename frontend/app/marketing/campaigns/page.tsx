@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Megaphone } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
-import { ApiError, Campaign, createCampaign, listCampaigns } from "@/lib/api";
+import { ApiError, Campaign, createCampaign, detectMarketingExceptions, listCampaigns } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -21,6 +21,8 @@ export default function CampaignsPage() {
   const [channel, setChannel] = useState("GOOGLE_ADS");
   const [budget, setBudget] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [detectNotice, setDetectNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -56,15 +58,48 @@ export default function CampaignsPage() {
     }
   }
 
+  async function handleDetectExceptions() {
+    if (!token) return;
+    setDetecting(true);
+    setDetectNotice(null);
+    try {
+      const result = await detectMarketingExceptions(token);
+      setDetectNotice(
+        result.flagged_campaign_ids.length > 0
+          ? `${result.flagged_campaign_ids.length} campaign(s) flagged — see Exceptions.`
+          : "No new campaign exceptions detected."
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to detect exceptions.");
+    } finally {
+      setDetecting(false);
+    }
+  }
+
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="font-display text-2xl text-foreground">Campaigns</h1>
-          <button onClick={() => setShowCreate((v) => !v)} className="klaros-btn-primary">
-            New campaign
-          </button>
+          <div className="flex gap-2">
+            <button
+              disabled={detecting}
+              onClick={handleDetectExceptions}
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+            >
+              {detecting ? "Detecting..." : "Detect exceptions"}
+            </button>
+            <button onClick={() => setShowCreate((v) => !v)} className="klaros-btn-primary">
+              New campaign
+            </button>
+          </div>
         </div>
+
+        {detectNotice && (
+          <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-3 text-sm text-amber-700">
+            {detectNotice}
+          </div>
+        )}
 
         {showCreate && (
           <form onSubmit={handleCreate} className="mb-6 flex flex-wrap items-end gap-2 rounded-lg border border-border p-4">

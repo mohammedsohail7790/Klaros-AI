@@ -12,7 +12,9 @@ import {
   Invoice,
   Job,
   JobAttachment,
+  JobCost,
   JobMaterial,
+  JobProfitability,
   JobTask,
   ScopeChange,
   TimelineEntry,
@@ -29,11 +31,14 @@ import {
   downloadJobAttachment,
   failQA,
   generateCompletionPacket,
+  generateContentFromJob,
   getJob,
+  getJobProfitability,
   getJobSummary,
   getJobTimeline,
   listInvoices,
   listJobAttachments,
+  listJobCosts,
   listJobMaterials,
   listJobTasks,
   listWorkers,
@@ -42,6 +47,7 @@ import {
   requestScopeChangeApproval,
   scheduleJob,
   startQA,
+  syncMaterialCosts,
   transitionJob,
   triggerInvoiceFromJob,
   unblockJob,
@@ -110,6 +116,9 @@ export default function JobDetailPage() {
   const [signoffNotice, setSignoffNotice] = useState<string | null>(null);
   const [poSupplier, setPoSupplier] = useState("");
   const [poNotice, setPoNotice] = useState<string | null>(null);
+  const [jobCosts, setJobCosts] = useState<JobCost[]>([]);
+  const [profitability, setProfitability] = useState<JobProfitability | null>(null);
+  const [syncingMaterials, setSyncingMaterials] = useState(false);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -120,16 +129,27 @@ export default function JobDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const [jobResult, timelineResult, workersResult, tasksResult, materialsResult, attachmentsResult, invoicesResult] =
-        await Promise.all([
-          getJob(token, id),
-          getJobTimeline(token, id),
-          listWorkers(token),
-          listJobTasks(token, id),
-          listJobMaterials(token, id),
-          listJobAttachments(token, id),
-          listInvoices(token, { job_id: id }),
-        ]);
+      const [
+        jobResult,
+        timelineResult,
+        workersResult,
+        tasksResult,
+        materialsResult,
+        attachmentsResult,
+        invoicesResult,
+        jobCostsResult,
+        profitabilityResult,
+      ] = await Promise.all([
+        getJob(token, id),
+        getJobTimeline(token, id),
+        listWorkers(token),
+        listJobTasks(token, id),
+        listJobMaterials(token, id),
+        listJobAttachments(token, id),
+        listInvoices(token, { job_id: id }),
+        listJobCosts(token, id),
+        getJobProfitability(token, id),
+      ]);
       setJob(jobResult.job);
       setTimeline(timelineResult.entries);
       setWorkers(workersResult.workers);
@@ -137,6 +157,8 @@ export default function JobDetailPage() {
       setMaterials(materialsResult.materials);
       setAttachments(attachmentsResult.attachments);
       setInvoices(invoicesResult.invoices);
+      setJobCosts(jobCostsResult.job_costs);
+      setProfitability(profitabilityResult);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Job could not be loaded.");
     } finally {
@@ -323,6 +345,25 @@ export default function JobDetailPage() {
       setActionError(err instanceof ApiError ? err.message : "Unable to create purchase order draft.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleSyncMaterialCosts() {
+    if (!token) return;
+    setSyncingMaterials(true);
+    setActionError(null);
+    try {
+      const result = await syncMaterialCosts(token, id);
+      setActionNotice(
+        result.created > 0
+          ? `Synced ${result.created} material cost(s).`
+          : "No new material costs to sync."
+      );
+      await load();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Unable to sync material costs.");
+    } finally {
+      setSyncingMaterials(false);
     }
   }
 
@@ -889,12 +930,25 @@ export default function JobDetailPage() {
               {job.status === "COMPLETED" && token && (
                 <div className="rounded-lg border border-border bg-surface p-6">
                   <h2 className="mb-3 text-sm font-medium text-muted">Completion packet</h2>
-                  <button
-                    onClick={() => runAction(() => generateCompletionPacket(token, id))}
-                    className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
-                  >
-                    Generate packet
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => runAction(() => generateCompletionPacket(token, id))}
+                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                    >
+                      Generate packet
+                    </button>
+                    <button
+                      onClick={() =>
+                        runAction(async () => {
+                          const result = await generateContentFromJob(token, id);
+                          setActionNotice(`Content idea created: "${result.content.title}".`);
+                        })
+                      }
+                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                    >
+                      Generate marketing content idea
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -930,6 +984,55 @@ export default function JobDetailPage() {
                   </ul>
                 )}
                 {token && <RecordJobCostForm token={token} jobId={id} onRecorded={load} />}
+
+                {profitability && (profitability.estimated_revenue != null || profitability.actual_cost != null) && (
+                  <div className="mt-4 border-t border-border pt-4 text-sm">
+                    <h3 className="mb-2 text-xs font-medium text-muted">Profitability</h3>
+                    <dl className="grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
+                      <div>
+                        <dt className="text-muted">Est. margin</dt>
+                        <dd>{profitability.estimated_margin_pct != null ? `${profitability.estimated_margin_pct}%` : "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted">Actual cost</dt>
+                        <dd>{profitability.actual_cost != null ? `$${profitability.actual_cost}` : "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted">Actual margin</dt>
+                        <dd>{profitability.actual_margin_pct != null ? `${profitability.actual_margin_pct}%` : "—"}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                )}
+
+                <div className="mt-4 border-t border-border pt-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-xs font-medium text-muted">Job costs</h3>
+                    {token && (
+                      <button
+                        disabled={syncingMaterials}
+                        onClick={handleSyncMaterialCosts}
+                        className="text-xs underline text-muted hover:text-foreground disabled:opacity-50"
+                      >
+                        {syncingMaterials ? "Syncing..." : "Sync material costs"}
+                      </button>
+                    )}
+                  </div>
+                  {jobCosts.length === 0 ? (
+                    <p className="text-xs text-muted">No costs recorded yet.</p>
+                  ) : (
+                    <ul className="space-y-1 text-xs">
+                      {jobCosts.map((c) => (
+                        <li key={c.id} className="flex items-center justify-between">
+                          <span>
+                            {c.category}{c.description ? ` — ${c.description}` : ""}
+                          </span>
+                          <span className="text-muted">${c.total_cost}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">

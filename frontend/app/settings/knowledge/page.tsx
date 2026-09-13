@@ -12,6 +12,7 @@ import {
   KnowledgeSearchResultRow,
   askKnowledge,
   deleteKnowledgeFile,
+  indexKnowledgeFile,
   listKnowledgeFiles,
   searchKnowledge,
   setKnowledgeFile,
@@ -76,7 +77,21 @@ export default function KnowledgePage() {
     setError(null);
     try {
       await setKnowledgeFile(token, selectedPath, draft);
-      setNotice("Saved.");
+      // Saving a file only writes its content — it doesn't become
+      // searchable (Test retrieval / Ask AI) until it's re-indexed. Do
+      // that here so a save always leaves the file actually reachable,
+      // never silently stale. Best-effort: an indexing hiccup (e.g. no
+      // embedding provider configured) shouldn't block the save itself.
+      try {
+        const indexResult = await indexKnowledgeFile(token, selectedPath);
+        setNotice(
+          indexResult.status === "skipped_no_provider"
+            ? "Saved. Not indexed for search — no AI provider configured."
+            : "Saved and indexed for search."
+        );
+      } catch {
+        setNotice("Saved, but re-indexing for search failed — try again from the file list.");
+      }
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to save.");

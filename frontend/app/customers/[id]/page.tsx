@@ -20,6 +20,7 @@ import {
   ServiceReminderRow,
   TimelineEntry,
   createCustomerNote,
+  createRefundRequest,
   getCustomer,
   getCustomerHealth,
   getCustomerSummary,
@@ -56,6 +57,11 @@ export default function CustomerDetailPage() {
   const [editPhone, setEditPhone] = useState("");
   const [editAddress, setEditAddress] = useState("");
   const [customerSaving, setCustomerSaving] = useState(false);
+  const [refundingPaymentId, setRefundingPaymentId] = useState<string | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundBusy, setRefundBusy] = useState(false);
+  const [refundNotice, setRefundNotice] = useState<string | null>(null);
 
   const [health, setHealth] = useState<CustomerHealth | null>(null);
   const [opportunities, setOpportunities] = useState<RetentionOpportunityRow[]>([]);
@@ -152,6 +158,29 @@ export default function CustomerDetailPage() {
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to update status.");
+    }
+  }
+
+  function openRefundForm(payment: Payment) {
+    setRefundingPaymentId(payment.id);
+    setRefundAmount(payment.amount);
+    setRefundReason("");
+    setRefundNotice(null);
+  }
+
+  async function submitRefund(e: React.FormEvent, paymentId: string) {
+    e.preventDefault();
+    if (!token || !refundAmount || !refundReason.trim()) return;
+    setRefundBusy(true);
+    setError(null);
+    try {
+      await createRefundRequest(token, { payment_id: paymentId, amount: refundAmount, reason: refundReason.trim() });
+      setRefundNotice("Refund requested — pending approval.");
+      setRefundingPaymentId(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to request refund.");
+    } finally {
+      setRefundBusy(false);
     }
   }
 
@@ -361,18 +390,68 @@ export default function CustomerDetailPage() {
 
               <div className="rounded-lg border border-border bg-surface p-6">
                 <h2 className="mb-3 text-sm font-medium text-muted">Payments received</h2>
+                {refundNotice && <p className="mb-2 text-sm text-emerald-600">{refundNotice}</p>}
                 {payments.length === 0 ? (
                   <EmptyState icon={Receipt} title="No payments recorded for this customer yet." compact />
                 ) : (
                   <ul className="space-y-2 text-sm">
                     {payments.map((p) => (
-                      <li key={p.id} className="flex items-center justify-between">
-                        <span>
-                          ${p.amount} · {p.payment_method ?? p.provider}
-                        </span>
-                        <span className="text-muted">
-                          {p.status} · {new Date(p.received_at).toLocaleDateString()}
-                        </span>
+                      <li key={p.id}>
+                        <div className="flex items-center justify-between">
+                          <span>
+                            ${p.amount} · {p.payment_method ?? p.provider}
+                          </span>
+                          <span className="flex items-center gap-2 text-muted">
+                            {p.status} · {new Date(p.received_at).toLocaleDateString()}
+                            {p.status === "SUCCEEDED" && (
+                              <button
+                                onClick={() => openRefundForm(p)}
+                                className="text-xs text-red-600 underline hover:text-foreground"
+                              >
+                                Request refund
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                        {refundingPaymentId === p.id && (
+                          <form
+                            onSubmit={(e) => submitRefund(e, p.id)}
+                            className="mt-2 flex flex-wrap items-end gap-2 rounded-md border border-border-strong bg-surface-muted p-3"
+                          >
+                            <div>
+                              <label className="block text-xs text-muted">Amount</label>
+                              <input
+                                value={refundAmount}
+                                onChange={(e) => setRefundAmount(e.target.value)}
+                                required
+                                className="w-24 rounded-md border border-border-strong bg-surface px-2 py-1 text-sm"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <label className="block text-xs text-muted">Reason</label>
+                              <input
+                                value={refundReason}
+                                onChange={(e) => setRefundReason(e.target.value)}
+                                required
+                                className="w-full rounded-md border border-border-strong bg-surface px-2 py-1 text-sm"
+                              />
+                            </div>
+                            <button
+                              type="submit"
+                              disabled={refundBusy}
+                              className="rounded-md border border-border-strong px-3 py-1 text-xs hover:bg-surface disabled:opacity-50"
+                            >
+                              Submit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRefundingPaymentId(null)}
+                              className="text-xs text-muted hover:underline"
+                            >
+                              Cancel
+                            </button>
+                          </form>
+                        )}
                       </li>
                     ))}
                   </ul>
