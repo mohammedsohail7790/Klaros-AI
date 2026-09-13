@@ -173,6 +173,7 @@ def raise_http_for_tool_error(exc: Exception) -> None:
     from app.tools.errors import (
         ToolApprovalRequiredError,
         ToolBlockedError,
+        ToolError,
         ToolNotFoundError,
         ToolPermissionError,
         ToolValidationError,
@@ -193,4 +194,12 @@ def raise_http_for_tool_error(exc: Exception) -> None:
         ) from exc
     if isinstance(exc, ValueError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    # Base ToolError (e.g. "not connected" / "external request failed" from
+    # the Google Calendar, QuickBooks, and Stripe tools) has no subclass of
+    # its own here and would otherwise fall through to the bare `raise`
+    # below and crash as an unhandled 500 — confirmed live via
+    # calendar.list_google_calendars for a tenant with no Google Calendar
+    # connection. It's a client-actionable condition, not a server bug.
+    if isinstance(exc, ToolError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     raise

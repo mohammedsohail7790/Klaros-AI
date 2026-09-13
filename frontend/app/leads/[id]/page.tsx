@@ -200,7 +200,7 @@ export default function LeadDetailPage() {
                 </Link>
               </div>
 
-              {lead.status !== "CONVERTED" && lead.status !== "LOST" && (
+              {(convertedJobId || (lead.status !== "CONVERTED" && lead.status !== "LOST")) && (
                 <div className="rounded-lg border border-border bg-surface p-6">
                   <h2 className="mb-2 text-sm font-medium text-muted">Convert to job</h2>
                   <p className="mb-3 text-xs text-muted">

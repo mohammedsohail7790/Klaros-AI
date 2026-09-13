@@ -268,6 +268,17 @@ async def test_authorize_endpoint_returns_real_google_url_with_signed_state(clie
     assert "state=" in url
 
 
+async def test_list_calendars_without_a_connection_is_a_clean_400_not_a_500(client) -> None:
+    """calendar.list_google_calendars raises the base ToolError (not one of
+    its named subclasses) for "not connected" -- confirmed live to fall
+    through raise_http_for_tool_error's isinstance chain and crash as an
+    unhandled 500 before that helper grew a catch-all ToolError branch."""
+    token, _tenant_id = await _register_and_get_token(client, "GCal No Connection Co", "owner@gcalnoconn.com")
+    resp = await client.get("/api/v1/calendar/google/calendars", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 400
+    assert "not connected" in resp.json()["detail"]
+
+
 async def test_callback_with_google_error_param_redirects_with_error(client) -> None:
     resp = await client.get(
         "/api/v1/integrations/google-calendar/callback", params={"error": "access_denied"}, follow_redirects=False,
