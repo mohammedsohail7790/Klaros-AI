@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Radio } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -15,6 +16,7 @@ import {
 } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 const STATUS_TABS = ["ALL", "PUBLISHED", "PROCESSING", "RETRYING", "PROCESSED", "FAILED", "DEAD_LETTER"];
 
 export default function EventsPage() {
@@ -171,7 +173,7 @@ export default function EventsPage() {
             </div>
 
             {events.length === 0 ? (
-              <p className="text-sm text-muted">No events.</p>
+              <EmptyState icon={Radio} title="No events." />
             ) : (
               <div className="klaros-table-wrap">
                 <table className="klaros-table">

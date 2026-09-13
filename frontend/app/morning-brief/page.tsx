@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Sunrise } from "lucide-react";
+import { Lightbulb, Sunrise } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -217,7 +217,7 @@ export default function MorningBriefPage() {
 
                 <h2 className="mb-3 text-sm font-medium text-muted">Recommended actions</h2>
                 {brief.recommendations.length === 0 ? (
-                  <p className="text-sm text-muted">No recommendations.</p>
+                  <EmptyState icon={Lightbulb} title="No recommendations." compact />
                 ) : (
                   <div className="space-y-3">
                     {brief.recommendations.map((r) => (

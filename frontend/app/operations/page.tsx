@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -113,7 +115,7 @@ export default function OperationsPage() {
             <section>
               <h2 className="mb-3 text-sm font-medium text-muted">Needs your attention</h2>
               {exceptions.length === 0 ? (
-                <p className="text-sm text-muted">No open exceptions.</p>
+                <EmptyState icon={CheckCircle2} title="No open exceptions." compact />
               ) : (
                 <ul className="space-y-2">
                   {exceptions.map((e) => (

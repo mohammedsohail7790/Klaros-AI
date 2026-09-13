@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { CheckSquare } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -180,7 +182,7 @@ export default function ApprovalsPage() {
             {authLoading || loading ? (
               <p className="text-sm text-muted">Loading...</p>
             ) : !approvals || approvals.length === 0 ? (
-              <p className="text-sm text-muted">No {filter === "ALL" ? "" : filter.toLowerCase()} approvals.</p>
+              <EmptyState icon={CheckSquare} title={`No ${filter === "ALL" ? "" : filter.toLowerCase() + " "}approvals.`} />
             ) : (
               <div className="space-y-2">
                 {approvals.map((a) => (

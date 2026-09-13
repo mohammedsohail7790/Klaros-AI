@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { BrainCircuit } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import { AIActivityRow, ApiError, listAIActivity } from "@/lib/api";
 
@@ -56,7 +58,7 @@ export default function AIActivityPage() {
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : !rows || rows.length === 0 ? (
-          <p className="text-sm text-muted">No AI activity recorded yet — generate a Morning Brief to see it here.</p>
+          <EmptyState icon={BrainCircuit} title="No AI activity recorded yet — generate a Morning Brief to see it here." />
         ) : (
           <div className="klaros-table-wrap">
             <table className="w-full text-sm">
