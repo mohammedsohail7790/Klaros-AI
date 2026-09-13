@@ -67,8 +67,13 @@ export default function OnboardingPage() {
   async function handleSaveKnowledge() {
     if (!token) return;
     const entries: { path: string; content: string }[] = [];
-    if (services.trim()) entries.push({ path: "office/services.md", content: services.trim() });
-    if (pricing.trim()) entries.push({ path: "finance/pricing.md", content: pricing.trim() });
+    // Writes into the same canonical paths the app already pre-seeds with
+    // generic placeholder content for every new tenant (see
+    // KnowledgeService.DEFAULT_FILES) — this replaces those placeholders
+    // with the tenant's real answers instead of creating parallel files,
+    // so Settings → Knowledge never shows two competing "services" files.
+    if (services.trim()) entries.push({ path: "office/service-catalog.md", content: services.trim() });
+    if (pricing.trim()) entries.push({ path: "office/pricing-rules.md", content: pricing.trim() });
     if (voice.trim()) entries.push({ path: "brand/voice-guide.md", content: voice.trim() });
 
     if (entries.length === 0) {
