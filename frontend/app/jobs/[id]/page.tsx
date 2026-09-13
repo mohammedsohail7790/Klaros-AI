@@ -18,6 +18,7 @@ import {
   Worker,
   addMaterial,
   assignJob,
+  blockJob,
   closeJob,
   completeQA,
   completeTask,
@@ -38,6 +39,7 @@ import {
   startQA,
   transitionJob,
   triggerInvoiceFromJob,
+  unblockJob,
   uploadJobFile,
 } from "@/lib/api";
 
@@ -56,6 +58,11 @@ const NEXT_ACTIONS: Record<string, { label: string; action: string }[]> = {
   CANCELLED: [],
 };
 
+// Statuses the backend state machine allows to transition into BLOCKED.
+const BLOCKABLE_STATUSES = new Set(["DISPATCHED", "EN_ROUTE", "ON_SITE", "IN_PROGRESS", "QA_PENDING"]);
+// Statuses BLOCKED can resume into.
+const UNBLOCK_TARGETS = ["DISPATCHED", "EN_ROUTE", "ON_SITE", "IN_PROGRESS"];
+
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { token, user, loading: authLoading } = useAuth();
@@ -72,6 +79,8 @@ export default function JobDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [blockReason, setBlockReason] = useState("");
+  const [unblockTarget, setUnblockTarget] = useState("IN_PROGRESS");
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -148,6 +157,18 @@ export default function JobDetailPage() {
   async function handleAssign(workerId: string) {
     if (!token || !workerId) return;
     await runAction(() => assignJob(token, id, workerId));
+  }
+
+  async function handleBlock(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!token || !blockReason.trim()) return;
+    await runAction(() => blockJob(token, id, blockReason.trim()));
+    setBlockReason("");
+  }
+
+  async function handleUnblock() {
+    if (!token) return;
+    await runAction(() => unblockJob(token, id, unblockTarget));
   }
 
   async function handleAddTask(e: React.FormEvent<HTMLFormElement>) {
@@ -276,6 +297,53 @@ export default function JobDetailPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+                )}
+
+                {token && BLOCKABLE_STATUSES.has(job.status) && (
+                  <form onSubmit={handleBlock} className="mt-4 flex items-end gap-2 border-t border-border pt-4">
+                    <div className="flex-1">
+                      <label className="block text-xs text-muted">Block reason</label>
+                      <input
+                        value={blockReason}
+                        onChange={(e) => setBlockReason(e.target.value)}
+                        placeholder="Why is this job blocked?"
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={busy || !blockReason.trim()}
+                      className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50/30 disabled:opacity-50"
+                    >
+                      Block job
+                    </button>
+                  </form>
+                )}
+
+                {token && job.status === "BLOCKED" && (
+                  <div className="mt-4 flex items-end gap-2 border-t border-border pt-4">
+                    <div>
+                      <label className="block text-xs text-muted">Resume to</label>
+                      <select
+                        value={unblockTarget}
+                        onChange={(e) => setUnblockTarget(e.target.value)}
+                        className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      >
+                        {UNBLOCK_TARGETS.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      onClick={handleUnblock}
+                      disabled={busy}
+                      className="klaros-btn-primary disabled:opacity-50"
+                    >
+                      Unblock job
+                    </button>
                   </div>
                 )}
               </div>

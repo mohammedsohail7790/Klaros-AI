@@ -632,6 +632,22 @@ export function closeJob(token: string, jobId: string) {
   });
 }
 
+export function blockJob(token: string, jobId: string, reason: string) {
+  return request<{ job: Job }>(`/api/v1/jobs/${jobId}/block`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function unblockJob(token: string, jobId: string, targetStatus: string) {
+  return request<{ job: Job }>(`/api/v1/jobs/${jobId}/unblock`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ target_status: targetStatus }),
+  });
+}
+
 // --- Operations: workers ---
 
 export interface Worker {
