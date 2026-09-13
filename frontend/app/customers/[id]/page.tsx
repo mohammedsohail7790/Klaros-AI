@@ -30,7 +30,10 @@ import {
   listReviewRequests,
   listRetentionOpportunities,
   listServiceReminders,
+  updateCustomer,
 } from "@/lib/api";
+
+const CUSTOMER_STATUSES = ["PROSPECT", "ACTIVE", "INACTIVE"];
 
 export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,6 +50,12 @@ export default function CustomerDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [noteSubmitting, setNoteSubmitting] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [customerSaving, setCustomerSaving] = useState(false);
 
   const [health, setHealth] = useState<CustomerHealth | null>(null);
   const [opportunities, setOpportunities] = useState<RetentionOpportunityRow[]>([]);
@@ -105,6 +114,47 @@ export default function CustomerDetailPage() {
     }
   }
 
+  function startEditingCustomer() {
+    if (!customer) return;
+    setEditName(customer.name);
+    setEditEmail(customer.email ?? "");
+    setEditPhone(customer.phone ?? "");
+    setEditAddress(customer.address ?? "");
+    setEditingCustomer(true);
+  }
+
+  async function handleSaveCustomer(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !editName.trim()) return;
+    setCustomerSaving(true);
+    setError(null);
+    try {
+      await updateCustomer(token, id, {
+        name: editName.trim(),
+        email: editEmail.trim() || undefined,
+        phone: editPhone.trim() || undefined,
+        address: editAddress.trim() || undefined,
+      });
+      setEditingCustomer(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to save customer.");
+    } finally {
+      setCustomerSaving(false);
+    }
+  }
+
+  async function handleStatusChange(status: string) {
+    if (!token) return;
+    setError(null);
+    try {
+      await updateCustomer(token, id, { status });
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to update status.");
+    }
+  }
+
   async function submitNote(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !note.trim()) return;
@@ -158,18 +208,95 @@ export default function CustomerDetailPage() {
           <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="lg:col-span-2 space-y-6">
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h1 className="font-display text-2xl text-foreground">{customer.name}</h1>
-                <p className="text-sm text-muted">
-                  {customer.email ?? "no email"} · {customer.phone ?? "no phone"}
-                </p>
-                {customer.address && (
-                  <p className="mt-1 text-sm text-muted">
-                    {customer.address}, {customer.city} {customer.state} {customer.postal_code}
-                  </p>
+                {editingCustomer ? (
+                  <form onSubmit={handleSaveCustomer} className="space-y-2">
+                    <div>
+                      <label className="block text-xs text-muted">Name</label>
+                      <input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        required
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="block text-xs text-muted">Email</label>
+                        <input
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs text-muted">Phone</label>
+                        <input
+                          value={editPhone}
+                          onChange={(e) => setEditPhone(e.target.value)}
+                          className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted">Address</label>
+                      <input
+                        value={editAddress}
+                        onChange={(e) => setEditAddress(e.target.value)}
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="submit"
+                        disabled={customerSaving || !editName.trim()}
+                        className="klaros-btn-primary disabled:opacity-50"
+                      >
+                        {customerSaving ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingCustomer(false)}
+                        className="rounded-md px-3 py-1.5 text-sm text-muted hover:underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between">
+                      <h1 className="font-display text-2xl text-foreground">{customer.name}</h1>
+                      <button
+                        onClick={startEditingCustomer}
+                        className="text-xs text-muted underline hover:text-foreground"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                    <p className="text-sm text-muted">
+                      {customer.email ?? "no email"} · {customer.phone ?? "no phone"}
+                    </p>
+                    {customer.address && (
+                      <p className="mt-1 text-sm text-muted">
+                        {customer.address}, {customer.city} {customer.state} {customer.postal_code}
+                      </p>
+                    )}
+                    <div className="mt-2 flex items-center gap-2">
+                      <Badge status={customer.status}>{customer.status}</Badge>
+                      <select
+                        value={customer.status}
+                        onChange={(e) => handleStatusChange(e.target.value)}
+                        className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-xs"
+                      >
+                        {CUSTOMER_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
                 )}
-                <Badge status={customer.status} className="mt-2">
-                  {customer.status}
-                </Badge>
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">

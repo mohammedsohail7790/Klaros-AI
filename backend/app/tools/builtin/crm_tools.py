@@ -11,7 +11,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.models.actor import ActorType
-from app.models.crm import Customer, CustomerNote, Lead
+from app.models.crm import Customer, CustomerNote, CustomerStatus, Lead, LeadStatus
 from app.models.rbac import Permission
 from app.services.customer_matching import normalize_email, normalize_phone
 from app.services.lead_service import CreateLeadInput, LeadService
@@ -145,6 +145,12 @@ class UpdateLead(Tool):
         self._session_factory = session_factory
 
     async def execute(self, input: UpdateLeadInput, context: ExecutionContext) -> LeadOutput:
+        if input.status is not None:
+            try:
+                LeadStatus(input.status)
+            except ValueError:
+                raise ValueError(f"Invalid lead status: {input.status}") from None
+
         async with self._session_factory() as session:
             lead = await session.get(Lead, input.lead_id)
             if lead is None or lead.tenant_id != context.tenant_id:
@@ -386,6 +392,12 @@ class UpdateCustomer(Tool):
         self._session_factory = session_factory
 
     async def execute(self, input: UpdateCustomerInput, context: ExecutionContext) -> CustomerOutput:
+        if input.status is not None:
+            try:
+                CustomerStatus(input.status)
+            except ValueError:
+                raise ValueError(f"Invalid customer status: {input.status}") from None
+
         async with self._session_factory() as session:
             customer = await session.get(Customer, input.customer_id)
             if customer is None or customer.tenant_id != context.tenant_id:

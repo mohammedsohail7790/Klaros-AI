@@ -69,6 +69,38 @@ async def test_lead_crud_and_qualify_over_http(client: AsyncClient) -> None:
     assert qualified.json()["qualification_status"] in ("QUALIFIED", "UNQUALIFIED", "REQUIRES_HUMAN")
 
 
+async def test_update_lead_rejects_unknown_status_over_http(client: AsyncClient) -> None:
+    token = await _register(client, "Lead Status Guard Co", "owner@leadstatusguard.com")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    created = await client.post(
+        "/api/v1/leads", json={"name": "Guard Lead", "source": "WEB"}, headers=headers
+    )
+    lead_id = created.json()["lead"]["id"]
+
+    rejected = await client.patch(
+        f"/api/v1/leads/{lead_id}", json={"status": "NOT_A_REAL_STATUS"}, headers=headers
+    )
+    assert rejected.status_code == 404
+    assert "Invalid lead status" in rejected.json()["detail"]
+
+
+async def test_update_customer_rejects_unknown_status_over_http(client: AsyncClient) -> None:
+    token = await _register(client, "Customer Status Guard Co", "owner@customerstatusguard.com")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    created = await client.post(
+        "/api/v1/customers", json={"name": "Guard Customer"}, headers=headers
+    )
+    customer_id = created.json()["customer"]["id"]
+
+    rejected = await client.patch(
+        f"/api/v1/customers/{customer_id}", json={"status": "NOT_A_REAL_STATUS"}, headers=headers
+    )
+    assert rejected.status_code == 404
+    assert "Invalid customer status" in rejected.json()["detail"]
+
+
 async def test_customer_and_appointment_flow_over_http(client: AsyncClient) -> None:
     token = await _register(client, "Booking HTTP Co", "owner@bookinghttp.com")
     headers = {"Authorization": f"Bearer {token}"}

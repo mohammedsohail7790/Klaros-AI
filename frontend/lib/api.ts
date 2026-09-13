@@ -285,6 +285,18 @@ export function getCustomer(token: string, customerId: string) {
   return request<{ customer: Customer }>(`/api/v1/customers/${customerId}`, { headers: authHeaders(token) });
 }
 
+export function updateCustomer(
+  token: string,
+  customerId: string,
+  body: { name?: string; email?: string; phone?: string; address?: string; status?: string; notes?: string }
+) {
+  return request<{ customer: Customer }>(`/api/v1/customers/${customerId}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
 export interface TimelineEntry {
   type: string;
   timestamp: string;
