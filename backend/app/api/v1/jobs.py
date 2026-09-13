@@ -1,7 +1,9 @@
 import base64
+import re
 import uuid
 from datetime import datetime
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
@@ -17,6 +19,19 @@ from app.tools.errors import ToolError
 from app.tools.registry import ToolRegistry
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
+
+
+def _content_disposition(filename: str) -> str:
+    """`filename` is the raw, client-supplied name from the original
+    upload (never sanitized the way the storage key is) — building the
+    header by naive string interpolation lets a quote or control
+    character in it break out of the `filename="..."` attribute. Strips
+    control characters and escapes quotes/backslashes for the plain
+    fallback, and adds the RFC 5987 `filename*=` form so non-ASCII names
+    still round-trip correctly."""
+    safe = re.sub(r"[\x00-\x1f\x7f]", "", filename).replace("\\", "\\\\").replace('"', '\\"')
+    encoded = quote(filename, safe="")
+    return f'inline; filename="{safe}"; filename*=UTF-8\'\'{encoded}'
 
 
 async def _run(registry: ToolRegistry, tool_name: str, payload: dict, current_user: CurrentUser) -> dict[str, Any]:
@@ -270,7 +285,16 @@ async def download_job_attachment(
     return Response(
         content=content,
         media_type=attachment.content_type,
-        headers={"Content-Disposition": f'inline; filename="{attachment.filename}"'},
+        headers={
+            "Content-Disposition": _content_disposition(attachment.filename),
+            # The allowlist check on upload only validates the
+            # client-declared content_type header, never sniffs the real
+            # file bytes — this stops a browser from re-sniffing and
+            # rendering the response as something more dangerous than
+            # what was declared (e.g. HTML/script) if that declared type
+            # was ever wrong or spoofed.
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 

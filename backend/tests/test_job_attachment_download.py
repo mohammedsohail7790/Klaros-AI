@@ -107,3 +107,39 @@ async def test_download_nonexistent_attachment_404s(client, tool_registry) -> No
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 404
+
+
+async def test_download_filename_with_quote_does_not_break_the_header(client, tool_registry) -> None:
+    """A client-supplied filename containing a double-quote used to be
+    interpolated straight into Content-Disposition, letting it break out
+    of the filename="..." attribute. Also asserts nosniff is set."""
+    reg = await _register(client, "owner4@attachdl4.com", "Attach DL Co 4")
+    tenant_id = uuid.UUID(reg["user"]["tenant_id"])
+    token = reg["tokens"]["access_token"]
+    ctx = _ctx(tenant_id)
+
+    customer = await tool_registry.execute("crm.create_customer", {"name": "Co 4"}, ctx)
+    job = await tool_registry.execute(
+        "operations.create_job",
+        {"title": "Job 4", "customer_id": customer.customer["id"], "estimated_revenue": 50.0},
+        ctx,
+    )
+    job_id = job.job["id"]
+    result = await tool_registry.execute(
+        "operations.add_job_photo",
+        {
+            "job_id": job_id, "filename": 'evil".jpg', "content_type": "image/jpeg",
+            "content_base64": base64.b64encode(b"x").decode(),
+        },
+        ctx,
+    )
+    attachment_id = result.attachment["id"]
+
+    resp = await client.get(
+        f"/api/v1/jobs/{job_id}/attachments/{attachment_id}/download",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    disposition = resp.headers["content-disposition"]
+    assert disposition == 'inline; filename="evil\\".jpg"; filename*=UTF-8\'\'evil%22.jpg'
+    assert resp.headers["x-content-type-options"] == "nosniff"

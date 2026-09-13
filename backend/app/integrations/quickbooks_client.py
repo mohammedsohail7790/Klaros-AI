@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 from base64 import b64encode
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
@@ -224,7 +225,7 @@ class QuickBooksClient:
         return _validate_response(QuickBooksCustomerResponse, body.get("Customer", body))
 
     async def create_payment(
-        self, *, access_token: str, realm_id: str, customer_id: str, invoice_lines: list[tuple[str, float]],
+        self, *, access_token: str, realm_id: str, customer_id: str, invoice_lines: list[tuple[str, Decimal]],
         request_id: str | None = None,
     ) -> QuickBooksPaymentResponse:
         """Records a real QBO Payment applied against one or more existing
@@ -252,16 +253,25 @@ class QuickBooksClient:
         a real QuickBooks account in this environment (no credentials) —
         implemented per Intuit's documented contract, not fabricated
         behavior."""
-        total_amt = sum(amount for _invoice_id, amount in invoice_lines)
+        # Decimal all the way through the sum and per-line rounding —
+        # converted to float only right here, once per already-cent-
+        # quantized value, purely because the JSON encoder below can't
+        # serialize Decimal directly. Converting earlier (or summing
+        # floats instead of Decimals) is exactly how a payment like
+        # 123.10 turns into 123.09999999999999 in the outgoing payload —
+        # a real, reachable QuickBooks-rejects-it / silently-mismatched-
+        # ledger bug this ordering avoids.
+        quantized_lines = [(invoice_id, amount.quantize(Decimal("0.01"))) for invoice_id, amount in invoice_lines]
+        total_amt = float(sum((amount for _invoice_id, amount in quantized_lines), start=Decimal("0")))
         payload: dict[str, Any] = {
             "TotalAmt": total_amt,
             "CustomerRef": {"value": customer_id},
             "Line": [
                 {
-                    "Amount": amount,
+                    "Amount": float(amount),
                     "LinkedTxn": [{"TxnId": invoice_id, "TxnType": "Invoice"}],
                 }
-                for invoice_id, amount in invoice_lines
+                for invoice_id, amount in quantized_lines
             ],
         }
         url = f"{self._api_base}/{realm_id}/payment"

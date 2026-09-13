@@ -377,7 +377,12 @@ class QuickBooksPaymentSyncService:
         # NOT independently verified against a real QuickBooks account in
         # this environment (no credentials) — implemented per Intuit's
         # documented contract, never observed live.
-        invoice_lines = [(invoice_id, float(amount)) for invoice_id, amount in qb_invoice_lines]
+        # qb_invoice_lines is already Decimal end-to-end (merged as Decimal
+        # above) — QuickBooksClient.create_payment does its own float
+        # conversion, but only after quantizing to the cent, right at its
+        # JSON payload boundary. Converting here would throw that away one
+        # step too early.
+        invoice_lines = qb_invoice_lines
         try:
             qb_payment = await client.create_payment(
                 access_token=access_token, realm_id=realm_id, customer_id=qb_customer_id,

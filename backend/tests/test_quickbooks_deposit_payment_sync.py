@@ -13,6 +13,7 @@ hand-crafting rows, so this suite also exercises the real seam between
 Phase 15/17 rather than testing against a fabricated shortcut.
 """
 
+import json
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -210,12 +211,35 @@ async def test_create_payment_success_carries_requestid_and_linked_txn(monkeypat
     _patch_transport(monkeypatch, httpx.MockTransport(handler))
     client = QuickBooksClient()
     result = await client.create_payment(
-        access_token="at", realm_id="realm-1", customer_id="qb-cust-1", invoice_lines=[("qb-inv-1", 400.0)],
+        access_token="at", realm_id="realm-1", customer_id="qb-cust-1", invoice_lines=[("qb-inv-1", Decimal("400.00"))],
         request_id="klaros-deposit-payment-abc",
     )
     assert result.Id == "qb-pay-1"
     assert "requestid=klaros-deposit-payment-abc" in captured["url"]
     assert '"TxnId": "qb-inv-1"' in captured["body"] or '"TxnId":"qb-inv-1"' in captured["body"].replace(" ", "")
+
+
+async def test_create_payment_amounts_are_cent_exact_not_float_drift(monkeypatch) -> None:
+    """Decimal("123.10") and Decimal("19.06") both hit classic binary-float
+    representation error if summed/converted carelessly — this asserts the
+    outgoing JSON payload carries the exact cent values, not
+    123.09999999999999-style drift."""
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = request.content.decode()
+        return httpx.Response(200, request=request, json={"Payment": {"Id": "qb-pay-2", "TotalAmt": 142.16}})
+
+    _patch_transport(monkeypatch, httpx.MockTransport(handler))
+    client = QuickBooksClient()
+    await client.create_payment(
+        access_token="at", realm_id="realm-1", customer_id="qb-cust-1",
+        invoice_lines=[("qb-inv-1", Decimal("123.10")), ("qb-inv-2", Decimal("19.06"))],
+        request_id="klaros-deposit-payment-precision",
+    )
+    body = json.loads(captured["body"])
+    assert body["TotalAmt"] == 142.16
+    assert [line["Amount"] for line in body["Line"]] == [123.10, 19.06]
 
 
 async def test_create_payment_malformed_response_raises_provider_error(monkeypatch) -> None:
@@ -226,7 +250,7 @@ async def test_create_payment_malformed_response_raises_provider_error(monkeypat
     client = QuickBooksClient()
     with pytest.raises(QuickBooksAPIError) as exc_info:
         await client.create_payment(
-            access_token="at", realm_id="realm-1", customer_id="c", invoice_lines=[("i", 1.0)]
+            access_token="at", realm_id="realm-1", customer_id="c", invoice_lines=[("i", Decimal("1.00"))]
         )
     assert exc_info.value.error_type == QuickBooksErrorType.PROVIDER_ERROR
 
@@ -240,7 +264,7 @@ async def test_create_payment_tolerates_unknown_response_fields(monkeypatch) -> 
 
     _patch_transport(monkeypatch, httpx.MockTransport(handler))
     client = QuickBooksClient()
-    result = await client.create_payment(access_token="at", realm_id="r", customer_id="c", invoice_lines=[("i", 10.0)])
+    result = await client.create_payment(access_token="at", realm_id="r", customer_id="c", invoice_lines=[("i", Decimal("10.00"))])
     assert result.Id == "qb-pay-2"
 
 
@@ -251,7 +275,7 @@ async def test_create_payment_401_is_classified_authentication_never_retried(mon
     _patch_transport(monkeypatch, transport)
     client = QuickBooksClient()
     with pytest.raises(QuickBooksAPIError) as exc_info:
-        await client.create_payment(access_token="at", realm_id="r", customer_id="c", invoice_lines=[("i", 1.0)])
+        await client.create_payment(access_token="at", realm_id="r", customer_id="c", invoice_lines=[("i", Decimal("1.00"))])
     assert exc_info.value.error_type == QuickBooksErrorType.AUTHENTICATION
     assert transport.call_count() == 1
 
@@ -265,7 +289,7 @@ async def test_create_payment_transient_5xx_retries_then_succeeds(monkeypatch) -
     transport = _make_transport(responses)
     _patch_transport(monkeypatch, transport)
     client = QuickBooksClient()
-    result = await client.create_payment(access_token="at", realm_id="r", customer_id="c", invoice_lines=[("i", 1.0)])
+    result = await client.create_payment(access_token="at", realm_id="r", customer_id="c", invoice_lines=[("i", Decimal("1.00"))])
     assert result.Id == "qb-pay-retry"
     assert transport.call_count() == 2
 
@@ -277,7 +301,7 @@ async def test_create_payment_permanent_4xx_never_retried(monkeypatch) -> None:
     _patch_transport(monkeypatch, transport)
     client = QuickBooksClient()
     with pytest.raises(QuickBooksAPIError) as exc_info:
-        await client.create_payment(access_token="at", realm_id="r", customer_id="c", invoice_lines=[("bad", 1.0)])
+        await client.create_payment(access_token="at", realm_id="r", customer_id="c", invoice_lines=[("bad", Decimal("1.00"))])
     assert exc_info.value.error_type == QuickBooksErrorType.INVALID_REQUEST
     assert transport.call_count() == 1
 
@@ -289,7 +313,7 @@ async def test_create_payment_timeout_is_classified_and_bounded(monkeypatch) -> 
     _patch_transport(monkeypatch, httpx.MockTransport(handler))
     client = QuickBooksClient()
     with pytest.raises(QuickBooksAPIError) as exc_info:
-        await client.create_payment(access_token="at", realm_id="r", customer_id="c", invoice_lines=[("i", 1.0)])
+        await client.create_payment(access_token="at", realm_id="r", customer_id="c", invoice_lines=[("i", Decimal("1.00"))])
     assert exc_info.value.error_type == QuickBooksErrorType.TIMEOUT
 
 
@@ -311,7 +335,7 @@ async def test_create_payment_error_message_never_leaks_access_token(monkeypatch
     client = QuickBooksClient()
     with pytest.raises(QuickBooksAPIError) as exc_info:
         await client.create_payment(
-            access_token="at_super_secret_token_value", realm_id="r", customer_id="c", invoice_lines=[("i", 1.0)]
+            access_token="at_super_secret_token_value", realm_id="r", customer_id="c", invoice_lines=[("i", Decimal("1.00"))]
         )
     assert "at_super_secret_token_value" not in str(exc_info.value)
 
