@@ -244,6 +244,27 @@ export function aiQualifyLeadAdvisory(token: string, leadId: string) {
   });
 }
 
+// section 4: the explicit lead -> customer -> appointment -> job chain, as
+// one idempotent action -- matches an existing customer by email/phone or
+// creates one, books the appointment, and creates the job together.
+export function convertLeadAndBook(
+  token: string,
+  body: { lead_id: string; title: string; start_time: string; end_time: string; assigned_user_id?: string }
+) {
+  return request<{
+    lead_id: string;
+    customer_id: string;
+    customer_created: boolean;
+    appointment_id: string;
+    job: Record<string, unknown>;
+    deduplicated: boolean;
+  }>("/api/v1/jobs/convert-lead", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
 // --- CRM: customers ---
 
 export interface Customer {
@@ -474,6 +495,18 @@ export function getJob(token: string, jobId: string) {
   return request<{ job: Job }>(`/api/v1/jobs/${jobId}`, { headers: authHeaders(token) });
 }
 
+export function updateJob(
+  token: string,
+  jobId: string,
+  body: { title?: string; description?: string; priority?: string; customer_notes?: string; internal_notes?: string }
+) {
+  return request<{ job: Job }>(`/api/v1/jobs/${jobId}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
 export function getJobTimeline(token: string, jobId: string) {
   return request<{ job_id: string; entries: TimelineEntry[] }>(`/api/v1/jobs/${jobId}/timeline`, {
     headers: authHeaders(token),
@@ -657,6 +690,58 @@ export function unblockJob(token: string, jobId: string, targetStatus: string) {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify({ target_status: targetStatus }),
+  });
+}
+
+export interface ScopeChange {
+  id: string;
+  job_id: string;
+  description: string;
+  reason: string | null;
+  estimated_cost: number | null;
+  estimated_revenue: number | null;
+  margin_impact: number | null;
+  status: string;
+}
+
+export function createScopeChange(
+  token: string,
+  jobId: string,
+  body: { description: string; reason?: string; estimated_cost?: number; estimated_revenue?: number }
+) {
+  return request<{ scope_change: ScopeChange }>(`/api/v1/jobs/${jobId}/scope-changes`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function requestScopeChangeApproval(token: string, scopeChangeId: string, justification: string) {
+  return request<{ acknowledged: boolean }>(`/api/v1/jobs/scope-changes/${scopeChangeId}/request-approval`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ justification }),
+  });
+}
+
+export function recordJobSignoff(token: string, jobId: string, signedBy: string) {
+  return request<{
+    signoff: { id: string; job_id: string; signed_by: string; signed_at: string; signature_reference: string; provider: string };
+  }>(`/api/v1/jobs/${jobId}/signoff`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ signed_by: signedBy }),
+  });
+}
+
+export function createJobPurchaseOrderDraft(token: string, jobId: string, supplier?: string) {
+  return request<{
+    purchase_order: { id: string; job_id: string; status: string; supplier: string | null };
+    items: { id: string; name: string; quantity: number; unit: string | null; estimated_unit_cost: number | null }[];
+  }>(`/api/v1/jobs/${jobId}/purchase-order-draft`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ supplier: supplier || undefined }),
   });
 }
 

@@ -10,7 +10,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.calendar.base import DoubleBookingError
-from app.models.operations import Job
+from app.models.operations import Job, JobPriority
 from app.models.rbac import Permission
 from app.services.conversion_service import LeadConversionService
 from app.services.job_service import CreateJobInput, JobService
@@ -155,6 +155,12 @@ class UpdateJob(Tool):
         self._session_factory = session_factory
 
     async def execute(self, input: UpdateJobInput, context: ExecutionContext) -> JobOutput:
+        if input.priority is not None:
+            try:
+                JobPriority(input.priority)
+            except ValueError:
+                raise ValueError(f"Invalid job priority: {input.priority}") from None
+
         async with self._session_factory() as session:
             job = await session.get(Job, input.job_id)
             if job is None or job.tenant_id != context.tenant_id:

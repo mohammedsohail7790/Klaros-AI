@@ -14,6 +14,7 @@ import {
   JobAttachment,
   JobMaterial,
   JobTask,
+  ScopeChange,
   TimelineEntry,
   Worker,
   addMaterial,
@@ -22,6 +23,8 @@ import {
   closeJob,
   completeQA,
   completeTask,
+  createJobPurchaseOrderDraft,
+  createScopeChange,
   createTask,
   downloadJobAttachment,
   failQA,
@@ -35,11 +38,14 @@ import {
   listJobTasks,
   listWorkers,
   recordJobCost,
+  recordJobSignoff,
+  requestScopeChangeApproval,
   scheduleJob,
   startQA,
   transitionJob,
   triggerInvoiceFromJob,
   unblockJob,
+  updateJob,
   uploadJobFile,
 } from "@/lib/api";
 
@@ -62,6 +68,13 @@ const NEXT_ACTIONS: Record<string, { label: string; action: string }[]> = {
 const BLOCKABLE_STATUSES = new Set(["DISPATCHED", "EN_ROUTE", "ON_SITE", "IN_PROGRESS", "QA_PENDING"]);
 // Statuses BLOCKED can resume into.
 const UNBLOCK_TARGETS = ["DISPATCHED", "EN_ROUTE", "ON_SITE", "IN_PROGRESS"];
+// Statuses the backend state machine allows to transition into CANCELLED.
+const CANCELLABLE_STATUSES = new Set(["DRAFT", "SCHEDULED", "DISPATCHED", "EN_ROUTE", "ON_SITE", "IN_PROGRESS"]);
+// Statuses that can still be (re)scheduled/(un)assigned — not closed or cancelled.
+const EDITABLE_STATUSES = new Set([
+  "DRAFT", "SCHEDULED", "DISPATCHED", "EN_ROUTE", "ON_SITE", "IN_PROGRESS", "BLOCKED", "QA_PENDING", "COMPLETED",
+]);
+const JOB_PRIORITIES = ["LOW", "NORMAL", "HIGH", "URGENT", "CRITICAL"];
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -81,9 +94,25 @@ export default function JobDetailPage() {
   const [busy, setBusy] = useState(false);
   const [blockReason, setBlockReason] = useState("");
   const [unblockTarget, setUnblockTarget] = useState("IN_PROGRESS");
+  const [editingJob, setEditingJob] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editPriority, setEditPriority] = useState("NORMAL");
+  const [editInternalNotes, setEditInternalNotes] = useState("");
+  const [reschedulingJob, setReschedulingJob] = useState(false);
+  const [scopeChanges, setScopeChanges] = useState<ScopeChange[]>([]);
+  const [scopeDescription, setScopeDescription] = useState("");
+  const [scopeReason, setScopeReason] = useState("");
+  const [scopeCost, setScopeCost] = useState("");
+  const [scopeRevenue, setScopeRevenue] = useState("");
+  const [signedBy, setSignedBy] = useState("");
+  const [signoffNotice, setSignoffNotice] = useState<string | null>(null);
+  const [poSupplier, setPoSupplier] = useState("");
+  const [poNotice, setPoNotice] = useState<string | null>(null);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
+  const voiceInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -171,6 +200,127 @@ export default function JobDetailPage() {
     await runAction(() => unblockJob(token, id, unblockTarget));
   }
 
+  function startEditingJob() {
+    if (!job) return;
+    setEditTitle(job.title);
+    setEditDescription(job.description ?? "");
+    setEditPriority(job.priority);
+    setEditInternalNotes(job.internal_notes ?? "");
+    setEditingJob(true);
+  }
+
+  async function handleSaveJob(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!token || !editTitle.trim()) return;
+    await runAction(() =>
+      updateJob(token, id, {
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        priority: editPriority,
+        internal_notes: editInternalNotes.trim() || undefined,
+      })
+    );
+    setEditingJob(false);
+  }
+
+  async function handleUnassign() {
+    if (!token) return;
+    await runAction(() => transitionJob(token, id, "unassign"));
+  }
+
+  async function handleCancelJob() {
+    if (!token) return;
+    await runAction(() => transitionJob(token, id, "cancel"));
+  }
+
+  async function handleReschedule(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!token) return;
+    const form = new FormData(e.currentTarget);
+    const start = form.get("start") as string;
+    const end = form.get("end") as string;
+    if (!start || !end) return;
+    await runAction(() =>
+      transitionJob(token, id, "reschedule", {
+        start_time: new Date(start).toISOString(),
+        end_time: new Date(end).toISOString(),
+      })
+    );
+    setReschedulingJob(false);
+  }
+
+  async function handleCreateScopeChange(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!token || !scopeDescription.trim()) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      const result = await createScopeChange(token, id, {
+        description: scopeDescription.trim(),
+        reason: scopeReason.trim() || undefined,
+        estimated_cost: scopeCost ? Number(scopeCost) : undefined,
+        estimated_revenue: scopeRevenue ? Number(scopeRevenue) : undefined,
+      });
+      setScopeChanges((prev) => [result.scope_change, ...prev]);
+      setScopeDescription("");
+      setScopeReason("");
+      setScopeCost("");
+      setScopeRevenue("");
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Unable to record scope change.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRequestScopeApproval(scopeChangeId: string) {
+    if (!token) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await requestScopeChangeApproval(token, scopeChangeId, "Requested from job detail page");
+      setScopeChanges((prev) =>
+        prev.map((s) => (s.id === scopeChangeId ? { ...s, status: "PENDING_APPROVAL" } : s))
+      );
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Unable to request approval.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSignoff(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!token || !signedBy.trim()) return;
+    setBusy(true);
+    setActionError(null);
+    setSignoffNotice(null);
+    try {
+      await recordJobSignoff(token, id, signedBy.trim());
+      setSignoffNotice(`Signed off by ${signedBy.trim()}.`);
+      setSignedBy("");
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Unable to record sign-off.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCreatePODraft() {
+    if (!token) return;
+    setBusy(true);
+    setActionError(null);
+    setPoNotice(null);
+    try {
+      const result = await createJobPurchaseOrderDraft(token, id, poSupplier.trim() || undefined);
+      setPoNotice(`Draft PO created with ${result.items.length} item(s).`);
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Unable to create purchase order draft.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleAddTask(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!token) return;
@@ -191,7 +341,7 @@ export default function JobDetailPage() {
     formEl.reset();
   }
 
-  async function handleUpload(kind: "documents" | "photos", file: File | undefined) {
+  async function handleUpload(kind: "documents" | "photos" | "voice-notes", file: File | undefined) {
     if (!token || !file) return;
     await runAction(() => uploadJobFile(token, id, kind, file));
   }
@@ -230,74 +380,200 @@ export default function JobDetailPage() {
           <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="space-y-6 lg:col-span-2">
               <div className="rounded-lg border border-border bg-surface p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h1 className="font-display text-2xl text-foreground">
-                      {job.job_number} — {job.title}
-                    </h1>
-                    <p className="text-sm text-muted">
-                      {job.status} · {job.priority} · {job.service_type ?? "no service type"}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    {nextActions.map((a) => (
+                {editingJob ? (
+                  <form onSubmit={handleSaveJob} className="space-y-2">
+                    <div>
+                      <label className="block text-xs text-muted">Title</label>
+                      <input
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        required
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted">Description</label>
+                      <textarea
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        rows={2}
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted">Priority</label>
+                      <select
+                        value={editPriority}
+                        onChange={(e) => setEditPriority(e.target.value)}
+                        className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      >
+                        {JOB_PRIORITIES.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted">Internal notes</label>
+                      <textarea
+                        value={editInternalNotes}
+                        onChange={(e) => setEditInternalNotes(e.target.value)}
+                        rows={2}
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-1">
                       <button
-                        key={a.action}
-                        disabled={busy}
-                        onClick={() => handleNextAction(a.action)}
+                        type="submit"
+                        disabled={busy || !editTitle.trim()}
                         className="klaros-btn-primary disabled:opacity-50"
                       >
-                        {a.label}
+                        {busy ? "Saving..." : "Save"}
                       </button>
-                    ))}
-                  </div>
-                </div>
-                {actionError && <p className="mt-3 text-sm text-red-600">{actionError}</p>}
-
-                <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <dt className="text-muted">Scheduled</dt>
-                    <dd>{job.scheduled_start ? new Date(job.scheduled_start).toLocaleString() : "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted">Assigned worker</dt>
-                    <dd>{job.assigned_user_id ? workers.find((w) => w.id === job.assigned_user_id)?.name ?? job.assigned_user_id : "unassigned"}</dd>
-                  </div>
-                </dl>
-
-                {job.status === "DRAFT" && (
-                  <form onSubmit={handleSchedule} className="mt-4 flex items-end gap-2">
-                    <div>
-                      <label className="block text-xs text-muted">Start</label>
-                      <input name="start" type="datetime-local" required className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                      <button
+                        type="button"
+                        onClick={() => setEditingJob(false)}
+                        className="rounded-md px-3 py-1.5 text-sm text-muted hover:underline"
+                      >
+                        Cancel
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-xs text-muted">End</label>
-                      <input name="end" type="datetime-local" required className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
-                    </div>
-                    <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
-                      Schedule
-                    </button>
                   </form>
-                )}
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h1 className="font-display text-2xl text-foreground">
+                          {job.job_number} — {job.title}
+                        </h1>
+                        <p className="text-sm text-muted">
+                          {job.status} · {job.priority} · {job.service_type ?? "no service type"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {nextActions.map((a) => (
+                          <button
+                            key={a.action}
+                            disabled={busy}
+                            onClick={() => handleNextAction(a.action)}
+                            className="klaros-btn-primary disabled:opacity-50"
+                          >
+                            {a.label}
+                          </button>
+                        ))}
+                        <button
+                          onClick={startEditingJob}
+                          className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                        >
+                          Edit
+                        </button>
+                        {CANCELLABLE_STATUSES.has(job.status) && (
+                          <button
+                            disabled={busy}
+                            onClick={handleCancelJob}
+                            className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50/30 disabled:opacity-50"
+                          >
+                            Cancel job
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {actionError && <p className="mt-3 text-sm text-red-600">{actionError}</p>}
 
-                {job.status === "SCHEDULED" && !job.assigned_user_id && (
-                  <div className="mt-4 flex items-center gap-2">
-                    <select
-                      onChange={(e) => handleAssign(e.target.value)}
-                      defaultValue=""
-                      className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
-                    >
-                      <option value="" disabled>
-                        Assign worker...
-                      </option>
-                      {workers.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <dt className="text-muted">Scheduled</dt>
+                        <dd>{job.scheduled_start ? new Date(job.scheduled_start).toLocaleString() : "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted">Assigned worker</dt>
+                        <dd className="flex items-center gap-2">
+                          {job.assigned_user_id
+                            ? workers.find((w) => w.id === job.assigned_user_id)?.name ?? job.assigned_user_id
+                            : "unassigned"}
+                          {job.assigned_user_id && EDITABLE_STATUSES.has(job.status) && (
+                            <button
+                              disabled={busy}
+                              onClick={handleUnassign}
+                              className="text-xs text-red-600 underline hover:text-foreground disabled:opacity-50"
+                            >
+                              Unassign
+                            </button>
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    {job.status === "DRAFT" && (
+                      <form onSubmit={handleSchedule} className="mt-4 flex items-end gap-2">
+                        <div>
+                          <label className="block text-xs text-muted">Start</label>
+                          <input name="start" type="datetime-local" required className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted">End</label>
+                          <input name="end" type="datetime-local" required className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                        </div>
+                        <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
+                          Schedule
+                        </button>
+                      </form>
+                    )}
+
+                    {job.status !== "DRAFT" && job.status !== "CLOSED" && job.status !== "CANCELLED" && (
+                      <div className="mt-4">
+                        {reschedulingJob ? (
+                          <form onSubmit={handleReschedule} className="flex items-end gap-2">
+                            <div>
+                              <label className="block text-xs text-muted">New start</label>
+                              <input name="start" type="datetime-local" required className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-muted">New end</label>
+                              <input name="end" type="datetime-local" required className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                            </div>
+                            <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setReschedulingJob(false)}
+                              className="text-sm text-muted hover:underline"
+                            >
+                              Cancel
+                            </button>
+                          </form>
+                        ) : (
+                          <button
+                            onClick={() => setReschedulingJob(true)}
+                            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                          >
+                            Reschedule
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {EDITABLE_STATUSES.has(job.status) && (
+                      <div className="mt-4 flex items-center gap-2">
+                        <select
+                          onChange={(e) => handleAssign(e.target.value)}
+                          defaultValue=""
+                          className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        >
+                          <option value="" disabled>
+                            {job.assigned_user_id ? "Reassign worker..." : "Assign worker..."}
+                          </option>
+                          {workers.map((w) => (
+                            <option key={w.id} value={w.id}>
+                              {w.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {token && BLOCKABLE_STATUSES.has(job.status) && (
@@ -398,10 +674,30 @@ export default function JobDetailPage() {
                     Add
                   </button>
                 </form>
+                {materials.length > 0 && (
+                  <div className="mt-4 flex items-end gap-2 border-t border-border pt-4">
+                    <div>
+                      <label className="block text-xs text-muted">Supplier (optional)</label>
+                      <input
+                        value={poSupplier}
+                        onChange={(e) => setPoSupplier(e.target.value)}
+                        className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <button
+                      disabled={busy}
+                      onClick={handleCreatePODraft}
+                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                    >
+                      Draft purchase order
+                    </button>
+                    {poNotice && <span className="text-xs text-emerald-600">{poNotice}</span>}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Photos & documents</h2>
+                <h2 className="mb-3 text-sm font-medium text-muted">Photos, documents & voice notes</h2>
                 <div className="flex gap-2">
                   <button
                     onClick={() => photoInputRef.current?.click()}
@@ -429,6 +725,19 @@ export default function JobDetailPage() {
                     className="hidden"
                     onChange={(e) => handleUpload("documents", e.target.files?.[0])}
                   />
+                  <button
+                    onClick={() => voiceInputRef.current?.click()}
+                    className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                  >
+                    Upload voice note
+                  </button>
+                  <input
+                    ref={voiceInputRef}
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={(e) => handleUpload("voice-notes", e.target.files?.[0])}
+                  />
                 </div>
                 {attachments.length === 0 ? (
                   <div className="mt-3">
@@ -452,6 +761,104 @@ export default function JobDetailPage() {
                   </ul>
                 )}
               </div>
+
+              {EDITABLE_STATUSES.has(job.status) && token && (
+                <div className="rounded-lg border border-border bg-surface p-6">
+                  <h2 className="mb-3 text-sm font-medium text-muted">Scope changes</h2>
+                  {scopeChanges.length === 0 ? (
+                    <p className="text-sm text-muted">No scope changes recorded this session.</p>
+                  ) : (
+                    <ul className="mb-3 space-y-2 text-sm">
+                      {scopeChanges.map((s) => (
+                        <li key={s.id} className="rounded-md border border-border-strong bg-surface-muted p-3">
+                          <div className="flex items-center justify-between">
+                            <span>{s.description}</span>
+                            <span className="text-xs text-muted">{s.status}</span>
+                          </div>
+                          {(s.estimated_cost != null || s.estimated_revenue != null) && (
+                            <p className="mt-1 text-xs text-muted">
+                              {s.estimated_cost != null && `Cost: $${s.estimated_cost} `}
+                              {s.estimated_revenue != null && `Revenue: $${s.estimated_revenue}`}
+                            </p>
+                          )}
+                          {s.status === "DETECTED" && (
+                            <button
+                              disabled={busy}
+                              onClick={() => handleRequestScopeApproval(s.id)}
+                              className="mt-2 text-xs underline text-muted hover:text-foreground disabled:opacity-50"
+                            >
+                              Request approval
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <form onSubmit={handleCreateScopeChange} className="space-y-2 border-t border-border pt-3">
+                    <input
+                      value={scopeDescription}
+                      onChange={(e) => setScopeDescription(e.target.value)}
+                      placeholder="What changed?"
+                      className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    />
+                    <input
+                      value={scopeReason}
+                      onChange={(e) => setScopeReason(e.target.value)}
+                      placeholder="Reason (optional)"
+                      className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <input
+                        value={scopeCost}
+                        onChange={(e) => setScopeCost(e.target.value)}
+                        placeholder="Est. cost"
+                        className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                      <input
+                        value={scopeRevenue}
+                        onChange={(e) => setScopeRevenue(e.target.value)}
+                        placeholder="Est. revenue"
+                        className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                      <button
+                        type="submit"
+                        disabled={busy || !scopeDescription.trim()}
+                        className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                      >
+                        Record scope change
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {(job.status === "COMPLETED" || job.status === "CLOSED") && token && (
+                <div className="rounded-lg border border-border bg-surface p-6">
+                  <h2 className="mb-3 text-sm font-medium text-muted">Customer sign-off</h2>
+                  <p className="mb-3 text-xs text-muted">
+                    Internal record only — not a legally binding e-signature.
+                  </p>
+                  {signoffNotice && <p className="mb-2 text-sm text-emerald-600">{signoffNotice}</p>}
+                  <form onSubmit={handleSignoff} className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs text-muted">Signed by</label>
+                      <input
+                        value={signedBy}
+                        onChange={(e) => setSignedBy(e.target.value)}
+                        placeholder="Customer name"
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={busy || !signedBy.trim()}
+                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                    >
+                      Record sign-off
+                    </button>
+                  </form>
+                </div>
+              )}
 
               {job.status === "QA_PENDING" && token && (
                 <div className="rounded-lg border border-border bg-surface p-6">

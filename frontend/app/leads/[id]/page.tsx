@@ -5,7 +5,18 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
-import { AIQualifyLeadAdvisory, ApiError, aiQualifyLeadAdvisory, getLead, Lead, qualifyLead, updateLead } from "@/lib/api";
+import {
+  AIQualifyLeadAdvisory,
+  ApiError,
+  Worker,
+  aiQualifyLeadAdvisory,
+  convertLeadAndBook,
+  getLead,
+  Lead,
+  listWorkers,
+  qualifyLead,
+  updateLead,
+} from "@/lib/api";
 
 const STATUS_OPTIONS = ["NEW", "CONTACTED", "QUALIFIED", "UNQUALIFIED", "BOOKED", "LOST", "CONVERTED"];
 
@@ -21,14 +32,23 @@ export default function LeadDetailPage() {
   const [advisory, setAdvisory] = useState<AIQualifyLeadAdvisory | null>(null);
   const [advisoryLoading, setAdvisoryLoading] = useState(false);
   const [advisoryError, setAdvisoryError] = useState<string | null>(null);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [converting, setConverting] = useState(false);
+  const [convertTitle, setConvertTitle] = useState("");
+  const [convertStart, setConvertStart] = useState("");
+  const [convertEnd, setConvertEnd] = useState("");
+  const [convertWorkerId, setConvertWorkerId] = useState("");
+  const [convertError, setConvertError] = useState<string | null>(null);
+  const [convertedJobId, setConvertedJobId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await getLead(token, id);
-      setLead(result.lead);
+      const [leadResult, workersResult] = await Promise.all([getLead(token, id), listWorkers(token)]);
+      setLead(leadResult.lead);
+      setWorkers(workersResult.workers);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load this lead.");
     } finally {
@@ -65,6 +85,28 @@ export default function LeadDetailPage() {
       setAdvisoryError(err instanceof ApiError ? err.message : "Unable to generate an AI recommendation. Retry.");
     } finally {
       setAdvisoryLoading(false);
+    }
+  }
+
+  async function handleConvert(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!token || !convertTitle.trim() || !convertStart || !convertEnd) return;
+    setConverting(true);
+    setConvertError(null);
+    try {
+      const result = await convertLeadAndBook(token, {
+        lead_id: id,
+        title: convertTitle.trim(),
+        start_time: new Date(convertStart).toISOString(),
+        end_time: new Date(convertEnd).toISOString(),
+        assigned_user_id: convertWorkerId || undefined,
+      });
+      setConvertedJobId(result.job.id as string);
+      await load();
+    } catch (err) {
+      setConvertError(err instanceof ApiError ? err.message : "Unable to convert this lead. Retry.");
+    } finally {
+      setConverting(false);
     }
   }
 
@@ -157,6 +199,69 @@ export default function LeadDetailPage() {
                   Book appointment
                 </Link>
               </div>
+
+              {lead.status !== "CONVERTED" && lead.status !== "LOST" && (
+                <div className="rounded-lg border border-border bg-surface p-6">
+                  <h2 className="mb-2 text-sm font-medium text-muted">Convert to job</h2>
+                  <p className="mb-3 text-xs text-muted">
+                    One step: match or create the customer, book the appointment, and create the job together.
+                  </p>
+                  {convertedJobId ? (
+                    <p className="text-sm text-emerald-600">
+                      Converted —{" "}
+                      <Link href={`/jobs/${convertedJobId}`} className="underline">
+                        view job
+                      </Link>
+                    </p>
+                  ) : (
+                    <form onSubmit={handleConvert} className="space-y-2">
+                      <input
+                        value={convertTitle}
+                        onChange={(e) => setConvertTitle(e.target.value)}
+                        placeholder={lead.service_requested ?? "Job title"}
+                        required
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="datetime-local"
+                          value={convertStart}
+                          onChange={(e) => setConvertStart(e.target.value)}
+                          required
+                          className="flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        />
+                        <input
+                          type="datetime-local"
+                          value={convertEnd}
+                          onChange={(e) => setConvertEnd(e.target.value)}
+                          required
+                          className="flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        />
+                      </div>
+                      <select
+                        value={convertWorkerId}
+                        onChange={(e) => setConvertWorkerId(e.target.value)}
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      >
+                        <option value="">Assign worker (optional)</option>
+                        {workers.map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {w.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        disabled={converting || !convertTitle.trim() || !convertStart || !convertEnd}
+                        className="klaros-btn-primary w-full disabled:opacity-50"
+                      >
+                        {converting ? "Converting..." : "Convert to job"}
+                      </button>
+                      {convertError && <p className="text-xs text-red-600">{convertError}</p>}
+                    </form>
+                  )}
+                </div>
+              )}
             </section>
 
             <section className="space-y-4">

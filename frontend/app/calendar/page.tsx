@@ -10,11 +10,13 @@ import {
   ApiError,
   Appointment,
   Customer,
+  GoogleCalendarEntry,
   TimeSlot,
   cancelAppointment,
   checkAvailability,
   createAppointment,
   listAppointments,
+  listGoogleCalendars,
   rescheduleAppointment,
   searchCustomers,
   syncAppointmentToGoogle,
@@ -47,6 +49,8 @@ function CalendarPageInner() {
   const [reschedulingId, setReschedulingId] = useState<string | null>(null);
   const [rescheduleDraft, setRescheduleDraft] = useState("");
   const [reschedulingBusy, setReschedulingBusy] = useState(false);
+  const [googleCalendars, setGoogleCalendars] = useState<GoogleCalendarEntry[]>([]);
+  const [syncCalendarId, setSyncCalendarId] = useState("primary");
 
   const dayRange = useMemo(() => {
     const from = `${date}T00:00:00+00:00`;
@@ -75,6 +79,20 @@ function CalendarPageInner() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!token) return;
+    // Best-effort: only tenants with Google Calendar connected have more
+    // than one real calendar to pick from — silently fall back to the
+    // default "primary" target when this fails or returns nothing extra.
+    listGoogleCalendars(token)
+      .then((r) => {
+        setGoogleCalendars(r.calendars);
+        const primary = r.calendars.find((c) => c.primary);
+        if (primary) setSyncCalendarId(primary.id);
+      })
+      .catch(() => setGoogleCalendars([]));
+  }, [token]);
 
   async function handleCancel(appointmentId: string) {
     if (!token) return;
@@ -121,7 +139,7 @@ function CalendarPageInner() {
     setSyncingId(appointmentId);
     setError(null);
     try {
-      await syncAppointmentToGoogle(token, appointmentId);
+      await syncAppointmentToGoogle(token, appointmentId, syncCalendarId);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not sync to Google Calendar.");
@@ -135,12 +153,29 @@ function CalendarPageInner() {
       <div className="px-8 py-8">
         <header className="mb-6 flex items-center justify-between">
           <h1 className="font-display text-2xl text-foreground">Calendar</h1>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
-          />
+          <div className="flex items-center gap-2">
+            {googleCalendars.length > 1 && (
+              <select
+                value={syncCalendarId}
+                onChange={(e) => setSyncCalendarId(e.target.value)}
+                title="Google Calendar to sync appointments to"
+                className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              >
+                {googleCalendars.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.summary ?? c.id}
+                    {c.primary ? " (primary)" : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
+            />
+          </div>
         </header>
 
         <p className="mb-4 text-xs text-muted">

@@ -75,6 +75,21 @@ async def test_update_job(tool_registry) -> None:
     assert updated.job["internal_notes"] == "call ahead"
 
 
+async def test_update_job_rejects_unknown_priority(tool_registry) -> None:
+    tenant_id = uuid.uuid4()
+    customer_id = await _make_customer(tool_registry, tenant_id)
+    created = await tool_registry.execute(
+        "operations.create_job", {"title": "Job A", "customer_id": customer_id}, _ctx(tenant_id)
+    )
+
+    with pytest.raises(ValueError, match="Invalid job priority"):
+        await tool_registry.execute(
+            "operations.update_job",
+            {"job_id": created.job["id"], "priority": "NOT_A_REAL_PRIORITY"},
+            _ctx(tenant_id),
+        )
+
+
 async def test_search_jobs_filters_and_paginates(tool_registry) -> None:
     tenant_id = uuid.uuid4()
     customer_id = await _make_customer(tool_registry, tenant_id)
