@@ -25,7 +25,7 @@ export default function RegisterPage() {
       const result = await register(organizationName, fullName, email, password);
       sessionStorage.setItem("klaros_access_token", result.tokens.access_token);
       sessionStorage.setItem("klaros_refresh_token", result.tokens.refresh_token);
-      router.push("/dashboard");
+      router.push("/onboarding");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
