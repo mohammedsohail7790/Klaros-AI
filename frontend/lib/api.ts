@@ -1513,11 +1513,34 @@ export function detectMarketingExceptions(token: string) {
   });
 }
 
+export interface LeadAttribution {
+  id: string;
+  lead_id: string;
+  campaign_id: string | null;
+  source: string | null;
+  medium: string | null;
+  attribution_model: string;
+}
+
 export function attributeLead(
   token: string,
-  body: { lead_id: string; campaign_id?: string; source?: string; medium?: string; attribution_model?: string }
+  body: {
+    lead_id: string;
+    campaign_id?: string;
+    source?: string;
+    medium?: string;
+    landing_page?: string;
+    referral_source?: string;
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    utm_term?: string;
+    utm_content?: string;
+    click_id?: string;
+    attribution_model?: string;
+  }
 ) {
-  return request<{ attribution: Record<string, unknown> }>("/api/v1/marketing/attribution/leads", {
+  return request<{ attribution: LeadAttribution }>("/api/v1/marketing/attribution/leads", {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(body),

@@ -8,17 +8,22 @@ import { useAuth } from "@/lib/useAuth";
 import {
   AIQualifyLeadAdvisory,
   ApiError,
+  Campaign,
+  LeadAttribution,
   Worker,
   aiQualifyLeadAdvisory,
+  attributeLead,
   convertLeadAndBook,
   getLead,
   Lead,
+  listCampaigns,
   listWorkers,
   qualifyLead,
   updateLead,
 } from "@/lib/api";
 
 const STATUS_OPTIONS = ["NEW", "CONTACTED", "QUALIFIED", "UNQUALIFIED", "BOOKED", "LOST", "CONVERTED"];
+const ATTRIBUTION_MODELS = ["SOURCE_ONLY", "FIRST_TOUCH", "LAST_TOUCH"];
 
 export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,20 +45,38 @@ export default function LeadDetailPage() {
   const [convertWorkerId, setConvertWorkerId] = useState("");
   const [convertError, setConvertError] = useState<string | null>(null);
   const [convertedJobId, setConvertedJobId] = useState<string | null>(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [attribution, setAttribution] = useState<LeadAttribution | null>(null);
+  const [attrCampaignId, setAttrCampaignId] = useState("");
+  const [attrSource, setAttrSource] = useState("");
+  const [attrMedium, setAttrMedium] = useState("");
+  const [attrUtmSource, setAttrUtmSource] = useState("");
+  const [attrUtmMedium, setAttrUtmMedium] = useState("");
+  const [attrUtmCampaign, setAttrUtmCampaign] = useState("");
+  const [attrModel, setAttrModel] = useState("SOURCE_ONLY");
+  const [attrSaving, setAttrSaving] = useState(false);
+  const [attrError, setAttrError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const [leadResult, workersResult] = await Promise.all([getLead(token, id), listWorkers(token)]);
+      const [leadResult, workersResult, campaignsResult] = await Promise.all([
+        getLead(token, id),
+        listWorkers(token),
+        listCampaigns(token),
+      ]);
       setLead(leadResult.lead);
       setWorkers(workersResult.workers);
+      setCampaigns(campaignsResult.campaigns);
+      if (!attrSource) setAttrSource(leadResult.lead.source);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load this lead.");
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, id]);
 
   useEffect(() => {
@@ -107,6 +130,30 @@ export default function LeadDetailPage() {
       setConvertError(err instanceof ApiError ? err.message : "Unable to convert this lead. Retry.");
     } finally {
       setConverting(false);
+    }
+  }
+
+  async function handleAttribute(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!token) return;
+    setAttrSaving(true);
+    setAttrError(null);
+    try {
+      const result = await attributeLead(token, {
+        lead_id: id,
+        campaign_id: attrCampaignId || undefined,
+        source: attrSource.trim() || undefined,
+        medium: attrMedium.trim() || undefined,
+        utm_source: attrUtmSource.trim() || undefined,
+        utm_medium: attrUtmMedium.trim() || undefined,
+        utm_campaign: attrUtmCampaign.trim() || undefined,
+        attribution_model: attrModel,
+      });
+      setAttribution(result.attribution);
+    } catch (err) {
+      setAttrError(err instanceof ApiError ? err.message : "Unable to save attribution. Retry.");
+    } finally {
+      setAttrSaving(false);
     }
   }
 
@@ -339,6 +386,100 @@ export default function LeadDetailPage() {
                   {advisoryLoading ? "Generating..." : "Generate AI recommendation"}
                 </button>
                 {advisoryError && <p className="mt-2 text-xs text-red-600">{advisoryError}</p>}
+              </div>
+
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-2 text-sm font-medium text-muted">Marketing attribution</h2>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Record where this lead really came from — campaign, source/medium, UTM params — for campaign
+                  performance and CAC reporting. Saving again overwrites the existing record for this lead.
+                </p>
+                {attribution && (
+                  <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50/30 p-2 text-xs text-emerald-700">
+                    Saved — {attribution.source ?? "no source"} / {attribution.medium ?? "no medium"} (
+                    {attribution.attribution_model})
+                    {attribution.campaign_id &&
+                      ` · campaign: ${campaigns.find((c) => c.id === attribution.campaign_id)?.name ?? attribution.campaign_id}`}
+                  </div>
+                )}
+                <form onSubmit={handleAttribute} className="space-y-2 text-sm">
+                  <div>
+                    <label className="block text-xs text-muted">Campaign (optional)</label>
+                    <select
+                      value={attrCampaignId}
+                      onChange={(e) => setAttrCampaignId(e.target.value)}
+                      className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    >
+                      <option value="">No campaign</option>
+                      {campaigns.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs text-muted">Source</label>
+                      <input
+                        value={attrSource}
+                        onChange={(e) => setAttrSource(e.target.value)}
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs text-muted">Medium</label>
+                      <input
+                        value={attrMedium}
+                        onChange={(e) => setAttrMedium(e.target.value)}
+                        placeholder="e.g. cpc, organic, referral"
+                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      value={attrUtmSource}
+                      onChange={(e) => setAttrUtmSource(e.target.value)}
+                      placeholder="utm_source"
+                      className="w-1/3 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-xs"
+                    />
+                    <input
+                      value={attrUtmMedium}
+                      onChange={(e) => setAttrUtmMedium(e.target.value)}
+                      placeholder="utm_medium"
+                      className="w-1/3 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-xs"
+                    />
+                    <input
+                      value={attrUtmCampaign}
+                      onChange={(e) => setAttrUtmCampaign(e.target.value)}
+                      placeholder="utm_campaign"
+                      className="w-1/3 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted">Attribution model</label>
+                    <select
+                      value={attrModel}
+                      onChange={(e) => setAttrModel(e.target.value)}
+                      className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    >
+                      {ATTRIBUTION_MODELS.map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={attrSaving}
+                    className="w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  >
+                    {attrSaving ? "Saving..." : "Save attribution"}
+                  </button>
+                  {attrError && <p className="text-xs text-red-600">{attrError}</p>}
+                </form>
               </div>
             </section>
           </div>
