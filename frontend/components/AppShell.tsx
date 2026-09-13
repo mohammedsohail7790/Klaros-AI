@@ -57,6 +57,7 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
     items: [
       { href: "/operations", label: "Operations", icon: Wrench },
       { href: "/jobs", label: "Jobs", icon: Wrench },
+      { href: "/operations/workers", label: "Workers", icon: Users },
       { href: "/exceptions", label: "Exceptions", icon: AlertTriangle },
     ],
   },

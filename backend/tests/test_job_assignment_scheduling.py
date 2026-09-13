@@ -57,6 +57,16 @@ async def test_assign_job_to_inactive_worker_rejected(tool_registry) -> None:
         await tool_registry.execute("operations.assign_job", {"job_id": job["id"], "worker_id": worker_id}, _ctx(tenant_id))
 
 
+async def test_update_worker_status_rejects_unknown_status(tool_registry) -> None:
+    tenant_id = uuid.uuid4()
+    worker_id = await _worker(tool_registry, tenant_id)
+
+    with pytest.raises(ValueError, match="Invalid worker status"):
+        await tool_registry.execute(
+            "operations.update_worker_status", {"worker_id": worker_id, "status": "NOT_A_REAL_STATUS"}, _ctx(tenant_id)
+        )
+
+
 async def test_assign_job_schedule_conflict_rejected(tool_registry) -> None:
     tenant_id = uuid.uuid4()
     customer_id = await _customer(tool_registry, tenant_id)

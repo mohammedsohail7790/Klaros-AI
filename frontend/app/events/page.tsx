@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { Radio } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
   DeadLetterRow,
+  EventDetail,
   EventRow,
   EventWorkerMetrics,
+  getEventDetail,
   getEventWorkerMetrics,
   listDeadLetters,
   listEvents,
@@ -29,6 +31,10 @@ export default function EventsPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<EventDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -66,6 +72,25 @@ export default function EventsPage() {
       setError(err instanceof ApiError ? err.message : "Unable to replay.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleToggleDetail(eventId: string) {
+    if (expandedId === eventId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(eventId);
+    setDetail(null);
+    setDetailError(null);
+    if (!token) return;
+    setDetailLoading(true);
+    try {
+      setDetail(await getEventDetail(token, eventId));
+    } catch (err) {
+      setDetailError(err instanceof ApiError ? err.message : "Unable to load event detail.");
+    } finally {
+      setDetailLoading(false);
     }
   }
 
@@ -188,15 +213,56 @@ export default function EventsPage() {
                   </thead>
                   <tbody>
                     {events.map((e) => (
-                      <tr key={e.event_id} className="border-t border-border">
-                        <td className="px-4 py-2">{e.event_type}</td>
-                        <td className="px-4 py-2">
-                          <Badge status={e.status}>{e.status}</Badge>
-                        </td>
-                        <td className="px-4 py-2 text-muted">{e.retry_count}</td>
-                        <td className="px-4 py-2 text-muted">{e.entity_type ?? "—"}</td>
-                        <td className="px-4 py-2 text-muted">{new Date(e.created_at).toLocaleString()}</td>
-                      </tr>
+                      <Fragment key={e.event_id}>
+                        <tr
+                          onClick={() => handleToggleDetail(e.event_id)}
+                          className="cursor-pointer border-t border-border hover:bg-surface-muted"
+                        >
+                          <td className="px-4 py-2">{e.event_type}</td>
+                          <td className="px-4 py-2">
+                            <Badge status={e.status}>{e.status}</Badge>
+                          </td>
+                          <td className="px-4 py-2 text-muted">{e.retry_count}</td>
+                          <td className="px-4 py-2 text-muted">{e.entity_type ?? "—"}</td>
+                          <td className="px-4 py-2 text-muted">{new Date(e.created_at).toLocaleString()}</td>
+                        </tr>
+                        {expandedId === e.event_id && (
+                          <tr className="border-t border-border bg-surface-muted">
+                            <td colSpan={5} className="px-4 py-3">
+                              {detailLoading ? (
+                                <p className="text-xs text-muted">Loading detail...</p>
+                              ) : detailError ? (
+                                <p className="text-xs text-red-600">{detailError}</p>
+                              ) : detail ? (
+                                <div className="space-y-3 text-xs">
+                                  <div>
+                                    <p className="mb-1 font-medium text-muted">Payload</p>
+                                    <pre className="overflow-x-auto rounded-md border border-border bg-surface p-2">
+                                      {JSON.stringify(detail.payload, null, 2)}
+                                    </pre>
+                                  </div>
+                                  {detail.attempts.length > 0 && (
+                                    <div>
+                                      <p className="mb-1 font-medium text-muted">Handler attempts</p>
+                                      <ul className="space-y-1">
+                                        {detail.attempts.map((a, i) => (
+                                          <li key={i} className="rounded-md border border-border bg-surface p-2">
+                                            <span className="font-medium">{a.handler_name}</span> —{" "}
+                                            <Badge status={a.status}>{a.status}</Badge> · {a.attempts} attempt(s)
+                                            {a.last_error && (
+                                              <p className="mt-1 text-red-600">{a.last_error}</p>
+                                            )}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : null}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

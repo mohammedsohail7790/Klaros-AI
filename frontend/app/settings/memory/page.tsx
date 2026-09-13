@@ -17,6 +17,7 @@ import {
   listCompanyMemories,
   rejectMemory,
   revokeMemory,
+  updatePendingMemory,
 } from "@/lib/api";
 
 const MEMORY_TYPES = [
@@ -45,6 +46,8 @@ export default function CompanyMemoryPage() {
   const [selected, setSelected] = useState<CompanyMemoryRow | null>(null);
   const [history, setHistory] = useState<CompanyMemoryRow[] | null>(null);
   const [aiFeedbackPending, setAiFeedbackPending] = useState<CompanyMemoryRow[] | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   const [form, setForm] = useState({
     memory_type: "OWNER_PREFERENCE" as (typeof MEMORY_TYPES)[number],
@@ -110,6 +113,22 @@ export default function CompanyMemoryPage() {
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to confirm.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSaveEdit(id: string) {
+    if (!token || !editValue.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await updatePendingMemory(token, id, editValue.trim());
+      setNotice("Updated.");
+      setEditingId(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to update.");
     } finally {
       setBusy(false);
     }
@@ -295,6 +314,28 @@ export default function CompanyMemoryPage() {
                       </p>
                       {m.description && <p className="mt-1 text-xs text-muted">{m.description}</p>}
                     </button>
+                    {editingId === m.id && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="flex-1 rounded-md border border-border-strong bg-surface px-2 py-1 text-sm"
+                        />
+                        <button
+                          onClick={() => handleSaveEdit(m.id)}
+                          disabled={busy || !editValue.trim()}
+                          className="text-xs text-emerald-600 underline hover:text-foreground disabled:opacity-50"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="text-xs text-muted underline hover:text-foreground"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                     {m.memory_type === "AI_FEEDBACK" && m.source_entity_type === "approval_request" && m.source_entity_id && (
                       <a
                         href={`/approvals?id=${m.source_entity_id}`}
@@ -308,6 +349,16 @@ export default function CompanyMemoryPage() {
                         <>
                           <button onClick={() => handleConfirm(m.id)} disabled={busy} className="text-xs text-emerald-600 underline hover:text-foreground">
                             {m.memory_type === "AI_FEEDBACK" ? "Confirm — apply to future AI decisions" : "Confirm"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingId(m.id);
+                              setEditValue(m.value);
+                            }}
+                            disabled={busy}
+                            className="text-xs text-muted underline hover:text-foreground"
+                          >
+                            Edit before confirming
                           </button>
                           <button onClick={() => handleReject(m.id)} disabled={busy} className="text-xs text-red-600 underline hover:text-foreground">
                             {m.memory_type === "AI_FEEDBACK" ? "Discard" : "Reject"}

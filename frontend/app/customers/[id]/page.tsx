@@ -14,6 +14,7 @@ import {
   CustomerHealth,
   FeedbackRow,
   Invoice,
+  Payment,
   RetentionOpportunityRow,
   ReviewRequestRow,
   ServiceReminderRow,
@@ -25,6 +26,7 @@ import {
   getCustomerTimeline,
   listFeedback,
   listInvoices,
+  listPayments,
   listReviewRequests,
   listRetentionOpportunities,
   listServiceReminders,
@@ -37,6 +39,7 @@ export default function CustomerDetailPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -56,11 +59,12 @@ export default function CustomerDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const [customerResult, timelineResult, invoicesResult, healthResult, opportunitiesResult, remindersResult, reviewRequestsResult, feedbackResult] =
+      const [customerResult, timelineResult, invoicesResult, paymentsResult, healthResult, opportunitiesResult, remindersResult, reviewRequestsResult, feedbackResult] =
         await Promise.all([
           getCustomer(token, id),
           getCustomerTimeline(token, id),
           listInvoices(token, { customer_id: id }),
+          listPayments(token, id),
           getCustomerHealth(token, id),
           listRetentionOpportunities(token, "OPEN", id),
           listServiceReminders(token, id),
@@ -70,6 +74,7 @@ export default function CustomerDetailPage() {
       setCustomer(customerResult.customer);
       setTimeline(timelineResult.entries);
       setInvoices(invoicesResult.invoices);
+      setPayments(paymentsResult.payments);
       setHealth(healthResult);
       setOpportunities(opportunitiesResult.opportunities);
       setReminders(remindersResult.reminders);
@@ -220,6 +225,26 @@ export default function CustomerDetailPage() {
                         </Link>
                         <span className="text-muted">
                           {inv.status} · ${inv.total} (${inv.amount_due} due)
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-3 text-sm font-medium text-muted">Payments received</h2>
+                {payments.length === 0 ? (
+                  <EmptyState icon={Receipt} title="No payments recorded for this customer yet." compact />
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {payments.map((p) => (
+                      <li key={p.id} className="flex items-center justify-between">
+                        <span>
+                          ${p.amount} · {p.payment_method ?? p.provider}
+                        </span>
+                        <span className="text-muted">
+                          {p.status} · {new Date(p.received_at).toLocaleDateString()}
                         </span>
                       </li>
                     ))}

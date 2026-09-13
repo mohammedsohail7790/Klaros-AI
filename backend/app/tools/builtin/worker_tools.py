@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.models.operations import Worker
+from app.models.operations import Worker, WorkerStatus
 from app.models.rbac import Permission
 from app.tools.base import ExecutionContext, Tool
 
@@ -118,6 +118,11 @@ class UpdateWorkerStatus(Tool):
         self._session_factory = session_factory
 
     async def execute(self, input: UpdateWorkerStatusInput, context: ExecutionContext) -> WorkerOutput:
+        try:
+            WorkerStatus(input.status)
+        except ValueError:
+            raise ValueError(f"Invalid worker status: {input.status}") from None
+
         async with self._session_factory() as session:
             worker = await session.get(Worker, input.worker_id)
             if worker is None or worker.tenant_id != context.tenant_id:

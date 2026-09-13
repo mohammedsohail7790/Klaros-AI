@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { FileText } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -134,7 +135,11 @@ export default function ContentPage() {
               <tbody>
                 {items.map((c) => (
                   <tr key={c.id} className="border-t border-border">
-                    <td className="px-4 py-2">{c.title}</td>
+                    <td className="px-4 py-2">
+                      <Link href={`/marketing/content/${c.id}`} className="underline hover:text-foreground">
+                        {c.title}
+                      </Link>
+                    </td>
                     <td className="max-w-md truncate px-4 py-2 text-muted">{c.summary}</td>
                     <td className="px-4 py-2">
                       <Badge status={c.status}>{c.status}</Badge>

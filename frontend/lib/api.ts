@@ -655,20 +655,36 @@ export interface Worker {
   name: string;
   email: string | null;
   phone: string | null;
+  role: string | null;
   status: string;
+  skills: string[];
+  service_types: string[];
+  location: string | null;
   active: boolean;
 }
 
-export function createWorker(token: string, name: string) {
+export function createWorker(
+  token: string,
+  body: { name: string; email?: string; phone?: string; role?: string; skills?: string[]; service_types?: string[]; location?: string }
+) {
   return request<{ worker: Worker }>("/api/v1/workers", {
     method: "POST",
     headers: authHeaders(token),
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(body),
   });
 }
 
-export function listWorkers(token: string) {
-  return request<{ workers: Worker[] }>("/api/v1/workers", { headers: authHeaders(token) });
+export function listWorkers(token: string, activeOnly = true) {
+  const qs = new URLSearchParams({ active_only: String(activeOnly) });
+  return request<{ workers: Worker[] }>(`/api/v1/workers?${qs.toString()}`, { headers: authHeaders(token) });
+}
+
+export function updateWorkerStatus(token: string, workerId: string, status: string) {
+  return request<{ worker: Worker }>(`/api/v1/workers/${workerId}/status`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ status }),
+  });
 }
 
 // --- Operations: exceptions ---

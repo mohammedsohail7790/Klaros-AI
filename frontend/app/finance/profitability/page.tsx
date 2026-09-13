@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, JobProfitability, listProfitability } from "@/lib/api";
@@ -71,7 +72,9 @@ export default function ProfitabilityPage() {
                 {jobs.map((j) => (
                   <tr key={j.job_id} className="border-t border-border">
                     <td className="px-4 py-2">
-                      {j.job_number} — {j.title}
+                      <Link href={`/jobs/${j.job_id}`} className="underline hover:text-foreground">
+                        {j.job_number} — {j.title}
+                      </Link>
                     </td>
                     <td className="px-4 py-2 text-muted">
                       {j.estimated_revenue ? `$${j.estimated_revenue}` : "—"}

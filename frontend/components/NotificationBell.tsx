@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import {
   ApiError,
   NotificationRow,
+  dismissNotification,
   getUnreadNotificationCount,
   listNotifications,
   markAllNotificationsRead,
@@ -87,6 +88,16 @@ export default function NotificationBell({ token }: { token: string | null }) {
     setUnread(0);
   }
 
+  async function handleDismiss(e: React.MouseEvent, n: NotificationRow) {
+    e.stopPropagation();
+    if (!token) return;
+    await dismissNotification(token, n.id);
+    setItems((prev) => prev?.filter((x) => x.id !== n.id) ?? null);
+    if (!n.read_at) {
+      setUnread((c) => Math.max(0, c - 1));
+    }
+  }
+
   async function handleOpenNotification(n: NotificationRow) {
     if (!token) return;
     if (!n.read_at) {
@@ -138,7 +149,7 @@ export default function NotificationBell({ token }: { token: string | null }) {
                 <button
                   key={n.id}
                   onClick={() => handleOpenNotification(n)}
-                  className={`block w-full border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-muted ${
+                  className={`group block w-full border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-muted ${
                     !n.read_at ? "bg-accent-soft/40" : ""
                   }`}
                 >
@@ -149,6 +160,14 @@ export default function NotificationBell({ token }: { token: string | null }) {
                       <p className="mt-0.5 line-clamp-2 text-xs text-muted">{n.body}</p>
                       <p className="mt-1 text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleString()}</p>
                     </div>
+                    <span
+                      role="button"
+                      aria-label="Dismiss notification"
+                      onClick={(e) => handleDismiss(e, n)}
+                      className="shrink-0 rounded-full p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-surface hover:text-foreground group-hover:opacity-100"
+                    >
+                      <X className="h-3.5 w-3.5" strokeWidth={2} />
+                    </span>
                   </div>
                 </button>
               ))
