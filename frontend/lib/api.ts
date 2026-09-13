@@ -1074,6 +1074,28 @@ export function sendQuote(token: string, quoteId: string) {
   });
 }
 
+export function detectExpiredQuotes(token: string) {
+  return request<{ expired_quote_ids: string[] }>("/api/v1/quotes/detect-expired", {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function createStaffQuoteDepositCheckout(
+  token: string,
+  quoteId: string,
+  body: { success_url: string; cancel_url: string }
+) {
+  return request<{ checkout_url: string; checkout_session_id: string }>(
+    `/api/v1/quotes/${quoteId}/deposit/checkout`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(body),
+    }
+  );
+}
+
 // --- Public (unauthenticated) quote view — Klaros' first customer-facing
 // surface with no login. Never pass authHeaders here. ---
 

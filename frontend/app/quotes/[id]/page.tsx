@@ -11,6 +11,7 @@ import {
   Quote,
   QuoteLineItem,
   QuoteLineItemInput,
+  createStaffQuoteDepositCheckout,
   getQuote,
   listContracts,
   sendQuote,
@@ -42,6 +43,8 @@ export default function QuoteDetailPage() {
   const [draftNotes, setDraftNotes] = useState("");
   const [draftTerms, setDraftTerms] = useState("");
   const [saving, setSaving] = useState(false);
+  const [depositLink, setDepositLink] = useState<string | null>(null);
+  const [depositBusy, setDepositBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -81,6 +84,24 @@ export default function QuoteDetailPage() {
       setError(err instanceof ApiError ? err.message : "Unable to send quote.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleGenerateDepositLink() {
+    if (!token || !id) return;
+    setDepositBusy(true);
+    setError(null);
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const result = await createStaffQuoteDepositCheckout(token, id, {
+        success_url: `${origin}/quotes/${id}`,
+        cancel_url: `${origin}/quotes/${id}`,
+      });
+      setDepositLink(result.checkout_url);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to generate a deposit payment link.");
+    } finally {
+      setDepositBusy(false);
     }
   }
 
@@ -214,6 +235,36 @@ export default function QuoteDetailPage() {
               </>
             ) : (
               <span className="text-muted">Contract pending creation.</span>
+            )}
+          </div>
+        )}
+
+        {quote.deposit_type && (quote.status === "DEPOSIT_PENDING" || quote.status === "DEPOSIT_PAID") && (
+          <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm">
+            <div className="mb-2 text-muted">
+              Deposit: <span className="text-foreground">${quote.deposit_amount ?? "—"}</span>{" "}
+              {quote.status === "DEPOSIT_PAID" ? (
+                <span className="text-emerald-600">Paid</span>
+              ) : (
+                <span className="text-amber-700">Pending</span>
+              )}
+            </div>
+            {quote.status === "DEPOSIT_PENDING" && (
+              <>
+                <button
+                  disabled={depositBusy}
+                  onClick={handleGenerateDepositLink}
+                  className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                >
+                  {depositBusy ? "Generating..." : "Generate deposit payment link"}
+                </button>
+                {depositLink && (
+                  <div className="mt-2 text-xs text-muted">
+                    Payment link (share or read out to the customer):{" "}
+                    <code className="break-all text-muted">{depositLink}</code>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
