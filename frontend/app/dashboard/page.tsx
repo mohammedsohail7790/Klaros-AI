@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Sunrise, Workflow } from "lucide-react";
+import { Activity, Check, Sunrise, Workflow } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
@@ -16,6 +16,7 @@ import {
   CommercialPipeline,
   CrmMetrics,
   FinanceSummary,
+  IntegrationConnectionRow,
   MarketingSummary,
   MorningBriefData,
   OperationsDashboard,
@@ -35,6 +36,7 @@ import {
   getRetentionSummary,
   listApprovals,
   listCompanyMemories,
+  listIntegrationConnections,
 } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
@@ -80,6 +82,16 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const PENDING_MODULES: string[] = [];
 
+// The real, working connectors Klaros ships today — deliberately not a
+// generic "popular apps" marketplace list. Each maps to a segment of the
+// business so a brand-new owner has a concrete next step, and each check
+// reflects an actual connection status, never a fabricated one.
+const GETTING_STARTED_ITEMS: { segment: string; name: string; provider: string; blurb: string }[] = [
+  { segment: "Payments", name: "Stripe", provider: "stripe", blurb: "Collect deposits and invoice payments." },
+  { segment: "Accounting", name: "QuickBooks", provider: "quickbooks", blurb: "Sync invoices and payments automatically." },
+  { segment: "Scheduling", name: "Google Calendar", provider: "google_calendar", blurb: "Two-way sync for booked appointments." },
+];
+
 const METRIC_LABELS: { key: keyof CrmMetrics; label: string }[] = [
   { key: "new_leads_today", label: "New leads today" },
   { key: "qualified_leads", label: "Qualified leads" },
@@ -100,6 +112,7 @@ export default function DashboardPage() {
   const [brief, setBrief] = useState<MorningBriefData | null>(null);
   const [attention, setAttention] = useState<AttentionQueue | null>(null);
   const [aiHealth, setAiHealth] = useState<AiHealth | null>(null);
+  const [connections, setConnections] = useState<IntegrationConnectionRow[] | null>(null);
   const [autonomy, setAutonomy] = useState<AutonomyStats | null>(null);
   const [automations, setAutomations] = useState<AutomationSummary | null>(null);
   const [aiApprovalsPending, setAiApprovalsPending] = useState<number | null>(null);
@@ -150,6 +163,7 @@ export default function DashboardPage() {
         aiFeedbackResult,
         attentionResult,
         aiHealthResult,
+        connectionsResult,
       ] = await Promise.all([
         getCrmMetrics(token),
         getCommercialPipeline(token),
@@ -169,6 +183,7 @@ export default function DashboardPage() {
         // Phase 26: the single prioritized attention queue.
         getAttentionQueue(token),
         getAiHealth(token),
+        listIntegrationConnections(token),
       ]);
       setMetrics(metricsResult);
       setPipeline(pipelineResult);
@@ -183,6 +198,7 @@ export default function DashboardPage() {
       setAiFeedbackPending(aiFeedbackResult.memories.length);
       setAttention(attentionResult);
       setAiHealth(aiHealthResult);
+      setConnections(connectionsResult);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load business metrics.");
     } finally {
@@ -200,6 +216,22 @@ export default function DashboardPage() {
 
   if (authError) return <p className="p-8 text-sm text-red-600">{authError}</p>;
 
+  const gettingStartedChecks = connections
+    ? GETTING_STARTED_ITEMS.map((item) => ({
+        ...item,
+        connected: connections.some((c) => c.provider === item.provider && c.status === "CONNECTED"),
+      })).concat([
+        {
+          segment: "AI Assistant",
+          name: aiHealth?.provider_name ?? "AI provider",
+          provider: "ai",
+          blurb: "Powers AI-drafted summaries, recommendations, and replies.",
+          connected: aiHealth?.provider_configured ?? false,
+        },
+      ])
+    : null;
+  const gettingStartedRemaining = gettingStartedChecks?.filter((c) => !c.connected).length ?? 0;
+
   return (
     <AppShell user={user}>
       <div className="px-8 py-10">
@@ -213,6 +245,48 @@ export default function DashboardPage() {
             )}
           </div>
         </header>
+
+        {gettingStartedChecks && (
+          <section className="mb-8">
+            {gettingStartedRemaining === 0 ? (
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/10 px-4 py-2.5 text-sm text-emerald-700">
+                <Check className="h-4 w-4 shrink-0" strokeWidth={2} />
+                All set — payments, accounting, scheduling, and your AI assistant are connected.
+              </div>
+            ) : (
+              <>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-sm font-medium text-muted">Getting started</h2>
+                  <span className="text-xs text-muted">{gettingStartedRemaining} step(s) left</span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {gettingStartedChecks.map((item) => (
+                    <Link
+                      key={item.provider}
+                      href="/settings/integrations"
+                      className={`rounded-lg border p-4 shadow-card transition hover:border-border-strong ${
+                        item.connected ? "border-emerald-200 bg-emerald-50/10" : "border-border bg-surface"
+                      }`}
+                    >
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-wide text-muted">{item.segment}</span>
+                        {item.connected ? (
+                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                            <Check className="h-3 w-3" strokeWidth={3} />
+                          </span>
+                        ) : (
+                          <span className="h-4 w-4 rounded-full border border-border-strong" />
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-foreground">{item.name}</p>
+                      <p className="mt-0.5 text-xs text-muted">{item.connected ? "Connected" : item.blurb}</p>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+        )}
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
