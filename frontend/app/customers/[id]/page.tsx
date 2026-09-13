@@ -62,19 +62,19 @@ export default function CustomerDetailPage() {
           getCustomerTimeline(token, id),
           listInvoices(token, { customer_id: id }),
           getCustomerHealth(token, id),
-          listRetentionOpportunities(token, "OPEN"),
-          listServiceReminders(token),
-          listReviewRequests(token),
-          listFeedback(token),
+          listRetentionOpportunities(token, "OPEN", id),
+          listServiceReminders(token, id),
+          listReviewRequests(token, id),
+          listFeedback(token, undefined, id),
         ]);
       setCustomer(customerResult.customer);
       setTimeline(timelineResult.entries);
       setInvoices(invoicesResult.invoices);
       setHealth(healthResult);
-      setOpportunities(opportunitiesResult.opportunities.filter((o) => o.customer_id === id));
-      setReminders(remindersResult.reminders.filter((r) => r.customer_id === id));
-      setReviewRequests(reviewRequestsResult.review_requests.filter((r) => r.customer_id === id));
-      setFeedback(feedbackResult.feedback.filter((f) => f.customer_id === id));
+      setOpportunities(opportunitiesResult.opportunities);
+      setReminders(remindersResult.reminders);
+      setReviewRequests(reviewRequestsResult.review_requests);
+      setFeedback(feedbackResult.feedback);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Customer could not be loaded.");
     } finally {

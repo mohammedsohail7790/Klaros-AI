@@ -1554,8 +1554,11 @@ export interface RetentionOpportunityRow {
   recommended_action: string | null;
 }
 
-export function listRetentionOpportunities(token: string, status?: string) {
-  const qs = status ? `?${new URLSearchParams({ status }).toString()}` : "";
+export function listRetentionOpportunities(token: string, status?: string, customerId?: string) {
+  const params: Record<string, string> = {};
+  if (status) params.status = status;
+  if (customerId) params.customer_id = customerId;
+  const qs = Object.keys(params).length ? `?${new URLSearchParams(params).toString()}` : "";
   return request<{ opportunities: RetentionOpportunityRow[] }>(`/api/v1/retention/opportunities${qs}`, { headers: authHeaders(token) });
 }
 
@@ -1577,8 +1580,9 @@ export interface ServiceReminderRow {
   status: string;
 }
 
-export function listServiceReminders(token: string) {
-  return request<{ reminders: ServiceReminderRow[] }>("/api/v1/retention/reminders", { headers: authHeaders(token) });
+export function listServiceReminders(token: string, customerId?: string) {
+  const qs = customerId ? `?${new URLSearchParams({ customer_id: customerId }).toString()}` : "";
+  return request<{ reminders: ServiceReminderRow[] }>(`/api/v1/retention/reminders${qs}`, { headers: authHeaders(token) });
 }
 
 export function markDueReminders(token: string) {
@@ -1615,8 +1619,9 @@ export interface FeedbackRow {
   consent_to_use_publicly: boolean | null;
 }
 
-export function listReviewRequests(token: string) {
-  return request<{ review_requests: ReviewRequestRow[] }>("/api/v1/retention/reviews/requests", { headers: authHeaders(token) });
+export function listReviewRequests(token: string, customerId?: string) {
+  const qs = customerId ? `?${new URLSearchParams({ customer_id: customerId }).toString()}` : "";
+  return request<{ review_requests: ReviewRequestRow[] }>(`/api/v1/retention/reviews/requests${qs}`, { headers: authHeaders(token) });
 }
 
 export function sendReviewRequest(token: string, reviewRequestId: string) {
@@ -1626,8 +1631,11 @@ export function sendReviewRequest(token: string, reviewRequestId: string) {
   );
 }
 
-export function listFeedback(token: string, sentiment?: string) {
-  const qs = sentiment ? `?${new URLSearchParams({ sentiment }).toString()}` : "";
+export function listFeedback(token: string, sentiment?: string, customerId?: string) {
+  const params: Record<string, string> = {};
+  if (sentiment) params.sentiment = sentiment;
+  if (customerId) params.customer_id = customerId;
+  const qs = Object.keys(params).length ? `?${new URLSearchParams(params).toString()}` : "";
   return request<{ feedback: FeedbackRow[] }>(`/api/v1/retention/reviews/feedback${qs}`, { headers: authHeaders(token) });
 }
 
