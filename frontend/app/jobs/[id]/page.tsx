@@ -91,6 +91,7 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [blockReason, setBlockReason] = useState("");
   const [unblockTarget, setUnblockTarget] = useState("IN_PROGRESS");
@@ -150,8 +151,12 @@ export default function JobDetailPage() {
   async function runAction(fn: () => Promise<unknown>) {
     setBusy(true);
     setActionError(null);
+    setActionNotice(null);
     try {
-      await fn();
+      const result = await fn();
+      if (result && typeof result === "object" && "approval_request_id" in result) {
+        setActionNotice("This change requires approval — a request was created and nothing has been applied yet.");
+      }
       await load();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Action failed. Retry.");
@@ -480,6 +485,7 @@ export default function JobDetailPage() {
                       </div>
                     </div>
                     {actionError && <p className="mt-3 text-sm text-red-600">{actionError}</p>}
+                    {actionNotice && <p className="mt-3 text-sm text-amber-700">{actionNotice}</p>}
 
                     <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
                       <div>
