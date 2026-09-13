@@ -4,7 +4,7 @@ all go through these, same pattern as every other domain."""
 
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.rbac import Permission
 from app.services.notification_service import NotificationService
@@ -41,7 +41,7 @@ def _to_row(n) -> NotificationRow:
 
 class ListNotificationsInput(BaseModel):
     unread_only: bool = False
-    limit: int = 50
+    limit: int = Field(default=50, ge=1, le=200)
 
 
 class ListNotificationsOutput(BaseModel):

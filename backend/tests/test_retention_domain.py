@@ -238,3 +238,35 @@ async def test_advocate_candidate_identification_is_deterministic(event_bus, too
     # Idempotent: running again while still PENDING creates no duplicate.
     candidates_again = await tool_registry.execute("retention.identify_advocate_candidates", {}, ctx)
     assert customer_id not in candidates_again.candidate_customer_ids
+
+
+async def test_update_reminder_status_rejects_unknown_status(event_bus, tool_registry) -> None:
+    """A service reminder's status column has no DB-level enum constraint —
+    only application code stands between a typo'd status string and a
+    reminder that's silently orphaned forever (never matches
+    mark_due_reminders' SCHEDULED filter again, with no error surfaced)."""
+    from app.db.session import async_session_maker
+    from app.models.retention import ServiceReminder
+    from sqlalchemy import select
+
+    tenant_id = uuid.uuid4()
+    ctx = _ctx(tenant_id)
+
+    customer = await tool_registry.execute("crm.create_customer", {"name": "Reminder Test Customer"}, ctx)
+    await _closed_job(tool_registry, ctx, customer.customer["id"])
+    await event_bus.process_pending(EventType.JOB_CLOSED)
+
+    async with async_session_maker() as session:
+        reminder = (
+            await session.execute(select(ServiceReminder).where(ServiceReminder.tenant_id == tenant_id))
+        ).scalar_one()
+
+    with pytest.raises(ValueError):
+        await tool_registry.execute(
+            "retention.update_reminder_status", {"reminder_id": str(reminder.id), "status": "NOT_A_REAL_STATUS"}, ctx
+        )
+
+    updated = await tool_registry.execute(
+        "retention.update_reminder_status", {"reminder_id": str(reminder.id), "status": "CANCELLED"}, ctx
+    )
+    assert updated.status == "CANCELLED"

@@ -428,6 +428,10 @@ class RetentionService:
         return ids
 
     async def update_reminder_status(self, tenant_id: uuid.UUID, reminder_id: uuid.UUID, status: str) -> ServiceReminder:
+        try:
+            ReminderStatus(status)
+        except ValueError:
+            raise ValueError(f"Invalid reminder status: {status!r}") from None
         async with self._session_factory() as session:
             reminder = await session.get(ServiceReminder, reminder_id)
             if reminder is None or reminder.tenant_id != tenant_id:

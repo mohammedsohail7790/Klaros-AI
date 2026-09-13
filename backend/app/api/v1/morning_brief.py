@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, get_current_user, require_permission
@@ -94,6 +94,8 @@ async def get_morning_brief_settings(
 ) -> MorningBriefSettingsResponse:
     async with async_session_maker() as session:
         org = await session.get(Organization, current_user.tenant_id)
+        if org is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
         return MorningBriefSettingsResponse(
             enabled=org.morning_brief_enabled,
             local_time=org.morning_brief_local_time,
@@ -108,6 +110,8 @@ async def update_morning_brief_settings(
 ) -> MorningBriefSettingsResponse:
     async with async_session_maker() as session:
         org = await session.get(Organization, current_user.tenant_id)
+        if org is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
         org.morning_brief_enabled = body.enabled
         org.morning_brief_local_time = body.local_time
         org.morning_brief_timezone = body.timezone
