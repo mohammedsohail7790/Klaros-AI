@@ -140,8 +140,8 @@ function CalendarPageInner() {
                       <div>
                         <p className="font-medium">{a.title}</p>
                         <p className="text-xs text-muted">
-                          {new Date(a.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} –{" "}
-                          {new Date(a.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·{" "}
+                          {new Date(a.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} –{" "}
+                          {new Date(a.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC ·{" "}
                           {a.status}
                           {a.external_provider === "google_calendar" && (
                             <span className="ml-2 text-emerald-600">· synced to Google</span>
@@ -189,7 +189,7 @@ function CalendarPageInner() {
                       onClick={() => setBookingSlot(s)}
                       className="rounded-md border border-border-strong px-2 py-2 text-xs hover:bg-surface-muted"
                     >
-                      {new Date(s.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(s.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}
                     </button>
                   ))}
                 </div>
@@ -280,7 +280,7 @@ function BookSlotModal({
         className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6"
       >
         <h2 className="font-display text-xl text-foreground">
-          Book {new Date(slot.start_time).toLocaleString()}
+          Book {new Date(slot.start_time).toLocaleString([], { timeZone: "UTC" })} UTC
         </h2>
         <input
           required
