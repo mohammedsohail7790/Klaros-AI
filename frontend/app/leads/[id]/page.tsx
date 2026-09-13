@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
-import { ApiError, getLead, Lead, qualifyLead, updateLead } from "@/lib/api";
+import { AIQualifyLeadAdvisory, ApiError, aiQualifyLeadAdvisory, getLead, Lead, qualifyLead, updateLead } from "@/lib/api";
 
 const STATUS_OPTIONS = ["NEW", "CONTACTED", "QUALIFIED", "UNQUALIFIED", "BOOKED", "LOST", "CONVERTED"];
 
@@ -18,6 +18,9 @@ export default function LeadDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [qualifying, setQualifying] = useState(false);
   const [qualifyError, setQualifyError] = useState<string | null>(null);
+  const [advisory, setAdvisory] = useState<AIQualifyLeadAdvisory | null>(null);
+  const [advisoryLoading, setAdvisoryLoading] = useState(false);
+  const [advisoryError, setAdvisoryError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -48,6 +51,20 @@ export default function LeadDetailPage() {
       setQualifyError(err instanceof ApiError ? err.message : "Unable to qualify this lead. Retry.");
     } finally {
       setQualifying(false);
+    }
+  }
+
+  async function handleAdvisory() {
+    if (!token) return;
+    setAdvisoryLoading(true);
+    setAdvisoryError(null);
+    try {
+      const result = await aiQualifyLeadAdvisory(token, id);
+      setAdvisory(result);
+    } catch (err) {
+      setAdvisoryError(err instanceof ApiError ? err.message : "Unable to generate an AI recommendation. Retry.");
+    } finally {
+      setAdvisoryLoading(false);
     }
   }
 
@@ -162,6 +179,61 @@ export default function LeadDetailPage() {
                   {qualifying ? "Qualifying..." : "Re-run qualification"}
                 </button>
                 {qualifyError && <p className="mt-2 text-xs text-red-600">{qualifyError}</p>}
+              </div>
+
+              <div className="rounded-lg border border-border bg-surface p-6">
+                <h2 className="mb-2 text-sm font-medium text-muted">AI recommendation</h2>
+                <p className="text-xs text-muted-foreground">
+                  Advisory only — never applied automatically. Review it, then use &ldquo;Re-run qualification&rdquo;
+                  above or edit the lead directly to act on it.
+                </p>
+                {advisory && (
+                  advisory.available ? (
+                    <div className="mt-3 space-y-2 text-sm">
+                      {advisory.qualification_score != null && (
+                        <p className="text-2xl font-semibold">{advisory.qualification_score}/100</p>
+                      )}
+                      <dl className="grid grid-cols-2 gap-2 text-xs">
+                        {advisory.intent && (
+                          <div>
+                            <dt className="text-muted">Intent</dt>
+                            <dd>{advisory.intent}</dd>
+                          </div>
+                        )}
+                        {advisory.urgency && (
+                          <div>
+                            <dt className="text-muted">Urgency</dt>
+                            <dd>{advisory.urgency}</dd>
+                          </div>
+                        )}
+                        {advisory.buying_signal && (
+                          <div>
+                            <dt className="text-muted">Buying signal</dt>
+                            <dd>{advisory.buying_signal}</dd>
+                          </div>
+                        )}
+                      </dl>
+                      {advisory.summary && <p className="text-muted">{advisory.summary}</p>}
+                      {advisory.recommended_next_action && (
+                        <p className="rounded-md border border-border-strong bg-surface-muted p-2 text-xs">
+                          Recommended: {advisory.recommended_next_action}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm text-muted">
+                      {advisory.unavailable_reason ?? "No AI provider configured — nothing was fabricated."}
+                    </p>
+                  )
+                )}
+                <button
+                  onClick={handleAdvisory}
+                  disabled={advisoryLoading}
+                  className="mt-4 w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                >
+                  {advisoryLoading ? "Generating..." : "Generate AI recommendation"}
+                </button>
+                {advisoryError && <p className="mt-2 text-xs text-red-600">{advisoryError}</p>}
               </div>
             </section>
           </div>

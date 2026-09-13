@@ -223,6 +223,27 @@ export function qualifyLead(token: string, leadId: string) {
   );
 }
 
+export interface AIQualifyLeadAdvisory {
+  available: boolean;
+  qualification_score: number | null;
+  intent: string | null;
+  urgency: string | null;
+  buying_signal: string | null;
+  summary: string | null;
+  recommended_next_action: string | null;
+  unavailable_reason: string | null;
+}
+
+// Advisory only — never persists anything to the lead. A human still
+// applies a reviewed recommendation via the existing qualifyLead() call
+// above, or by editing the lead directly.
+export function aiQualifyLeadAdvisory(token: string, leadId: string) {
+  return request<AIQualifyLeadAdvisory>(`/api/v1/leads/${leadId}/ai-qualify-advisory`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
 // --- CRM: customers ---
 
 export interface Customer {
