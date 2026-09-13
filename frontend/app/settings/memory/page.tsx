@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Layers, Sparkles } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -223,7 +225,7 @@ export default function CompanyMemoryPage() {
             <div className="rounded-lg border border-border bg-surface p-5">
               <h2 className="mb-3 text-sm font-medium">Active AI context ({context?.length ?? 0})</h2>
               {!context || context.length === 0 ? (
-                <p className="text-xs text-muted">No active memory yet — nothing is fed into AI recommendations.</p>
+                <EmptyState icon={Sparkles} title="No active memory yet — nothing is fed into AI recommendations." compact />
               ) : (
                 <div className="space-y-2">
                   {context.map((c) => (
@@ -264,7 +266,7 @@ export default function CompanyMemoryPage() {
             {authLoading || loading ? (
               <p className="text-sm text-muted">Loading...</p>
             ) : !memories || memories.length === 0 ? (
-              <p className="text-sm text-muted">No memory entries.</p>
+              <EmptyState icon={Layers} title="No memory entries." />
             ) : (
               <div className="space-y-2">
                 {memories.map((m) => (

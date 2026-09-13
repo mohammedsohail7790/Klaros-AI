@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Phone } from "lucide-react";
+import { MessageSquare, Phone } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -249,7 +249,7 @@ export default function VoiceReceptionistPage() {
 
                   <h4 className="mb-2 text-xs font-medium text-muted">Transcript</h4>
                   {selectedCall.transcript.length === 0 ? (
-                    <p className="text-xs text-muted">No transcript captured for this call.</p>
+                    <EmptyState icon={MessageSquare} title="No transcript captured for this call." compact />
                   ) : (
                     <div className="space-y-2 text-xs">
                       {selectedCall.transcript.map((t, i) => (
