@@ -15,6 +15,7 @@ import {
   checkAvailability,
   createAppointment,
   listAppointments,
+  rescheduleAppointment,
   searchCustomers,
   syncAppointmentToGoogle,
 } from "@/lib/api";
@@ -43,6 +44,9 @@ function CalendarPageInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bookingSlot, setBookingSlot] = useState<TimeSlot | null>(null);
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+  const [rescheduleDraft, setRescheduleDraft] = useState("");
+  const [reschedulingBusy, setReschedulingBusy] = useState(false);
 
   const dayRange = useMemo(() => {
     const from = `${date}T00:00:00+00:00`;
@@ -79,6 +83,34 @@ function CalendarPageInner() {
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Appointment could not be cancelled.");
+    }
+  }
+
+  function toUtcInputValue(iso: string): string {
+    return iso.slice(0, 16);
+  }
+
+  function openReschedule(appointment: Appointment) {
+    setReschedulingId(appointment.id);
+    setRescheduleDraft(toUtcInputValue(appointment.start_time));
+    setError(null);
+  }
+
+  async function handleReschedule(appointment: Appointment) {
+    if (!token || !rescheduleDraft) return;
+    const durationMs = new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime();
+    const newStart = new Date(`${rescheduleDraft}:00Z`);
+    const newEnd = new Date(newStart.getTime() + durationMs);
+    setReschedulingBusy(true);
+    setError(null);
+    try {
+      await rescheduleAppointment(token, appointment.id, newStart.toISOString(), newEnd.toISOString());
+      setReschedulingId(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Appointment could not be rescheduled.");
+    } finally {
+      setReschedulingBusy(false);
     }
   }
 
@@ -137,42 +169,76 @@ function CalendarPageInner() {
                   {appointments.map((a) => (
                     <li
                       key={a.id}
-                      className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3 text-sm"
+                      className="rounded-md border border-border bg-surface px-4 py-3 text-sm"
                     >
-                      <div>
-                        <p className="font-medium">{a.title}</p>
-                        <p className="text-xs text-muted">
-                          {new Date(a.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} –{" "}
-                          {new Date(a.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC ·{" "}
-                          {a.status}
-                          {a.external_provider === "google_calendar" && (
-                            <span className="ml-2 text-emerald-600">· synced to Google</span>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{a.title}</p>
+                          <p className="text-xs text-muted">
+                            {new Date(a.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} –{" "}
+                            {new Date(a.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC ·{" "}
+                            {a.status}
+                            {a.external_provider === "google_calendar" && (
+                              <span className="ml-2 text-emerald-600">· synced to Google</span>
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {a.status !== "CANCELLED" && (
+                            <button
+                              onClick={() => handleSyncToGoogle(a.id)}
+                              disabled={syncingId === a.id}
+                              className="text-xs text-muted hover:underline disabled:opacity-50"
+                            >
+                              {syncingId === a.id
+                                ? "Syncing..."
+                                : a.external_provider === "google_calendar"
+                                  ? "Re-sync"
+                                  : "Sync to Google"}
+                            </button>
                           )}
-                        </p>
+                          {a.status !== "CANCELLED" && (
+                            <button
+                              onClick={() => openReschedule(a)}
+                              className="text-xs text-muted hover:underline"
+                            >
+                              Reschedule
+                            </button>
+                          )}
+                          {a.status !== "CANCELLED" && (
+                            <button
+                              onClick={() => handleCancel(a.id)}
+                              className="text-xs text-red-600 hover:underline"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        {a.status !== "CANCELLED" && (
+                      {reschedulingId === a.id && (
+                        <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
+                          <input
+                            type="datetime-local"
+                            value={rescheduleDraft}
+                            onChange={(e) => setRescheduleDraft(e.target.value)}
+                            className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                          />
+                          <span className="text-xs text-muted">UTC</span>
                           <button
-                            onClick={() => handleSyncToGoogle(a.id)}
-                            disabled={syncingId === a.id}
-                            className="text-xs text-muted hover:underline disabled:opacity-50"
+                            onClick={() => handleReschedule(a)}
+                            disabled={reschedulingBusy}
+                            className="rounded-md border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-muted disabled:opacity-50"
                           >
-                            {syncingId === a.id
-                              ? "Syncing..."
-                              : a.external_provider === "google_calendar"
-                                ? "Re-sync"
-                                : "Sync to Google"}
+                            {reschedulingBusy ? "Saving..." : "Save"}
                           </button>
-                        )}
-                        {a.status !== "CANCELLED" && (
                           <button
-                            onClick={() => handleCancel(a.id)}
-                            className="text-xs text-red-600 hover:underline"
+                            onClick={() => setReschedulingId(null)}
+                            className="text-xs text-muted hover:underline"
                           >
                             Cancel
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
