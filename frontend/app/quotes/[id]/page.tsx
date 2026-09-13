@@ -42,6 +42,8 @@ export default function QuoteDetailPage() {
   const [draftItems, setDraftItems] = useState<QuoteLineItemInput[]>([]);
   const [draftNotes, setDraftNotes] = useState("");
   const [draftTerms, setDraftTerms] = useState("");
+  const [draftDepositType, setDraftDepositType] = useState<"" | "FIXED" | "PERCENTAGE">("");
+  const [draftDepositValue, setDraftDepositValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [depositLink, setDepositLink] = useState<string | null>(null);
   const [depositBusy, setDepositBusy] = useState(false);
@@ -110,6 +112,8 @@ export default function QuoteDetailPage() {
     setDraftItems(toDraftLineItems(quote.line_items));
     setDraftNotes(quote.notes ?? "");
     setDraftTerms(quote.terms ?? "");
+    setDraftDepositType((quote.deposit_type as "FIXED" | "PERCENTAGE" | null) ?? "");
+    setDraftDepositValue(quote.deposit_value ?? "");
     setEditing(true);
   }
 
@@ -131,10 +135,14 @@ export default function QuoteDetailPage() {
     setError(null);
     setNotice(null);
     try {
+      const hadDeposit = quote?.deposit_type != null;
       await updateQuoteDraft(token, id, {
         line_items: draftItems,
         notes: draftNotes || undefined,
         terms: draftTerms || undefined,
+        deposit_type: draftDepositType || undefined,
+        deposit_value: draftDepositType ? draftDepositValue.trim() : undefined,
+        clear_deposit: hadDeposit && !draftDepositType,
       });
       setNotice("Quote draft updated.");
       setEditing(false);
@@ -348,6 +356,29 @@ export default function QuoteDetailPage() {
                 rows={2}
                 className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
               />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs text-muted">Deposit</label>
+              <div className="flex gap-2">
+                <select
+                  value={draftDepositType}
+                  onChange={(e) => setDraftDepositType(e.target.value as "" | "FIXED" | "PERCENTAGE")}
+                  className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                >
+                  <option value="">No deposit required</option>
+                  <option value="FIXED">Fixed amount</option>
+                  <option value="PERCENTAGE">Percentage of total</option>
+                </select>
+                {draftDepositType && (
+                  <input
+                    placeholder={draftDepositType === "PERCENTAGE" ? "e.g. 25" : "e.g. 200"}
+                    value={draftDepositValue}
+                    onChange={(e) => setDraftDepositValue(e.target.value)}
+                    className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  />
+                )}
+              </div>
             </div>
 
             <div className="flex gap-2">

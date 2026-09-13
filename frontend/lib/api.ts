@@ -1046,7 +1046,15 @@ export function getQuote(token: string, quoteId: string) {
 
 export function createQuoteDraft(
   token: string,
-  body: { customer_id: string; lead_id?: string; line_items: QuoteLineItemInput[]; notes?: string; terms?: string }
+  body: {
+    customer_id: string;
+    lead_id?: string;
+    line_items: QuoteLineItemInput[];
+    notes?: string;
+    terms?: string;
+    deposit_type?: "FIXED" | "PERCENTAGE";
+    deposit_value?: string;
+  }
 ) {
   return request<{ quote: Quote; deduplicated: boolean }>("/api/v1/quotes", {
     method: "POST",
@@ -1058,7 +1066,14 @@ export function createQuoteDraft(
 export function updateQuoteDraft(
   token: string,
   quoteId: string,
-  body: { line_items: QuoteLineItemInput[]; notes?: string; terms?: string }
+  body: {
+    line_items: QuoteLineItemInput[];
+    notes?: string;
+    terms?: string;
+    deposit_type?: "FIXED" | "PERCENTAGE";
+    deposit_value?: string;
+    clear_deposit?: boolean;
+  }
 ) {
   return request<{ quote: Quote }>(`/api/v1/quotes/${quoteId}`, {
     method: "PUT",

@@ -174,6 +174,8 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
   const [lineItems, setLineItems] = useState<QuoteLineItemInput[]>([emptyLineItem()]);
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
+  const [depositType, setDepositType] = useState<"" | "FIXED" | "PERCENTAGE">("");
+  const [depositValue, setDepositValue] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -209,6 +211,10 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
       setError("Add at least one line item.");
       return;
     }
+    if (depositType && !depositValue.trim()) {
+      setError("Enter a deposit value or leave the deposit type unset.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -217,6 +223,8 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
         line_items: items,
         notes: notes || undefined,
         terms: terms || undefined,
+        deposit_type: depositType || undefined,
+        deposit_value: depositType ? depositValue.trim() : undefined,
       });
       router.push(`/quotes/${quote.id}`);
     } catch (err) {
@@ -323,6 +331,29 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
           rows={2}
           className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
         />
+
+        <div>
+          <label className="mb-1 block text-xs text-muted">Deposit (optional)</label>
+          <div className="flex gap-2">
+            <select
+              value={depositType}
+              onChange={(e) => setDepositType(e.target.value as "" | "FIXED" | "PERCENTAGE")}
+              className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+            >
+              <option value="">No deposit required</option>
+              <option value="FIXED">Fixed amount</option>
+              <option value="PERCENTAGE">Percentage of total</option>
+            </select>
+            {depositType && (
+              <input
+                placeholder={depositType === "PERCENTAGE" ? "e.g. 25" : "e.g. 200"}
+                value={depositValue}
+                onChange={(e) => setDepositValue(e.target.value)}
+                className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              />
+            )}
+          </div>
+        </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
