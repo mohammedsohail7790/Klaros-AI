@@ -1582,6 +1582,20 @@ export function getCampaign(token: string, campaignId: string) {
   });
 }
 
+export interface CampaignBudgetStatus {
+  budget: string | null;
+  spend_to_date: string;
+  remaining: string | null;
+  utilization_pct: number | null;
+  alert: string | null;
+}
+
+export function getCampaignBudgetStatus(token: string, campaignId: string) {
+  return request<CampaignBudgetStatus>(`/api/v1/marketing/campaigns/${campaignId}/budget`, {
+    headers: authHeaders(token),
+  });
+}
+
 export function createCampaign(
   token: string,
   body: { name: string; channel: string; objective?: string; total_budget?: string; monthly_budget?: string }

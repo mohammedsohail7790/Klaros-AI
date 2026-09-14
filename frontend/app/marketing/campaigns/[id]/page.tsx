@@ -7,8 +7,10 @@ import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
   Campaign,
+  CampaignBudgetStatus,
   CampaignPerformance,
   getCampaign,
+  getCampaignBudgetStatus,
   recordCampaignSpend,
   setCampaignStatus,
 } from "@/lib/api";
@@ -17,6 +19,7 @@ export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { token, user, loading: authLoading } = useAuth();
   const [campaign, setCampaign] = useState<(Campaign & { performance: CampaignPerformance }) | null>(null);
+  const [budgetStatus, setBudgetStatus] = useState<CampaignBudgetStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,7 +31,12 @@ export default function CampaignDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      setCampaign(await getCampaign(token, id));
+      const [campaignResult, budgetResult] = await Promise.all([
+        getCampaign(token, id),
+        getCampaignBudgetStatus(token, id),
+      ]);
+      setCampaign(campaignResult);
+      setBudgetStatus(budgetResult);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load campaign.");
     } finally {
@@ -106,6 +114,27 @@ export default function CampaignDetailPage() {
         )}
         {error && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
+        )}
+
+        {budgetStatus && budgetStatus.budget !== null && (
+          <div
+            className={`mb-6 rounded-lg border p-4 text-sm ${
+              budgetStatus.alert
+                ? budgetStatus.alert.includes("overspend")
+                  ? "border-red-200 bg-red-50/30 text-red-700"
+                  : "border-amber-200 bg-amber-50/30 text-amber-700"
+                : "border-border bg-surface text-muted"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span>
+                Budget: ${budgetStatus.spend_to_date} of ${budgetStatus.budget} spent
+                {budgetStatus.utilization_pct !== null && ` (${budgetStatus.utilization_pct}%)`}
+                {budgetStatus.remaining !== null && ` — $${budgetStatus.remaining} remaining`}
+              </span>
+              {budgetStatus.alert && <span className="font-medium">{budgetStatus.alert}</span>}
+            </div>
+          </div>
         )}
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
