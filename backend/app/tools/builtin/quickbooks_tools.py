@@ -9,7 +9,7 @@ see `QuickBooksSyncService`), the same reasoning already used for
 
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.integrations.quickbooks_client import QuickBooksAPIError
 from app.models.rbac import Permission
@@ -38,6 +38,7 @@ from app.services.quickbooks_refund_sync_service import (
     RefundNotCompletedError,
     RefundNotFoundError,
 )
+from app.services.quickbooks_import_service import QuickBooksImportService
 from app.services.quickbooks_sync_service import (
     InvoiceNotSyncableError,
     QuickBooksNotConnectedError,
@@ -217,4 +218,62 @@ class SyncRefundToQuickBooks(Tool):
         return SyncRefundToQuickBooksOutput(
             quickbooks_refund_receipt_id=result.quickbooks_refund_receipt_id,
             already_synced=result.already_synced,
+        )
+
+
+class ImportFromQuickBooksInput(BaseModel):
+    max_records: int = Field(default=300, le=1000, gt=0)
+
+
+class ImportInvoiceRowOutput(BaseModel):
+    quickbooks_invoice_id: str
+    status: str
+    invoice_id: str | None = None
+    reason: str | None = None
+
+
+class ImportFromQuickBooksOutput(BaseModel):
+    customers_created: int
+    customers_matched: int
+    invoices_created: int
+    invoices_skipped: int
+    invoice_results: list[ImportInvoiceRowOutput]
+
+
+class ImportFromQuickBooks(Tool):
+    """The pull direction — brings a tenant's EXISTING QuickBooks customers
+    and invoices into Klaros, the reverse of every Sync*ToQuickBooks tool
+    above. AUTO policy: same reasoning as crm.bulk_import_customers/
+    finance.bulk_import_invoices — a tenant's own deliberate action to
+    bring in their own already-real data, not an AI proposal. Idempotent:
+    a repeat call only pulls in what's new since the last run (see
+    QuickBooksImportService's external_id-linked skip)."""
+
+    name = "finance.import_from_quickbooks"
+    description = "Import this tenant's existing QuickBooks customers and invoices into Klaros."
+    input_schema = ImportFromQuickBooksInput
+    output_schema = ImportFromQuickBooksOutput
+    required_permission = Permission.MANAGE_INTEGRATIONS
+
+    def __init__(self, import_service: QuickBooksImportService) -> None:
+        self._import_service = import_service
+
+    async def execute(self, input: ImportFromQuickBooksInput, context: ExecutionContext) -> ImportFromQuickBooksOutput:
+        try:
+            result = await self._import_service.import_all(context.tenant_id, max_records=input.max_records)
+        except QuickBooksNotConnectedError as exc:
+            raise ToolError(str(exc)) from exc
+        except QuickBooksAPIError as exc:
+            raise ToolError(f"QuickBooks import failed: {exc}") from exc
+        return ImportFromQuickBooksOutput(
+            customers_created=result.customers_created,
+            customers_matched=result.customers_matched,
+            invoices_created=result.invoices_created,
+            invoices_skipped=result.invoices_skipped,
+            invoice_results=[
+                ImportInvoiceRowOutput(
+                    quickbooks_invoice_id=r.quickbooks_invoice_id, status=r.status, invoice_id=r.invoice_id, reason=r.reason
+                )
+                for r in result.invoice_results
+            ],
         )

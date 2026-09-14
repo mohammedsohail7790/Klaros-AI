@@ -280,6 +280,8 @@ class InvoiceService:
         amount_paid: Decimal = Decimal("0"),
         description: str | None,
         invoice_number: str | None = None,
+        external_provider: str | None = None,
+        external_id: str | None = None,
     ) -> Invoice:
         """A single already-issued invoice from a business migrating its
         existing AR into Klaros (e.g. a QuickBooks/spreadsheet export of
@@ -315,6 +317,8 @@ class InvoiceService:
                 due_date=due_date,
                 sent_at=sent_at,
                 paid_at=sent_at if status == InvoiceStatus.PAID else None,
+                external_provider=external_provider,
+                external_id=external_id,
             )
             session.add(invoice)
             try:

@@ -220,6 +220,10 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     # moved back via Stripe) to QuickBooks — moves no new money, idempotent
     # by construction, same reasoning as the two entries directly above.
     "finance.sync_refund_to_quickbooks": ActionPolicy.AUTO,
+    # The pull direction — a tenant's own deliberate import of their own
+    # existing QuickBooks data, same trust level as
+    # crm.bulk_import_customers/finance.bulk_import_invoices.
+    "finance.import_from_quickbooks": ActionPolicy.AUTO,
     # Phase 14: Google Calendar sync moves no money; pushing/updating a
     # calendar event is reversible and idempotent by construction (see
     # GoogleCalendarSyncService.sync_appointment), same reasoning as

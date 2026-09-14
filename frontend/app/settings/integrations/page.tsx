@@ -9,10 +9,12 @@ import {
   ApiError,
   IntegrationConnectionRow,
   IntegrationStatusRow,
+  QuickBooksImportResult,
   connectIntegration,
   disconnectIntegration,
   getGoogleCalendarAuthorizeUrl,
   getQuickBooksAuthorizeUrl,
+  importFromQuickBooks,
   listIntegrationConnections,
   listIntegrationStatus,
   verifyIntegrationConnection,
@@ -125,6 +127,8 @@ function IntegrationsPageInner() {
   const [stripeActionError, setStripeActionError] = useState<string | null>(null);
   const [quickbooksActionPending, setQuickbooksActionPending] = useState(false);
   const [quickbooksActionError, setQuickbooksActionError] = useState<string | null>(null);
+  const [quickbooksImportPending, setQuickbooksImportPending] = useState(false);
+  const [quickbooksImportResult, setQuickbooksImportResult] = useState<QuickBooksImportResult | null>(null);
   // Set only from the ?quickbooks=connected|error query param the backend's
   // real OAuth callback redirects back to after a genuine attempt — never
   // fabricated locally.
@@ -257,6 +261,21 @@ function IntegrationsPageInner() {
       setQuickbooksActionError(err instanceof ApiError ? err.message : "Unable to verify the QuickBooks connection.");
     } finally {
       setQuickbooksActionPending(false);
+    }
+  }
+
+  async function handleImportFromQuickBooks() {
+    if (!token) return;
+    setQuickbooksImportPending(true);
+    setQuickbooksActionError(null);
+    setQuickbooksImportResult(null);
+    try {
+      const result = await importFromQuickBooks(token);
+      setQuickbooksImportResult(result);
+    } catch (err) {
+      setQuickbooksActionError(err instanceof ApiError ? err.message : "Unable to import from QuickBooks.");
+    } finally {
+      setQuickbooksImportPending(false);
     }
   }
 
@@ -612,6 +631,42 @@ function IntegrationsPageInner() {
                         </>
                       )}
                     </div>
+
+                    {qbConnection && qbConnection.status === "CONNECTED" && (
+                      <div className="mt-3 border-t border-border pt-3">
+                        <p className="mb-2 text-xs text-muted">
+                          Bring your existing QuickBooks customers and invoices into Klaros — real data,
+                          matched or created for real, never simulated. Safe to run more than once: anything
+                          already imported is skipped, not duplicated.
+                        </p>
+                        <button
+                          onClick={handleImportFromQuickBooks}
+                          disabled={quickbooksImportPending}
+                          className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
+                        >
+                          {quickbooksImportPending ? "Importing..." : "Import existing data"}
+                        </button>
+                        {quickbooksImportResult && (
+                          <div className="mt-2 rounded border border-emerald-200 bg-emerald-50/30 px-3 py-2 text-xs text-emerald-700">
+                            {quickbooksImportResult.customers_created} customer(s) created,{" "}
+                            {quickbooksImportResult.customers_matched} matched to existing customers —{" "}
+                            {quickbooksImportResult.invoices_created} invoice(s) imported
+                            {quickbooksImportResult.invoices_skipped > 0 &&
+                              `, ${quickbooksImportResult.invoices_skipped} skipped`}
+                            .
+                            {quickbooksImportResult.invoice_results.some((r) => r.status === "skipped") && (
+                              <ul className="mt-1 list-disc pl-4">
+                                {quickbooksImportResult.invoice_results
+                                  .filter((r) => r.status === "skipped")
+                                  .map((r) => (
+                                    <li key={r.quickbooks_invoice_id}>{r.reason}</li>
+                                  ))}
+                              </ul>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 );
               })()}

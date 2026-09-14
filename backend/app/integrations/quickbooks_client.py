@@ -18,6 +18,7 @@ behalf of any tenant, not a shared data credential).
 from __future__ import annotations
 
 import asyncio
+import urllib.parse
 from base64 import b64encode
 from decimal import Decimal
 from enum import StrEnum
@@ -30,7 +31,9 @@ from pydantic import ValidationError
 from app.core.config import get_settings
 from app.integrations.quickbooks_schemas import (
     QuickBooksCompanyInfo,
+    QuickBooksCustomerQueryRow,
     QuickBooksCustomerResponse,
+    QuickBooksInvoiceQueryRow,
     QuickBooksInvoiceResponse,
     QuickBooksPaymentResponse,
     QuickBooksRefundReceiptResponse,
@@ -208,6 +211,35 @@ class QuickBooksClient:
             headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
         )
         return _validate_response(QuickBooksCompanyInfo, body.get("CompanyInfo", body))
+
+    async def query(
+        self, *, access_token: str, realm_id: str, sql: str,
+    ) -> dict[str, Any]:
+        """QBO's real read endpoint — a SQL-like `SELECT` over any entity
+        type (`Customer`, `Invoice`, ...). Used only by the pull/import
+        direction (app/services/quickbooks_import_service.py); every other
+        method in this client is push-only (creates something IN
+        QuickBooks)."""
+        encoded = urllib.parse.quote(sql)
+        body = await self._request(
+            "GET", f"{self._api_base}/{realm_id}/query?query={encoded}",
+            headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
+        )
+        return body.get("QueryResponse", {})
+
+    async def query_customers(
+        self, *, access_token: str, realm_id: str, start_position: int = 1, max_results: int = 100,
+    ) -> list[QuickBooksCustomerQueryRow]:
+        sql = f"SELECT * FROM Customer STARTPOSITION {start_position} MAXRESULTS {max_results}"
+        result = await self.query(access_token=access_token, realm_id=realm_id, sql=sql)
+        return [_validate_response(QuickBooksCustomerQueryRow, row) for row in result.get("Customer", [])]
+
+    async def query_invoices(
+        self, *, access_token: str, realm_id: str, start_position: int = 1, max_results: int = 100,
+    ) -> list[QuickBooksInvoiceQueryRow]:
+        sql = f"SELECT * FROM Invoice STARTPOSITION {start_position} MAXRESULTS {max_results}"
+        result = await self.query(access_token=access_token, realm_id=realm_id, sql=sql)
+        return [_validate_response(QuickBooksInvoiceQueryRow, row) for row in result.get("Invoice", [])]
 
     async def create_customer(
         self, *, access_token: str, realm_id: str, display_name: str, email: str | None, phone: str | None,

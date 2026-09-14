@@ -2787,6 +2787,22 @@ export function disconnectIntegration(token: string, provider: string) {
   });
 }
 
+export interface QuickBooksImportResult {
+  customers_created: number;
+  customers_matched: number;
+  invoices_created: number;
+  invoices_skipped: number;
+  invoice_results: { quickbooks_invoice_id: string; status: string; invoice_id: string | null; reason: string | null }[];
+}
+
+export function importFromQuickBooks(token: string, maxRecords = 300) {
+  return request<QuickBooksImportResult>("/api/v1/integrations/quickbooks/import", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ max_records: maxRecords }),
+  });
+}
+
 // --- Phase 13: QuickBooks Online OAuth2 connect flow. Distinct from the
 // generic connect() above (that's for a credential the caller already
 // has in hand, like Stripe's secret key) — QuickBooks requires a real

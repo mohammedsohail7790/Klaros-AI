@@ -1,10 +1,12 @@
 import asyncio
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, get_current_user, require_permission
+from app.api.tool_deps import execution_context, get_tool_registry, raise_http_for_tool_error
 from app.api.tool_deps_integrations import get_integration_connection_service
 from app.integrations.adapters import ALL_ADAPTERS
 from app.models.rbac import Permission
@@ -12,6 +14,8 @@ from app.services.integration_connection_service import (
     ConnectionNotFoundError,
     IntegrationConnectionService,
 )
+from app.tools.errors import ToolError
+from app.tools.registry import ToolRegistry
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
@@ -130,3 +134,22 @@ async def disconnect_provider(
     except ConnectionNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return ConnectionResponse.from_model(connection)
+
+
+class QuickBooksImportRequest(BaseModel):
+    max_records: int = 300
+
+
+@router.post("/quickbooks/import")
+async def import_from_quickbooks(
+    body: QuickBooksImportRequest,
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_INTEGRATIONS)),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute(
+            "finance.import_from_quickbooks", {"max_records": body.max_records}, execution_context(current_user)
+        )
+    except ToolError as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")

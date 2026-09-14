@@ -56,6 +56,54 @@ class QuickBooksCustomerResponse(BaseModel):
     DisplayName: str | None = None
 
 
+class QuickBooksEmailAddr(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    Address: str | None = None
+
+
+class QuickBooksPhoneNumber(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    FreeFormNumber: str | None = None
+
+
+class QuickBooksCustomerQueryRow(BaseModel):
+    """A row from `SELECT * FROM Customer` — the read-side counterpart to
+    QuickBooksCustomerResponse (which only covers what a `create_customer`
+    response needs). Used by the pull/import direction only."""
+
+    model_config = ConfigDict(extra="allow")
+
+    Id: str
+    DisplayName: str | None = None
+    PrimaryEmailAddr: QuickBooksEmailAddr | None = None
+    PrimaryPhone: QuickBooksPhoneNumber | None = None
+
+
+class QuickBooksCustomerRef(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    value: str | None = None
+    name: str | None = None
+
+
+class QuickBooksInvoiceQueryRow(BaseModel):
+    """A row from `SELECT * FROM Invoice` — the read-side counterpart to
+    QuickBooksInvoiceResponse. `Balance` is what QBO has NOT yet marked
+    as paid; `TotalAmt - Balance` is what's been paid so far."""
+
+    model_config = ConfigDict(extra="allow")
+
+    Id: str
+    DocNumber: str | None = None
+    TotalAmt: float = 0
+    Balance: float = 0
+    TxnDate: str | None = None
+    DueDate: str | None = None
+    CustomerRef: QuickBooksCustomerRef | None = None
+
+
 class QuickBooksInvoiceLineInput(BaseModel):
     model_config = ConfigDict(extra="allow")
 

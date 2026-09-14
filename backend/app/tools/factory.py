@@ -466,10 +466,12 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(GetQuoteDepositStatus(quote_deposit_service))
     registry.register(CreateQuoteDepositCheckoutSession(quote_deposit_service))
 
+    from app.services.quickbooks_import_service import QuickBooksImportService
     from app.services.quickbooks_payment_sync_service import QuickBooksPaymentSyncService
     from app.services.quickbooks_refund_sync_service import QuickBooksRefundSyncService
     from app.services.quickbooks_sync_service import QuickBooksSyncService
     from app.tools.builtin.quickbooks_tools import (
+        ImportFromQuickBooks,
         SyncDepositPaymentToQuickBooks,
         SyncInvoicePaymentToQuickBooks,
         SyncInvoiceToQuickBooks,
@@ -487,6 +489,11 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(
         SyncRefundToQuickBooks(
             QuickBooksRefundSyncService(session_factory, get_integration_connection_service())
+        )
+    )
+    registry.register(
+        ImportFromQuickBooks(
+            QuickBooksImportService(session_factory, get_integration_connection_service(), invoice_service)
         )
     )
 
