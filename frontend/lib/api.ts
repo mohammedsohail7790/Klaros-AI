@@ -2849,6 +2849,28 @@ export function syncAppointmentToGoogle(token: string, appointmentId: string, ca
   );
 }
 
+export interface GoogleCalendarImportResult {
+  appointments_created: number;
+  appointments_skipped: number;
+  results: { google_event_id: string; status: string; appointment_id: string | null; reason: string | null }[];
+}
+
+export function importFromGoogleCalendar(
+  token: string,
+  params: { calendar_id?: string; time_min: string; time_max: string; max_records?: number }
+) {
+  return request<GoogleCalendarImportResult>("/api/v1/calendar/google/import", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      calendar_id: params.calendar_id ?? "primary",
+      time_min: params.time_min,
+      time_max: params.time_max,
+      max_records: params.max_records ?? 300,
+    }),
+  });
+}
+
 export interface AutonomyStats {
   date: string;
   automatic: number;

@@ -18,6 +18,7 @@ server on any tenant's behalf — not a data credential).
 from __future__ import annotations
 
 import asyncio
+import urllib.parse
 from enum import StrEnum
 from typing import Any
 
@@ -30,6 +31,7 @@ from app.integrations.google_calendar_schemas import (
     GoogleCalendar,
     GoogleCalendarListResponse,
     GoogleEvent,
+    GoogleEventListResponse,
     GoogleFreeBusyResponse,
     GoogleTokenResponse,
 )
@@ -240,6 +242,29 @@ class GoogleCalendarClient:
             json_body=payload,
         )
         return _validate_response(GoogleEvent, body)
+
+    async def list_events(
+        self, *, access_token: str, calendar_id: str, time_min_iso: str, time_max_iso: str,
+        max_results: int = 100, page_token: str | None = None,
+    ) -> GoogleEventListResponse:
+        """The pull/import direction's read — every other method on this
+        client either pushes an event Klaros itself created or reads one
+        specific already-known event. `singleEvents=true` expands
+        recurring events into individual instances (Google's own
+        documented way to get concrete start/end times rather than a
+        recurrence rule this app has no use for)."""
+        params = {
+            "timeMin": time_min_iso, "timeMax": time_max_iso, "maxResults": str(max_results),
+            "singleEvents": "true", "orderBy": "startTime",
+        }
+        if page_token:
+            params["pageToken"] = page_token
+        query = urllib.parse.urlencode(params)
+        body = await self._request(
+            "GET", f"{_API_BASE}/calendars/{calendar_id}/events?{query}",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        return _validate_response(GoogleEventListResponse, body)
 
     async def get_event(self, *, access_token: str, calendar_id: str, event_id: str) -> GoogleEvent:
         body = await self._request(

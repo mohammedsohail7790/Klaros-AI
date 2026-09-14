@@ -24,7 +24,7 @@ identical pattern.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from sqlalchemy import text
@@ -35,9 +35,12 @@ from app.integrations.google_calendar_client import (
     GoogleCalendarClient,
     GoogleCalendarErrorType,
 )
-from app.integrations.google_calendar_schemas import GoogleCalendarListEntry, GoogleFreeBusyResponse
-from app.models.crm import Appointment, AppointmentStatus
+from sqlalchemy import func, select
+
+from app.integrations.google_calendar_schemas import GoogleCalendarListEntry, GoogleEvent, GoogleFreeBusyResponse
+from app.models.crm import Appointment, AppointmentStatus, Customer
 from app.models.integration import ConnectionStatus
+from app.services.customer_matching import find_matching_customer, normalize_email
 from app.services.integration_connection_service import IntegrationConnectionService
 
 _PROVIDER = "google_calendar"
@@ -55,6 +58,21 @@ class AppointmentNotFoundError(Exception):
 class AppointmentSyncResult:
     action: str  # "created" | "updated" | "cancelled" | "already_cancelled"
     google_event_id: str | None
+
+
+@dataclass
+class EventImportRowResult:
+    google_event_id: str
+    status: str  # "created" | "skipped"
+    appointment_id: str | None = None
+    reason: str | None = None
+
+
+@dataclass
+class GoogleCalendarImportResult:
+    appointments_created: int = 0
+    appointments_skipped: int = 0
+    results: list[EventImportRowResult] = field(default_factory=list)
 
 
 class GoogleCalendarSyncService:
@@ -206,3 +224,177 @@ class GoogleCalendarSyncService:
                 description=description, location=location, start_iso=start_iso, end_iso=end_iso,
             )
             return AppointmentSyncResult(action="updated", google_event_id=event.id)
+
+    async def import_events(
+        self, tenant_id: uuid.UUID, *, calendar_id: str = "primary",
+        time_min: datetime, time_max: datetime, max_records: int = 300,
+    ) -> GoogleCalendarImportResult:
+        """The pull direction — the counterpart to sync_appointment above,
+        which only ever pushes a Klaros-created appointment OUT. Reads a
+        tenant's real, existing Google Calendar events in [time_min,
+        time_max] and creates matching Klaros Appointment rows directly
+        (never through CalendarProvider.create_event's double-booking
+        check — that engine exists to arbitrate NEW bookings against each
+        other; an already-existing external event is a historical fact
+        being recorded, not a new decision to validate). Idempotent via
+        Appointment's own (tenant_id, external_provider, external_id)
+        unique constraint — a repeat import of the same event is a no-op,
+        not a duplicate.
+
+        An event with no real time range (an all-day event, which Google
+        represents with `date` not `dateTime`) or no way to identify a
+        real customer (no attendee email/name and no summary) is skipped
+        and reported, never given an invented customer or a fabricated
+        time.
+        """
+        access_token, refresh_token = await self._resolve_credential(tenant_id)
+        client = GoogleCalendarClient()
+
+        async def _call(fn, **kwargs):
+            nonlocal access_token
+            try:
+                return await fn(access_token=access_token, **kwargs)
+            except GoogleCalendarAPIError as exc:
+                if exc.error_type == GoogleCalendarErrorType.AUTHENTICATION:
+                    access_token = await self._refresh_and_persist(tenant_id, refresh_token)
+                    return await fn(access_token=access_token, **kwargs)
+                raise
+
+        time_min_iso = time_min.astimezone(timezone.utc).isoformat()
+        time_max_iso = time_max.astimezone(timezone.utc).isoformat()
+
+        created = 0
+        skipped = 0
+        results: list[EventImportRowResult] = []
+        page_token: str | None = None
+        fetched = 0
+
+        while fetched < max_records:
+            page_size = min(100, max_records - fetched)
+            response = await _call(
+                client.list_events, calendar_id=calendar_id, time_min_iso=time_min_iso, time_max_iso=time_max_iso,
+                max_results=page_size, page_token=page_token,
+            )
+            if not response.items:
+                break
+            for event in response.items:
+                result = await self._import_one_event(tenant_id, event)
+                if result is None:
+                    continue  # already linked from a previous import — not worth reporting every time
+                results.append(result)
+                if result.status == "created":
+                    created += 1
+                else:
+                    skipped += 1
+            fetched += len(response.items)
+            page_token = response.nextPageToken
+            if not page_token:
+                break
+
+        return GoogleCalendarImportResult(appointments_created=created, appointments_skipped=skipped, results=results)
+
+    async def _import_one_event(self, tenant_id: uuid.UUID, event: GoogleEvent) -> EventImportRowResult | None:
+        if not event.id:
+            return None
+        if event.status == "cancelled":
+            return None
+
+        async with self._session_factory() as session:
+            already_linked = (
+                await session.execute(
+                    select(Appointment).where(
+                        Appointment.tenant_id == tenant_id,
+                        Appointment.external_provider == _PROVIDER,
+                        Appointment.external_id == event.id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if already_linked is not None:
+                return None
+
+        start_dt = _parse_event_datetime(event.start)
+        end_dt = _parse_event_datetime(event.end)
+        if start_dt is None or end_dt is None:
+            return EventImportRowResult(
+                google_event_id=event.id, status="skipped",
+                reason="All-day or open-ended events aren't imported — no real start/end time to record.",
+            )
+
+        customer_id = await self._resolve_event_customer(tenant_id, event)
+        if customer_id is None:
+            return EventImportRowResult(
+                google_event_id=event.id, status="skipped",
+                reason="Could not identify a real customer for this event (no attendee or title).",
+            )
+
+        title = event.summary or "Imported calendar event"
+        status = AppointmentStatus.COMPLETED if end_dt < datetime.now(timezone.utc) else AppointmentStatus.CONFIRMED
+
+        async with self._session_factory() as session:
+            appointment = Appointment(
+                tenant_id=tenant_id,
+                customer_id=customer_id,
+                title=title,
+                location=event.location,
+                notes=event.description,
+                start_time=start_dt,
+                end_time=end_dt,
+                status=status,
+                external_provider=_PROVIDER,
+                external_id=event.id,
+            )
+            session.add(appointment)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                return EventImportRowResult(
+                    google_event_id=event.id, status="skipped", reason="Already imported or a conflicting record exists.",
+                )
+            await session.refresh(appointment)
+
+        return EventImportRowResult(google_event_id=event.id, status="created", appointment_id=str(appointment.id))
+
+    async def _resolve_event_customer(self, tenant_id: uuid.UUID, event: GoogleEvent) -> uuid.UUID | None:
+        attendee = next((a for a in event.attendees if not a.organizer and not a.self_), None)
+        email = attendee.email if attendee else None
+        name = (attendee.displayName if attendee and attendee.displayName else None) or (email.split("@")[0] if email else None)
+
+        async with self._session_factory() as session:
+            if email:
+                match = await find_matching_customer(session, tenant_id=tenant_id, email=email, phone=None)
+                if match is not None:
+                    return match.id
+
+            if not name and not event.summary:
+                return None
+
+            resolved_name = name or event.summary
+            by_name = (
+                await session.execute(
+                    select(Customer).where(Customer.tenant_id == tenant_id, func.lower(Customer.name) == resolved_name.strip().lower())
+                )
+            ).scalar_one_or_none()
+            if by_name is not None:
+                return by_name.id
+
+            if not email and not name:
+                # Only a calendar summary to go on — not a real identified
+                # customer, just a guess at a name. Too weak to create a
+                # Customer record from.
+                return None
+
+            customer = Customer(tenant_id=tenant_id, name=resolved_name, email=normalize_email(email))
+            session.add(customer)
+            await session.commit()
+            await session.refresh(customer)
+            return customer.id
+
+
+def _parse_event_datetime(value) -> datetime | None:
+    if value is None or not value.dateTime:
+        return None
+    try:
+        return datetime.fromisoformat(value.dateTime.replace("Z", "+00:00"))
+    except ValueError:
+        return None

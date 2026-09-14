@@ -231,6 +231,10 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "calendar.list_google_calendars": ActionPolicy.AUTO,
     "calendar.check_google_availability": ActionPolicy.AUTO,
     "calendar.sync_appointment_to_google": ActionPolicy.AUTO,
+    # The pull direction — a tenant's own deliberate import of their own
+    # existing Google Calendar events, same trust level as
+    # finance.import_from_quickbooks.
+    "calendar.import_from_google": ActionPolicy.AUTO,
     "finance.record_test_payment": ActionPolicy.AUTO,  # internal test provider only, no real money
     # Phase 12C: generates a Stripe-hosted payment LINK only — no money
     # moves until Stripe's signed webhook confirms payment_intent.succeeded

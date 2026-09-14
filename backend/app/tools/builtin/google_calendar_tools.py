@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.integrations.google_calendar_client import GoogleCalendarAPIError
 from app.models.rbac import Permission
@@ -126,3 +126,65 @@ class SyncAppointmentToGoogle(Tool):
         except GoogleCalendarAPIError as exc:
             raise ToolError(f"Google Calendar sync failed: {exc}") from exc
         return SyncAppointmentToGoogleOutput(action=result.action, google_event_id=result.google_event_id)
+
+
+class ImportFromGoogleCalendarInput(BaseModel):
+    calendar_id: str = "primary"
+    time_min: datetime
+    time_max: datetime
+    max_records: int = Field(default=300, le=1000, gt=0)
+
+
+class EventImportRowOutput(BaseModel):
+    google_event_id: str
+    status: str
+    appointment_id: str | None = None
+    reason: str | None = None
+
+
+class ImportFromGoogleCalendarOutput(BaseModel):
+    appointments_created: int
+    appointments_skipped: int
+    results: list[EventImportRowOutput]
+
+
+class ImportFromGoogleCalendar(Tool):
+    """The pull direction — brings a tenant's EXISTING Google Calendar
+    events into Klaros as real Appointments, the reverse of
+    calendar.sync_appointment_to_google. AUTO policy: same reasoning as
+    finance.import_from_quickbooks — a tenant's own deliberate action to
+    bring in their own already-real data. Idempotent: a repeat call only
+    imports events not already linked (see GoogleCalendarSyncService.
+    import_events)."""
+
+    name = "calendar.import_from_google"
+    description = "Import a tenant's existing Google Calendar events (in a time range) as Klaros appointments."
+    input_schema = ImportFromGoogleCalendarInput
+    output_schema = ImportFromGoogleCalendarOutput
+    required_permission = Permission.MANAGE_INTEGRATIONS
+
+    def __init__(self, sync_service: GoogleCalendarSyncService) -> None:
+        self._sync_service = sync_service
+
+    async def execute(
+        self, input: ImportFromGoogleCalendarInput, context: ExecutionContext
+    ) -> ImportFromGoogleCalendarOutput:
+        try:
+            result = await self._sync_service.import_events(
+                context.tenant_id, calendar_id=input.calendar_id, time_min=input.time_min, time_max=input.time_max,
+                max_records=input.max_records,
+            )
+        except GoogleCalendarNotConnectedError as exc:
+            raise ToolError(str(exc)) from exc
+        except GoogleCalendarAPIError as exc:
+            raise ToolError(f"Google Calendar import failed: {exc}") from exc
+        return ImportFromGoogleCalendarOutput(
+            appointments_created=result.appointments_created,
+            appointments_skipped=result.appointments_skipped,
+            results=[
+                EventImportRowOutput(
+                    google_event_id=r.google_event_id, status=r.status, appointment_id=r.appointment_id, reason=r.reason
+                )
+                for r in result.results
+            ],
+        )

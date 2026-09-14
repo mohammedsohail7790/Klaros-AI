@@ -83,6 +83,7 @@ from app.tools.builtin.invoice_tools import (
 from app.tools.builtin.job_cost_tools import RecordJobCost, SyncMaterialCosts
 from app.tools.builtin.google_calendar_tools import (
     CheckGoogleAvailability,
+    ImportFromGoogleCalendar,
     ListGoogleCalendars,
     SyncAppointmentToGoogle,
 )
@@ -501,6 +502,7 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(ListGoogleCalendars(google_calendar_sync_service))
     registry.register(CheckGoogleAvailability(google_calendar_sync_service))
     registry.register(SyncAppointmentToGoogle(google_calendar_sync_service))
+    registry.register(ImportFromGoogleCalendar(google_calendar_sync_service))
 
     registry.register(GetARAging(ar_service))
     registry.register(GetCustomerBalance(ar_service))

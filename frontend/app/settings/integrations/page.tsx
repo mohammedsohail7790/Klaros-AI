@@ -9,11 +9,13 @@ import {
   ApiError,
   IntegrationConnectionRow,
   IntegrationStatusRow,
+  GoogleCalendarImportResult,
   QuickBooksImportResult,
   connectIntegration,
   disconnectIntegration,
   getGoogleCalendarAuthorizeUrl,
   getQuickBooksAuthorizeUrl,
+  importFromGoogleCalendar,
   importFromQuickBooks,
   listIntegrationConnections,
   listIntegrationStatus,
@@ -137,6 +139,8 @@ function IntegrationsPageInner() {
   >(null);
   const [googleCalendarActionPending, setGoogleCalendarActionPending] = useState(false);
   const [googleCalendarActionError, setGoogleCalendarActionError] = useState<string | null>(null);
+  const [googleCalendarImportPending, setGoogleCalendarImportPending] = useState(false);
+  const [googleCalendarImportResult, setGoogleCalendarImportResult] = useState<GoogleCalendarImportResult | null>(null);
   const [googleCalendarCallbackNotice, setGoogleCalendarCallbackNotice] = useState<
     { kind: "connected" | "error"; detail?: string } | null
   >(null);
@@ -217,6 +221,27 @@ function IntegrationsPageInner() {
       setGoogleCalendarActionError(err instanceof ApiError ? err.message : "Unable to verify the Google Calendar connection.");
     } finally {
       setGoogleCalendarActionPending(false);
+    }
+  }
+
+  async function handleImportFromGoogleCalendar() {
+    if (!token) return;
+    setGoogleCalendarImportPending(true);
+    setGoogleCalendarActionError(null);
+    setGoogleCalendarImportResult(null);
+    try {
+      const now = new Date();
+      const timeMin = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const timeMax = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+      const result = await importFromGoogleCalendar(token, {
+        time_min: timeMin.toISOString(),
+        time_max: timeMax.toISOString(),
+      });
+      setGoogleCalendarImportResult(result);
+    } catch (err) {
+      setGoogleCalendarActionError(err instanceof ApiError ? err.message : "Unable to import from Google Calendar.");
+    } finally {
+      setGoogleCalendarImportPending(false);
     }
   }
 
@@ -758,6 +783,40 @@ function IntegrationsPageInner() {
                         </>
                       )}
                     </div>
+
+                    {gcalConnection && gcalConnection.status === "CONNECTED" && (
+                      <div className="mt-3 border-t border-border pt-3">
+                        <p className="mb-2 text-xs text-muted">
+                          Bring your existing Google Calendar events (90 days back to 90 days ahead) into
+                          Klaros as real appointments — matched or created for real. Safe to run more than
+                          once: anything already imported is skipped, not duplicated.
+                        </p>
+                        <button
+                          onClick={handleImportFromGoogleCalendar}
+                          disabled={googleCalendarImportPending}
+                          className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
+                        >
+                          {googleCalendarImportPending ? "Importing..." : "Import existing events"}
+                        </button>
+                        {googleCalendarImportResult && (
+                          <div className="mt-2 rounded border border-emerald-200 bg-emerald-50/30 px-3 py-2 text-xs text-emerald-700">
+                            {googleCalendarImportResult.appointments_created} appointment(s) imported
+                            {googleCalendarImportResult.appointments_skipped > 0 &&
+                              `, ${googleCalendarImportResult.appointments_skipped} skipped`}
+                            .
+                            {googleCalendarImportResult.results.some((r) => r.status === "skipped") && (
+                              <ul className="mt-1 list-disc pl-4">
+                                {googleCalendarImportResult.results
+                                  .filter((r) => r.status === "skipped")
+                                  .map((r) => (
+                                    <li key={r.google_event_id}>{r.reason}</li>
+                                  ))}
+                              </ul>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 );
               })()}

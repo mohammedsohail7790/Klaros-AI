@@ -71,13 +71,24 @@ class GoogleEventDateTime(BaseModel):
     timeZone: str | None = None
 
 
+class GoogleEventAttendee(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    email: str | None = None
+    displayName: str | None = None
+    organizer: bool = False
+    self_: bool = Field(default=False, alias="self")
+
+
 class GoogleEvent(BaseModel):
     """The subset of a Calendar `Event` resource this app reads/writes —
     `id` is what gets stored on `Appointment.external_id`, `status`
     reflects Google's own cancellation state (`"cancelled"` if deleted
-    via a sync rather than a hard delete, depending on the call used)."""
+    via a sync rather than a hard delete, depending on the call used).
+    `attendees` is only populated on read (the pull/import direction) —
+    this app never sets attendees when creating an event."""
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
 
     id: str | None = None
     status: str | None = None
@@ -87,6 +98,18 @@ class GoogleEvent(BaseModel):
     start: GoogleEventDateTime | None = None
     end: GoogleEventDateTime | None = None
     htmlLink: str | None = None
+    attendees: list[GoogleEventAttendee] = Field(default_factory=list)
+
+
+class GoogleEventListResponse(BaseModel):
+    """`GET /calendars/{id}/events` — the pull/import direction's list
+    response. `nextPageToken` present means there are more events past
+    this page."""
+
+    model_config = ConfigDict(extra="allow")
+
+    items: list[GoogleEvent] = Field(default_factory=list)
+    nextPageToken: str | None = None
 
 
 class GoogleFreeBusyCalendarEntry(BaseModel):
