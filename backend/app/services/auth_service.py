@@ -1,4 +1,5 @@
 import re
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +35,15 @@ async def register_organization(
     db: AsyncSession, *, organization_name: str, full_name: str, email: str, password: str
 ) -> tuple[Organization, User]:
     slug = await _unique_slug(db, organization_name)
-    org = Organization(name=organization_name, slug=slug)
+    # Every new tenant starts on a real 14-day full-access trial (Growth-
+    # tier limits, i.e. none) — see app/services/billing_service.py.
+    org = Organization(
+        name=organization_name,
+        slug=slug,
+        plan="growth",
+        billing_status="trialing",
+        trial_ends_at=datetime.now(UTC) + timedelta(days=14),
+    )
     db.add(org)
     await db.flush()
 

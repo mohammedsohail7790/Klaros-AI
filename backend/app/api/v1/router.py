@@ -8,6 +8,7 @@ from app.api.v1 import (
     auth,
     automation,
     automations,
+    billing,
     cash,
     company_memory,
     credit_notes,
@@ -77,6 +78,7 @@ api_router.include_router(customers.router)
 api_router.include_router(appointments.router)
 api_router.include_router(crm.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(billing.router)
 api_router.include_router(jobs.router)
 api_router.include_router(workers.router)
 api_router.include_router(exceptions.router)

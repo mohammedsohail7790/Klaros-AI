@@ -1,7 +1,8 @@
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import Boolean, Numeric, String
+from sqlalchemy import Boolean, DateTime, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -20,11 +21,21 @@ class Organization(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    # Klaros's own SaaS subscription tier — "solo" | "growth" | "scale".
+    # See app/services/billing_service.py::PLAN_LIMITS for what each tier
+    # actually gates.
     plan: Mapped[str] = mapped_column(String(50), nullable=False, default="starter")
     autonomy_level: Mapped[str] = mapped_column(
         String(20), nullable=False, default=AutonomyLevel.LEVEL_0
     )
+    # "trialing" | "active" | "past_due" | "canceled" — kept in sync with
+    # Stripe's own subscription status by app/services/billing_service.py's
+    # webhook handlers (app/api/v1/billing.py's POST /billing/webhook).
     billing_status: Mapped[str] = mapped_column(String(50), nullable=False, default="trialing")
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Phase 5: MANUAL / INTERNAL TEST DATA only — no bank integration exists.
     # Cash position reports "NOT_CONNECTED" unless this is explicitly set.
     manual_starting_cash: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)

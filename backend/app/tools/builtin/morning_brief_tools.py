@@ -38,6 +38,7 @@ class GenerateMorningBrief(Tool):
     input_schema = EmptyInput
     output_schema = GenerateMorningBriefOutput
     required_permission = Permission.GENERATE_MORNING_BRIEF
+    counts_toward_ai_usage = True
 
     def __init__(self, morning_brief_service: MorningBriefService) -> None:
         self._morning_brief_service = morning_brief_service

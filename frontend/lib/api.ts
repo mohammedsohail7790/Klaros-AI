@@ -3276,3 +3276,42 @@ export function revokeMemory(token: string, memoryId: string, reason?: string) {
     body: JSON.stringify({ reason: reason ?? null }),
   });
 }
+
+// --- Klaros's own SaaS subscription billing (real Stripe Checkout in
+// subscription mode + Billing Portal) — a separate integration from the
+// tenant's own Stripe key in Settings -> Integrations, which collects
+// THAT tenant's own customer payments. ---
+
+export interface BillingStatus {
+  plan: string;
+  billing_status: string;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  ai_usage_this_month: number;
+  ai_usage_limit: number | null;
+}
+
+export function getBillingStatus(token: string) {
+  return request<BillingStatus>("/api/v1/billing/status", { headers: authHeaders(token) });
+}
+
+export function createBillingCheckout(
+  token: string,
+  plan: "solo" | "growth",
+  successUrl: string,
+  cancelUrl: string
+) {
+  return request<{ checkout_url: string }>("/api/v1/billing/checkout", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ plan, success_url: successUrl, cancel_url: cancelUrl }),
+  });
+}
+
+export function createBillingPortalSession(token: string, returnUrl: string) {
+  return request<{ portal_url: string }>("/api/v1/billing/portal", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ return_url: returnUrl }),
+  });
+}

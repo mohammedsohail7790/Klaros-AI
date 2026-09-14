@@ -29,6 +29,7 @@ import {
   Mail,
   Phone,
   Plug,
+  CreditCard,
   ChevronDown,
   Search,
   Menu,
@@ -114,6 +115,7 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
       { href: "/settings/memory", label: "Company Memory", icon: Layers },
       { href: "/settings/voice", label: "Voice Receptionist", icon: Phone },
       { href: "/settings/integrations", label: "Integrations", icon: Plug },
+      { href: "/settings/billing", label: "Billing", icon: CreditCard },
     ],
   },
 ];

@@ -8,6 +8,7 @@ import GradientBackdrop from "@/components/GradientBackdrop";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
+  createBillingCheckout,
   indexKnowledgeFile,
   setAutomationTimezone,
   setKnowledgeFile,
@@ -27,12 +28,15 @@ const COMMON_TIMEZONES = [
   "UTC",
 ];
 
-const STEPS = ["Business hours", "Teach Klaros your business", "Done"] as const;
+const STEPS = ["Choose your plan", "Business hours", "Teach Klaros your business", "Done"] as const;
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { token, user } = useAuth();
   const [step, setStep] = useState(0);
+
+  const [subscribingPlan, setSubscribingPlan] = useState<string | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
@@ -50,13 +54,27 @@ export default function OnboardingPage() {
     router.push("/dashboard");
   }
 
+  async function handleSubscribe(plan: "solo" | "growth") {
+    if (!token) return;
+    setSubscribingPlan(plan);
+    setPlanError(null);
+    try {
+      const origin = window.location.origin;
+      const result = await createBillingCheckout(token, plan, `${origin}/onboarding`, `${origin}/onboarding`);
+      window.location.href = result.checkout_url;
+    } catch (err) {
+      setPlanError(err instanceof ApiError ? err.message : "Unable to start checkout.");
+      setSubscribingPlan(null);
+    }
+  }
+
   async function handleSaveTimezone() {
     if (!token) return;
     setSavingTimezone(true);
     setTimezoneError(null);
     try {
       await setAutomationTimezone(token, timezone);
-      setStep(1);
+      setStep(2);
     } catch (err) {
       setTimezoneError(err instanceof ApiError ? err.message : "Unable to save your timezone.");
     } finally {
@@ -77,7 +95,7 @@ export default function OnboardingPage() {
     if (voice.trim()) entries.push({ path: "brand/voice-guide.md", content: voice.trim() });
 
     if (entries.length === 0) {
-      setStep(2);
+      setStep(3);
       return;
     }
 
@@ -94,7 +112,7 @@ export default function OnboardingPage() {
           // Layer settings page.
         }
       }
-      setStep(2);
+      setStep(3);
     } catch (err) {
       setKnowledgeError(err instanceof ApiError ? err.message : "Unable to save your answers.");
     } finally {
@@ -136,8 +154,61 @@ export default function OnboardingPage() {
                 Welcome{user ? `, ${user.full_name.split(" ")[0]}` : ""}
               </h1>
               <p className="mt-1 text-sm text-muted">
-                A couple of quick questions so Klaros runs on your business's own schedule and
-                knowledge, not generic defaults. Everything here can be changed later in Settings.
+                You&apos;re already on a real 14-day free trial with full access — no card needed. Subscribe
+                now if you'd rather start paid right away, or just continue on the trial.
+              </p>
+
+              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-border bg-surface p-4">
+                  <div className="flex items-baseline justify-between">
+                    <h3 className="font-medium">Solo</h3>
+                    <span className="text-sm text-muted">$49/mo</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">Up to 50 AI recommendations/mo, 1 user.</p>
+                  <button
+                    onClick={() => handleSubscribe("solo")}
+                    disabled={subscribingPlan !== null}
+                    className="mt-3 w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  >
+                    {subscribingPlan === "solo" ? "Redirecting..." : "Subscribe to Solo"}
+                  </button>
+                </div>
+                <div className="rounded-lg border border-border bg-surface p-4">
+                  <div className="flex items-baseline justify-between">
+                    <h3 className="font-medium">Growth</h3>
+                    <span className="text-sm text-muted">$129/mo</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">Unlimited AI recommendations, full automation engine.</p>
+                  <button
+                    onClick={() => handleSubscribe("growth")}
+                    disabled={subscribingPlan !== null}
+                    className="mt-3 w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  >
+                    {subscribingPlan === "growth" ? "Redirecting..." : "Subscribe to Growth"}
+                  </button>
+                </div>
+              </div>
+
+              {planError && <p className="mt-3 text-sm text-red-600">{planError}</p>}
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setStep(1)}
+                  disabled={subscribingPlan !== null}
+                  className="klaros-btn-primary disabled:opacity-50"
+                >
+                  Start my 14-day free trial
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 1 && (
+            <>
+              <h1 className="font-display text-2xl text-foreground">Set your business hours</h1>
+              <p className="mt-1 text-sm text-muted">
+                So Klaros runs on your business's own schedule, not generic defaults. Can be changed
+                later in Settings.
               </p>
 
               <div className="mt-6">
@@ -179,7 +250,7 @@ export default function OnboardingPage() {
             </>
           )}
 
-          {step === 1 && (
+          {step === 2 && (
             <>
               <h1 className="font-display text-2xl text-foreground">Teach Klaros your business</h1>
               <p className="mt-1 text-sm text-muted">
@@ -230,7 +301,7 @@ export default function OnboardingPage() {
               {knowledgeError && <p className="mt-3 text-sm text-red-600">{knowledgeError}</p>}
 
               <div className="mt-6 flex items-center justify-between">
-                <button onClick={() => setStep(2)} className="text-sm text-muted hover:underline">
+                <button onClick={() => setStep(3)} className="text-sm text-muted hover:underline">
                   Skip this step
                 </button>
                 <button
@@ -244,7 +315,7 @@ export default function OnboardingPage() {
             </>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <>
               <h1 className="font-display text-2xl text-foreground">You&apos;re set up</h1>
               <p className="mt-1 text-sm text-muted">

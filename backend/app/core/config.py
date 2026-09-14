@@ -89,6 +89,14 @@ class Settings(BaseSettings):
     # Phase 12F: previously hardcoded in app/integrations/stripe_client.py.
     STRIPE_TIMEOUT_SECONDS: float = 20.0
     STRIPE_MAX_RETRIES: int = 3
+    # Klaros's OWN Stripe account for its SaaS subscription billing — a
+    # deliberately separate credential from STRIPE_SECRET_KEY above, which
+    # is only ever a per-tenant key for collecting THAT tenant's own
+    # customer payments. Never mix the two.
+    STRIPE_PLATFORM_SECRET_KEY: str | None = None
+    STRIPE_PLATFORM_WEBHOOK_SECRET: str | None = None
+    STRIPE_PRICE_SOLO: str | None = None
+    STRIPE_PRICE_GROWTH: str | None = None
     GOOGLE_ADS_CLIENT_ID: str | None = None
     GOOGLE_ADS_CLIENT_SECRET: str | None = None
     GOOGLE_ADS_DEVELOPER_TOKEN: str | None = None

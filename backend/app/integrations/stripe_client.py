@@ -28,7 +28,9 @@ from pydantic import ValidationError
 
 from app.core.config import get_settings
 from app.integrations.stripe_schemas import (
+    StripeBillingPortalSessionResponse,
     StripeCheckoutSessionResponse,
+    StripeCustomerResponse,
     StripePaymentIntentResponse,
     StripeRefundResponse,
 )
@@ -256,6 +258,66 @@ class StripeClient:
             data[f"payment_intent_data[metadata][{k}]"] = v
         body = await self._request("POST", "/checkout/sessions", data=data, idempotency_key=idempotency_key)
         return _validate_response(StripeCheckoutSessionResponse, body)
+
+    async def create_customer(
+        self, *, email: str | None = None, metadata: dict[str, str] | None = None
+    ) -> StripeCustomerResponse:
+        """Klaros's own platform-billing customer — created once per
+        Organization the first time it starts a paid-plan Checkout, then
+        reused for every later checkout/portal session (Organization.
+        stripe_customer_id)."""
+        data: dict[str, Any] = {}
+        if email:
+            data["email"] = email
+        for k, v in (metadata or {}).items():
+            data[f"metadata[{k}]"] = v
+        body = await self._request("POST", "/customers", data=data)
+        return _validate_response(StripeCustomerResponse, body)
+
+    async def create_subscription_checkout_session(
+        self,
+        *,
+        price_id: str,
+        customer_id: str,
+        success_url: str,
+        cancel_url: str,
+        metadata: dict[str, str],
+    ) -> StripeCheckoutSessionResponse:
+        """A hosted Checkout page for a RECURRING subscription — distinct
+        from `create_checkout_session` above, which is `mode="payment"`
+        with an ad-hoc `price_data` amount (invoices/quote deposits, no
+        real Stripe Price object). This uses a real recurring `price` id
+        configured for Klaros's own plans (settings.STRIPE_PRICE_SOLO/
+        STRIPE_PRICE_GROWTH), `mode="subscription"`. Confirmation always
+        comes from the webhook, never the redirect, same as
+        create_checkout_session."""
+        data: dict[str, Any] = {
+            "mode": "subscription",
+            "customer": customer_id,
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+            "line_items[0][price]": price_id,
+            "line_items[0][quantity]": 1,
+        }
+        for k, v in metadata.items():
+            data[f"metadata[{k}]"] = v
+            # Stamped on the Subscription too, since the webhooks this app
+            # acts on for lifecycle changes (customer.subscription.updated/
+            # deleted) carry the Subscription object, not the Checkout
+            # Session.
+            data[f"subscription_data[metadata][{k}]"] = v
+        body = await self._request("POST", "/checkout/sessions", data=data)
+        return _validate_response(StripeCheckoutSessionResponse, body)
+
+    async def create_billing_portal_session(
+        self, *, customer_id: str, return_url: str
+    ) -> StripeBillingPortalSessionResponse:
+        """A hosted Stripe page where the tenant can update their card,
+        view invoices, or cancel — Stripe's own real self-service flow,
+        never reimplemented here."""
+        data = {"customer": customer_id, "return_url": return_url}
+        body = await self._request("POST", "/billing_portal/sessions", data=data)
+        return _validate_response(StripeBillingPortalSessionResponse, body)
 
     async def retrieve_payment_intent(self, payment_intent_id: str) -> StripePaymentIntent:
         body = await self._request("GET", f"/payment_intents/{payment_intent_id}")

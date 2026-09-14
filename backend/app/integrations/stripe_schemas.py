@@ -130,6 +130,52 @@ class StripeCheckoutSessionResponse(BaseModel):
     payment_intent: str | None = None
 
 
+class StripeCustomerResponse(BaseModel):
+    """Response shape for `POST /customers` — Klaros's own platform-billing
+    customer (distinct from any tenant-payments object above)."""
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    email: str | None = None
+
+
+class StripeBillingPortalSessionResponse(BaseModel):
+    """Response shape for `POST /billing_portal/sessions`."""
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    url: str
+
+
+class StripeSubscriptionPayload(BaseModel):
+    """The subset of a Stripe `subscription` object read from
+    `customer.subscription.updated`/`customer.subscription.deleted`."""
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    customer: str | None = None
+    status: str | None = None
+    current_period_end: int | None = None
+    metadata: StripeMetadata = Field(default_factory=StripeMetadata)
+
+
+class StripeCheckoutSessionPayload(BaseModel):
+    """The subset of a Stripe `checkout.session` object read from
+    `checkout.session.completed` — the platform-billing counterpart to
+    `StripePaymentIntentPayload` above."""
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    mode: str | None = None
+    customer: str | None = None
+    subscription: str | None = None
+    metadata: StripeMetadata = Field(default_factory=StripeMetadata)
+
+
 class StripeRefundResponse(BaseModel):
     """Response shape for `POST /refunds`. Validated for schema-drift
     detection even though `PaymentService.decide_refund` does not

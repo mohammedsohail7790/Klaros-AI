@@ -23,6 +23,7 @@ from app.models.rbac import role_has_permission
 from app.tools.base import ExecutionContext, Tool
 from app.tools.errors import (
     ToolApprovalRequiredError,
+    ToolBillingLimitError,
     ToolBlockedError,
     ToolNotFoundError,
     ToolPermissionError,
@@ -75,7 +76,9 @@ def _infer_entity(raw_input: dict, output=None) -> tuple[str | None, uuid.UUID |
 
 
 class ToolRegistry:
-    def __init__(self, session_factory: async_sessionmaker, bus=None, policy_service=None) -> None:
+    def __init__(
+        self, session_factory: async_sessionmaker, bus=None, policy_service=None, billing_service=None
+    ) -> None:
         self._session_factory = session_factory
         self._tools: dict[str, Tool] = {}
         # Optional (Phase 9): lets the registry publish `approval.requested`
@@ -93,6 +96,14 @@ class ToolRegistry:
 
             policy_service = PolicyService(session_factory)
         self._policy_service = policy_service
+        # Same lazy-default pattern as policy_service above — every real
+        # deployment gets plan/usage gating on counts_toward_ai_usage tools
+        # without every call site needing to know about it.
+        if billing_service is None:
+            from app.services.billing_service import BillingService
+
+            billing_service = BillingService(session_factory)
+        self._billing_service = billing_service
 
     def register(self, tool: Tool) -> None:
         self._tools[tool.name] = tool
@@ -142,6 +153,17 @@ class ToolRegistry:
             # Can't write a tenant-scoped audit row with no tenant — log and reject.
             logger.warning("tool_execution_rejected_missing_tenant", tool=name)
             raise ToolPermissionError("Tool requires a tenant-scoped execution context")
+
+        if tool.counts_toward_ai_usage and context.tenant_id is not None:
+            org = await self._get_organization(context.tenant_id)
+            if org is not None:
+                try:
+                    await self._billing_service.check_ai_usage_allowed(org)
+                except ToolBillingLimitError as exc:
+                    await self._audit(
+                        context, tool_name=name, raw_input=raw_input, result="failure", error=str(exc)
+                    )
+                    raise
 
         try:
             validated_input = tool.input_schema.model_validate(raw_input)
@@ -224,6 +246,12 @@ class ToolRegistry:
                 correlation_id=context.correlation_id,
             )
         return request_id
+
+    async def _get_organization(self, tenant_id: uuid.UUID):
+        from app.models.organization import Organization
+
+        async with self._session_factory() as session:
+            return await session.get(Organization, tenant_id)
 
     async def _audit(
         self,

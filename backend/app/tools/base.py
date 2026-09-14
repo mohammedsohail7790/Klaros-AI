@@ -35,6 +35,12 @@ class Tool(ABC):
     output_schema: type[BaseModel]
     required_permission: Permission | None = None
     tenant_scoped: bool = True
+    # Counted against the tenant's plan's monthly AI-recommendation limit
+    # (app/services/billing_service.py::PLAN_LIMITS) before execution.
+    # False for every tool by default — only insights.generate_morning_brief
+    # sets this, since it's the one feature the pricing page's "AI Next
+    # Action" recommendation cap describes.
+    counts_toward_ai_usage: bool = False
 
     @abstractmethod
     async def execute(self, input: BaseModel, context: ExecutionContext) -> BaseModel: ...

@@ -24,6 +24,17 @@ class ToolBlockedError(ToolError):
     pass
 
 
+class ToolBillingLimitError(ToolError):
+    """Raised when a tenant's plan/trial/subscription state disallows this
+    call — a lapsed trial, a canceled/past_due subscription, or a Solo-plan
+    AI usage cap already hit this month. See
+    app/services/billing_service.py::check_ai_usage_allowed. Distinct from
+    ToolBlockedError (an owner's own policy choice) — this is Klaros's own
+    billing boundary, mapped to HTTP 402 rather than 403."""
+
+    pass
+
+
 class ToolApprovalRequiredError(ToolError):
     """Not a failure — the caller should treat this as "pending", not "error".
     Raised so callers can't accidentally ignore the approval boundary."""

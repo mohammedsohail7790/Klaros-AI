@@ -115,7 +115,10 @@ export default function PricingPage() {
             </div>
           ))}
         </div>
-        <p className="mx-auto mt-10 max-w-xl text-center text-xs text-muted-foreground">
+        <p className="mx-auto mt-4 max-w-xl text-center text-xs text-muted-foreground">
+          Every plan starts with a real 14-day free trial — full access, no card required.
+        </p>
+        <p className="mx-auto mt-2 max-w-xl text-center text-xs text-muted-foreground">
           Every plan includes governed AI execution, a full audit trail, and honest
           integration status — nothing fabricated, nothing hidden.
         </p>

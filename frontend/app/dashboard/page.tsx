@@ -13,6 +13,7 @@ import {
   AttentionQueue,
   AutomationSummary,
   AutonomyStats,
+  BillingStatus,
   CommercialPipeline,
   CrmMetrics,
   FinanceSummary,
@@ -27,6 +28,7 @@ import {
   getAttentionQueue,
   getAutomationSummary,
   getAutonomyStats,
+  getBillingStatus,
   getCommercialPipeline,
   getCrmMetrics,
   getFinanceSummary,
@@ -112,6 +114,7 @@ export default function DashboardPage() {
   const [brief, setBrief] = useState<MorningBriefData | null>(null);
   const [attention, setAttention] = useState<AttentionQueue | null>(null);
   const [aiHealth, setAiHealth] = useState<AiHealth | null>(null);
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [connections, setConnections] = useState<IntegrationConnectionRow[] | null>(null);
   const [autonomy, setAutonomy] = useState<AutonomyStats | null>(null);
   const [automations, setAutomations] = useState<AutomationSummary | null>(null);
@@ -164,6 +167,7 @@ export default function DashboardPage() {
         attentionResult,
         aiHealthResult,
         connectionsResult,
+        billingResult,
       ] = await Promise.all([
         getCrmMetrics(token),
         getCommercialPipeline(token),
@@ -184,6 +188,7 @@ export default function DashboardPage() {
         getAttentionQueue(token),
         getAiHealth(token),
         listIntegrationConnections(token),
+        getBillingStatus(token),
       ]);
       setMetrics(metricsResult);
       setPipeline(pipelineResult);
@@ -199,6 +204,7 @@ export default function DashboardPage() {
       setAttention(attentionResult);
       setAiHealth(aiHealthResult);
       setConnections(connectionsResult);
+      setBilling(billingResult);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load business metrics.");
     } finally {
@@ -416,6 +422,31 @@ export default function DashboardPage() {
                   <div className="text-xs text-muted">Calls succeeded (24h)</div>
                 </Link>
               </>
+            )}
+            {billing && (
+              <Link
+                href="/settings/billing"
+                className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
+              >
+                <div className="text-sm font-semibold capitalize text-foreground">
+                  {billing.plan}
+                  {billing.billing_status === "trialing" && billing.trial_ends_at && (
+                    <span className="ml-1 font-normal text-amber-700">
+                      (trial ends{" "}
+                      {new Date(billing.trial_ends_at).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                      )
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-muted">
+                  {billing.ai_usage_limit !== null
+                    ? `${billing.ai_usage_this_month}/${billing.ai_usage_limit} recommendations used`
+                    : "Unlimited recommendations"}
+                </div>
+              </Link>
             )}
           </div>
         </section>
