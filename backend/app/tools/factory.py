@@ -165,6 +165,7 @@ from app.tools.builtin.audit_tools import RecordAction
 from app.tools.builtin.completion_tools import CloseJob, GenerateCompletionPacket, RecordCustomerSignoff
 from app.tools.builtin.crm_tools import (
     AIQualifyLeadAdvisory,
+    BulkImportCustomers,
     CreateCustomer,
     CreateLead,
     CreateNote,
@@ -370,6 +371,7 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     ai_qualification_service = AIQualificationService(session_factory, get_ai_provider())
     registry.register(AIQualifyLeadAdvisory(ai_qualification_service))
     registry.register(CreateCustomer(session_factory))
+    registry.register(BulkImportCustomers(session_factory))
     registry.register(GetCustomer(session_factory))
     registry.register(UpdateCustomer(session_factory))
     registry.register(SearchCustomers(session_factory))

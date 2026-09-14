@@ -349,6 +349,80 @@ class CreateCustomer(Tool):
             return CustomerOutput(customer=_customer_to_dict(customer))
 
 
+class BulkImportCustomersInput(BaseModel):
+    customers: list[CreateCustomerInput] = Field(min_length=1, max_length=2000)
+
+
+class BulkImportCustomersOutput(BaseModel):
+    created_count: int
+    skipped_duplicate_count: int
+    customer_ids: list[str]
+
+
+class BulkImportCustomers(Tool):
+    """Real, transactional bulk creation — the counterpart to CreateCustomer
+    for a business migrating an existing customer list into Klaros (e.g.
+    from a CSV export of a spreadsheet or another CRM). A row is skipped as
+    a duplicate only when its normalized email already matches an existing
+    customer for this tenant (or another row earlier in the same batch) —
+    a row with no email is never treated as a duplicate of anything, since
+    there's nothing reliable to match on."""
+
+    name = "crm.bulk_import_customers"
+    description = "Create many customer records at once, skipping rows whose email already exists for this tenant."
+    input_schema = BulkImportCustomersInput
+    output_schema = BulkImportCustomersOutput
+    required_permission = Permission.CREATE_CUSTOMER
+
+    def __init__(self, session_factory: async_sessionmaker) -> None:
+        self._session_factory = session_factory
+
+    async def execute(self, input: BulkImportCustomersInput, context: ExecutionContext) -> BulkImportCustomersOutput:
+        async with self._session_factory() as session:
+            existing_emails = set(
+                (
+                    await session.execute(
+                        select(Customer.email).where(
+                            Customer.tenant_id == context.tenant_id, Customer.email.is_not(None)
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            seen_in_batch: set[str] = set()
+            created_ids: list[str] = []
+            skipped = 0
+
+            for row in input.customers:
+                normalized = normalize_email(row.email)
+                if normalized and (normalized in existing_emails or normalized in seen_in_batch):
+                    skipped += 1
+                    continue
+                if normalized:
+                    seen_in_batch.add(normalized)
+                customer = Customer(
+                    tenant_id=context.tenant_id,
+                    name=row.name,
+                    company_name=row.company_name,
+                    email=normalized,
+                    phone=row.phone,
+                    phone_normalized=normalize_phone(row.phone),
+                    address=row.address,
+                    city=row.city,
+                    state=row.state,
+                    postal_code=row.postal_code,
+                )
+                session.add(customer)
+                await session.flush()
+                created_ids.append(str(customer.id))
+
+            await session.commit()
+            return BulkImportCustomersOutput(
+                created_count=len(created_ids), skipped_duplicate_count=skipped, customer_ids=created_ids
+            )
+
+
 class GetCustomerInput(BaseModel):
     customer_id: uuid.UUID
 

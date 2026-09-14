@@ -100,6 +100,10 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     # as crm.qualify_lead itself (nothing moves/sends/changes a record).
     "crm.ai_qualify_lead_advisory": ActionPolicy.AUTO,
     "crm.create_customer": ActionPolicy.AUTO,
+    # Same reasoning as crm.create_customer — a business owner deliberately
+    # uploading their own existing customer list is the same trust level
+    # as creating one customer at a time, just batched.
+    "crm.bulk_import_customers": ActionPolicy.AUTO,
     "crm.get_customer": ActionPolicy.AUTO,
     "crm.update_customer": ActionPolicy.AUTO,
     "crm.search_customers": ActionPolicy.AUTO,

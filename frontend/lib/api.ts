@@ -292,6 +292,28 @@ export function createCustomer(
   });
 }
 
+export interface CustomerImportRow {
+  name: string;
+  company_name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+}
+
+export function bulkImportCustomers(token: string, rows: CustomerImportRow[]) {
+  return request<{ created_count: number; skipped_duplicate_count: number; customer_ids: string[] }>(
+    "/api/v1/customers/import",
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(rows),
+    }
+  );
+}
+
 export function searchCustomers(token: string, params: { q?: string; limit?: number; offset?: number } = {}) {
   const qs = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {

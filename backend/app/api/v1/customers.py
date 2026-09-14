@@ -38,6 +38,23 @@ async def create_customer(
     return output.model_dump(mode="json")
 
 
+@router.post("/import", status_code=201)
+async def bulk_import_customers(
+    body: list[CreateCustomerRequest],
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute(
+            "crm.bulk_import_customers",
+            {"customers": [c.model_dump() for c in body]},
+            execution_context(current_user),
+        )
+    except ToolError as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
 @router.get("")
 async def search_customers(
     q: str | None = None,
