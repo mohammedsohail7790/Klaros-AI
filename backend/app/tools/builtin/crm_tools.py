@@ -11,7 +11,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.models.actor import ActorType
-from app.models.crm import Customer, CustomerNote, CustomerStatus, Lead, LeadStatus
+from app.models.crm import Customer, CustomerNote, CustomerStatus, Lead, LeadSource, LeadStatus
 from app.models.rbac import Permission
 from app.services.customer_matching import normalize_email, normalize_phone
 from app.services.lead_service import CreateLeadInput, LeadService
@@ -103,6 +103,70 @@ class CreateLead(Tool):
             ),
         )
         return LeadOutput(lead=_lead_to_dict(lead), deduplicated=deduplicated)
+
+
+class BulkImportLeadRow(BaseModel):
+    name: str
+    phone: str | None = None
+    email: str | None = None
+    service_requested: str | None = None
+    description: str | None = None
+    location: str | None = None
+    estimated_value: float | None = None
+
+
+class BulkImportLeadsInput(BaseModel):
+    leads: list[BulkImportLeadRow] = Field(min_length=1, max_length=2000)
+
+
+class BulkImportLeadsOutput(BaseModel):
+    created_count: int
+    matched_existing_customer_count: int
+    lead_ids: list[str]
+
+
+class BulkImportLeads(Tool):
+    """The bulk counterpart to CreateLead, for a tenant migrating an
+    existing prospect pipeline (e.g. a spreadsheet of open inquiries) into
+    Klaros. Reuses LeadService.create_lead's own matching logic row by
+    row — a row whose email/phone matches an existing customer gets
+    linked to it exactly as a normal single lead creation would; nothing
+    here duplicates that logic. source is always LeadSource.OTHER: none
+    of the real channels (PHONE/WEB/REFERRAL/...) honestly describe a
+    bulk-imported row."""
+
+    name = "crm.bulk_import_leads"
+    description = "Create many leads at once from an existing pipeline being migrated into Klaros."
+    input_schema = BulkImportLeadsInput
+    output_schema = BulkImportLeadsOutput
+    required_permission = Permission.CREATE_LEAD
+
+    def __init__(self, lead_service: LeadService) -> None:
+        self._lead_service = lead_service
+
+    async def execute(self, input: BulkImportLeadsInput, context: ExecutionContext) -> BulkImportLeadsOutput:
+        lead_ids: list[str] = []
+        matched_existing = 0
+        for row in input.leads:
+            lead, _deduplicated = await self._lead_service.create_lead(
+                context.tenant_id,
+                CreateLeadInput(
+                    name=row.name,
+                    source=LeadSource.OTHER,
+                    phone=row.phone,
+                    email=row.email,
+                    service_requested=row.service_requested,
+                    description=row.description,
+                    location=row.location,
+                    estimated_value=row.estimated_value,
+                ),
+            )
+            lead_ids.append(str(lead.id))
+            if lead.customer_id is not None:
+                matched_existing += 1
+        return BulkImportLeadsOutput(
+            created_count=len(lead_ids), matched_existing_customer_count=matched_existing, lead_ids=lead_ids
+        )
 
 
 class GetLeadInput(BaseModel):

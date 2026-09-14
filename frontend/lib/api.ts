@@ -187,6 +187,27 @@ export function createLead(token: string, payload: CreateLeadPayload) {
   });
 }
 
+export interface LeadImportRow {
+  name: string;
+  phone?: string;
+  email?: string;
+  service_requested?: string;
+  description?: string;
+  location?: string;
+  estimated_value?: number;
+}
+
+export function bulkImportLeads(token: string, rows: LeadImportRow[]) {
+  return request<{ created_count: number; matched_existing_customer_count: number; lead_ids: string[] }>(
+    "/api/v1/leads/import",
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(rows),
+    }
+  );
+}
+
 export function searchLeads(
   token: string,
   params: { status?: string; source?: string; q?: string; limit?: number; offset?: number } = {}

@@ -19,6 +19,10 @@ class LeadSource(StrEnum):
     MARKETPLACE = "MARKETPLACE"
     REFERRAL = "REFERRAL"
     WALK_IN = "WALK_IN"
+    # A lead brought in via crm.bulk_import_leads (an existing pipeline the
+    # tenant is migrating into Klaros) — none of the above channels
+    # honestly describe how it actually originated.
+    OTHER = "OTHER"
 
 
 class LeadStatus(StrEnum):

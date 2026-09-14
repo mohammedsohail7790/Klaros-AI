@@ -91,6 +91,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     # CRM (Phase 3): lead/customer/appointment actions are low-risk and
     # reversible, so AUTO. Nothing here touches money yet.
     "crm.create_lead": ActionPolicy.AUTO,
+    "crm.bulk_import_leads": ActionPolicy.AUTO,
     "crm.get_lead": ActionPolicy.AUTO,
     "crm.update_lead": ActionPolicy.AUTO,
     "crm.search_leads": ActionPolicy.AUTO,

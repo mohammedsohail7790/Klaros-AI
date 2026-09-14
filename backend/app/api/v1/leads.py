@@ -39,6 +39,33 @@ async def create_lead(
     return output.model_dump(mode="json")
 
 
+class BulkImportLeadRowRequest(BaseModel):
+    name: str
+    phone: str | None = None
+    email: str | None = None
+    service_requested: str | None = None
+    description: str | None = None
+    location: str | None = None
+    estimated_value: float | None = None
+
+
+@router.post("/import", status_code=201)
+async def bulk_import_leads(
+    body: list[BulkImportLeadRowRequest],
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute(
+            "crm.bulk_import_leads",
+            {"leads": [row.model_dump() for row in body]},
+            execution_context(current_user),
+        )
+    except ToolError as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
 @router.get("")
 async def search_leads(
     status: str | None = None,
