@@ -1,7 +1,10 @@
 import uuid
+from datetime import date
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -112,6 +115,32 @@ async def trigger_invoice_from_job(
     registry: ToolRegistry = Depends(get_tool_registry),
 ) -> dict[str, Any]:
     return await _call_tool("finance.trigger_invoice_from_job", {"job_id": str(job_id)}, current_user, registry)
+
+
+class BulkImportInvoiceRowRequest(BaseModel):
+    customer_name: str
+    customer_email: str | None = None
+    customer_phone: str | None = None
+    invoice_number: str | None = None
+    issue_date: date
+    due_date: date
+    amount: Decimal
+    amount_paid: Decimal = Decimal("0")
+    description: str | None = None
+
+
+@router.post("/import", status_code=201)
+async def bulk_import_invoices(
+    body: list[BulkImportInvoiceRowRequest],
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    return await _call_tool(
+        "finance.bulk_import_invoices",
+        {"invoices": [row.model_dump(mode="json") for row in body]},
+        current_user,
+        registry,
+    )
 
 
 @router.post("/{invoice_id}/request-approval")

@@ -15,6 +15,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.events.bus import EventBus
@@ -42,6 +43,13 @@ class JobNotFoundError(Exception):
 
 
 class InvalidInvoiceTransitionError(Exception):
+    pass
+
+
+class InvoiceNumberCollisionError(Exception):
+    """The caller supplied an invoice_number that already exists for this
+    tenant (the DB's own uq_invoices_tenant_number constraint)."""
+
     pass
 
 
@@ -258,6 +266,82 @@ class InvoiceService:
             entity_type="invoice",
             entity_id=invoice.id,
             payload={"invoice_id": str(invoice.id)},
+        )
+        return invoice
+
+    async def create_imported_invoice(
+        self,
+        tenant_id: uuid.UUID,
+        *,
+        customer_id: uuid.UUID,
+        issue_date: date,
+        due_date: date,
+        amount: Decimal,
+        amount_paid: Decimal = Decimal("0"),
+        description: str | None,
+        invoice_number: str | None = None,
+    ) -> Invoice:
+        """A single already-issued invoice from a business migrating its
+        existing AR into Klaros (e.g. a QuickBooks/spreadsheet export of
+        currently-owed balances) — represented as one line item for the
+        given amount rather than requiring the CSV to carry a full
+        itemized breakdown. Lands directly in SENT/PARTIALLY_PAID/PAID
+        (whichever `amount_paid` implies) — never DRAFT/PENDING_APPROVAL,
+        since this already happened outside Klaros and re-running it
+        through the normal draft->approve->send lifecycle would be
+        fiction, not history. Still publishes INVOICE_CREATED so AR
+        aging, the Morning Brief, and collections treat it as real going
+        forward — the whole point of bringing it in.
+        """
+        amount_paid = min(amount_paid, amount) if amount_paid > 0 else Decimal("0")
+        amount_due = amount - amount_paid
+        if amount_due <= 0:
+            status = InvoiceStatus.PAID
+        elif amount_paid > 0:
+            status = InvoiceStatus.PARTIALLY_PAID
+        else:
+            status = InvoiceStatus.SENT
+
+        sent_at = datetime.combine(issue_date, datetime.min.time(), tzinfo=timezone.utc)
+
+        async with self._session_factory() as session:
+            number = invoice_number or await self._next_invoice_number(session, tenant_id)
+            invoice = Invoice(
+                tenant_id=tenant_id,
+                invoice_number=number,
+                customer_id=customer_id,
+                status=status,
+                issue_date=issue_date,
+                due_date=due_date,
+                sent_at=sent_at,
+                paid_at=sent_at if status == InvoiceStatus.PAID else None,
+            )
+            session.add(invoice)
+            try:
+                await session.flush()
+            except IntegrityError as exc:
+                await session.rollback()
+                raise InvoiceNumberCollisionError(f"Invoice number '{number}' already exists") from exc
+
+            item = LineItemInput(description=description or "Imported balance", quantity=Decimal("1"), unit_price=amount)
+            subtotal, tax, discount, total = await self._replace_line_items(session, tenant_id, invoice.id, [item])
+            invoice.subtotal = subtotal
+            invoice.tax = tax
+            invoice.discount = discount
+            invoice.total = total
+            invoice.amount_paid = amount_paid
+            invoice.amount_due = total - amount_paid
+
+            await session.commit()
+            await session.refresh(invoice)
+
+        await self._bus.publish(
+            tenant_id=tenant_id,
+            event_type=EventType.INVOICE_CREATED,
+            source="finance",
+            entity_type="invoice",
+            entity_id=invoice.id,
+            payload={"invoice_id": str(invoice.id), "imported": True},
         )
         return invoice
 

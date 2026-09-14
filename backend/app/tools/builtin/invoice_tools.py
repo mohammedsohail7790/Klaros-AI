@@ -1,8 +1,9 @@
 import uuid
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.finance import Invoice
 from app.models.rbac import Permission
@@ -10,6 +11,7 @@ from app.invoice_delivery.factory import get_invoice_delivery_provider
 from app.services.invoice_service import (
     InvalidInvoiceTransitionError,
     InvoiceNotFoundError,
+    InvoiceNumberCollisionError,
     InvoiceService,
     JobNotFoundError,
     LineItemInput,
@@ -282,6 +284,129 @@ class VoidInvoice(Tool):
         except (InvoiceNotFoundError, InvalidInvoiceTransitionError) as e:
             raise ValueError(str(e)) from e
         return InvoiceOutput(invoice=_invoice_to_dict(invoice))
+
+
+class BulkImportInvoiceRow(BaseModel):
+    customer_name: str
+    customer_email: str | None = None
+    customer_phone: str | None = None
+    invoice_number: str | None = None
+    issue_date: date
+    due_date: date
+    amount: Decimal
+    amount_paid: Decimal = Decimal("0")
+    description: str | None = None
+
+
+class BulkImportInvoicesInput(BaseModel):
+    invoices: list[BulkImportInvoiceRow] = Field(min_length=1, max_length=1000)
+
+
+class BulkImportInvoicesRowResult(BaseModel):
+    customer_name: str
+    status: str  # "created" | "skipped"
+    invoice_id: str | None = None
+    reason: str | None = None
+
+
+class BulkImportInvoicesOutput(BaseModel):
+    created_count: int
+    skipped_count: int
+    customers_created_count: int
+    results: list[BulkImportInvoicesRowResult]
+
+
+class BulkImportInvoices(Tool):
+    """Brings a tenant's currently-owed AR into Klaros — e.g. an export of
+    open invoices from a spreadsheet or another accounting system — as
+    real, already-issued invoices (SENT/PARTIALLY_PAID/PAID depending on
+    amount_paid), never replayed through the normal draft->approval
+    lifecycle. Each row is matched to an existing customer by email/phone,
+    falling back to an exact case-insensitive name match, and only
+    creates a new Customer record when neither matches — same matching
+    order as crm.create_lead. A row whose invoice_number collides with an
+    existing one is skipped and reported, never silently dropped or
+    allowed to fail the whole batch."""
+
+    name = "finance.bulk_import_invoices"
+    description = "Import a tenant's existing open/paid invoices as real invoices, matching or creating customers by name/email."
+    input_schema = BulkImportInvoicesInput
+    output_schema = BulkImportInvoicesOutput
+    required_permission = Permission.CREATE_INVOICE
+
+    def __init__(self, invoice_service: InvoiceService, session_factory) -> None:
+        self._invoice_service = invoice_service
+        self._session_factory = session_factory
+
+    async def _resolve_customer_id(self, tenant_id: uuid.UUID, row: BulkImportInvoiceRow) -> tuple[uuid.UUID, bool]:
+        from app.models.crm import Customer
+        from app.services.customer_matching import find_matching_customer, normalize_email, normalize_phone
+        from sqlalchemy import func, select
+
+        async with self._session_factory() as session:
+            match = await find_matching_customer(
+                session, tenant_id=tenant_id, email=row.customer_email, phone=row.customer_phone
+            )
+            if match is not None:
+                return match.id, False
+
+            by_name = (
+                await session.execute(
+                    select(Customer).where(
+                        Customer.tenant_id == tenant_id, func.lower(Customer.name) == row.customer_name.strip().lower()
+                    )
+                )
+            ).scalars().first()
+            if by_name is not None:
+                return by_name.id, False
+
+            customer = Customer(
+                tenant_id=tenant_id,
+                name=row.customer_name,
+                email=normalize_email(row.customer_email),
+                phone=row.customer_phone,
+                phone_normalized=normalize_phone(row.customer_phone),
+            )
+            session.add(customer)
+            await session.commit()
+            await session.refresh(customer)
+            return customer.id, True
+
+    async def execute(self, input: BulkImportInvoicesInput, context: ExecutionContext) -> BulkImportInvoicesOutput:
+        results: list[BulkImportInvoicesRowResult] = []
+        created = 0
+        skipped = 0
+        customers_created = 0
+
+        for row in input.invoices:
+            customer_id, was_created = await self._resolve_customer_id(context.tenant_id, row)
+            if was_created:
+                customers_created += 1
+            try:
+                invoice = await self._invoice_service.create_imported_invoice(
+                    context.tenant_id,
+                    customer_id=customer_id,
+                    issue_date=row.issue_date,
+                    due_date=row.due_date,
+                    amount=row.amount,
+                    amount_paid=row.amount_paid,
+                    description=row.description,
+                    invoice_number=row.invoice_number,
+                )
+            except InvoiceNumberCollisionError as exc:
+                skipped += 1
+                results.append(
+                    BulkImportInvoicesRowResult(customer_name=row.customer_name, status="skipped", reason=str(exc))
+                )
+                continue
+            created += 1
+            results.append(
+                BulkImportInvoicesRowResult(customer_name=row.customer_name, status="created", invoice_id=str(invoice.id))
+            )
+
+        return BulkImportInvoicesOutput(
+            created_count=created, skipped_count=skipped, customers_created_count=customers_created, results=results
+        )
 
 
 class GetInvoiceInput(BaseModel):

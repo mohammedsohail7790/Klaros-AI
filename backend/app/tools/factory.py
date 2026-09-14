@@ -70,6 +70,7 @@ from app.tools.builtin.ar_tools import (
 from app.tools.builtin.cash_tools import GenerateCashForecast
 from app.tools.builtin.invoice_tools import (
     ApproveInvoice,
+    BulkImportInvoices,
     CreateInvoiceDraft,
     GetInvoice,
     RejectInvoice,
@@ -434,6 +435,7 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
 
     registry.register(TriggerInvoiceFromJob(invoice_service))
     registry.register(CreateInvoiceDraft(invoice_service))
+    registry.register(BulkImportInvoices(invoice_service, session_factory))
     registry.register(UpdateInvoiceDraft(invoice_service))
     registry.register(RequestInvoiceApproval(invoice_service))
     registry.register(ApproveInvoice(invoice_service))

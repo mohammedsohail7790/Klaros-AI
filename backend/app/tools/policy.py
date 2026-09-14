@@ -163,6 +163,10 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     # why AI can never reach those in practice).
     "finance.trigger_invoice_from_job": ActionPolicy.AUTO,
     "finance.create_invoice_draft": ActionPolicy.AUTO,
+    # A business owner deliberately uploading their own existing AR ledger
+    # — same trust level as crm.bulk_import_customers/leads, a batched
+    # version of the owner's own direct action, not an AI proposal.
+    "finance.bulk_import_invoices": ActionPolicy.AUTO,
     "finance.update_invoice_draft": ActionPolicy.AUTO,
     "finance.request_invoice_approval": ActionPolicy.AUTO,  # body decides AUTO-approve vs. pending
     "finance.approve_invoice": ActionPolicy.AUTO,  # gated by APPROVE_INVOICE permission instead

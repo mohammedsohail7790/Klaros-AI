@@ -1028,6 +1028,33 @@ export function triggerInvoiceFromJob(token: string, jobId: string) {
   });
 }
 
+export interface InvoiceImportRow {
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  invoice_number?: string;
+  issue_date: string;
+  due_date: string;
+  amount: string;
+  amount_paid?: string;
+  description?: string;
+}
+
+export interface InvoiceImportResult {
+  created_count: number;
+  skipped_count: number;
+  customers_created_count: number;
+  results: { customer_name: string; status: string; invoice_id: string | null; reason: string | null }[];
+}
+
+export function bulkImportInvoices(token: string, rows: InvoiceImportRow[]) {
+  return request<InvoiceImportResult>("/api/v1/invoices/import", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(rows),
+  });
+}
+
 // --- Phase 14: Quotes/Estimates. Internal (authenticated, staff-facing)
 // CRUD/send below; the public customer view/accept/decline functions are
 // separate and deliberately never send an Authorization header — the
