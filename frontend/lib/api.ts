@@ -2437,6 +2437,61 @@ export function updateOpportunityStatus(token: string, opportunityId: string, st
   });
 }
 
+export interface RiskSignalRow {
+  id: string;
+  customer_id: string;
+  signal_type: string;
+  severity: string;
+  description: string;
+  detected_at: string;
+  resolved: boolean;
+}
+
+export interface AdvocateCandidateRow {
+  id: string;
+  customer_id: string;
+  reason: string;
+  signals: string[];
+  priority: string;
+  status: string;
+  identified_at: string;
+}
+
+export function listRiskSignals(token: string, resolved: boolean = false) {
+  const qs = new URLSearchParams({ resolved: String(resolved) });
+  return request<{ risk_signals: RiskSignalRow[] }>(`/api/v1/retention/risk-signals?${qs.toString()}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function listAdvocateCandidates(token: string, status?: string) {
+  const qs = status ? `?${new URLSearchParams({ status }).toString()}` : "";
+  return request<{ advocate_candidates: AdvocateCandidateRow[] }>(`/api/v1/retention/advocate-candidates${qs}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function detectAtRisk(token: string) {
+  return request<{ changed_customer_ids: string[] }>(`/api/v1/retention/detect-at-risk`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function detectPaymentRisk(token: string) {
+  return request<{ flagged_customer_ids: string[] }>(`/api/v1/retention/detect-payment-risk`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function detectAdvocates(token: string) {
+  return request<{ candidate_customer_ids: string[] }>(`/api/v1/retention/detect-advocates`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
 export interface ServiceReminderRow {
   id: string;
   customer_id: string;

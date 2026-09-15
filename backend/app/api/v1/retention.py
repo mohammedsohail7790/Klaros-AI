@@ -11,13 +11,17 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 
-from app.api.deps import CurrentUser, get_current_user
+from app.api.deps import CurrentUser, get_current_user, get_db
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import async_session_maker
 from app.models.crm import Customer
 from app.models.finance import Invoice, InvoiceStatus
 from app.models.operations import ExceptionStatus, OperationsException
 from app.models.retention import (
+    AdvocateCandidate,
+    AdvocateCandidateStatus,
     CustomerLifecycleProfile,
+    CustomerRiskSignal,
     LifecycleState,
     Referral,
     ReferralReward,
@@ -29,10 +33,12 @@ from app.models.retention import (
     CustomerFeedback,
     OpportunityStatus,
 )
-from app.api.tool_deps import get_wired_event_bus
+from app.api.tool_deps import execution_context, get_tool_registry, get_wired_event_bus, raise_http_for_tool_error
 from app.services.attribution_service import AttributionService
 from app.services.retention_service import RetentionService
 from app.services.exception_service import ExceptionService
+from app.tools.errors import ToolError
+from app.tools.registry import ToolRegistry
 from app.events.bus import EventBus
 
 router = APIRouter(prefix="/retention", tags=["retention"])
@@ -235,3 +241,90 @@ async def customer_health(
         "last_review_request_at": h.last_review_request_at.isoformat() if h.last_review_request_at else None,
         "last_referral_at": h.last_referral_at.isoformat() if h.last_referral_at else None,
     }
+
+
+# --- At-risk / payment-risk / advocate detection sweeps -----------------------------
+# retention.detect_at_risk_and_inactive / detect_payment_issue_risk /
+# identify_advocate_candidates were fully implemented, registered tools
+# (see app/tools/builtin/retention_lifecycle_tools.py) writing real
+# CustomerRiskSignal/AdvocateCandidate rows, but nothing ever called them
+# and nothing ever read those rows back except the AI's
+# insights.get_retention_snapshot — a human had no way to run the sweep
+# or see the result. Same "on-demand sweep, no scheduler yet" pattern as
+# quotes.detect_expired_quotes.
+
+
+def _risk_signal_to_dict(s: CustomerRiskSignal) -> dict[str, Any]:
+    return {
+        "id": str(s.id), "customer_id": str(s.customer_id), "signal_type": s.signal_type, "severity": s.severity,
+        "description": s.description, "detected_at": s.detected_at.isoformat(), "resolved": s.resolved,
+    }
+
+
+def _advocate_candidate_to_dict(a: AdvocateCandidate) -> dict[str, Any]:
+    return {
+        "id": str(a.id), "customer_id": str(a.customer_id), "reason": a.reason,
+        "signals": a.signals.split(",") if a.signals else [], "priority": a.priority, "status": a.status,
+        "identified_at": a.identified_at.isoformat(),
+    }
+
+
+@router.get("/risk-signals")
+async def list_risk_signals(
+    resolved: bool = False,
+    current_user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    rows = (
+        await db.execute(
+            select(CustomerRiskSignal)
+            .where(CustomerRiskSignal.tenant_id == current_user.tenant_id, CustomerRiskSignal.resolved == resolved)
+            .order_by(CustomerRiskSignal.detected_at.desc())
+        )
+    ).scalars().all()
+    return {"risk_signals": [_risk_signal_to_dict(s) for s in rows]}
+
+
+@router.get("/advocate-candidates")
+async def list_advocate_candidates(
+    status: str | None = None,
+    current_user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    query = select(AdvocateCandidate).where(AdvocateCandidate.tenant_id == current_user.tenant_id)
+    query = query.where(AdvocateCandidate.status == status) if status else query.where(
+        AdvocateCandidate.status == AdvocateCandidateStatus.PENDING
+    )
+    rows = (await db.execute(query.order_by(AdvocateCandidate.identified_at.desc()))).scalars().all()
+    return {"advocate_candidates": [_advocate_candidate_to_dict(a) for a in rows]}
+
+
+@router.post("/detect-at-risk")
+async def detect_at_risk(
+    current_user: CurrentUser = Depends(get_current_user), registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute("retention.detect_at_risk_and_inactive", {}, execution_context(current_user))
+    except ToolError as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
+@router.post("/detect-payment-risk")
+async def detect_payment_risk(
+    current_user: CurrentUser = Depends(get_current_user), registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute("retention.detect_payment_issue_risk", {}, execution_context(current_user))
+    except ToolError as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
+@router.post("/detect-advocates")
+async def detect_advocates(
+    current_user: CurrentUser = Depends(get_current_user), registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute("retention.identify_advocate_candidates", {}, execution_context(current_user))
+    except ToolError as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")

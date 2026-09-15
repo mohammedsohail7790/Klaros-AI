@@ -97,6 +97,7 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
       { href: "/retention", label: "Retention", icon: Heart },
       { href: "/retention/campaigns", label: "Campaigns", icon: Megaphone },
       { href: "/retention/opportunities", label: "Opportunities", icon: TrendingUp },
+      { href: "/retention/risk-signals", label: "Risk & Advocacy", icon: AlertTriangle },
       { href: "/retention/reminders", label: "Reminders", icon: AlertTriangle },
       { href: "/retention/reviews", label: "Reviews", icon: FileText },
       { href: "/retention/referrals", label: "Referrals", icon: Users },
