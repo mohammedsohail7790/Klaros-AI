@@ -175,6 +175,7 @@ def raise_http_for_tool_error(exc: Exception) -> None:
         ToolBillingLimitError,
         ToolBlockedError,
         ToolError,
+        ToolKillSwitchError,
         ToolNotFoundError,
         ToolPermissionError,
         ToolValidationError,
@@ -188,6 +189,8 @@ def raise_http_for_tool_error(exc: Exception) -> None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     if isinstance(exc, ToolBlockedError):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    if isinstance(exc, ToolKillSwitchError):
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(exc)) from exc
     if isinstance(exc, ToolBillingLimitError):
         raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc)) from exc
     if isinstance(exc, ToolApprovalRequiredError):

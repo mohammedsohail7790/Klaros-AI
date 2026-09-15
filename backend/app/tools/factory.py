@@ -510,6 +510,11 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(ListInvites(team_service))
     registry.register(RevokeInvite(team_service))
 
+    from app.tools.builtin.organization_tools import GetKillSwitchStatus, SetKillSwitch
+
+    registry.register(GetKillSwitchStatus(session_factory))
+    registry.register(SetKillSwitch(session_factory))
+
     google_calendar_sync_service = GoogleCalendarSyncService(session_factory, get_integration_connection_service())
     registry.register(ListGoogleCalendars(google_calendar_sync_service))
     registry.register(CheckGoogleAvailability(google_calendar_sync_service))

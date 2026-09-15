@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Check, Sunrise, Workflow } from "lucide-react";
+import { Activity, AlertTriangle, Check, Power, Sunrise, Workflow } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
@@ -18,6 +18,7 @@ import {
   CrmMetrics,
   FinanceSummary,
   IntegrationConnectionRow,
+  KillSwitchStatus,
   MarketingSummary,
   MorningBriefData,
   OperationsDashboard,
@@ -32,6 +33,7 @@ import {
   getCommercialPipeline,
   getCrmMetrics,
   getFinanceSummary,
+  getKillSwitchStatus,
   getLatestMorningBrief,
   getMarketingSummary,
   getOperationsDashboard,
@@ -39,6 +41,7 @@ import {
   listApprovals,
   listCompanyMemories,
   listIntegrationConnections,
+  setKillSwitch,
 } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
@@ -115,6 +118,8 @@ export default function DashboardPage() {
   const [attention, setAttention] = useState<AttentionQueue | null>(null);
   const [aiHealth, setAiHealth] = useState<AiHealth | null>(null);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const [killSwitch, setKillSwitchState] = useState<KillSwitchStatus | null>(null);
+  const [killSwitchBusy, setKillSwitchBusy] = useState(false);
   const [connections, setConnections] = useState<IntegrationConnectionRow[] | null>(null);
   const [autonomy, setAutonomy] = useState<AutonomyStats | null>(null);
   const [automations, setAutomations] = useState<AutomationSummary | null>(null);
@@ -168,6 +173,7 @@ export default function DashboardPage() {
         aiHealthResult,
         connectionsResult,
         billingResult,
+        killSwitchResult,
       ] = await Promise.all([
         getCrmMetrics(token),
         getCommercialPipeline(token),
@@ -189,6 +195,7 @@ export default function DashboardPage() {
         getAiHealth(token),
         listIntegrationConnections(token),
         getBillingStatus(token),
+        getKillSwitchStatus(token),
       ]);
       setMetrics(metricsResult);
       setPipeline(pipelineResult);
@@ -205,6 +212,7 @@ export default function DashboardPage() {
       setAiHealth(aiHealthResult);
       setConnections(connectionsResult);
       setBilling(billingResult);
+      setKillSwitchState(killSwitchResult);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load business metrics.");
     } finally {
@@ -221,6 +229,19 @@ export default function DashboardPage() {
   }, [loadActivity, activityPage, activityCategory]);
 
   if (authError) return <p className="p-8 text-sm text-red-600">{authError}</p>;
+
+  async function handleToggleKillSwitch() {
+    if (!token) return;
+    setKillSwitchBusy(true);
+    try {
+      const result = await setKillSwitch(token, !killSwitch?.ai_paused);
+      setKillSwitchState(result);
+    } catch {
+      // best-effort — banner just won't update; user can retry
+    } finally {
+      setKillSwitchBusy(false);
+    }
+  }
 
   const gettingStartedChecks = connections
     ? GETTING_STARTED_ITEMS.map((item) => ({
@@ -251,6 +272,42 @@ export default function DashboardPage() {
             )}
           </div>
         </header>
+
+        {killSwitch && (
+          <div
+            className={`mb-6 flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
+              killSwitch.ai_paused
+                ? "border-red-300 bg-red-50/40 text-red-800"
+                : "border-border bg-surface text-muted"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {killSwitch.ai_paused ? (
+                <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={2} />
+              ) : (
+                <Power className="h-4 w-4 shrink-0" strokeWidth={2} />
+              )}
+              <span>
+                {killSwitch.ai_paused
+                  ? "AI is PAUSED tenant-wide — every AI and automation action is refused until you turn it back on. You can still work manually."
+                  : "AI is active — automations and AI-initiated actions are running normally."}
+              </span>
+            </div>
+            {user?.role === "OWNER" && (
+              <button
+                onClick={handleToggleKillSwitch}
+                disabled={killSwitchBusy}
+                className={`shrink-0 rounded-md border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+                  killSwitch.ai_paused
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                    : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                }`}
+              >
+                {killSwitchBusy ? "Working..." : killSwitch.ai_paused ? "Resume AI" : "Pause all AI"}
+              </button>
+            )}
+          </div>
+        )}
 
         {gettingStartedChecks && (
           <section className="mb-8">

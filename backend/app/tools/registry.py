@@ -25,6 +25,7 @@ from app.tools.errors import (
     ToolApprovalRequiredError,
     ToolBillingLimitError,
     ToolBlockedError,
+    ToolKillSwitchError,
     ToolNotFoundError,
     ToolPermissionError,
     ToolValidationError,
@@ -135,6 +136,17 @@ class ToolRegistry:
         to BLOCKED still stops execution even on resume.
         """
         tool = self.get(name)
+
+        if context.actor_type != ActorType.USER and context.tenant_id is not None:
+            org = await self._get_organization(context.tenant_id)
+            if org is not None and org.ai_paused:
+                await self._audit(
+                    context, tool_name=name, raw_input=raw_input, result="failure", error="ai_kill_switch_active"
+                )
+                raise ToolKillSwitchError(
+                    "This tenant's AI kill switch is on — AI and automation actions are paused. "
+                    "A human can still act directly; turn the switch off in Settings to resume."
+                )
 
         if tool.required_permission is not None:
             if context.role is None or not role_has_permission(context.role, tool.required_permission):

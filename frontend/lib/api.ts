@@ -3224,6 +3224,27 @@ export function getAiHealth(token: string) {
   return request<AiHealth>(`/api/v1/dashboard/ai-health`, { headers: authHeaders(token) });
 }
 
+// --- AI kill switch — an org-wide emergency control (OWNER only to set,
+// enforced for real in ToolRegistry.execute() for every non-human actor). ---
+
+export interface KillSwitchStatus {
+  ai_paused: boolean;
+  ai_paused_at: string | null;
+  ai_paused_by: string | null;
+}
+
+export function getKillSwitchStatus(token: string) {
+  return request<KillSwitchStatus>("/api/v1/organization/kill-switch", { headers: authHeaders(token) });
+}
+
+export function setKillSwitch(token: string, active: boolean) {
+  return request<KillSwitchStatus>("/api/v1/organization/kill-switch", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ active }),
+  });
+}
+
 // Phase 27: the Owner Activity Feed — read-only, human-readable business
 // history aggregated from existing persisted sources.
 export interface ActivityItem {

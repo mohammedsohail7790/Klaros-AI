@@ -24,6 +24,14 @@ class ToolBlockedError(ToolError):
     pass
 
 
+class ToolKillSwitchError(ToolError):
+    """Raised when a tenant's AI kill switch (Organization.ai_paused) is
+    on and the calling actor is not a human — see
+    app/tools/registry.py::ToolRegistry.execute()."""
+
+    pass
+
+
 class ToolBillingLimitError(ToolError):
     """Raised when a tenant's plan/trial/subscription state disallows this
     call — a lapsed trial, a canceled/past_due subscription, or a Solo-plan

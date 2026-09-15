@@ -38,6 +38,7 @@ from app.api.v1 import (
     morning_brief,
     notifications,
     operations,
+    organizations,
     payments,
     profitability,
     public_contracts,
@@ -84,6 +85,7 @@ api_router.include_router(jobs.router)
 api_router.include_router(workers.router)
 api_router.include_router(exceptions.router)
 api_router.include_router(operations.router)
+api_router.include_router(organizations.router)
 api_router.include_router(invoices.router)
 api_router.include_router(quotes.router)
 api_router.include_router(contracts.router)

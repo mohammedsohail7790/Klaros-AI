@@ -1,8 +1,9 @@
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, Numeric, String
+from sqlalchemy import Boolean, DateTime, Numeric, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -56,3 +57,13 @@ class Organization(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # correct extension rather than overloading morning_brief_timezone's
     # name for an unrelated purpose.
     timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="UTC")
+    # The AI kill switch — a real, org-wide emergency flag enforced in
+    # app/tools/registry.py::ToolRegistry.execute(): when True, any tool
+    # call whose ExecutionContext.actor_type is not USER (i.e. AI-driven
+    # or automation-driven) is refused outright, before permission/policy
+    # checks even run. A human's own direct actions are never affected —
+    # this stops the AI/automation layer, not the app. Distinct from
+    # autonomy_level above, which remains unenforced/decorative.
+    ai_paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    ai_paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ai_paused_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)

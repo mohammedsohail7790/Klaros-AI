@@ -232,6 +232,8 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "team.create_invite": ActionPolicy.AUTO,
     "team.list_invites": ActionPolicy.AUTO,
     "team.revoke_invite": ActionPolicy.AUTO,
+    "organization.get_kill_switch_status": ActionPolicy.AUTO,
+    "organization.set_kill_switch": ActionPolicy.AUTO,
     # Phase 14: Google Calendar sync moves no money; pushing/updating a
     # calendar event is reversible and idempotent by construction (see
     # GoogleCalendarSyncService.sync_appointment), same reasoning as
