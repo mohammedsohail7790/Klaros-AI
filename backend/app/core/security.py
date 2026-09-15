@@ -84,6 +84,36 @@ def decode_oauth_state_token(token: str, *, expected_provider: str) -> dict:
     return payload
 
 
+def create_invite_token(invite_id: UUID, tenant_id: UUID, email: str, role: str) -> str:
+    """A team-invite link's bearer credential — same reasoning and
+    mechanism as `create_oauth_state_token`/`create_quote_view_token`
+    (reuses `JWT_SECRET`, no second credential system). The token alone
+    is never sufficient: `TeamInvite.status` still has to be PENDING and
+    unexpired at accept time (app/services/team_service.py), so revoking
+    the DB row immediately invalidates an already-sent link even though
+    the JWT itself would still verify."""
+    expire = datetime.now(timezone.utc) + timedelta(days=7)
+    payload = {
+        "invite_id": str(invite_id),
+        "tenant_id": str(tenant_id),
+        "email": email,
+        "role": role,
+        "type": "team_invite",
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_invite_token(token: str) -> dict:
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except JWTError as exc:
+        raise TokenError(str(exc)) from exc
+    if payload.get("type") != "team_invite":
+        raise TokenError("token is not a valid team_invite token")
+    return payload
+
+
 def create_quote_view_token(quote_id: UUID, tenant_id: UUID) -> str:
     """Phase 14: a signed, tenant-bound token that lets a CUSTOMER view and
     accept/decline a quote with no Klaros login — Klaros' first

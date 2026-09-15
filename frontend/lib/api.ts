@@ -138,6 +138,70 @@ export function getCurrentUser(accessToken: string) {
   });
 }
 
+// --- Team management ---
+
+export interface TeamMember {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface TeamInvite {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  created_at: string;
+  expires_at: string;
+}
+
+export function listTeamMembers(token: string) {
+  return request<{ members: TeamMember[] }>("/api/v1/users", { headers: authHeaders(token) });
+}
+
+export function updateTeamMember(token: string, userId: string, body: { role?: string; is_active?: boolean }) {
+  return request<{ member: TeamMember }>(`/api/v1/users/${userId}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function createTeamInvite(token: string, email: string, role: string) {
+  return request<{ invite: TeamInvite; invite_url_path: string; email_sent: boolean }>("/api/v1/users/invites", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ email, role }),
+  });
+}
+
+export function listTeamInvites(token: string) {
+  return request<{ invites: TeamInvite[] }>("/api/v1/users/invites", { headers: authHeaders(token) });
+}
+
+export function revokeTeamInvite(token: string, inviteId: string) {
+  return request<{ invite: TeamInvite }>(`/api/v1/users/invites/${inviteId}/revoke`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function getInvitePreview(inviteToken: string) {
+  return request<{ organization_name: string; email: string; role: string }>(
+    `/api/v1/public/invites/${inviteToken}`
+  );
+}
+
+export function acceptInvite(inviteToken: string, fullName: string, password: string) {
+  return request<{ user: UserResponse; tokens: TokenResponse }>(`/api/v1/public/invites/${inviteToken}/accept`, {
+    method: "POST",
+    body: JSON.stringify({ full_name: fullName, password }),
+  });
+}
+
 export function logout(accessToken: string) {
   return request<void>("/api/v1/auth/logout", {
     method: "POST",

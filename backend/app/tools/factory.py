@@ -345,6 +345,10 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     nurture_service = NurtureService(session_factory, bus, marketing_comms)
     reactivation_service = ReactivationService(session_factory)
 
+    from app.services.team_service import TeamService
+
+    team_service = TeamService(session_factory, marketing_comms)
+
     retention_service = RetentionService(session_factory, bus, exception_service)
     review_service = ReviewService(session_factory, bus, exception_service, retention_service, marketing_comms)
     referral_service = ReferralService(session_factory, bus, campaign_service, attribution_service, lead_service)
@@ -497,6 +501,14 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
             QuickBooksImportService(session_factory, get_integration_connection_service(), invoice_service)
         )
     )
+
+    from app.tools.builtin.team_tools import CreateInvite, ListInvites, ListMembers, RevokeInvite, UpdateMember
+
+    registry.register(ListMembers(team_service))
+    registry.register(UpdateMember(team_service))
+    registry.register(CreateInvite(team_service))
+    registry.register(ListInvites(team_service))
+    registry.register(RevokeInvite(team_service))
 
     google_calendar_sync_service = GoogleCalendarSyncService(session_factory, get_integration_connection_service())
     registry.register(ListGoogleCalendars(google_calendar_sync_service))

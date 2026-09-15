@@ -41,6 +41,7 @@ from app.api.v1 import (
     payments,
     profitability,
     public_contracts,
+    public_invites,
     public_leads,
     public_quotes,
     quickbooks_oauth,
@@ -89,6 +90,7 @@ api_router.include_router(contracts.router)
 api_router.include_router(public_quotes.router)
 api_router.include_router(public_contracts.router)
 api_router.include_router(public_leads.router)
+api_router.include_router(public_invites.router)
 api_router.include_router(payments.router)
 api_router.include_router(ar.router)
 api_router.include_router(refunds.router)

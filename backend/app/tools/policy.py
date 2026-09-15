@@ -224,6 +224,14 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     # existing QuickBooks data, same trust level as
     # crm.bulk_import_customers/finance.bulk_import_invoices.
     "finance.import_from_quickbooks": ActionPolicy.AUTO,
+    # Team management — gated by Permission.MANAGE_USERS (OWNER/ADMIN
+    # only) at the RBAC layer, which is the real security boundary here;
+    # AUTO matches every other deliberate-owner-action tool in this file.
+    "team.list_members": ActionPolicy.AUTO,
+    "team.update_member": ActionPolicy.AUTO,
+    "team.create_invite": ActionPolicy.AUTO,
+    "team.list_invites": ActionPolicy.AUTO,
+    "team.revoke_invite": ActionPolicy.AUTO,
     # Phase 14: Google Calendar sync moves no money; pushing/updating a
     # calendar event is reversible and idempotent by construction (see
     # GoogleCalendarSyncService.sync_appointment), same reasoning as

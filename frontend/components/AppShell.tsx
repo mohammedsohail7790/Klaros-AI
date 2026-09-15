@@ -30,6 +30,7 @@ import {
   Phone,
   Plug,
   CreditCard,
+  UserPlus,
   ChevronDown,
   Search,
   Menu,
@@ -116,6 +117,7 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
       { href: "/settings/voice", label: "Voice Receptionist", icon: Phone },
       { href: "/settings/integrations", label: "Integrations", icon: Plug },
       { href: "/settings/billing", label: "Billing", icon: CreditCard },
+      { href: "/settings/team", label: "Team", icon: UserPlus },
     ],
   },
 ];

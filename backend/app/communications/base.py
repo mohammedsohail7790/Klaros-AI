@@ -24,6 +24,7 @@ class MessageTemplate(StrEnum):
     WIN_BACK = "win_back"
     REFERRAL_INVITATION = "referral_invitation"
     SERVICE_RECOVERY = "service_recovery"
+    TEAM_INVITE = "team_invite"
 
 
 class CommunicationProvider(ABC):
