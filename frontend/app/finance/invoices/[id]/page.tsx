@@ -8,6 +8,7 @@ import {
   ApiError,
   Invoice,
   InvoiceLineItem,
+  InvoiceLineItemDraft,
   approveInvoice,
   createCreditNoteRequest,
   createInvoiceCheckout,
@@ -18,6 +19,7 @@ import {
   requestInvoiceApproval,
   sendInvoice,
   syncInvoiceToQuickBooks,
+  updateInvoiceDraft,
   voidInvoice,
 } from "@/lib/api";
 
@@ -38,6 +40,9 @@ export default function InvoiceDetailPage() {
   const [checkoutLink, setCheckoutLink] = useState<string | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [qbSyncBusy, setQbSyncBusy] = useState(false);
+  const [showEditItems, setShowEditItems] = useState(false);
+  const [editItems, setEditItems] = useState<InvoiceLineItemDraft[]>([]);
+  const [editBusy, setEditBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -130,6 +135,51 @@ export default function InvoiceDetailPage() {
       setError(err instanceof ApiError ? err.message : "Unable to sync to QuickBooks.");
     } finally {
       setQbSyncBusy(false);
+    }
+  }
+
+  function startEditItems() {
+    if (!invoice) return;
+    setEditItems(
+      invoice.line_items.map((li) => ({
+        description: li.description,
+        quantity: li.quantity,
+        unit_price: li.unit_price,
+        discount: li.discount,
+        tax_rate: li.tax_rate,
+      }))
+    );
+    setShowEditItems(true);
+  }
+
+  function updateEditItem(index: number, field: keyof InvoiceLineItemDraft, value: string) {
+    setEditItems((items) => items.map((li, i) => (i === index ? { ...li, [field]: value } : li)));
+  }
+
+  function addEditItem() {
+    setEditItems((items) => [...items, { description: "", quantity: "1", unit_price: "" }]);
+  }
+
+  function removeEditItem(index: number) {
+    setEditItems((items) => (items.length > 1 ? items.filter((_, i) => i !== index) : items));
+  }
+
+  async function submitEditItems(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !invoice) return;
+    const validItems = editItems.filter((li) => li.description.trim() && li.unit_price);
+    if (validItems.length === 0) return;
+    setEditBusy(true);
+    setError(null);
+    try {
+      await updateInvoiceDraft(token, invoice.id, validItems);
+      setNotice("Line items updated.");
+      setShowEditItems(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to update line items.");
+    } finally {
+      setEditBusy(false);
     }
   }
 
@@ -229,13 +279,22 @@ export default function InvoiceDetailPage() {
 
         <div className="flex flex-wrap gap-2">
           {invoice.status === "DRAFT" && (
-            <button
-              disabled={busy}
-              onClick={() => runAction(() => requestInvoiceApproval(token!, invoice.id), "Approval requested.")}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
-            >
-              Request approval
-            </button>
+            <>
+              <button
+                disabled={busy}
+                onClick={startEditItems}
+                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              >
+                Edit line items
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => runAction(() => requestInvoiceApproval(token!, invoice.id), "Approval requested.")}
+                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              >
+                Request approval
+              </button>
+            </>
           )}
           {invoice.status === "PENDING_APPROVAL" && (
             <>
@@ -334,6 +393,49 @@ export default function InvoiceDetailPage() {
           <div className="mt-2 text-xs text-muted">
             Payment link (share or read out to the customer): <code className="break-all text-muted">{checkoutLink}</code>
           </div>
+        )}
+
+        {showEditItems && (
+          <form onSubmit={submitEditItems} className="mt-4 space-y-2 rounded-lg border border-border bg-surface p-4">
+            {editItems.map((li, i) => (
+              <div key={i} className="flex flex-wrap items-center gap-2">
+                <input
+                  placeholder="Description"
+                  value={li.description}
+                  onChange={(e) => updateEditItem(i, "description", e.target.value)}
+                  className="min-w-[10rem] flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                />
+                <input
+                  placeholder="Qty"
+                  value={li.quantity}
+                  onChange={(e) => updateEditItem(i, "quantity", e.target.value)}
+                  className="w-16 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                />
+                <input
+                  placeholder="Unit price"
+                  value={li.unit_price}
+                  onChange={(e) => updateEditItem(i, "unit_price", e.target.value)}
+                  className="w-24 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                />
+                {editItems.length > 1 && (
+                  <button type="button" onClick={() => removeEditItem(i)} className="text-xs text-red-600 hover:underline">
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+            <button type="button" onClick={addEditItem} className="text-xs underline text-muted hover:text-foreground">
+              + Add line item
+            </button>
+            <div className="flex gap-2 pt-2">
+              <button type="submit" disabled={editBusy} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
+                {editBusy ? "Saving..." : "Save line items"}
+              </button>
+              <button type="button" onClick={() => setShowEditItems(false)} className="text-sm text-muted hover:underline">
+                Cancel
+              </button>
+            </div>
+          </form>
         )}
 
         {showWriteOffForm && (

@@ -115,6 +115,7 @@ class CreateInvoiceDraft(Tool):
             customer_id=input.customer_id,
             job_id=input.job_id,
             items=_to_line_items(input.line_items),
+            due_date=date.fromisoformat(input.due_date) if input.due_date else None,
         )
         return InvoiceOutput(invoice=_invoice_to_dict(invoice))
 

@@ -7,11 +7,15 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
+  Customer,
   Invoice,
   InvoiceImportResult,
   InvoiceImportRow,
+  InvoiceLineItemDraft,
   bulkImportInvoices,
+  createInvoiceDraft,
   listInvoices,
+  searchCustomers,
 } from "@/lib/api";
 import { parseCsv } from "@/lib/csv";
 
@@ -26,6 +30,15 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [lineItems, setLineItems] = useState<InvoiceLineItemDraft[]>([
+    { description: "", quantity: "1", unit_price: "" },
+  ]);
+  const [dueDate, setDueDate] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -45,17 +58,75 @@ export default function InvoicesPage() {
     load();
   }, [load]);
 
+  async function handleSearchCustomer() {
+    if (!token || !customerQuery.trim()) return;
+    try {
+      const result = await searchCustomers(token, { q: customerQuery.trim(), limit: 5 });
+      setCustomerResults(result.customers);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to search customers.");
+    }
+  }
+
+  function updateLineItem(index: number, field: keyof InvoiceLineItemDraft, value: string) {
+    setLineItems((items) => items.map((li, i) => (i === index ? { ...li, [field]: value } : li)));
+  }
+
+  function addLineItem() {
+    setLineItems((items) => [...items, { description: "", quantity: "1", unit_price: "" }]);
+  }
+
+  function removeLineItem(index: number) {
+    setLineItems((items) => (items.length > 1 ? items.filter((_, i) => i !== index) : items));
+  }
+
+  function resetCreateForm() {
+    setSelectedCustomer(null);
+    setCustomerQuery("");
+    setCustomerResults([]);
+    setLineItems([{ description: "", quantity: "1", unit_price: "" }]);
+    setDueDate("");
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !selectedCustomer) return;
+    const validItems = lineItems.filter((li) => li.description.trim() && li.unit_price);
+    if (validItems.length === 0) return;
+    setCreating(true);
+    setError(null);
+    try {
+      await createInvoiceDraft(token, {
+        customer_id: selectedCustomer.id,
+        line_items: validItems,
+        due_date: dueDate || undefined,
+      });
+      resetCreateForm();
+      setShowCreate(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to create invoice.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="font-display text-2xl text-foreground">Invoices</h1>
-          <button
-            onClick={() => setShowImport(true)}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
-          >
-            Import CSV
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowImport(true)}
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+            >
+              Import CSV
+            </button>
+            <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">
+              New invoice
+            </button>
+          </div>
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">
@@ -130,6 +201,132 @@ export default function InvoicesPage() {
 
       {showImport && token && (
         <ImportInvoicesModal token={token} onClose={() => setShowImport(false)} onImported={load} />
+      )}
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm px-4">
+          <form
+            onSubmit={handleCreate}
+            className="w-full max-w-lg space-y-3 rounded-lg border border-border bg-surface p-6"
+          >
+            <h2 className="font-display text-xl text-foreground">New invoice</h2>
+
+            {selectedCustomer ? (
+              <div className="flex items-center justify-between rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm">
+                <span>{selectedCustomer.name}</span>
+                <button type="button" onClick={() => setSelectedCustomer(null)} className="text-xs text-muted underline">
+                  Change
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="flex gap-2">
+                  <input
+                    placeholder="Search customer by name..."
+                    value={customerQuery}
+                    onChange={(e) => setCustomerQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSearchCustomer();
+                      }
+                    }}
+                    className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSearchCustomer}
+                    className="rounded-md border border-border-strong px-3 py-2 text-sm hover:bg-surface-muted"
+                  >
+                    Search
+                  </button>
+                </div>
+                {customerResults.length > 0 && (
+                  <div className="mt-1 rounded-md border border-border-strong bg-surface">
+                    {customerResults.map((c) => (
+                      <button
+                        type="button"
+                        key={c.id}
+                        onClick={() => {
+                          setSelectedCustomer(c);
+                          setCustomerResults([]);
+                        }}
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-surface-muted"
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="block text-xs text-muted">Line items</label>
+              {lineItems.map((li, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2">
+                  <input
+                    placeholder="Description"
+                    value={li.description}
+                    onChange={(e) => updateLineItem(i, "description", e.target.value)}
+                    className="min-w-[10rem] flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  />
+                  <input
+                    placeholder="Qty"
+                    value={li.quantity}
+                    onChange={(e) => updateLineItem(i, "quantity", e.target.value)}
+                    className="w-16 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  />
+                  <input
+                    placeholder="Unit price"
+                    value={li.unit_price}
+                    onChange={(e) => updateLineItem(i, "unit_price", e.target.value)}
+                    className="w-24 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  />
+                  {lineItems.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeLineItem(i)}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button type="button" onClick={addLineItem} className="text-xs underline text-muted hover:text-foreground">
+                + Add line item
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs text-muted">Due date (optional)</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              />
+            </div>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  resetCreateForm();
+                  setShowCreate(false);
+                }}
+                className="rounded-md px-3 py-1.5 text-sm text-muted"
+              >
+                Cancel
+              </button>
+              <button type="submit" disabled={creating || !selectedCustomer} className="klaros-btn-primary disabled:opacity-50">
+                {creating ? "Creating..." : "Create draft"}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </AppShell>
   );

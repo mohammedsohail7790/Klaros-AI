@@ -1268,6 +1268,33 @@ export function createCreditNoteRequest(
   });
 }
 
+export interface InvoiceLineItemDraft {
+  description: string;
+  quantity: string;
+  unit_price: string;
+  discount?: string;
+  tax_rate?: string;
+}
+
+export function createInvoiceDraft(
+  token: string,
+  body: { customer_id: string; job_id?: string; line_items: InvoiceLineItemDraft[]; due_date?: string }
+) {
+  return request<{ invoice: Invoice }>(`/api/v1/invoices`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateInvoiceDraft(token: string, invoiceId: string, lineItems: InvoiceLineItemDraft[]) {
+  return request<{ invoice: Invoice }>(`/api/v1/invoices/${invoiceId}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ line_items: lineItems }),
+  });
+}
+
 export function triggerInvoiceFromJob(token: string, jobId: string) {
   const qs = new URLSearchParams({ job_id: jobId });
   return request<{ invoice: Invoice; deduplicated: boolean }>(`/api/v1/invoices/trigger-from-job?${qs.toString()}`, {

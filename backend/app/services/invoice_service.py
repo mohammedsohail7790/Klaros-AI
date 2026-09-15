@@ -232,6 +232,7 @@ class InvoiceService:
         customer_id: uuid.UUID,
         job_id: uuid.UUID | None,
         items: list[LineItemInput],
+        due_date: date | None = None,
     ) -> Invoice:
         today = date.today()
         async with self._session_factory() as session:
@@ -242,7 +243,7 @@ class InvoiceService:
                 job_id=job_id,
                 status=InvoiceStatus.DRAFT,
                 issue_date=today,
-                due_date=today + timedelta(days=DEFAULT_DUE_DAYS),
+                due_date=due_date if due_date is not None else today + timedelta(days=DEFAULT_DUE_DAYS),
             )
             session.add(invoice)
             await session.flush()

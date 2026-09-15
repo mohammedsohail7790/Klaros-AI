@@ -108,6 +108,47 @@ async def _call_tool(tool_name: str, payload: dict, current_user: CurrentUser, r
     return output.model_dump(mode="json")
 
 
+class LineItemRequest(BaseModel):
+    description: str
+    quantity: Decimal
+    unit_price: Decimal
+    discount: Decimal = Decimal("0")
+    tax_rate: Decimal = Decimal("0")
+
+
+class CreateInvoiceDraftRequest(BaseModel):
+    customer_id: uuid.UUID
+    job_id: uuid.UUID | None = None
+    line_items: list[LineItemRequest]
+    due_date: str | None = None
+
+
+@router.post("", status_code=201)
+async def create_invoice_draft(
+    body: CreateInvoiceDraftRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    return await _call_tool(
+        "finance.create_invoice_draft", body.model_dump(mode="json"), current_user, registry
+    )
+
+
+class UpdateInvoiceDraftRequest(BaseModel):
+    line_items: list[LineItemRequest]
+
+
+@router.patch("/{invoice_id}")
+async def update_invoice_draft(
+    invoice_id: uuid.UUID,
+    body: UpdateInvoiceDraftRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    payload = {"invoice_id": str(invoice_id), **body.model_dump(mode="json")}
+    return await _call_tool("finance.update_invoice_draft", payload, current_user, registry)
+
+
 @router.post("/trigger-from-job")
 async def trigger_invoice_from_job(
     job_id: uuid.UUID,
