@@ -1011,6 +1011,52 @@ export function detectExpiringLicenses(token: string) {
   );
 }
 
+export interface Warranty {
+  id: string;
+  customer_id: string;
+  job_id: string | null;
+  item_description: string;
+  start_date: string;
+  expiry_date: string;
+  status: string;
+  last_checked_in_at: string | null;
+  notes: string | null;
+}
+
+export function createWarranty(
+  token: string,
+  body: { customer_id: string; job_id?: string; item_description: string; start_date: string; expiry_date: string; notes?: string }
+) {
+  return request<{ warranty: Warranty }>(`/api/v1/warranties`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function listWarranties(token: string, filters?: { customer_id?: string; status?: string }) {
+  const qs = new URLSearchParams();
+  if (filters?.customer_id) qs.set("customer_id", filters.customer_id);
+  if (filters?.status) qs.set("status", filters.status);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return request<{ warranties: Warranty[] }>(`/api/v1/warranties${suffix}`, { headers: authHeaders(token) });
+}
+
+export function checkInWarranty(token: string, warrantyId: string, notes?: string) {
+  return request<{ warranty: Warranty }>(`/api/v1/warranties/${warrantyId}/check-in`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ notes }),
+  });
+}
+
+export function detectExpiringWarranties(token: string) {
+  return request<{ newly_expiring_soon: string[]; newly_expired: string[] }>(`/api/v1/warranties/detect-expiring`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
 // --- Operations: exceptions ---
 
 export interface OpsException {

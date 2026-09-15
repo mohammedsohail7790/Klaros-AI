@@ -351,6 +351,10 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "retention.update_opportunity_status": ActionPolicy.AUTO,
     "retention.mark_due_reminders": ActionPolicy.AUTO,
     "retention.update_reminder_status": ActionPolicy.AUTO,
+    "retention.create_warranty": ActionPolicy.AUTO,
+    "retention.list_warranties": ActionPolicy.AUTO,
+    "retention.check_in_warranty": ActionPolicy.AUTO,
+    "retention.detect_expiring_warranties": ActionPolicy.AUTO,
     "retention.record_feedback": ActionPolicy.AUTO,
     "retention.record_review_consent": ActionPolicy.AUTO,  # gated by the explicit ActorType.AI guard instead, matching finance.approve_invoice's pattern
     "retention.send_review_request": ActionPolicy.APPROVAL_REQUIRED,  # reaches a real customer channel

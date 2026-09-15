@@ -68,6 +68,7 @@ from app.models.retention import (
     RetentionOpportunity,
     ReviewRequest,
     ServiceReminder,
+    Warranty,
 )
 from app.models.operations import (
     CompletionPacket,
@@ -177,6 +178,7 @@ __all__ = [
     "CustomerLifecycleProfile",
     "RetentionOpportunity",
     "ServiceReminder",
+    "Warranty",
     "ReviewRequest",
     "CustomerFeedback",
     "ReferralProgram",

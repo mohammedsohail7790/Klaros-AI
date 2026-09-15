@@ -135,6 +135,36 @@ class ServiceReminder(TenantScopedMixin, Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=ReminderStatus.SCHEDULED)
 
 
+# --- Warranties -------------------------------------------------------------
+
+
+class WarrantyStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    EXPIRING_SOON = "EXPIRING_SOON"
+    EXPIRED = "EXPIRED"
+    CLAIMED = "CLAIMED"
+
+
+class Warranty(TenantScopedMixin, Base):
+    """The "warranty check-in" the One-Person Company diagram calls out
+    under Retention & Referral: a coverage window on a completed job that,
+    as it approaches expiry, is a real retention/upsell touchpoint (call
+    the customer before it lapses), not just a compliance date. Same
+    detect_expiring sweep shape as ServicePlan-adjacent License tracking
+    (app/models/compliance.py) — no third detection mechanism."""
+
+    __tablename__ = "warranties"
+
+    customer_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True, index=True)
+    item_description: Mapped[str] = mapped_column(String(500), nullable=False)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    expiry_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=WarrantyStatus.ACTIVE)
+    last_checked_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 # --- Reviews & feedback -------------------------------------------------------------
 
 

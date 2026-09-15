@@ -262,6 +262,7 @@ class ExceptionType(StrEnum):
     # Compliance — same exception engine, no second mechanism.
     LICENSE_EXPIRING_SOON = "LICENSE_EXPIRING_SOON"
     LICENSE_EXPIRED = "LICENSE_EXPIRED"
+    WARRANTY_EXPIRING_SOON = "WARRANTY_EXPIRING_SOON"
 
 
 class ExceptionSeverity(StrEnum):

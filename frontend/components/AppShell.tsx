@@ -100,6 +100,7 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
       { href: "/retention/reminders", label: "Reminders", icon: AlertTriangle },
       { href: "/retention/reviews", label: "Reviews", icon: FileText },
       { href: "/retention/referrals", label: "Referrals", icon: Users },
+      { href: "/retention/warranties", label: "Warranties", icon: ShieldCheck },
     ],
   },
   {

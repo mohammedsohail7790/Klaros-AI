@@ -59,6 +59,7 @@ from app.api.v1 import (
     users,
     vendors,
     compliance,
+    warranties,
     voice,
     voice_stream,
     webhooks,
@@ -71,6 +72,7 @@ api_router.include_router(auth.router)
 api_router.include_router(users.router)
 api_router.include_router(vendors.router)
 api_router.include_router(compliance.router)
+api_router.include_router(warranties.router)
 api_router.include_router(events.router)
 api_router.include_router(tools.router)
 api_router.include_router(approvals.router)
