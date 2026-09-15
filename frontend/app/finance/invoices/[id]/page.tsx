@@ -10,12 +10,14 @@ import {
   InvoiceLineItem,
   approveInvoice,
   createCreditNoteRequest,
+  createInvoiceCheckout,
   createWriteOffRequest,
   getInvoice,
   recordTestPayment,
   rejectInvoice,
   requestInvoiceApproval,
   sendInvoice,
+  syncInvoiceToQuickBooks,
   voidInvoice,
 } from "@/lib/api";
 
@@ -33,6 +35,9 @@ export default function InvoiceDetailPage() {
   const [showCreditNoteForm, setShowCreditNoteForm] = useState(false);
   const [creditNoteAmount, setCreditNoteAmount] = useState("");
   const [creditNoteReason, setCreditNoteReason] = useState("");
+  const [checkoutLink, setCheckoutLink] = useState<string | null>(null);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [qbSyncBusy, setQbSyncBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -90,6 +95,43 @@ export default function InvoiceDetailPage() {
   }
 
   if (!invoice) return null;
+
+  async function handleGenerateCheckoutLink() {
+    if (!token || !invoice) return;
+    setCheckoutBusy(true);
+    setError(null);
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const result = await createInvoiceCheckout(token, invoice.id, {
+        success_url: `${origin}/finance/invoices/${invoice.id}`,
+        cancel_url: `${origin}/finance/invoices/${invoice.id}`,
+      });
+      setCheckoutLink(result.checkout_url);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to generate a payment link.");
+    } finally {
+      setCheckoutBusy(false);
+    }
+  }
+
+  async function handleSyncToQuickBooks() {
+    if (!token || !invoice) return;
+    setQbSyncBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await syncInvoiceToQuickBooks(token, invoice.id);
+      setNotice(
+        result.already_synced
+          ? "Already synced to QuickBooks."
+          : `Synced to QuickBooks (invoice ${result.quickbooks_invoice_id}).`
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to sync to QuickBooks.");
+    } finally {
+      setQbSyncBusy(false);
+    }
+  }
 
   async function submitWriteOff(e: React.FormEvent) {
     e.preventDefault();
@@ -241,6 +283,24 @@ export default function InvoiceDetailPage() {
               Record test payment (${invoice.amount_due})
             </button>
           )}
+          {(invoice.status === "SENT" || invoice.status === "PARTIALLY_PAID") && (
+            <button
+              disabled={checkoutBusy}
+              onClick={handleGenerateCheckoutLink}
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+            >
+              {checkoutBusy ? "Generating..." : "Generate payment link"}
+            </button>
+          )}
+          {!["DRAFT", "VOID", "CANCELLED"].includes(invoice.status) && (
+            <button
+              disabled={qbSyncBusy}
+              onClick={handleSyncToQuickBooks}
+              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+            >
+              {qbSyncBusy ? "Syncing..." : "Sync to QuickBooks"}
+            </button>
+          )}
           {!["PAID", "VOID", "CANCELLED"].includes(invoice.status) && (
             <button
               disabled={busy}
@@ -269,6 +329,12 @@ export default function InvoiceDetailPage() {
             </>
           )}
         </div>
+
+        {checkoutLink && (
+          <div className="mt-2 text-xs text-muted">
+            Payment link (share or read out to the customer): <code className="break-all text-muted">{checkoutLink}</code>
+          </div>
+        )}
 
         {showWriteOffForm && (
           <form onSubmit={submitWriteOff} className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-border bg-surface p-4">

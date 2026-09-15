@@ -181,6 +181,32 @@ async def send_invoice(
     return await _call_tool("finance.send_invoice", {"invoice_id": str(invoice_id)}, current_user, registry)
 
 
+@router.post("/{invoice_id}/checkout")
+async def create_invoice_checkout(
+    invoice_id: uuid.UUID,
+    body: dict,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    return await _call_tool(
+        "finance.create_stripe_checkout_session",
+        {**body, "invoice_id": str(invoice_id)},
+        current_user,
+        registry,
+    )
+
+
+@router.post("/{invoice_id}/sync-to-quickbooks")
+async def sync_invoice_to_quickbooks(
+    invoice_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    return await _call_tool(
+        "finance.sync_invoice_to_quickbooks", {"invoice_id": str(invoice_id)}, current_user, registry
+    )
+
+
 @router.post("/{invoice_id}/void")
 async def void_invoice(
     invoice_id: uuid.UUID,

@@ -61,6 +61,21 @@ async def approve_refund(
     return output.model_dump(mode="json")
 
 
+@router.post("/{refund_id}/sync-to-quickbooks")
+async def sync_refund_to_quickbooks(
+    refund_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute(
+            "finance.sync_refund_to_quickbooks", {"refund_id": str(refund_id)}, execution_context(current_user)
+        )
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
 @router.post("/{refund_id}/reject")
 async def reject_refund(
     refund_id: uuid.UUID,

@@ -91,3 +91,11 @@ async def send_contract(
     registry: ToolRegistry = Depends(get_tool_registry),
 ) -> dict[str, Any]:
     return await _call_tool("contracts.send_contract", {"contract_id": str(contract_id)}, current_user, registry)
+
+
+@router.post("/detect-pending")
+async def detect_pending_contracts(
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    return await _call_tool("contracts.detect_pending", {}, current_user, registry)

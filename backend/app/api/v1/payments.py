@@ -41,6 +41,25 @@ async def list_payments(
     return {"payments": [_payment_to_dict(p) for p in rows]}
 
 
+@router.post("/{payment_id}/sync-to-quickbooks")
+async def sync_payment_to_quickbooks(
+    payment_id: uuid.UUID,
+    is_deposit: bool = False,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    """Dispatches to whichever Sync*PaymentToQuickBooks tool matches the
+    payment's kind — a quote deposit vs an ordinary invoice payment use
+    different tools/services (see app/tools/builtin/quickbooks_tools.py),
+    so the caller says which one this payment is via `is_deposit`."""
+    tool_name = "finance.sync_deposit_payment_to_quickbooks" if is_deposit else "finance.sync_invoice_payment_to_quickbooks"
+    try:
+        output = await registry.execute(tool_name, {"payment_id": str(payment_id)}, execution_context(current_user))
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
 @router.post("/test-payment")
 async def record_test_payment(
     body: dict,

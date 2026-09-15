@@ -5,7 +5,7 @@ import Link from "next/link";
 import { FileSignature } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
-import { ApiError, Contract, listContracts } from "@/lib/api";
+import { ApiError, Contract, detectPendingContracts, listContracts } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -17,6 +17,8 @@ export default function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [detecting, setDetecting] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -36,14 +38,49 @@ export default function ContractsPage() {
     load();
   }, [load]);
 
+  async function handleDetectPending() {
+    if (!token) return;
+    setDetecting(true);
+    setNotice(null);
+    setError(null);
+    try {
+      const result = await detectPendingContracts(token);
+      setNotice(
+        result.expired_contract_ids.length === 0
+          ? "No newly overdue contracts found."
+          : `${result.expired_contract_ids.length} contract(s) marked EXPIRED.`
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Unable to detect pending contracts.");
+    } finally {
+      setDetecting(false);
+    }
+  }
+
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-1">Contracts</h1>
+        <header className="mb-1 flex items-center justify-between">
+          <h1 className="font-display text-2xl text-foreground">Contracts</h1>
+          <button
+            disabled={detecting}
+            onClick={handleDetectPending}
+            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+          >
+            {detecting ? "Checking..." : "Detect pending contracts"}
+          </button>
+        </header>
         <p className="mb-6 text-sm text-muted">
           The agreement a customer signs after accepting a quote — an internal attestation, not a third-party
           e-signature.
         </p>
+
+        {notice && (
+          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+            {notice}
+          </div>
+        )}
 
         <div className="mb-4 flex flex-wrap gap-2">
           {STATUS_TABS.map((s) => (

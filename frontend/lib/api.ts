@@ -1078,6 +1078,24 @@ export function voidInvoice(token: string, invoiceId: string, reason: string) {
   });
 }
 
+export function createInvoiceCheckout(
+  token: string,
+  invoiceId: string,
+  body: { success_url: string; cancel_url: string; customer_email?: string }
+) {
+  return request<{ checkout_url: string; checkout_session_id: string }>(
+    `/api/v1/invoices/${invoiceId}/checkout`,
+    { method: "POST", headers: authHeaders(token), body: JSON.stringify(body) }
+  );
+}
+
+export function syncInvoiceToQuickBooks(token: string, invoiceId: string) {
+  return request<{ quickbooks_invoice_id: string; quickbooks_customer_id: string; already_synced: boolean }>(
+    `/api/v1/invoices/${invoiceId}/sync-to-quickbooks`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+}
+
 export interface Refund {
   id: string;
   payment_id: string;
@@ -1425,6 +1443,13 @@ export function sendContract(token: string, contractId: string) {
     `/api/v1/contracts/${contractId}/send`,
     { method: "POST", headers: authHeaders(token) }
   );
+}
+
+export function detectPendingContracts(token: string) {
+  return request<{ expired_contract_ids: string[] }>(`/api/v1/contracts/detect-pending`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
 }
 
 // --- Public (unauthenticated) contract view/sign/decline. ---
