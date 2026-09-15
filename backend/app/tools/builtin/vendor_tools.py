@@ -49,6 +49,52 @@ class CreateVendor(Tool):
         return VendorOutput(vendor=_vendor_to_dict(vendor))
 
 
+class ListVendorsInput(BaseModel):
+    pass
+
+
+class ListVendorsOutput(BaseModel):
+    vendors: list[dict[str, Any]]
+
+
+class ListVendors(Tool):
+    name = "finance.list_vendors"
+    description = "List every subcontractor/vendor for this tenant."
+    input_schema = ListVendorsInput
+    output_schema = ListVendorsOutput
+    required_permission = Permission.MANAGE_VENDORS
+
+    def __init__(self, vendor_service: VendorService) -> None:
+        self._vendor_service = vendor_service
+
+    async def execute(self, input: ListVendorsInput, context: ExecutionContext) -> ListVendorsOutput:
+        vendors = await self._vendor_service.list_vendors(context.tenant_id)
+        return ListVendorsOutput(vendors=[_vendor_to_dict(v) for v in vendors])
+
+
+class ListVendorBillsInput(BaseModel):
+    vendor_id: uuid.UUID | None = None
+
+
+class ListVendorBillsOutput(BaseModel):
+    vendor_bills: list[dict[str, Any]]
+
+
+class ListVendorBills(Tool):
+    name = "finance.list_vendor_bills"
+    description = "List vendor bills, optionally for a single vendor."
+    input_schema = ListVendorBillsInput
+    output_schema = ListVendorBillsOutput
+    required_permission = Permission.MANAGE_VENDORS
+
+    def __init__(self, vendor_service: VendorService) -> None:
+        self._vendor_service = vendor_service
+
+    async def execute(self, input: ListVendorBillsInput, context: ExecutionContext) -> ListVendorBillsOutput:
+        bills = await self._vendor_service.list_vendor_bills(context.tenant_id, vendor_id=input.vendor_id)
+        return ListVendorBillsOutput(vendor_bills=[_bill_to_dict(b) for b in bills])
+
+
 class RecordVendorBillInput(BaseModel):
     vendor_id: uuid.UUID
     job_id: uuid.UUID | None = None

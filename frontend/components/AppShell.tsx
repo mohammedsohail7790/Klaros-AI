@@ -31,6 +31,7 @@ import {
   Plug,
   CreditCard,
   UserPlus,
+  Truck,
   ChevronDown,
   Search,
   Menu,
@@ -74,6 +75,7 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
       { href: "/finance/ar", label: "AR", icon: Landmark },
       { href: "/finance/profitability", label: "Profitability", icon: TrendingUp },
       { href: "/finance/cash", label: "Cash", icon: Wallet },
+      { href: "/vendors", label: "Vendors", icon: Truck },
     ],
   },
   {

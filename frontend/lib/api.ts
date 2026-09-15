@@ -891,6 +891,61 @@ export function updateWorkerStatus(token: string, workerId: string, status: stri
   });
 }
 
+// --- Vendors / subcontractors ---
+
+export interface Vendor {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  status: string;
+}
+
+export interface VendorBill {
+  id: string;
+  vendor_id: string;
+  job_id: string | null;
+  amount: string;
+  due_date: string;
+  status: string;
+}
+
+export function createVendor(token: string, body: { name: string; email?: string; phone?: string }) {
+  return request<{ vendor: Vendor }>("/api/v1/vendors", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function listVendors(token: string) {
+  return request<{ vendors: Vendor[] }>("/api/v1/vendors", { headers: authHeaders(token) });
+}
+
+export function recordVendorBill(
+  token: string,
+  body: { vendor_id: string; job_id?: string; amount: string; due_date: string }
+) {
+  return request<{ vendor_bill: VendorBill }>("/api/v1/vendors/bills", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function listVendorBills(token: string, vendorId?: string) {
+  const qs = vendorId ? `?${new URLSearchParams({ vendor_id: vendorId }).toString()}` : "";
+  return request<{ vendor_bills: VendorBill[] }>(`/api/v1/vendors/bills${qs}`, { headers: authHeaders(token) });
+}
+
+export function recordVendorPayout(token: string, billId: string, vendorId: string) {
+  return request<{ status: string; approval_request_id?: string }>(`/api/v1/vendors/bills/${billId}/payout`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ vendor_id: vendorId, bill_id: billId }),
+  });
+}
+
 // --- Operations: exceptions ---
 
 export interface OpsException {

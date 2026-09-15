@@ -8,6 +8,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.models.finance import (
@@ -80,6 +81,21 @@ class VendorService:
                 vendor_id=vendor_id,
             )
         return bill
+
+    async def list_vendors(self, tenant_id: uuid.UUID) -> list[Vendor]:
+        async with self._session_factory() as session:
+            rows = (
+                await session.execute(select(Vendor).where(Vendor.tenant_id == tenant_id).order_by(Vendor.name))
+            ).scalars().all()
+            return list(rows)
+
+    async def list_vendor_bills(self, tenant_id: uuid.UUID, *, vendor_id: uuid.UUID | None = None) -> list[VendorBill]:
+        async with self._session_factory() as session:
+            query = select(VendorBill).where(VendorBill.tenant_id == tenant_id)
+            if vendor_id is not None:
+                query = query.where(VendorBill.vendor_id == vendor_id)
+            rows = (await session.execute(query.order_by(VendorBill.due_date))).scalars().all()
+            return list(rows)
 
     async def record_payout(self, tenant_id: uuid.UUID, *, vendor_id: uuid.UUID, bill_id: uuid.UUID) -> Payout:
         async with self._session_factory() as session:

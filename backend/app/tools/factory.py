@@ -156,7 +156,7 @@ from app.tools.builtin.payment_tools import (
     RejectRefund,
 )
 from app.tools.builtin.stripe_tools import CreateStripeCheckoutSession
-from app.tools.builtin.vendor_tools import CreateVendor, RecordPayout, RecordVendorBill
+from app.tools.builtin.vendor_tools import CreateVendor, ListVendorBills, ListVendors, RecordPayout, RecordVendorBill
 from app.tools.builtin.appointment_tools import (
     CancelAppointment,
     CheckAvailability,
@@ -532,7 +532,9 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(GenerateCashForecast(cash_forecast_service))
 
     registry.register(CreateVendor(vendor_service))
+    registry.register(ListVendors(vendor_service))
     registry.register(RecordVendorBill(vendor_service))
+    registry.register(ListVendorBills(vendor_service))
     registry.register(RecordPayout(vendor_service))
 
     registry.register(CreateCreditNoteRequest(adjustments_service))

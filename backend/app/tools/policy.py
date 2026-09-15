@@ -266,7 +266,9 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "finance.sync_material_costs": ActionPolicy.AUTO,
     "finance.generate_cash_forecast": ActionPolicy.AUTO,
     "finance.create_vendor": ActionPolicy.AUTO,
+    "finance.list_vendors": ActionPolicy.AUTO,
     "finance.record_vendor_bill": ActionPolicy.AUTO,
+    "finance.list_vendor_bills": ActionPolicy.AUTO,
     "finance.record_payout": ActionPolicy.APPROVAL_REQUIRED,  # releases money, even if internal-test
     "finance.create_credit_note_request": ActionPolicy.AUTO,  # always lands as a pending request
     "finance.approve_credit_note": ActionPolicy.AUTO,  # gated by APPROVE_CREDIT_NOTE permission instead
