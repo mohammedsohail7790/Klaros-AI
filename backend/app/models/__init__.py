@@ -1,6 +1,7 @@
 from app.models.approval import ApprovalRequest
 from app.models.audit_log import AuditLog
 from app.models.communication import CommunicationLog
+from app.models.compliance import License
 from app.models.crm import Appointment, Customer, CustomerNote, Lead
 from app.models.event import DeadLetterEvent, Event, EventProcessingRecord
 from app.models.finance import (
@@ -204,4 +205,5 @@ __all__ = [
     "AutomationVersion",
     "AutomationExecution",
     "AutomationExecutionStep",
+    "License",
 ]

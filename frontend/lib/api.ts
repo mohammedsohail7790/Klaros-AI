@@ -946,6 +946,71 @@ export function recordVendorPayout(token: string, billId: string, vendorId: stri
   });
 }
 
+// --- Compliance: licenses, insurance, bonds, certifications ---
+
+export interface License {
+  id: string;
+  type: string;
+  name: string;
+  license_number: string | null;
+  issuing_authority: string | null;
+  holder_name: string | null;
+  holder_user_id: string | null;
+  issue_date: string | null;
+  expiry_date: string;
+  status: string;
+  document_url: string | null;
+  notes: string | null;
+}
+
+export function createLicense(
+  token: string,
+  body: {
+    type: string;
+    name: string;
+    license_number?: string;
+    issuing_authority?: string;
+    holder_name?: string;
+    issue_date?: string;
+    expiry_date: string;
+    document_url?: string;
+    notes?: string;
+  }
+) {
+  return request<{ license: License }>(`/api/v1/compliance/licenses`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function listLicenses(token: string, filters?: { status?: string; type?: string }) {
+  const qs = new URLSearchParams();
+  if (filters?.status) qs.set("status", filters.status);
+  if (filters?.type) qs.set("type", filters.type);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return request<{ licenses: License[] }>(`/api/v1/compliance/licenses${suffix}`, { headers: authHeaders(token) });
+}
+
+export function renewLicense(
+  token: string,
+  licenseId: string,
+  body: { issue_date?: string; expiry_date: string; document_url?: string }
+) {
+  return request<{ license: License }>(`/api/v1/compliance/licenses/${licenseId}/renew`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function detectExpiringLicenses(token: string) {
+  return request<{ newly_expiring_soon: string[]; newly_expired: string[] }>(
+    `/api/v1/compliance/detect-expiring`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+}
+
 // --- Operations: exceptions ---
 
 export interface OpsException {

@@ -277,6 +277,12 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "finance.approve_writeoff": ActionPolicy.AUTO,  # gated by APPROVE_WRITEOFF permission instead
     "finance.reject_writeoff": ActionPolicy.AUTO,  # gated by APPROVE_WRITEOFF permission instead
     "finance.delete_invoice": ActionPolicy.BLOCKED,  # no tool implements this name — reserved; no destructive delete
+    # Compliance — a tenant's own record-keeping of their own real licenses/
+    # insurance, same AUTO reasoning as finance.create_vendor.
+    "compliance.create_license": ActionPolicy.AUTO,
+    "compliance.list_licenses": ActionPolicy.AUTO,
+    "compliance.renew_license": ActionPolicy.AUTO,
+    "compliance.detect_expiring": ActionPolicy.AUTO,
     # Marketing (Phase 6). Internal record-keeping (campaigns, spend, SEO/
     # local drafts, outbound/nurture list-building) is AUTO; anything that
     # reaches a real customer/public audience is APPROVAL_REQUIRED;

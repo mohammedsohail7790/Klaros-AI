@@ -36,6 +36,7 @@ const STATUS_VARIANTS: Record<string, string> = {
   MEDIUM: "bg-amber-50 text-amber-700 border-amber-200",
   DISABLED: "bg-amber-50 text-amber-700 border-amber-200",
   DEPOSIT_PENDING: "bg-amber-50 text-amber-700 border-amber-200",
+  EXPIRING_SOON: "bg-amber-50 text-amber-700 border-amber-200",
   AI: "bg-purple-50 text-purple-700 border-purple-200",
   // Negative
   CRITICAL: "bg-red-50 text-red-700 border-red-200",

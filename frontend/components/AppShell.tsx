@@ -32,6 +32,7 @@ import {
   CreditCard,
   UserPlus,
   Truck,
+  ShieldCheck,
   ChevronDown,
   Search,
   Menu,
@@ -120,6 +121,7 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
       { href: "/settings/integrations", label: "Integrations", icon: Plug },
       { href: "/settings/billing", label: "Billing", icon: CreditCard },
       { href: "/settings/team", label: "Team", icon: UserPlus },
+      { href: "/settings/compliance", label: "Compliance", icon: ShieldCheck },
     ],
   },
 ];

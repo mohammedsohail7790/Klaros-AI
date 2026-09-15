@@ -101,6 +101,8 @@ class Permission(StrEnum):
     MANAGE_AUTOMATIONS = "MANAGE_AUTOMATIONS"
     READ_MEMORY = "READ_MEMORY"
     MANAGE_MEMORY = "MANAGE_MEMORY"
+    READ_COMPLIANCE = "READ_COMPLIANCE"
+    MANAGE_COMPLIANCE = "MANAGE_COMPLIANCE"
 
 
 # Permission matrix: role -> allowed permissions.
@@ -193,6 +195,8 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.MANAGE_AUTOMATIONS,
         Permission.READ_MEMORY,
         Permission.MANAGE_MEMORY,
+        Permission.READ_COMPLIANCE,
+        Permission.MANAGE_COMPLIANCE,
     },
     Role.STAFF: {
         Permission.READ_CUSTOMERS,
@@ -264,6 +268,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.READ_VOICE_CALLS,
         Permission.READ_AUTOMATIONS,
         Permission.READ_MEMORY,
+        Permission.READ_COMPLIANCE,
     },
 }
 

@@ -259,6 +259,9 @@ class ExceptionType(StrEnum):
     NEGATIVE_FEEDBACK = "NEGATIVE_FEEDBACK"
     MISSED_FOLLOWUP = "MISSED_FOLLOWUP"
     REFERRAL_REWARD_REVIEW = "REFERRAL_REWARD_REVIEW"
+    # Compliance — same exception engine, no second mechanism.
+    LICENSE_EXPIRING_SOON = "LICENSE_EXPIRING_SOON"
+    LICENSE_EXPIRED = "LICENSE_EXPIRED"
 
 
 class ExceptionSeverity(StrEnum):

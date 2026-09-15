@@ -37,6 +37,7 @@ from app.services.contract_service import ContractService
 from app.services.job_costing_service import JobCostingService
 from app.services.payment_service import PaymentService
 from app.services.vendor_service import VendorService
+from app.services.license_service import LicenseService
 from app.services.referral_service import ReferralService
 from app.services.retention_campaign_service import RetentionCampaignService
 from app.services.retention_service import RetentionService
@@ -157,6 +158,7 @@ from app.tools.builtin.payment_tools import (
 )
 from app.tools.builtin.stripe_tools import CreateStripeCheckoutSession
 from app.tools.builtin.vendor_tools import CreateVendor, ListVendorBills, ListVendors, RecordPayout, RecordVendorBill
+from app.tools.builtin.compliance_tools import CreateLicense, DetectExpiring, ListLicenses, RenewLicense
 from app.tools.builtin.appointment_tools import (
     CancelAppointment,
     CheckAvailability,
@@ -334,6 +336,7 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     ar_service = ARService(session_factory, exception_service, collection_service)
     cash_forecast_service = CashForecastService(session_factory)
     vendor_service = VendorService(session_factory, job_costing_service)
+    license_service = LicenseService(session_factory, exception_service)
 
     campaign_service = CampaignService(session_factory, bus, exception_service)
     attribution_service = AttributionService(session_factory)
@@ -536,6 +539,11 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(RecordVendorBill(vendor_service))
     registry.register(ListVendorBills(vendor_service))
     registry.register(RecordPayout(vendor_service))
+
+    registry.register(CreateLicense(license_service))
+    registry.register(ListLicenses(license_service))
+    registry.register(RenewLicense(license_service))
+    registry.register(DetectExpiring(license_service))
 
     registry.register(CreateCreditNoteRequest(adjustments_service))
     registry.register(ApproveCreditNote(adjustments_service))
