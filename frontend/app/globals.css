@@ -3,9 +3,13 @@
 @tailwind utilities;
 
 :root {
-  /* Klaros brand palette — warm, editorial, light. Deliberately not the
-     default cold-gray/purple-gradient SaaS look: a single deep indigo-navy
-     accent, warm stone neutrals, near-black (not pure black) text.
+  /* Klaros brand palette — now sharing the Halla AI family's own warm
+     porcelain/gold system exactly (same hex values as hallaai.com's
+     --accent/--accent-dark/--accent-light), not just typography: one
+     shared color identity across Consultancy, AI Receptionist, and
+     Klaros itself. Klaros's original navy lives on as --color-accent-2,
+     a secondary/decorative accent (gradient backdrop, badges) rather
+     than being deleted outright.
      Space-separated RGB channels (not hex) so Tailwind can apply opacity
      modifiers like bg-accent-soft/40 via rgb(var(--x) / <alpha-value>). */
   --color-background: 250 249 246;
@@ -16,11 +20,11 @@
   --color-foreground: 28 26 22;
   --color-muted: 107 101 88;
   --color-muted-foreground: 148 141 124;
-  --color-accent: 43 58 99;
-  --color-accent-hover: 32 44 77;
+  --color-accent: 199 162 90;
+  --color-accent-hover: 140 111 62;
   --color-accent-foreground: 255 255 255;
-  --color-accent-soft: 232 234 241;
-  --color-accent-2: 190 138 64;
+  --color-accent-soft: 238 234 226;
+  --color-accent-2: 43 58 99;
   --color-success: 47 107 79;
   --color-warning: 165 105 12;
   --color-danger: 173 59 44;
