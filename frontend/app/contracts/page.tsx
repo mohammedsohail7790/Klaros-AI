@@ -9,6 +9,7 @@ import { ApiError, Contract, detectPendingContracts, listContracts } from "@/lib
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 const STATUS_TABS = ["ALL", "DRAFT", "SENT", "VIEWED", "SIGNED", "DECLINED", "EXPIRED", "CANCELLED"];
 
 export default function ContractsPage() {
@@ -77,7 +78,7 @@ export default function ContractsPage() {
         </p>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
             {notice}
           </div>
         )}
@@ -97,9 +98,9 @@ export default function ContractsPage() {
         </div>
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry

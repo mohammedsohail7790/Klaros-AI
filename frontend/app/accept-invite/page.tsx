@@ -6,11 +6,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError, acceptInvite, getInvitePreview } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
+import { Skeleton } from "@/components/ui/Skeleton";
 import GradientBackdrop from "@/components/GradientBackdrop";
 
 export default function AcceptInvitePage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-muted">Loading...</div>}>
+    <Suspense fallback={<Skeleton />}>
       <AcceptInviteInner />
     </Suspense>
   );
@@ -76,11 +77,11 @@ function AcceptInviteInner() {
         </Link>
         <div className="klaros-glass rounded-2xl p-7">
           {loadingPreview ? (
-            <p className="text-sm text-muted">Loading...</p>
+            <Skeleton />
           ) : previewError || !preview ? (
             <>
               <h1 className="font-display text-2xl text-foreground">Invite not available</h1>
-              <p className="mt-2 text-sm text-red-600">{previewError}</p>
+              <p className="mt-2 text-sm text-danger">{previewError}</p>
               <p className="mt-4 text-sm text-muted">
                 Ask whoever invited you to send a new invite from Settings → Team.
               </p>

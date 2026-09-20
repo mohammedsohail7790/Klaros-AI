@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Gift, Users, Award } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
+import { StatCard } from "@/components/ui/StatCard";
 import {
   ApiError,
   ReferralProgramRow,
@@ -23,6 +24,7 @@ import {
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 export default function ReferralsPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [programs, setPrograms] = useState<ReferralProgramRow[]>([]);
@@ -176,35 +178,20 @@ export default function ReferralsPage() {
         <h1 className="font-display text-2xl text-foreground mb-6">Referrals</h1>
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : (
           <>
             <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-5">
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <div className="text-xs text-muted">Referral leads</div>
-                <div className="mt-1 text-2xl font-semibold">{leads}</div>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <div className="text-xs text-muted">Qualified</div>
-                <div className="mt-1 text-2xl font-semibold">{qualified}</div>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <div className="text-xs text-muted">Booked</div>
-                <div className="mt-1 text-2xl font-semibold">{booked}</div>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <div className="text-xs text-muted">Converted</div>
-                <div className="mt-1 text-2xl font-semibold">{converted}</div>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <div className="text-xs text-muted">Collected revenue</div>
-                <div className="mt-1 text-2xl font-semibold">${revenue.toFixed(2)}</div>
-              </div>
+              <StatCard label="Referral leads" value={leads} icon={Users} />
+              <StatCard label="Qualified" value={qualified} />
+              <StatCard label="Booked" value={booked} />
+              <StatCard label="Converted" value={converted} icon={Award} tone="success" />
+              <StatCard label="Collected revenue" value={`$${revenue.toFixed(2)}`} icon={Gift} tone="accent" />
             </div>
 
             <h2 className="mb-3 text-sm font-medium text-muted">Programs</h2>
@@ -385,8 +372,8 @@ export default function ReferralsPage() {
                         <td className="px-4 py-2 space-x-2">
                           {rw.status === "PENDING" && (
                             <>
-                              <button disabled={busy} onClick={() => handleApprove(rw.id, true)} className="text-xs underline text-emerald-600 hover:text-foreground">Approve</button>
-                              <button disabled={busy} onClick={() => handleApprove(rw.id, false)} className="text-xs underline text-red-600 hover:text-foreground">Reject</button>
+                              <button disabled={busy} onClick={() => handleApprove(rw.id, true)} className="text-xs underline text-success hover:text-foreground">Approve</button>
+                              <button disabled={busy} onClick={() => handleApprove(rw.id, false)} className="text-xs underline text-danger hover:text-foreground">Reject</button>
                             </>
                           )}
                           {rw.status === "APPROVED" && (

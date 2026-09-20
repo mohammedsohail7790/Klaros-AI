@@ -135,7 +135,7 @@ export default function OnboardingPage() {
                 <div
                   className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs ${
                     i < step
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-success text-white"
                       : i === step
                       ? "border border-foreground text-foreground"
                       : "border border-border-strong text-muted"
@@ -189,7 +189,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              {planError && <p className="mt-3 text-sm text-red-600">{planError}</p>}
+              {planError && <p className="mt-3 text-sm text-danger">{planError}</p>}
 
               <div className="mt-6 flex justify-end">
                 <button
@@ -233,7 +233,7 @@ export default function OnboardingPage() {
                 </datalist>
               </div>
 
-              {timezoneError && <p className="mt-3 text-sm text-red-600">{timezoneError}</p>}
+              {timezoneError && <p className="mt-3 text-sm text-danger">{timezoneError}</p>}
 
               <div className="mt-6 flex items-center justify-between">
                 <button onClick={goToDashboard} className="text-sm text-muted hover:underline">
@@ -298,7 +298,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              {knowledgeError && <p className="mt-3 text-sm text-red-600">{knowledgeError}</p>}
+              {knowledgeError && <p className="mt-3 text-sm text-danger">{knowledgeError}</p>}
 
               <div className="mt-6 flex items-center justify-between">
                 <button onClick={() => setStep(3)} className="text-sm text-muted hover:underline">

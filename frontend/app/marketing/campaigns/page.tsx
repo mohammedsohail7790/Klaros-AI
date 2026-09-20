@@ -9,6 +9,7 @@ import { ApiError, Campaign, createCampaign, detectMarketingExceptions, listCamp
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 const CHANNELS = ["GOOGLE_ADS", "META_ADS", "YOUTUBE_ADS", "LOCAL_SERVICES_ADS", "SEO", "LOCAL", "CONTENT", "OUTBOUND", "REFERRAL", "OTHER"];
 
 export default function CampaignsPage() {
@@ -96,7 +97,7 @@ export default function CampaignsPage() {
         </div>
 
         {detectNotice && (
-          <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-3 text-sm text-amber-700">
+          <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-3 text-sm text-warning">
             {detectNotice}
           </div>
         )}
@@ -145,9 +146,9 @@ export default function CampaignsPage() {
         )}
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry

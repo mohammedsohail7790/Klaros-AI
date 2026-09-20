@@ -21,6 +21,7 @@ import {
 } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function OutboundPage() {
   const { token, user, loading: authLoading } = useAuth();
@@ -182,8 +183,8 @@ export default function OutboundPage() {
           </button>
         </div>
 
-        {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>}
-        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
+        {error && <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>}
+        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
@@ -195,7 +196,7 @@ export default function OutboundPage() {
               </button>
             </form>
             {authLoading || loading ? (
-              <p className="text-sm text-muted">Loading...</p>
+              <Skeleton />
             ) : lists.length === 0 ? (
               <EmptyState icon={List} title="No lists yet." compact />
             ) : (

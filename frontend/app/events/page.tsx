@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import { Radio } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
+import { StatCard } from "@/components/ui/StatCard";
 import {
   ApiError,
   DeadLetterRow,
@@ -19,6 +20,7 @@ import {
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 const STATUS_TABS = ["ALL", "PUBLISHED", "PROCESSING", "RETRYING", "PROCESSED", "FAILED", "DEAD_LETTER"];
 
 export default function EventsPage() {
@@ -104,12 +106,12 @@ export default function EventsPage() {
           </button>
         </div>
 
-        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
+        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
@@ -119,40 +121,24 @@ export default function EventsPage() {
               <div className="mb-8">
                 <h2 className="mb-3 text-sm font-medium text-muted">Worker metrics (real, in-process counters)</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
-                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                    <div className="text-xs text-muted">Processed</div>
-                    <div className="mt-1 text-2xl font-semibold">{metrics.events_processed}</div>
-                  </div>
-                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                    <div className="text-xs text-muted">Failed (retrying)</div>
-                    <div className="mt-1 text-2xl font-semibold">{metrics.events_failed}</div>
-                  </div>
-                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                    <div className="text-xs text-muted">Dead-lettered</div>
-                    <div className="mt-1 text-2xl font-semibold">{metrics.events_dead_lettered}</div>
-                  </div>
-                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                    <div className="text-xs text-muted">Deduplicated</div>
-                    <div className="mt-1 text-2xl font-semibold">{metrics.events_deduplicated}</div>
-                  </div>
-                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                    <div className="text-xs text-muted">Ticks</div>
-                    <div className="mt-1 text-2xl font-semibold">{metrics.ticks}</div>
-                  </div>
-                  <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                    <div className="text-xs text-muted">Started</div>
-                    <div className="mt-1 text-xs text-muted">
-                      {metrics.started_at ? new Date(metrics.started_at).toLocaleTimeString() : "Not running in this process"}
-                    </div>
-                  </div>
+                  <StatCard label="Processed" value={metrics.events_processed} tone="success" />
+                  <StatCard label="Failed (retrying)" value={metrics.events_failed} tone={metrics.events_failed > 0 ? "warning" : "neutral"} />
+                  <StatCard label="Dead-lettered" value={metrics.events_dead_lettered} tone={metrics.events_dead_lettered > 0 ? "danger" : "neutral"} />
+                  <StatCard label="Deduplicated" value={metrics.events_deduplicated} />
+                  <StatCard label="Ticks" value={metrics.ticks} />
+                  <StatCard
+                    label="Started"
+                    value={metrics.started_at ? new Date(metrics.started_at).toLocaleTimeString() : "Not running in this process"}
+                    compact
+                  />
                 </div>
               </div>
             )}
 
             {deadLetters.length > 0 && (
               <div className="mb-8">
-                <h2 className="mb-3 text-sm font-medium text-red-700">Dead-lettered events ({deadLetters.length})</h2>
-                <div className="overflow-x-auto rounded-lg border border-red-200">
+                <h2 className="mb-3 text-sm font-medium text-danger">Dead-lettered events ({deadLetters.length})</h2>
+                <div className="overflow-x-auto rounded-lg border border-danger/25">
                   <table className="klaros-table">
                     <thead className="bg-surface text-muted">
                       <tr>
@@ -230,9 +216,9 @@ export default function EventsPage() {
                           <tr className="border-t border-border bg-surface-muted">
                             <td colSpan={5} className="px-4 py-3">
                               {detailLoading ? (
-                                <p className="text-xs text-muted">Loading detail...</p>
+                                <Skeleton />
                               ) : detailError ? (
-                                <p className="text-xs text-red-600">{detailError}</p>
+                                <p className="text-xs text-danger">{detailError}</p>
                               ) : detail ? (
                                 <div className="space-y-3 text-xs">
                                   <div>
@@ -250,7 +236,7 @@ export default function EventsPage() {
                                             <span className="font-medium">{a.handler_name}</span> —{" "}
                                             <Badge status={a.status}>{a.status}</Badge> · {a.attempts} attempt(s)
                                             {a.last_error && (
-                                              <p className="mt-1 text-red-600">{a.last_error}</p>
+                                              <p className="mt-1 text-danger">{a.last_error}</p>
                                             )}
                                           </li>
                                         ))}

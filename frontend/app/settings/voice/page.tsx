@@ -13,6 +13,7 @@ import {
   updateVoiceSettings,
 } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function outcomeLabel(outcome: string | null): string {
   if (!outcome) return "In progress";
@@ -101,18 +102,18 @@ export default function VoiceReceptionistPage() {
         </p>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
             {notice}
           </div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
 
         {authLoading || loading || !settings ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="rounded-lg border border-border bg-surface p-5">
@@ -128,8 +129,8 @@ export default function VoiceReceptionistPage() {
                   disabled={saving}
                   className={`rounded-md border px-3 py-1.5 text-sm disabled:opacity-50 ${
                     settings.enabled
-                      ? "border-red-200 bg-red-50/30 text-red-700 hover:bg-red-50/60"
-                      : "border-emerald-200 bg-emerald-50/30 text-emerald-700 hover:bg-emerald-50/60"
+                      ? "border-danger/25 bg-danger/[0.06] text-danger hover:bg-danger/10"
+                      : "border-success/20 bg-success/[0.06] text-success hover:bg-success/10"
                   }`}
                 >
                   {settings.enabled ? "Disable" : "Enable"}
@@ -137,10 +138,10 @@ export default function VoiceReceptionistPage() {
               </div>
 
               <div className="mb-4 flex gap-4 text-xs">
-                <span className={settings.stt_provider === "NOT_CONFIGURED" ? "text-amber-700" : "text-emerald-600"}>
+                <span className={settings.stt_provider === "NOT_CONFIGURED" ? "text-warning" : "text-success"}>
                   Speech-to-text: {settings.stt_provider}
                 </span>
-                <span className={settings.tts_provider === "NOT_CONFIGURED" ? "text-amber-700" : "text-emerald-600"}>
+                <span className={settings.tts_provider === "NOT_CONFIGURED" ? "text-warning" : "text-success"}>
                   Text-to-speech: {settings.tts_provider}
                 </span>
               </div>
@@ -191,8 +192,8 @@ export default function VoiceReceptionistPage() {
                         <span>{c.status}</span>
                         <span>&middot;</span>
                         <span>{outcomeLabel(c.outcome)}</span>
-                        {c.handoff_requested && <span className="text-amber-700">&middot; Handoff requested</span>}
-                        {c.appointment_id && <span className="text-emerald-600">&middot; Appointment booked</span>}
+                        {c.handoff_requested && <span className="text-warning">&middot; Handoff requested</span>}
+                        {c.appointment_id && <span className="text-success">&middot; Appointment booked</span>}
                       </div>
                     </button>
                   ))}
@@ -223,10 +224,10 @@ export default function VoiceReceptionistPage() {
                         </div>
                       )}
                       {selectedCall.appointment_id && (
-                        <div className="mt-1 text-emerald-600">Appointment ID: {selectedCall.appointment_id}</div>
+                        <div className="mt-1 text-success">Appointment ID: {selectedCall.appointment_id}</div>
                       )}
                       {selectedCall.handoff_requested && (
-                        <div className="mt-1 text-amber-700">Handoff reason: {selectedCall.handoff_reason ?? "unspecified"}</div>
+                        <div className="mt-1 text-warning">Handoff reason: {selectedCall.handoff_reason ?? "unspecified"}</div>
                       )}
                     </div>
                   )}
@@ -253,7 +254,7 @@ export default function VoiceReceptionistPage() {
                   ) : (
                     <div className="space-y-2 text-xs">
                       {selectedCall.transcript.map((t, i) => (
-                        <div key={i} className={t.role === "agent" ? "text-emerald-700" : "text-muted"}>
+                        <div key={i} className={t.role === "agent" ? "text-success" : "text-muted"}>
                           <span className="text-muted">{t.role === "agent" ? "Agent: " : "Caller: "}</span>
                           {t.text}
                         </div>

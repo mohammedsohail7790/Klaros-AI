@@ -5,6 +5,7 @@ import { Users } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Worker, createWorker, listWorkers, updateWorkerStatus } from "@/lib/api";
 
@@ -147,7 +148,7 @@ export default function WorkersPage() {
         </form>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         <label className="mb-4 flex items-center gap-2 text-sm text-muted">
@@ -156,7 +157,7 @@ export default function WorkersPage() {
         </label>
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : workers.length === 0 ? (
           <EmptyState icon={Users} title="No workers yet. Add your first field technician above." />
         ) : (

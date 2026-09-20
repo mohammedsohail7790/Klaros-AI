@@ -18,6 +18,7 @@ import {
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 export default function ReviewsPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [requests, setRequests] = useState<ReviewRequestRow[]>([]);
@@ -133,23 +134,23 @@ export default function ReviewsPage() {
           internal.
         </p>
 
-        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
+        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : (
           <>
             {negativeFeedback.length > 0 && (
-              <div className="mb-6 rounded-md border border-red-200 bg-red-50/30 p-4">
-                <h2 className="mb-2 text-sm font-medium text-red-700">Service recovery opportunities ({negativeFeedback.length})</h2>
+              <div className="mb-6 rounded-md border border-danger/25 bg-danger/[0.06] p-4">
+                <h2 className="mb-2 text-sm font-medium text-danger">Service recovery opportunities ({negativeFeedback.length})</h2>
                 <ul className="space-y-1 text-sm">
                   {negativeFeedback.map((f) => (
-                    <li key={f.id} className="text-red-700">
+                    <li key={f.id} className="text-danger">
                       Rating {f.rating}/5{f.comment ? `: "${f.comment}"` : ""} — {new Date(f.received_at).toLocaleDateString()}
                     </li>
                   ))}
@@ -255,7 +256,7 @@ export default function ReviewsPage() {
                           <button
                             disabled={busy}
                             onClick={() => handleConsent(f.id, true)}
-                            className="underline text-emerald-600 hover:text-foreground"
+                            className="underline text-success hover:text-foreground"
                           >
                             Customer said yes
                           </button>
@@ -273,7 +274,7 @@ export default function ReviewsPage() {
                       )}
                       {f.consent_to_use_publicly === true && (
                         <>
-                          <span className="text-emerald-600">Consent recorded.</span>
+                          <span className="text-success">Consent recorded.</span>
                           <button
                             disabled={busy}
                             onClick={() => handleCreateContent(f.id)}

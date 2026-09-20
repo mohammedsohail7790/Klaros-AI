@@ -8,6 +8,7 @@ import { ApiError, OpsException, listExceptions, resolveException } from "@/lib/
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 const STATUS_TABS = ["OPEN", "ACKNOWLEDGED", "RESOLVED"];
 
 export default function ExceptionsPage() {
@@ -65,9 +66,9 @@ export default function ExceptionsPage() {
         </div>
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry

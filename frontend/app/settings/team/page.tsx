@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   ApiError,
   TeamInvite,
@@ -132,22 +133,22 @@ export default function TeamSettingsPage() {
         </div>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
             {notice}
           </div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
         {lastInviteLink && !lastInviteLink.emailSent && (
-          <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-3 text-xs text-amber-800">
+          <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-3 text-xs text-warning">
             Invite link (share directly — no email provider configured):{" "}
             <code className="break-all">{lastInviteLink.url}</code>
           </div>
         )}
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : (
           <>
             <h2 className="mb-3 font-medium">Members</h2>
@@ -184,7 +185,7 @@ export default function TeamSettingsPage() {
                         </select>
                       </td>
                       <td className="px-4 py-2">
-                        <span className={m.is_active ? "text-emerald-600" : "text-muted"}>
+                        <span className={m.is_active ? "text-success" : "text-muted"}>
                           {m.is_active ? "Active" : "Deactivated"}
                         </span>
                       </td>
@@ -225,7 +226,7 @@ export default function TeamSettingsPage() {
                           <td className="px-4 py-2">
                             <button
                               onClick={() => handleRevoke(i.id)}
-                              className="text-xs text-red-600 underline hover:text-red-700"
+                              className="text-xs text-danger underline hover:text-danger"
                             >
                               Revoke
                             </button>
@@ -267,7 +268,7 @@ export default function TeamSettingsPage() {
                 </option>
               ))}
             </select>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-danger">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"

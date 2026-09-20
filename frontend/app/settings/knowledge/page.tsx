@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BookOpen, Search } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -209,12 +210,12 @@ export default function KnowledgePage() {
         </div>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
             {notice}
           </div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
@@ -245,7 +246,7 @@ export default function KnowledgePage() {
               <button
                 onClick={handleAsk}
                 disabled={searching || !queryDraft.trim()}
-                className="rounded-md border border-emerald-200 bg-emerald-50/30 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
+                className="rounded-md border border-success/20 bg-success/[0.06] px-3 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
               >
                 Ask AI
               </button>
@@ -253,7 +254,7 @@ export default function KnowledgePage() {
 
             {searching && <p className="text-sm text-muted">Working...</p>}
             {searchError && (
-              <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-3 text-sm text-amber-700">
+              <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-3 text-sm text-warning">
                 {searchError}
               </div>
             )}
@@ -285,7 +286,7 @@ export default function KnowledgePage() {
             )}
           </div>
         ) : authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-1">
@@ -322,7 +323,7 @@ export default function KnowledgePage() {
                           </button>
                           <button
                             onClick={() => handleDelete(f.path)}
-                            className="ml-2 text-xs text-red-600 hover:text-foreground"
+                            className="ml-2 text-xs text-danger hover:text-foreground"
                           >
                             delete
                           </button>
@@ -347,7 +348,7 @@ export default function KnowledgePage() {
                     <button
                       onClick={handleSave}
                       disabled={saving}
-                      className="rounded-md border border-emerald-200 bg-emerald-50/30 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
+                      className="rounded-md border border-success/20 bg-success/[0.06] px-3 py-1.5 text-sm text-success hover:bg-success/10 disabled:opacity-50"
                     >
                       Save
                     </button>

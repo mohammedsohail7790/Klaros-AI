@@ -6,6 +6,8 @@ import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Contract, Quote, getContract, getQuote, sendContract } from "@/lib/api";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { StatCard } from "@/components/ui/StatCard";
 
 export default function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -66,7 +68,7 @@ export default function ContractDetailPage() {
   if (authLoading || loading) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8 text-sm text-muted">Loading...</div>
+        <Skeleton />
       </AppShell>
     );
   }
@@ -75,7 +77,7 @@ export default function ContractDetailPage() {
     return (
       <AppShell user={user}>
         <div className="px-8 py-8">
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">{error}</div>
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         </div>
       </AppShell>
     );
@@ -109,10 +111,10 @@ export default function ContractDetailPage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
             {notice}
           </div>
         )}
@@ -126,10 +128,10 @@ export default function ContractDetailPage() {
         )}
 
         {contract.status === "SIGNED" && (
-          <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50/30 p-4 text-sm text-emerald-700">
+          <div className="mb-6 rounded-md border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
             <div>Signed by {contract.signer_name} — internal attestation recorded, not a third-party e-signature.</div>
             {quote && (
-              <div className="mt-2 border-t border-emerald-200/60 pt-2 text-emerald-700">
+              <div className="mt-2 border-t border-success/30 pt-2 text-success">
                 {quote.status === "DEPOSIT_PENDING" ? (
                   <>
                     Deposit of ${quote.deposit_amount ?? "—"} is outstanding.{" "}
@@ -168,10 +170,13 @@ export default function ContractDetailPage() {
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           {timeline.map((step) => (
-            <div key={step.label} className="rounded-lg border border-border bg-surface p-4 shadow-card">
-              <div className="text-xs text-muted">{step.label}</div>
-              <div className="mt-1 text-sm font-medium">{step.at ? new Date(step.at).toLocaleString() : "—"}</div>
-            </div>
+            <StatCard
+              key={step.label}
+              label={step.label}
+              value={step.at ? new Date(step.at).toLocaleString() : "—"}
+              tone={step.at ? "success" : "neutral"}
+              compact
+            />
           ))}
         </div>
 

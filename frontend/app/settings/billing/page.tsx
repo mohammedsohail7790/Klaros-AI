@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   ApiError,
   BillingStatus,
@@ -94,13 +95,13 @@ export default function BillingSettingsPage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
 
         {authLoading || loading || !status ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : (
           <>
             <div className="mb-6 rounded-lg border border-border bg-surface p-5">
@@ -108,15 +109,15 @@ export default function BillingSettingsPage() {
                 <div>
                   <h2 className="font-medium capitalize">
                     {status.plan} plan
-                    {isTrialing && <span className="ml-2 text-xs text-amber-700">Trial</span>}
+                    {isTrialing && <span className="ml-2 text-xs text-warning">Trial</span>}
                     {status.billing_status === "active" && (
-                      <span className="ml-2 text-xs text-emerald-600">Active</span>
+                      <span className="ml-2 text-xs text-success">Active</span>
                     )}
                     {status.billing_status === "past_due" && (
-                      <span className="ml-2 text-xs text-red-600">Past due</span>
+                      <span className="ml-2 text-xs text-danger">Past due</span>
                     )}
                     {status.billing_status === "canceled" && (
-                      <span className="ml-2 text-xs text-red-600">Canceled</span>
+                      <span className="ml-2 text-xs text-danger">Canceled</span>
                     )}
                   </h2>
                   {isTrialing && (
@@ -165,7 +166,7 @@ export default function BillingSettingsPage() {
                   </div>
                   <p className="mt-1 text-xs text-muted">{plan.blurb}</p>
                   {status.plan === plan.id && status.billing_status === "active" ? (
-                    <p className="mt-3 text-xs text-emerald-600">Current plan</p>
+                    <p className="mt-3 text-xs text-success">Current plan</p>
                   ) : (
                     <button
                       onClick={() => handleSubscribe(plan.id)}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -108,9 +109,9 @@ export default function ContentDetailPage() {
         </Link>
 
         {authLoading || loading ? (
-          <p className="mt-4 text-sm text-muted">Loading content...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="mt-4 rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="mt-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -134,7 +135,7 @@ export default function ContentDetailPage() {
               {content.summary && <p className="mt-3 text-sm text-muted">{content.summary}</p>}
 
               {notice && (
-                <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+                <div className="mt-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
                   {notice}
                 </div>
               )}
@@ -154,14 +155,14 @@ export default function ContentDetailPage() {
                     <button
                       disabled={busy}
                       onClick={() => runAction(() => approveContent(token!, id))}
-                      className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-surface-muted"
+                      className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-success hover:bg-surface-muted"
                     >
                       Approve
                     </button>
                     <button
                       disabled={busy}
                       onClick={() => runAction(() => rejectContent(token!, id))}
-                      className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50/30"
+                      className="rounded-md border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06]"
                     >
                       Reject
                     </button>

@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -110,7 +111,7 @@ const PLANNED_OAUTH_PROVIDERS = [
 
 export default function IntegrationsPage() {
   return (
-    <Suspense fallback={<p className="p-8 text-sm text-muted">Loading integrations...</p>}>
+    <Suspense fallback={<Skeleton />}>
       <IntegrationsPageInner />
     </Suspense>
   );
@@ -383,12 +384,12 @@ function IntegrationsPageInner() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50/30 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded border border-danger/25 bg-danger/[0.06] px-4 py-3 text-sm text-danger">
             {error}
           </div>
         )}
 
-        {!rows && !error && <p className="text-sm text-muted">Loading...</p>}
+        {!rows && !error && <Skeleton />}
 
         {rows &&
           Object.entries(grouped).map(([category, categoryRows]) => {
@@ -523,7 +524,7 @@ function IntegrationsPageInner() {
                     )}
 
                     {stripeActionError && (
-                      <div className="mb-2 rounded border border-red-200 bg-red-50/30 px-3 py-2 text-xs text-red-700">
+                      <div className="mb-2 rounded border border-danger/25 bg-danger/[0.06] px-3 py-2 text-xs text-danger">
                         {stripeActionError}
                       </div>
                     )}
@@ -556,7 +557,7 @@ function IntegrationsPageInner() {
                           <button
                             onClick={handleDisconnectStripe}
                             disabled={stripeActionPending}
-                            className="rounded border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+                            className="rounded border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
                           >
                             Disconnect
                           </button>
@@ -574,8 +575,8 @@ function IntegrationsPageInner() {
           <div
             className={`mb-4 rounded border px-4 py-3 text-sm ${
               quickbooksCallbackNotice.kind === "connected"
-                ? "border-emerald-200 bg-emerald-50/30 text-emerald-700"
-                : "border-red-200 bg-red-50/30 text-red-700"
+                ? "border-success/20 bg-success/[0.06] text-success"
+                : "border-danger/25 bg-danger/[0.06] text-danger"
             }`}
           >
             {quickbooksCallbackNotice.kind === "connected"
@@ -620,7 +621,7 @@ function IntegrationsPageInner() {
                     )}
 
                     {quickbooksActionError && (
-                      <div className="mb-2 rounded border border-red-200 bg-red-50/30 px-3 py-2 text-xs text-red-700">
+                      <div className="mb-2 rounded border border-danger/25 bg-danger/[0.06] px-3 py-2 text-xs text-danger">
                         {quickbooksActionError}
                       </div>
                     )}
@@ -649,7 +650,7 @@ function IntegrationsPageInner() {
                           <button
                             onClick={handleDisconnectQuickBooks}
                             disabled={quickbooksActionPending}
-                            className="rounded border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+                            className="rounded border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
                           >
                             Disconnect
                           </button>
@@ -672,7 +673,7 @@ function IntegrationsPageInner() {
                           {quickbooksImportPending ? "Importing..." : "Import existing data"}
                         </button>
                         {quickbooksImportResult && (
-                          <div className="mt-2 rounded border border-emerald-200 bg-emerald-50/30 px-3 py-2 text-xs text-emerald-700">
+                          <div className="mt-2 rounded border border-success/20 bg-success/[0.06] px-3 py-2 text-xs text-success">
                             {quickbooksImportResult.customers_created} customer(s) created,{" "}
                             {quickbooksImportResult.customers_matched} matched to existing customers —{" "}
                             {quickbooksImportResult.invoices_created} invoice(s) imported
@@ -703,8 +704,8 @@ function IntegrationsPageInner() {
           <div
             className={`mb-4 rounded border px-4 py-3 text-sm ${
               googleCalendarCallbackNotice.kind === "connected"
-                ? "border-emerald-200 bg-emerald-50/30 text-emerald-700"
-                : "border-red-200 bg-red-50/30 text-red-700"
+                ? "border-success/20 bg-success/[0.06] text-success"
+                : "border-danger/25 bg-danger/[0.06] text-danger"
             }`}
           >
             {googleCalendarCallbackNotice.kind === "connected"
@@ -747,7 +748,7 @@ function IntegrationsPageInner() {
                     )}
 
                     {googleCalendarActionError && (
-                      <div className="mb-2 rounded border border-red-200 bg-red-50/30 px-3 py-2 text-xs text-red-700">
+                      <div className="mb-2 rounded border border-danger/25 bg-danger/[0.06] px-3 py-2 text-xs text-danger">
                         {googleCalendarActionError}
                       </div>
                     )}
@@ -776,7 +777,7 @@ function IntegrationsPageInner() {
                           <button
                             onClick={handleDisconnectGoogleCalendar}
                             disabled={googleCalendarActionPending}
-                            className="rounded border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+                            className="rounded border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
                           >
                             Disconnect
                           </button>
@@ -799,7 +800,7 @@ function IntegrationsPageInner() {
                           {googleCalendarImportPending ? "Importing..." : "Import existing events"}
                         </button>
                         {googleCalendarImportResult && (
-                          <div className="mt-2 rounded border border-emerald-200 bg-emerald-50/30 px-3 py-2 text-xs text-emerald-700">
+                          <div className="mt-2 rounded border border-success/20 bg-success/[0.06] px-3 py-2 text-xs text-success">
                             {googleCalendarImportResult.appointments_created} appointment(s) imported
                             {googleCalendarImportResult.appointments_skipped > 0 &&
                               `, ${googleCalendarImportResult.appointments_skipped} skipped`}

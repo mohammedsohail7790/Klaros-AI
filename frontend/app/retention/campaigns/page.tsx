@@ -5,6 +5,7 @@ import { Heart } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -166,10 +167,10 @@ export default function RetentionCampaignsPage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">{error}</div>
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         )}
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
             {notice}
           </div>
         )}
@@ -209,7 +210,7 @@ export default function RetentionCampaignsPage() {
         )}
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : campaigns.length === 0 ? (
           <EmptyState icon={Heart} title="No retention campaigns yet." />
         ) : (

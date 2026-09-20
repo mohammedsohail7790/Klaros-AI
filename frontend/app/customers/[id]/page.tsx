@@ -7,6 +7,7 @@ import { Calendar, Clock, Heart, Receipt } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -223,9 +224,9 @@ export default function CustomerDetailPage() {
         </Link>
 
         {authLoading || loading ? (
-          <p className="mt-4 text-sm text-muted">Loading customer...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="mt-4 rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="mt-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -390,7 +391,7 @@ export default function CustomerDetailPage() {
 
               <div className="rounded-lg border border-border bg-surface p-6">
                 <h2 className="mb-3 text-sm font-medium text-muted">Payments received</h2>
-                {refundNotice && <p className="mb-2 text-sm text-emerald-600">{refundNotice}</p>}
+                {refundNotice && <p className="mb-2 text-sm text-success">{refundNotice}</p>}
                 {payments.length === 0 ? (
                   <EmptyState icon={Receipt} title="No payments recorded for this customer yet." compact />
                 ) : (
@@ -406,7 +407,7 @@ export default function CustomerDetailPage() {
                             {p.status === "SUCCEEDED" && (
                               <button
                                 onClick={() => openRefundForm(p)}
-                                className="text-xs text-red-600 underline hover:text-foreground"
+                                className="text-xs text-danger underline hover:text-foreground"
                               >
                                 Request refund
                               </button>
@@ -517,7 +518,7 @@ export default function CustomerDetailPage() {
                     </div>
                   </dl>
                   {feedback.some((f) => f.sentiment === "NEGATIVE") && (
-                    <p className="mt-3 rounded-md border border-red-200 bg-red-50/30 p-2 text-xs text-red-700">
+                    <p className="mt-3 rounded-md border border-danger/25 bg-danger/[0.06] p-2 text-xs text-danger">
                       Negative feedback on file — service recovery required.
                     </p>
                   )}
@@ -556,7 +557,7 @@ export default function CustomerDetailPage() {
                 ) : (
                   <p className="text-sm text-muted">Not generated yet.</p>
                 )}
-                {summaryError && <p className="mt-2 text-xs text-red-600">{summaryError}</p>}
+                {summaryError && <p className="mt-2 text-xs text-danger">{summaryError}</p>}
                 <button
                   onClick={loadSummary}
                   disabled={summaryLoading}

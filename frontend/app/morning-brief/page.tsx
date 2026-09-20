@@ -6,6 +6,7 @@ import { Lightbulb, Sunrise } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   ApiError,
   MorningBriefData,
@@ -20,8 +21,8 @@ import {
 } from "@/lib/api";
 
 const PRIORITY_COLOR: Record<string, string> = {
-  HIGH: "border-red-200 text-red-700",
-  MEDIUM: "border-amber-200 text-amber-700",
+  HIGH: "border-danger/25 text-danger",
+  MEDIUM: "border-warning/25 text-warning",
   LOW: "border-border-strong text-muted",
 };
 
@@ -163,12 +164,12 @@ export default function MorningBriefPage() {
           </button>
         </div>
 
-        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
+        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
@@ -228,7 +229,7 @@ export default function MorningBriefPage() {
                         <div className="mt-3 flex items-center gap-3">
                           <span
                             className={`rounded-full border px-2 py-0.5 text-xs ${
-                              r.status === "APPROVAL_REQUESTED" ? "border-amber-200 text-amber-700" : "border-border-strong"
+                              r.status === "APPROVAL_REQUESTED" ? "border-warning/25 text-warning" : "border-border-strong"
                             }`}
                           >
                             {r.status}
@@ -239,7 +240,7 @@ export default function MorningBriefPage() {
                             </Link>
                           )}
                           {r.status === "APPROVAL_REQUESTED" && r.approval_request_id && (
-                            <Link href="/approvals" className="text-xs underline text-amber-700 hover:text-foreground">
+                            <Link href="/approvals" className="text-xs underline text-warning hover:text-foreground">
                               Review in Approvals
                             </Link>
                           )}
@@ -247,7 +248,7 @@ export default function MorningBriefPage() {
                             <button
                               disabled={busy}
                               onClick={() => handleExecute(r.recommendation_id)}
-                              className="text-xs underline text-emerald-600 hover:text-foreground"
+                              className="text-xs underline text-success hover:text-foreground"
                             >
                               Execute
                             </button>
@@ -256,7 +257,7 @@ export default function MorningBriefPage() {
                             <button
                               disabled={busy}
                               onClick={() => handleDismiss(r.recommendation_id)}
-                              className="text-xs underline text-red-600 hover:text-foreground"
+                              className="text-xs underline text-danger hover:text-foreground"
                             >
                               Dismiss
                             </button>

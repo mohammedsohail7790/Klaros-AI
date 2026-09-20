@@ -45,11 +45,12 @@ import {
 } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
 const ACTIVITY_CATEGORIES = ["ALL", "CRM", "SALES", "CONTRACT", "OPERATIONS", "QA", "FINANCE", "RETENTION", "REFERRAL", "AUTOMATION", "AI"];
 
 const ACTIVITY_SEVERITY_STYLE: Record<string, string> = {
-  ERROR: "border-red-200 bg-red-50/30 text-red-700",
-  WARNING: "border-amber-200 bg-amber-50/30 text-amber-700",
+  ERROR: "border-danger/25 bg-danger/[0.06] text-danger",
+  WARNING: "border-warning/25 bg-warning/[0.07] text-warning",
   INFO: "border-border bg-surface text-muted",
 };
 
@@ -65,8 +66,8 @@ function timeAgo(iso: string): string {
 }
 
 const PRIORITY_STYLE: Record<AttentionItem["priority"], string> = {
-  CRITICAL: "border-red-200 bg-red-50/30 text-red-700",
-  HIGH: "border-amber-200 bg-amber-50/30 text-amber-700",
+  CRITICAL: "border-danger/25 bg-danger/[0.06] text-danger",
+  HIGH: "border-warning/25 bg-warning/[0.07] text-warning",
   MEDIUM: "border-blue-200 bg-blue-50/20 text-blue-700",
   LOW: "border-border bg-surface text-muted",
 };
@@ -228,7 +229,7 @@ export default function DashboardPage() {
     loadActivity(activityPage, activityCategory);
   }, [loadActivity, activityPage, activityCategory]);
 
-  if (authError) return <p className="p-8 text-sm text-red-600">{authError}</p>;
+  if (authError) return <p className="p-8 text-sm text-danger">{authError}</p>;
 
   async function handleToggleKillSwitch() {
     if (!token) return;
@@ -277,7 +278,7 @@ export default function DashboardPage() {
           <div
             className={`mb-6 flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
               killSwitch.ai_paused
-                ? "border-red-300 bg-red-50/40 text-red-800"
+                ? "border-danger/40 bg-danger/10 text-danger"
                 : "border-border bg-surface text-muted"
             }`}
           >
@@ -299,8 +300,8 @@ export default function DashboardPage() {
                 disabled={killSwitchBusy}
                 className={`shrink-0 rounded-md border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
                   killSwitch.ai_paused
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                    : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                    ? "border-success/40 bg-success/[0.06] text-success hover:bg-success/15"
+                    : "border-danger/40 bg-danger/[0.06] text-danger hover:bg-danger/10"
                 }`}
               >
                 {killSwitchBusy ? "Working..." : killSwitch.ai_paused ? "Resume AI" : "Pause all AI"}
@@ -312,7 +313,7 @@ export default function DashboardPage() {
         {gettingStartedChecks && (
           <section className="mb-8">
             {gettingStartedRemaining === 0 ? (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/10 px-4 py-2.5 text-sm text-emerald-700">
+              <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/10 px-4 py-2.5 text-sm text-success">
                 <Check className="h-4 w-4 shrink-0" strokeWidth={2} />
                 All set — payments, accounting, scheduling, and your AI assistant are connected.
               </div>
@@ -328,13 +329,13 @@ export default function DashboardPage() {
                       key={item.provider}
                       href="/settings/integrations"
                       className={`rounded-lg border p-4 shadow-card transition hover:border-border-strong ${
-                        item.connected ? "border-emerald-200 bg-emerald-50/10" : "border-border bg-surface"
+                        item.connected ? "border-success/20 bg-success/10" : "border-border bg-surface"
                       }`}
                     >
                       <div className="mb-1 flex items-center justify-between">
                         <span className="text-[10px] uppercase tracking-wide text-muted">{item.segment}</span>
                         {item.connected ? (
-                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-success/15 text-success">
                             <Check className="h-3 w-3" strokeWidth={3} />
                           </span>
                         ) : (
@@ -356,16 +357,16 @@ export default function DashboardPage() {
             <h2 className="text-sm font-medium text-muted">Needs your attention</h2>
             {attention && attention.items.length > 0 && (
               <span className="text-xs text-muted">
-                {attention.critical_count > 0 && <span className="text-red-600">{attention.critical_count} critical</span>}
+                {attention.critical_count > 0 && <span className="text-danger">{attention.critical_count} critical</span>}
                 {attention.critical_count > 0 && attention.high_count > 0 && " · "}
-                {attention.high_count > 0 && <span className="text-amber-700">{attention.high_count} high</span>}
+                {attention.high_count > 0 && <span className="text-warning">{attention.high_count} high</span>}
               </span>
             )}
           </div>
           {!attention ? (
-            <p className="text-sm text-muted">Loading...</p>
+            <Skeleton />
           ) : attention.items.length === 0 ? (
-            <p className="rounded-lg border border-emerald-200 bg-emerald-50/10 p-4 shadow-card text-sm text-emerald-700">
+            <p className="rounded-lg border border-success/20 bg-success/10 p-4 shadow-card text-sm text-success">
               Nothing needs your attention right now.
             </p>
           ) : (
@@ -412,16 +413,16 @@ export default function DashboardPage() {
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50/20 p-4 shadow-card">
-                  <div className="text-2xl font-semibold text-emerald-700">{autonomy.automatic}</div>
+                <div className="rounded-lg border border-success/20 bg-success/10 p-4 shadow-card">
+                  <div className="text-2xl font-semibold text-success">{autonomy.automatic}</div>
                   <div className="text-xs text-muted">Automatic</div>
                 </div>
-                <div className="rounded-lg border border-amber-200 bg-amber-50/20 p-4 shadow-card">
-                  <div className="text-2xl font-semibold text-amber-700">{autonomy.approval_required}</div>
+                <div className="rounded-lg border border-warning/25 bg-warning/10 p-4 shadow-card">
+                  <div className="text-2xl font-semibold text-warning">{autonomy.approval_required}</div>
                   <div className="text-xs text-muted">Awaiting approval</div>
                 </div>
-                <div className="rounded-lg border border-red-200 bg-red-50/20 p-4 shadow-card">
-                  <div className="text-2xl font-semibold text-red-700">{autonomy.blocked}</div>
+                <div className="rounded-lg border border-danger/25 bg-danger/10 p-4 shadow-card">
+                  <div className="text-2xl font-semibold text-danger">{autonomy.blocked}</div>
                   <div className="text-xs text-muted">Blocked</div>
                 </div>
                 <div className="rounded-lg border border-border-strong bg-surface-muted/40 p-4 shadow-card">
@@ -431,7 +432,7 @@ export default function DashboardPage() {
               </div>
             )
           ) : (
-            <p className="text-sm text-muted">Loading...</p>
+            <Skeleton />
           )}
         </section>
 
@@ -464,7 +465,7 @@ export default function DashboardPage() {
             {aiHealth && (
               <>
                 <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                  <div className={`text-sm font-semibold ${aiHealth.provider_configured ? "text-emerald-700" : "text-muted"}`}>
+                  <div className={`text-sm font-semibold ${aiHealth.provider_configured ? "text-success" : "text-muted"}`}>
                     {aiHealth.provider_configured ? "Connected" : "Not connected"}
                   </div>
                   <div className="mt-1 text-xs text-muted">AI provider ({aiHealth.provider_name})</div>
@@ -488,7 +489,7 @@ export default function DashboardPage() {
                 <div className="text-sm font-semibold capitalize text-foreground">
                   {billing.plan}
                   {billing.billing_status === "trialing" && billing.trial_ends_at && (
-                    <span className="ml-1 font-normal text-amber-700">
+                    <span className="ml-1 font-normal text-warning">
                       (trial ends{" "}
                       {new Date(billing.trial_ends_at).toLocaleDateString(undefined, {
                         month: "short",
@@ -531,15 +532,15 @@ export default function DashboardPage() {
                 </Link>
                 <Link
                   href="/automations"
-                  className={`rounded-lg border p-4 transition hover:border-red-300 ${
-                    automations.executions_failed > 0 ? "border-red-200 bg-red-50/20" : "border-border bg-surface"
+                  className={`rounded-lg border p-4 transition hover:border-danger/40 ${
+                    automations.executions_failed > 0 ? "border-danger/25 bg-danger/10" : "border-border bg-surface"
                   }`}
                 >
-                  <div className="text-2xl font-semibold text-red-700">{automations.executions_failed}</div>
+                  <div className="text-2xl font-semibold text-danger">{automations.executions_failed}</div>
                   <div className="text-xs text-muted">Failed</div>
                 </Link>
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50/20 p-4 shadow-card">
-                  <div className="text-2xl font-semibold text-emerald-700">{automations.executions_completed_today}</div>
+                <div className="rounded-lg border border-success/20 bg-success/10 p-4 shadow-card">
+                  <div className="text-2xl font-semibold text-success">{automations.executions_completed_today}</div>
                   <div className="text-xs text-muted">Completed today</div>
                 </div>
                 <Link
@@ -558,7 +559,7 @@ export default function DashboardPage() {
               </div>
             )
           ) : (
-            <p className="text-sm text-muted">Loading...</p>
+            <Skeleton />
           )}
         </section>
 
@@ -579,7 +580,7 @@ export default function DashboardPage() {
               <p className="mb-4">{brief.headline}</p>
               {brief.insights.filter((i) => i.priority === "HIGH").length > 0 && (
                 <div className="mb-3">
-                  <h3 className="mb-1 text-xs font-medium text-red-700">Needs attention</h3>
+                  <h3 className="mb-1 text-xs font-medium text-danger">Needs attention</h3>
                   <ul className="space-y-1 text-sm text-muted">
                     {brief.insights
                       .filter((i) => i.priority === "HIGH")
@@ -605,7 +606,7 @@ export default function DashboardPage() {
               )}
               {brief.recommendations.filter((r) => r.status === "APPROVAL_REQUESTED").length > 0 && (
                 <div className="mt-3">
-                  <h3 className="mb-1 text-xs font-medium text-amber-700">Awaiting your approval</h3>
+                  <h3 className="mb-1 text-xs font-medium text-warning">Awaiting your approval</h3>
                   <ul className="space-y-1 text-sm text-muted">
                     {brief.recommendations
                       .filter((r) => r.status === "APPROVAL_REQUESTED")
@@ -613,7 +614,7 @@ export default function DashboardPage() {
                       .map((r) => (
                         <li key={r.recommendation_id}>
                           {r.what} —{" "}
-                          <Link href="/approvals" className="underline text-amber-700">
+                          <Link href="/approvals" className="underline text-warning">
                             review
                           </Link>
                         </li>
@@ -641,9 +642,9 @@ export default function DashboardPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-medium text-muted">Today — CRM</h2>
           {authLoading || loading ? (
-            <p className="text-sm text-muted">Loading metrics...</p>
+            <Skeleton />
           ) : error ? (
-            <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+            <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
               {error}{" "}
               <button onClick={load} className="ml-2 underline">
                 Retry
@@ -671,7 +672,7 @@ export default function DashboardPage() {
             </Link>
           </div>
           {pipeline?.needs_attention && (
-            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
+            <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-4 text-sm text-warning">
               PIPELINE NEEDS ATTENTION — {pipeline.contracts_awaiting_signature} contract(s) awaiting signature,{" "}
               {pipeline.deposits_awaiting_payment} deposit(s) outstanding.
             </div>
@@ -696,7 +697,7 @@ export default function DashboardPage() {
                 href="/contracts"
                 className={`rounded-lg border p-4 transition hover:border-border-strong ${
                   pipeline.contracts_awaiting_signature > 0
-                    ? "border-amber-200 bg-amber-50/20"
+                    ? "border-warning/25 bg-warning/10"
                     : "border-border bg-surface"
                 }`}
               >
@@ -714,7 +715,7 @@ export default function DashboardPage() {
                 href="/quotes"
                 className={`rounded-lg border p-4 transition hover:border-border-strong ${
                   pipeline.deposits_awaiting_payment > 0
-                    ? "border-amber-200 bg-amber-50/20"
+                    ? "border-warning/25 bg-warning/10"
                     : "border-border bg-surface"
                 }`}
               >
@@ -736,7 +737,7 @@ export default function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <p className="text-sm text-muted">Loading...</p>
+            <Skeleton />
           )}
         </section>
 
@@ -748,7 +749,7 @@ export default function DashboardPage() {
             </Link>
           </div>
           {operations && (operations.blocked_jobs > 0 || operations.at_risk_jobs > 0 || operations.open_exceptions > 0) && (
-            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
+            <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-4 text-sm text-warning">
               OPERATIONS NEEDS ATTENTION — {operations.blocked_jobs} blocked job(s), {operations.at_risk_jobs} at-risk
               job(s), {operations.open_exceptions} open exception(s).
             </div>
@@ -766,7 +767,7 @@ export default function DashboardPage() {
               <Link
                 href="/operations"
                 className={`rounded-lg border p-4 transition hover:border-border-strong ${
-                  operations.at_risk_jobs > 0 ? "border-amber-200 bg-amber-50/20" : "border-border bg-surface"
+                  operations.at_risk_jobs > 0 ? "border-warning/25 bg-warning/10" : "border-border bg-surface"
                 }`}
               >
                 <p className="text-2xl font-semibold">{operations.at_risk_jobs}</p>
@@ -775,7 +776,7 @@ export default function DashboardPage() {
               <Link
                 href="/operations"
                 className={`rounded-lg border p-4 transition hover:border-border-strong ${
-                  operations.blocked_jobs > 0 ? "border-red-200 bg-red-50/20" : "border-border bg-surface"
+                  operations.blocked_jobs > 0 ? "border-danger/25 bg-danger/10" : "border-border bg-surface"
                 }`}
               >
                 <p className="text-2xl font-semibold">{operations.blocked_jobs}</p>
@@ -788,7 +789,7 @@ export default function DashboardPage() {
               <Link
                 href="/exceptions"
                 className={`rounded-lg border p-4 transition hover:border-border-strong ${
-                  operations.open_exceptions > 0 ? "border-amber-200 bg-amber-50/20" : "border-border bg-surface"
+                  operations.open_exceptions > 0 ? "border-warning/25 bg-warning/10" : "border-border bg-surface"
                 }`}
               >
                 <p className="text-2xl font-semibold">{operations.open_exceptions}</p>
@@ -796,14 +797,14 @@ export default function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <p className="text-sm text-muted">Loading...</p>
+            <Skeleton />
           )}
         </section>
 
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-medium text-muted">Business Health — Finance</h2>
           {finance?.needs_attention && (
-            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
+            <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-4 text-sm text-warning">
               FINANCE NEEDS ATTENTION — {finance.overdue_invoice_count} overdue invoice(s),{" "}
               {finance.open_finance_exception_count} open finance exception(s).
             </div>
@@ -833,7 +834,7 @@ export default function DashboardPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-medium text-muted">Marketing &amp; Demand Generation</h2>
           {marketing?.needs_attention && (
-            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
+            <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-4 text-sm text-warning">
               MARKETING NEEDS ATTENTION — {marketing.open_marketing_exception_count} open marketing exception(s).
             </div>
           )}
@@ -870,7 +871,7 @@ export default function DashboardPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-medium text-muted">Retention &amp; Referral</h2>
           {retention?.needs_attention && (
-            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
+            <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-4 text-sm text-warning">
               RETENTION NEEDS ATTENTION — {retention.open_retention_exception_count} open retention exception(s).
             </div>
           )}
@@ -925,7 +926,7 @@ export default function DashboardPage() {
             </div>
           </div>
           {!activity && activityLoading ? (
-            <p className="text-sm text-muted">Loading...</p>
+            <Skeleton />
           ) : !activity || activity.items.length === 0 ? (
             <div className="rounded-lg border border-border bg-surface shadow-card">
               <EmptyState icon={Activity} title="No activity yet." compact />

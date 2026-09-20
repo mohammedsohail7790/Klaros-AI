@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { StatCard } from "@/components/ui/StatCard";
+import { Alert } from "@/components/ui/Alert";
 import {
   ApiError,
   Invoice,
@@ -84,7 +87,7 @@ export default function InvoiceDetailPage() {
   if (authLoading || loading) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8 text-sm text-muted">Loading...</div>
+        <Skeleton />
       </AppShell>
     );
   }
@@ -93,7 +96,7 @@ export default function InvoiceDetailPage() {
     return (
       <AppShell user={user}>
         <div className="px-8 py-8">
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">{error}</div>
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         </div>
       </AppShell>
     );
@@ -221,31 +224,15 @@ export default function InvoiceDetailPage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
-        {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
-            {notice}
-          </div>
-        )}
+        {notice && <Alert variant="success" className="mb-4">{notice}</Alert>}
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Total</div>
-            <div className="mt-1 text-lg font-semibold">${invoice.total}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Amount paid</div>
-            <div className="mt-1 text-lg font-semibold">${invoice.amount_paid}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Amount due</div>
-            <div className="mt-1 text-lg font-semibold">${invoice.amount_due}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Due date</div>
-            <div className="mt-1 text-lg font-semibold">{invoice.due_date}</div>
-          </div>
+          <StatCard label="Total" value={`$${invoice.total}`} tone="accent" />
+          <StatCard label="Amount paid" value={`$${invoice.amount_paid}`} tone="success" />
+          <StatCard label="Amount due" value={`$${invoice.amount_due}`} tone={Number(invoice.amount_due) > 0 ? "warning" : "neutral"} />
+          <StatCard label="Due date" value={invoice.due_date} compact />
         </div>
 
         {invoice.notes && (
@@ -308,7 +295,7 @@ export default function InvoiceDetailPage() {
               <button
                 disabled={busy}
                 onClick={() => runAction(() => rejectInvoice(token!, invoice.id), "Invoice rejected — returned to draft.")}
-                className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50/30 disabled:opacity-50"
+                className="rounded-md border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
               >
                 Reject
               </button>
@@ -364,7 +351,7 @@ export default function InvoiceDetailPage() {
             <button
               disabled={busy}
               onClick={() => runAction(() => voidInvoice(token!, invoice.id, "Voided from invoice detail page"), "Invoice voided.")}
-              className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50/30 disabled:opacity-50"
+              className="rounded-md border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
             >
               Void
             </button>
@@ -418,7 +405,7 @@ export default function InvoiceDetailPage() {
                   className="w-24 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                 />
                 {editItems.length > 1 && (
-                  <button type="button" onClick={() => removeEditItem(i)} className="text-xs text-red-600 hover:underline">
+                  <button type="button" onClick={() => removeEditItem(i)} className="text-xs text-danger hover:underline">
                     Remove
                   </button>
                 )}

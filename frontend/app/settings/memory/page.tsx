@@ -5,6 +5,7 @@ import { Layers, Sparkles } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -189,12 +190,12 @@ export default function CompanyMemoryPage() {
         </p>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
             {notice}
           </div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -283,7 +284,7 @@ export default function CompanyMemoryPage() {
             </div>
 
             {authLoading || loading ? (
-              <p className="text-sm text-muted">Loading...</p>
+              <Skeleton />
             ) : !memories || memories.length === 0 ? (
               <EmptyState icon={Layers} title="No memory entries." />
             ) : (
@@ -324,7 +325,7 @@ export default function CompanyMemoryPage() {
                         <button
                           onClick={() => handleSaveEdit(m.id)}
                           disabled={busy || !editValue.trim()}
-                          className="text-xs text-emerald-600 underline hover:text-foreground disabled:opacity-50"
+                          className="text-xs text-success underline hover:text-foreground disabled:opacity-50"
                         >
                           Save
                         </button>
@@ -347,7 +348,7 @@ export default function CompanyMemoryPage() {
                     <div className="mt-2 flex gap-3">
                       {m.status === "PENDING" && (
                         <>
-                          <button onClick={() => handleConfirm(m.id)} disabled={busy} className="text-xs text-emerald-600 underline hover:text-foreground">
+                          <button onClick={() => handleConfirm(m.id)} disabled={busy} className="text-xs text-success underline hover:text-foreground">
                             {m.memory_type === "AI_FEEDBACK" ? "Confirm — apply to future AI decisions" : "Confirm"}
                           </button>
                           <button
@@ -360,13 +361,13 @@ export default function CompanyMemoryPage() {
                           >
                             Edit before confirming
                           </button>
-                          <button onClick={() => handleReject(m.id)} disabled={busy} className="text-xs text-red-600 underline hover:text-foreground">
+                          <button onClick={() => handleReject(m.id)} disabled={busy} className="text-xs text-danger underline hover:text-foreground">
                             {m.memory_type === "AI_FEEDBACK" ? "Discard" : "Reject"}
                           </button>
                         </>
                       )}
                       {m.status === "ACTIVE" && (
-                        <button onClick={() => handleRevoke(m.id)} disabled={busy} className="text-xs text-red-600 underline hover:text-foreground">
+                        <button onClick={() => handleRevoke(m.id)} disabled={busy} className="text-xs text-danger underline hover:text-foreground">
                           Revoke
                         </button>
                       )}

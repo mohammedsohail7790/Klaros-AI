@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { StatCard } from "@/components/ui/StatCard";
 import {
   ApiError,
   Campaign,
@@ -83,7 +85,7 @@ export default function CampaignDetailPage() {
   if (authLoading || loading) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8 text-sm text-muted">Loading...</div>
+        <Skeleton />
       </AppShell>
     );
   }
@@ -92,7 +94,7 @@ export default function CampaignDetailPage() {
     return (
       <AppShell user={user}>
         <div className="px-8 py-8">
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">{error}</div>
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         </div>
       </AppShell>
     );
@@ -110,10 +112,10 @@ export default function CampaignDetailPage() {
         </div>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>
+          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         {budgetStatus && budgetStatus.budget !== null && (
@@ -121,8 +123,8 @@ export default function CampaignDetailPage() {
             className={`mb-6 rounded-lg border p-4 text-sm ${
               budgetStatus.alert
                 ? budgetStatus.alert.includes("overspend")
-                  ? "border-red-200 bg-red-50/30 text-red-700"
-                  : "border-amber-200 bg-amber-50/30 text-amber-700"
+                  ? "border-danger/25 bg-danger/[0.06] text-danger"
+                  : "border-warning/25 bg-warning/[0.07] text-warning"
                 : "border-border bg-surface text-muted"
             }`}
           >
@@ -138,40 +140,14 @@ export default function CampaignDetailPage() {
         )}
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Spend</div>
-            <div className="mt-1 text-lg font-semibold">${perf.spend}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Leads / Qualified</div>
-            <div className="mt-1 text-lg font-semibold">{perf.leads} / {perf.qualified_leads}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Appointments / Jobs</div>
-            <div className="mt-1 text-lg font-semibold">{perf.booked} / {perf.jobs_created}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Jobs closed</div>
-            <div className="mt-1 text-lg font-semibold">{perf.jobs_closed}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Revenue</div>
-            <div className="mt-1 text-lg font-semibold">${perf.revenue}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Collected revenue</div>
-            <div className="mt-1 text-lg font-semibold">${perf.collected_revenue}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">CAC</div>
-            <div className="mt-1 text-lg font-semibold">{perf.cac ? `$${perf.cac}` : "—"}</div>
-            {!perf.cac && <div className="mt-1 text-xs text-amber-700">{perf.cac_note}</div>}
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">ROAS</div>
-            <div className="mt-1 text-lg font-semibold">{perf.roas ? `${perf.roas}x` : "—"}</div>
-            {!perf.roas && <div className="mt-1 text-xs text-amber-700">{perf.roas_note}</div>}
-          </div>
+          <StatCard label="Spend" value={`$${perf.spend}`} tone="accent" />
+          <StatCard label="Leads / Qualified" value={`${perf.leads} / ${perf.qualified_leads}`} />
+          <StatCard label="Appointments / Jobs" value={`${perf.booked} / ${perf.jobs_created}`} />
+          <StatCard label="Jobs closed" value={perf.jobs_closed} tone="success" />
+          <StatCard label="Revenue" value={`$${perf.revenue}`} tone="accent" />
+          <StatCard label="Collected revenue" value={`$${perf.collected_revenue}`} tone="success" />
+          <StatCard label="CAC" value={perf.cac ? `$${perf.cac}` : "—"} note={perf.cac ? null : perf.cac_note} />
+          <StatCard label="ROAS" value={perf.roas ? `${perf.roas}x` : "—"} note={perf.roas ? null : perf.roas_note} />
         </div>
 
         <div className="mb-6 flex flex-wrap items-end gap-4">

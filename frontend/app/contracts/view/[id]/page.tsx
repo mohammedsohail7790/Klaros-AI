@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError, PublicContract, declinePublicContract, getPublicContract, signPublicContract } from "@/lib/api";
 
 // Klaros' public, unauthenticated contract page — no AppShell, no useAuth,
@@ -13,7 +14,7 @@ import { ApiError, PublicContract, declinePublicContract, getPublicContract, sig
 // e-signature provider integrated, and this page never implies one.
 export default function PublicContractViewPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-muted">Loading...</div>}>
+    <Suspense fallback={<Skeleton />}>
       <PublicContractViewInner />
     </Suspense>
   );
@@ -82,15 +83,15 @@ function PublicContractViewInner() {
   }
 
   if (loading) {
-    return <div className="mx-auto max-w-2xl px-6 py-16 text-sm text-muted">Loading...</div>;
+    return <Skeleton />;
   }
 
   if (error && !contract) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-16">
-        <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+        <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
           {error}
-          <div className="mt-2 text-xs text-red-600">
+          <div className="mt-2 text-xs text-danger">
             If you followed a link from an email or text message, it may have expired — please contact us for a
             fresh link.
           </div>
@@ -111,11 +112,11 @@ function PublicContractViewInner() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
       )}
 
       {contract.status === "SIGNED" && (
-        <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50/30 p-4 text-sm text-emerald-700">
+        <div className="mb-6 rounded-md border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
           Signed by {contract.signer_name} — thank you. This is an internal record of your agreement, not a
           third-party verified e-signature.
         </div>
@@ -145,7 +146,7 @@ function PublicContractViewInner() {
           <button
             disabled={busy}
             onClick={() => setConfirmingSign(true)}
-            className="rounded-md border border-emerald-200 bg-emerald-50/30 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
+            className="rounded-md border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
           >
             Sign this agreement
           </button>
@@ -161,7 +162,7 @@ function PublicContractViewInner() {
             <button
               disabled={busy}
               onClick={handleDecline}
-              className="rounded-md border border-red-200 px-4 py-2 text-sm text-red-700 hover:bg-red-50/30 disabled:opacity-50"
+              className="rounded-md border border-danger/25 px-4 py-2 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
             >
               Decline
             </button>
@@ -195,7 +196,7 @@ function PublicContractViewInner() {
             <button
               disabled={busy || !signerName.trim()}
               onClick={handleSign}
-              className="rounded-md border border-emerald-200 bg-emerald-50/30 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
+              className="rounded-md border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
             >
               {busy ? "Signing..." : "Confirm signature"}
             </button>

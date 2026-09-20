@@ -25,6 +25,7 @@ import {
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH"];
 
@@ -245,12 +246,12 @@ export default function SEOPage() {
           </button>
         </form>
 
-        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
+        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
@@ -487,7 +488,7 @@ export default function SEOPage() {
                       <span>
                         {r.rating}★ {r.author && `— ${r.author}`}
                       </span>
-                      {r.responded && <span className="text-emerald-600">responded</span>}
+                      {r.responded && <span className="text-success">responded</span>}
                     </div>
                     {r.body && <p className="mt-1 text-muted">{r.body}</p>}
                     {!r.responded && (

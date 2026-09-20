@@ -47,7 +47,7 @@ export default function CashForecastPage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">{error}</div>
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         )}
 
         {!forecast ? (
@@ -81,8 +81,8 @@ export default function CashForecastPage() {
                   {forecast.weeks.map((w) => (
                     <tr key={w.week_start} className="border-t border-border">
                       <td className="px-4 py-2">{w.week_start}</td>
-                      <td className="px-4 py-2 text-emerald-600">${w.inflow}</td>
-                      <td className="px-4 py-2 text-red-600">${w.outflow}</td>
+                      <td className="px-4 py-2 text-success">${w.inflow}</td>
+                      <td className="px-4 py-2 text-danger">${w.outflow}</td>
                       <td className="px-4 py-2">${w.net}</td>
                       <td className="px-4 py-2 font-semibold">
                         {w.projected_balance === "NOT_CONNECTED" ? "Not connected" : `$${w.projected_balance}`}

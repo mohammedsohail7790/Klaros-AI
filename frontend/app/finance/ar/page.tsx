@@ -16,14 +16,10 @@ import {
 } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
-function Bucket({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-      <div className="text-xs text-muted">{label}</div>
-      <div className="mt-1 text-xl font-semibold">${value}</div>
-    </div>
-  );
-}
+import { Skeleton } from "@/components/ui/Skeleton";
+import { StatCard } from "@/components/ui/StatCard";
+import { Alert } from "@/components/ui/Alert";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function ARPage() {
   const { token, user, loading: authLoading } = useAuth();
@@ -86,50 +82,49 @@ export default function ARPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Accounts Receivable</h1>
-          <div className="flex gap-2">
-            <button
-              disabled={busy}
-              onClick={handleDetectOverdue}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
-            >
-              Detect overdue
-            </button>
-            <button
-              disabled={busy}
-              onClick={handleExecuteDue}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
-            >
-              Execute due collections
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Accounts Receivable"
+          icon={Landmark}
+          actions={
+            <>
+              <button
+                disabled={busy}
+                onClick={handleDetectOverdue}
+                className="klaros-btn-secondary disabled:opacity-50"
+              >
+                Detect overdue
+              </button>
+              <button
+                disabled={busy}
+                onClick={handleExecuteDue}
+                className="klaros-btn-secondary disabled:opacity-50"
+              >
+                Execute due collections
+              </button>
+            </>
+          }
+        />
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
-            {notice}
-          </div>
-        )}
+        {notice && <Alert variant="success" className="mb-4">{notice}</Alert>}
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton stats={5} />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <Alert variant="danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
-          </div>
+          </Alert>
         ) : (
           <>
             {aging && (
               <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-5">
-                <Bucket label="Current" value={aging.current} />
-                <Bucket label="1-30 days" value={aging.days_1_30} />
-                <Bucket label="31-60 days" value={aging.days_31_60} />
-                <Bucket label="61-90 days" value={aging.days_61_90} />
-                <Bucket label="90+ days" value={aging.days_90_plus} />
+                <StatCard label="Current" value={`$${aging.current}`} />
+                <StatCard label="1-30 days" value={`$${aging.days_1_30}`} />
+                <StatCard label="31-60 days" value={`$${aging.days_31_60}`} tone="warning" />
+                <StatCard label="61-90 days" value={`$${aging.days_61_90}`} tone="warning" />
+                <StatCard label="90+ days" value={`$${aging.days_90_plus}`} tone="danger" />
               </div>
             )}
 

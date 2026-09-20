@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { CheckSquare, Clock, Package, Paperclip } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -412,9 +413,9 @@ export default function JobDetailPage() {
         </Link>
 
         {authLoading || loading ? (
-          <p className="mt-4 text-sm text-muted">Loading job...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="mt-4 rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="mt-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -518,15 +519,15 @@ export default function JobDetailPage() {
                           <button
                             disabled={busy}
                             onClick={handleCancelJob}
-                            className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50/30 disabled:opacity-50"
+                            className="rounded-md border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
                           >
                             Cancel job
                           </button>
                         )}
                       </div>
                     </div>
-                    {actionError && <p className="mt-3 text-sm text-red-600">{actionError}</p>}
-                    {actionNotice && <p className="mt-3 text-sm text-amber-700">{actionNotice}</p>}
+                    {actionError && <p className="mt-3 text-sm text-danger">{actionError}</p>}
+                    {actionNotice && <p className="mt-3 text-sm text-warning">{actionNotice}</p>}
 
                     <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
                       <div>
@@ -543,7 +544,7 @@ export default function JobDetailPage() {
                             <button
                               disabled={busy}
                               onClick={handleUnassign}
-                              className="text-xs text-red-600 underline hover:text-foreground disabled:opacity-50"
+                              className="text-xs text-danger underline hover:text-foreground disabled:opacity-50"
                             >
                               Unassign
                             </button>
@@ -637,7 +638,7 @@ export default function JobDetailPage() {
                     <button
                       type="submit"
                       disabled={busy || !blockReason.trim()}
-                      className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50/30 disabled:opacity-50"
+                      className="rounded-md border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
                     >
                       Block job
                     </button>
@@ -738,7 +739,7 @@ export default function JobDetailPage() {
                     >
                       Draft purchase order
                     </button>
-                    {poNotice && <span className="text-xs text-emerald-600">{poNotice}</span>}
+                    {poNotice && <span className="text-xs text-success">{poNotice}</span>}
                   </div>
                 )}
               </div>
@@ -799,7 +800,7 @@ export default function JobDetailPage() {
                         </span>
                         <button
                           onClick={() => handleViewAttachment(a.id)}
-                          className="text-xs text-emerald-600 underline hover:text-foreground"
+                          className="text-xs text-success underline hover:text-foreground"
                         >
                           View
                         </button>
@@ -885,7 +886,7 @@ export default function JobDetailPage() {
                   <p className="mb-3 text-xs text-muted">
                     Internal record only — not a legally binding e-signature.
                   </p>
-                  {signoffNotice && <p className="mb-2 text-sm text-emerald-600">{signoffNotice}</p>}
+                  {signoffNotice && <p className="mb-2 text-sm text-success">{signoffNotice}</p>}
                   <form onSubmit={handleSignoff} className="flex items-end gap-2">
                     <div className="flex-1">
                       <label className="block text-xs text-muted">Signed by</label>
@@ -919,7 +920,7 @@ export default function JobDetailPage() {
                     </button>
                     <button
                       onClick={() => runAction(() => failQA(token, id, "Failed from Job detail UI"))}
-                      className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50/30"
+                      className="rounded-md border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06]"
                     >
                       Fail QA
                     </button>
@@ -1142,7 +1143,7 @@ function RecordJobCostForm({ token, jobId, onRecorded }: { token: string; jobId:
       >
         Record cost
       </button>
-      {error && <p className="w-full text-xs text-red-600">{error}</p>}
+      {error && <p className="w-full text-xs text-danger">{error}</p>}
     </form>
   );
 }

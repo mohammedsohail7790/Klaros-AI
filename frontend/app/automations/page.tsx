@@ -5,6 +5,7 @@ import { History, Workflow } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -490,18 +491,18 @@ export default function AutomationsPage() {
         </div>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
             {notice}
           </div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         {mode === "list" && (
           <div>
             {authLoading || loading ? (
-              <p className="text-sm text-muted">Loading...</p>
+              <Skeleton />
             ) : !automations || automations.length === 0 ? (
               <EmptyState
                 icon={Workflow}
@@ -705,7 +706,7 @@ export default function AutomationsPage() {
                     />
                     <button
                       onClick={() => setForm((f) => ({ ...f, conditions: f.conditions.filter((_, j) => j !== i) }))}
-                      className="text-xs text-red-600 hover:text-red-700"
+                      className="text-xs text-danger hover:text-danger"
                     >
                       ✕
                     </button>
@@ -742,7 +743,7 @@ export default function AutomationsPage() {
                         {form.steps.length > 1 && (
                           <button
                             onClick={() => setForm((f) => ({ ...f, steps: f.steps.filter((_, j) => j !== i) }))}
-                            className="text-xs text-red-600 hover:text-red-700"
+                            className="text-xs text-danger hover:text-danger"
                           >
                             remove
                           </button>
@@ -789,7 +790,7 @@ export default function AutomationsPage() {
                       <button
                         onClick={handlePublish}
                         disabled={busy}
-                        className="rounded-md border border-emerald-200 px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-50/30"
+                        className="rounded-md border border-success/20 px-3 py-1.5 text-xs text-success hover:bg-success/[0.06]"
                       >
                         Publish
                       </button>
@@ -798,7 +799,7 @@ export default function AutomationsPage() {
                       <button
                         onClick={() => handleToggleEnabled(true)}
                         disabled={busy}
-                        className="rounded-md border border-emerald-200 px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-50/30"
+                        className="rounded-md border border-success/20 px-3 py-1.5 text-xs text-success hover:bg-success/[0.06]"
                       >
                         Enable
                       </button>
@@ -807,7 +808,7 @@ export default function AutomationsPage() {
                       <button
                         onClick={() => handleToggleEnabled(false)}
                         disabled={busy}
-                        className="rounded-md border border-amber-200 px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-50/30"
+                        className="rounded-md border border-warning/25 px-3 py-1.5 text-xs text-warning hover:bg-warning/[0.07]"
                       >
                         Disable
                       </button>
@@ -903,7 +904,7 @@ export default function AutomationsPage() {
                     </Badge>
                   </div>
                   {selectedExecution.error && (
-                    <p className="mb-2 rounded-md border border-red-200 bg-red-50/30 p-2 text-xs text-red-700">
+                    <p className="mb-2 rounded-md border border-danger/25 bg-danger/[0.06] p-2 text-xs text-danger">
                       {selectedExecution.error}
                     </p>
                   )}
@@ -918,7 +919,7 @@ export default function AutomationsPage() {
                             {s.status}
                           </Badge>
                         </div>
-                        {s.error && <p className="mt-1 text-red-600">{s.error}</p>}
+                        {s.error && <p className="mt-1 text-danger">{s.error}</p>}
                       </div>
                     ))}
                   </div>

@@ -1,20 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Megaphone } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { AdsProviderStatus, ApiError, MarketingSummary, getAdsProviderStatus, getMarketingSummary } from "@/lib/api";
 import { Badge } from "@/components/ui/Badge";
-
-function Stat({ label, value, note }: { label: string; value: string | number; note?: string | null }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-      <div className="text-xs text-muted">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
-      {note && <div className="mt-1 text-xs text-amber-700">{note}</div>}
-    </div>
-  );
-}
+import { Skeleton } from "@/components/ui/Skeleton";
+import { StatCard } from "@/components/ui/StatCard";
+import { Alert } from "@/components/ui/Alert";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function MarketingPage() {
   const { token, user, loading: authLoading } = useAuth();
@@ -45,53 +40,53 @@ export default function MarketingPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-6">Marketing &amp; Demand Generation</h1>
+        <PageHeader title="Marketing & Demand Generation" icon={Megaphone} />
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton stats={4} />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <Alert variant="danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
-          </div>
+          </Alert>
         ) : summary ? (
           <>
             {summary.needs_attention && (
-              <div className="mb-6 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
+              <Alert variant="warning" className="mb-6">
                 MARKETING NEEDS ATTENTION — {summary.open_marketing_exception_count} open marketing exception(s).
-              </div>
+              </Alert>
             )}
             <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-              <Stat label="Marketing spend" value={`$${summary.marketing_spend}`} />
-              <Stat label="Leads" value={summary.leads} />
-              <Stat label="Qualified leads" value={summary.qualified_leads} />
-              <Stat label="Appointments booked" value={summary.appointments_booked} />
-              <Stat label="Jobs won" value={summary.jobs_won} />
-              <Stat label="Revenue attributed" value={`$${summary.revenue}`} />
-              <Stat label="Collected revenue" value={`$${summary.collected_revenue}`} />
-              <Stat
+              <StatCard label="Marketing spend" value={`$${summary.marketing_spend}`} tone="accent" />
+              <StatCard label="Leads" value={summary.leads} />
+              <StatCard label="Qualified leads" value={summary.qualified_leads} />
+              <StatCard label="Appointments booked" value={summary.appointments_booked} />
+              <StatCard label="Jobs won" value={summary.jobs_won} tone="success" />
+              <StatCard label="Revenue attributed" value={`$${summary.revenue}`} tone="accent" />
+              <StatCard label="Collected revenue" value={`$${summary.collected_revenue}`} tone="success" />
+              <StatCard
                 label="CAC"
                 value={summary.cac ? `$${summary.cac}` : "Insufficient data"}
                 note={summary.cac ? null : summary.cac_note}
               />
-              <Stat
+              <StatCard
                 label="ROAS"
                 value={summary.roas ? `${summary.roas}x` : "Insufficient data"}
                 note={summary.roas ? null : summary.roas_note}
               />
-              <Stat
+              <StatCard
                 label="Conversion rate"
                 value={summary.conversion_rate_pct !== null ? `${summary.conversion_rate_pct}%` : "No leads yet"}
               />
-              <Stat label="Campaigns" value={summary.campaign_count} />
+              <StatCard label="Campaigns" value={summary.campaign_count} />
             </div>
 
             <h2 className="mb-3 text-sm font-semibold text-muted">Paid ads integration status</h2>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {providers.map((p) => (
-                <div key={p.provider} className="rounded-lg border border-border bg-surface p-4 shadow-card">
+                <div key={p.provider} className="klaros-card p-4">
                   <div className="text-sm font-medium">{p.provider.replace(/_/g, " ")}</div>
                   <Badge status={p.status} className="mt-1">
                     {p.status}

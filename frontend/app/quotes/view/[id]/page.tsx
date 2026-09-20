@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   ApiError,
   PublicQuote,
@@ -23,7 +24,7 @@ import {
 // counts as confirmation.
 export default function PublicQuoteViewPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-muted">Loading...</div>}>
+    <Suspense fallback={<Skeleton />}>
       <PublicQuoteViewInner />
     </Suspense>
   );
@@ -141,15 +142,15 @@ function PublicQuoteViewInner() {
   }
 
   if (loading) {
-    return <div className="mx-auto max-w-2xl px-6 py-16 text-sm text-muted">Loading...</div>;
+    return <Skeleton />;
   }
 
   if (error && !quote) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-16">
-        <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+        <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
           {error}
-          <div className="mt-2 text-xs text-red-600">
+          <div className="mt-2 text-xs text-danger">
             If you followed a link from an email or text message, it may have expired — please contact us for a
             fresh link.
           </div>
@@ -176,11 +177,11 @@ function PublicQuoteViewInner() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
       )}
 
       {depositReturn === "cancelled" && depositPending && (
-        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50/30 p-3 text-sm text-amber-700">
+        <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-3 text-sm text-warning">
           Checkout was cancelled — no payment was made. You can try again below whenever you&apos;re ready.
         </div>
       )}
@@ -209,7 +210,7 @@ function PublicQuoteViewInner() {
       )}
 
       {(quote.status === "ACCEPTED" || quote.status === "CONVERTED") && !depositPending && (
-        <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50/30 p-4 text-sm text-emerald-700">
+        <div className="mb-6 rounded-md border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
           You accepted this quote.{jobCreated ? " Work has been scheduled." : ""}
           {quote.status === "CONVERTED" && quote.deposit_required && (
             <div className="mt-1">Your deposit has been received — thank you.</div>
@@ -218,7 +219,7 @@ function PublicQuoteViewInner() {
       )}
 
       {quote.status === "DEPOSIT_PAID" && (
-        <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50/30 p-4 text-sm text-emerald-700">
+        <div className="mb-6 rounded-md border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
           Your deposit has been received and this quote is accepted. We&apos;re finalizing your job now.
         </div>
       )}
@@ -268,7 +269,7 @@ function PublicQuoteViewInner() {
         )}
         {depositSettled && quote.deposit_amount !== null && (
           <>
-            <div className="text-emerald-600">Deposit paid: ${quote.deposit_amount}</div>
+            <div className="text-success">Deposit paid: ${quote.deposit_amount}</div>
             {remainingBalance !== null && <div className="text-muted">Remaining balance: ${remainingBalance}</div>}
           </>
         )}
@@ -291,7 +292,7 @@ function PublicQuoteViewInner() {
           <button
             disabled={busy}
             onClick={handleAccept}
-            className="rounded-md border border-emerald-200 bg-emerald-50/30 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
+            className="rounded-md border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
           >
             {busy ? "Accepting..." : "Accept quote"}
           </button>
@@ -307,7 +308,7 @@ function PublicQuoteViewInner() {
             <button
               disabled={busy}
               onClick={handleDecline}
-              className="rounded-md border border-red-200 px-4 py-2 text-sm text-red-700 hover:bg-red-50/30 disabled:opacity-50"
+              className="rounded-md border border-danger/25 px-4 py-2 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
             >
               Decline
             </button>
@@ -324,7 +325,7 @@ function PublicQuoteViewInner() {
           <button
             disabled={busy}
             onClick={handlePayDeposit}
-            className="rounded-md border border-emerald-200 bg-emerald-50/30 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
+            className="rounded-md border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
           >
             {busy ? "Starting checkout..." : "Pay deposit securely with Stripe"}
           </button>

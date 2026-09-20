@@ -1,18 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Heart } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, RetentionAnalytics, RetentionSummary, getRetentionAnalytics, getRetentionSummary } from "@/lib/api";
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-      <div className="text-xs text-muted">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
-    </div>
-  );
-}
+import { Skeleton } from "@/components/ui/Skeleton";
+import { StatCard } from "@/components/ui/StatCard";
+import { Alert } from "@/components/ui/Alert";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 function Metric({ label, value, note }: { label: string; value: string | number | null; note: string }) {
   return (
@@ -53,38 +49,38 @@ export default function RetentionPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-6">Retention &amp; Referral</h1>
+        <PageHeader title="Retention & Referral" icon={Heart} />
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton stats={4} />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <Alert variant="danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
-          </div>
+          </Alert>
         ) : summary ? (
           <>
             {summary.needs_attention && (
-              <div className="mb-6 rounded-md border border-amber-200 bg-amber-50/30 p-4 text-sm text-amber-700">
+              <Alert variant="warning" className="mb-6">
                 RETENTION NEEDS ATTENTION — {summary.open_retention_exception_count} open retention exception(s).
-              </div>
+              </Alert>
             )}
             <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-              <Stat label="Active customers" value={summary.active_customers} />
-              <Stat label="Repeat customers" value={summary.repeat_customers} />
-              <Stat label="At-risk customers" value={summary.at_risk_customers} />
-              <Stat label="Inactive customers" value={summary.inactive_customers} />
-              <Stat label="Retention opportunities" value={summary.retention_opportunities_open} />
-              <Stat label="Upcoming service reminders" value={summary.upcoming_service_reminders} />
-              <Stat label="Review requests sent" value={summary.review_requests_sent} />
-              <Stat label="Positive feedback" value={summary.positive_feedback_count} />
-              <Stat label="Negative feedback" value={summary.negative_feedback_count} />
-              <Stat label="Referral leads" value={summary.referral_leads} />
-              <Stat label="Referral conversions" value={summary.referral_conversions} />
-              <Stat label="Referral revenue" value={`$${summary.referral_revenue}`} />
-              <Stat label="Repeat customer revenue" value={`$${summary.repeat_customer_revenue}`} />
+              <StatCard label="Active customers" value={summary.active_customers} tone="success" />
+              <StatCard label="Repeat customers" value={summary.repeat_customers} />
+              <StatCard label="At-risk customers" value={summary.at_risk_customers} tone={summary.at_risk_customers > 0 ? "danger" : "neutral"} />
+              <StatCard label="Inactive customers" value={summary.inactive_customers} />
+              <StatCard label="Retention opportunities" value={summary.retention_opportunities_open} tone="accent" />
+              <StatCard label="Upcoming service reminders" value={summary.upcoming_service_reminders} />
+              <StatCard label="Review requests sent" value={summary.review_requests_sent} />
+              <StatCard label="Positive feedback" value={summary.positive_feedback_count} tone="success" />
+              <StatCard label="Negative feedback" value={summary.negative_feedback_count} tone={summary.negative_feedback_count > 0 ? "danger" : "neutral"} />
+              <StatCard label="Referral leads" value={summary.referral_leads} />
+              <StatCard label="Referral conversions" value={summary.referral_conversions} tone="success" />
+              <StatCard label="Referral revenue" value={`$${summary.referral_revenue}`} tone="accent" />
+              <StatCard label="Repeat customer revenue" value={`$${summary.repeat_customer_revenue}`} tone="accent" />
             </div>
 
             {analytics && (
@@ -96,8 +92,8 @@ export default function RetentionPage() {
                   <Metric label="Reactivation rate" value={analytics.customer_reactivation_rate !== null ? `${analytics.customer_reactivation_rate}%` : null} note={analytics.customer_reactivation_rate_note} />
                   <Metric label="Average customer value" value={analytics.average_customer_value ? `$${analytics.average_customer_value}` : null} note={analytics.average_customer_value_note} />
                   <Metric label="Referral conversion rate" value={analytics.referral_conversion_rate !== null ? `${analytics.referral_conversion_rate}%` : null} note={analytics.referral_conversion_rate_note} />
-                  <Stat label="Revenue from repeat customers" value={`$${analytics.revenue_from_repeat_customers}`} />
-                  <Stat label="Revenue from referrals" value={`$${analytics.revenue_from_referrals}`} />
+                  <StatCard label="Revenue from repeat customers" value={`$${analytics.revenue_from_repeat_customers}`} tone="accent" />
+                  <StatCard label="Revenue from referrals" value={`$${analytics.revenue_from_referrals}`} tone="accent" />
                 </div>
               </>
             )}

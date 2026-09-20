@@ -17,6 +17,7 @@ import {
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 export default function ReactivationPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState<ReactivationCampaignRow[]>([]);
@@ -93,11 +94,11 @@ export default function ReactivationPage() {
           </button>
         </form>
 
-        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
-        {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>}
+        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
+        {error && <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>}
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : (
           <>
             <h2 className="mb-3 text-sm font-medium text-muted">Campaigns</h2>

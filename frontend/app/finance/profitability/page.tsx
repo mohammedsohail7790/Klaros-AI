@@ -5,12 +5,13 @@ import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, JobProfitability, listProfitability } from "@/lib/api";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function marginColor(pct: number | null): string {
   if (pct === null) return "text-muted";
-  if (pct < 15) return "text-red-600";
-  if (pct < 30) return "text-amber-700";
-  return "text-emerald-600";
+  if (pct < 15) return "text-danger";
+  if (pct < 30) return "text-warning";
+  return "text-success";
 }
 
 export default function ProfitabilityPage() {
@@ -42,9 +43,9 @@ export default function ProfitabilityPage() {
         <h1 className="font-display text-2xl text-foreground mb-6">Job Profitability</h1>
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry

@@ -5,6 +5,7 @@ import { CheckSquare } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -167,12 +168,12 @@ export default function ApprovalsPage() {
         </p>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
             {notice}
           </div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
@@ -180,7 +181,7 @@ export default function ApprovalsPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>
             {authLoading || loading ? (
-              <p className="text-sm text-muted">Loading...</p>
+              <Skeleton />
             ) : !approvals || approvals.length === 0 ? (
               <EmptyState icon={CheckSquare} title={`No ${filter === "ALL" ? "" : filter.toLowerCase() + " "}approvals.`} />
             ) : (
@@ -273,14 +274,14 @@ export default function ApprovalsPage() {
                 {selected.execution_result && (
                   <div className="mt-4">
                     <p className="mb-1 text-xs text-muted">Execution result</p>
-                    <pre className="max-h-40 overflow-auto rounded-md border border-emerald-200 bg-emerald-50/20 p-2 text-[11px] text-emerald-700">
+                    <pre className="max-h-40 overflow-auto rounded-md border border-success/20 bg-success/10 p-2 text-[11px] text-success">
                       {JSON.stringify(selected.execution_result, null, 2)}
                     </pre>
                   </div>
                 )}
 
                 {selected.execution_error && (
-                  <div className="mt-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-xs text-red-700">
+                  <div className="mt-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-xs text-danger">
                     {selected.execution_error}
                   </div>
                 )}
@@ -297,14 +298,14 @@ export default function ApprovalsPage() {
                       <button
                         disabled={busy}
                         onClick={handleApprove}
-                        className="rounded-md border border-emerald-200 bg-emerald-50/30 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50/60 disabled:opacity-50"
+                        className="rounded-md border border-success/20 bg-success/[0.06] px-3 py-1.5 text-sm text-success hover:bg-success/10 disabled:opacity-50"
                       >
                         Approve
                       </button>
                       <button
                         disabled={busy}
                         onClick={handleReject}
-                        className="rounded-md border border-red-200 bg-red-50/30 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50/60 disabled:opacity-50"
+                        className="rounded-md border border-danger/25 bg-danger/[0.06] px-3 py-1.5 text-sm text-danger hover:bg-danger/10 disabled:opacity-50"
                       >
                         Reject
                       </button>

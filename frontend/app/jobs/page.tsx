@@ -9,6 +9,7 @@ import { ApiError, Customer, Job, createJob, searchCustomers, searchJobs } from 
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 const STATUS_TABS = [
   "ALL", "DRAFT", "SCHEDULED", "DISPATCHED", "EN_ROUTE", "ON_SITE",
   "IN_PROGRESS", "BLOCKED", "QA_PENDING", "COMPLETED", "CLOSED",
@@ -77,9 +78,9 @@ export default function JobsPage() {
         </div>
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading jobs...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -224,7 +225,7 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
             </option>
           ))}
         </select>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
             Cancel

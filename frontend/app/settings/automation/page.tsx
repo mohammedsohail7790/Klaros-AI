@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Settings2 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -21,9 +22,9 @@ import {
 const POLICY_OPTIONS = ["AUTO", "APPROVAL_REQUIRED", "BLOCKED"] as const;
 
 const POLICY_COLOR: Record<string, string> = {
-  AUTO: "border-emerald-200 text-emerald-700",
-  APPROVAL_REQUIRED: "border-amber-200 text-amber-700",
-  BLOCKED: "border-red-200 text-red-700",
+  AUTO: "border-success/20 text-success",
+  APPROVAL_REQUIRED: "border-warning/25 text-warning",
+  BLOCKED: "border-danger/25 text-danger",
 };
 
 const NOTIFICATION_TYPES = [
@@ -167,18 +168,18 @@ export default function AutomationSettingsPage() {
         </p>
 
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
+          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
             {notice}
           </div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : (
           <>
             <section className="mb-10">
@@ -320,7 +321,7 @@ export default function AutomationSettingsPage() {
                 </button>
                 <button
                   onClick={confirmPolicyChange}
-                  className="rounded-md border border-emerald-200 bg-emerald-50/30 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50/60"
+                  className="rounded-md border border-success/20 bg-success/[0.06] px-3 py-1.5 text-sm text-success hover:bg-success/10"
                 >
                   Confirm
                 </button>

@@ -5,6 +5,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { StatCard } from "@/components/ui/StatCard";
+import { Alert } from "@/components/ui/Alert";
 import {
   ApiError,
   Contract,
@@ -157,7 +160,7 @@ export default function QuoteDetailPage() {
   if (authLoading || loading) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8 text-sm text-muted">Loading...</div>
+        <Skeleton />
       </AppShell>
     );
   }
@@ -166,7 +169,7 @@ export default function QuoteDetailPage() {
     return (
       <AppShell user={user}>
         <div className="px-8 py-8">
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">{error}</div>
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         </div>
       </AppShell>
     );
@@ -183,12 +186,10 @@ export default function QuoteDetailPage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50/30 p-3 text-sm text-red-700">{error}</div>
+          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
         {notice && (
-          <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">
-            {notice}
-          </div>
+          <Alert variant="success" className="mb-4">{notice}</Alert>
         )}
         {viewUrlPath && (
           <div className="mb-4 rounded-md border border-border bg-surface p-3 text-sm text-muted">
@@ -200,22 +201,10 @@ export default function QuoteDetailPage() {
         )}
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Total</div>
-            <div className="mt-1 text-lg font-semibold">${quote.total}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Valid until</div>
-            <div className="mt-1 text-lg font-semibold">{quote.valid_until ?? "—"}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Sent</div>
-            <div className="mt-1 text-lg font-semibold">{quote.sent_at ? "Yes" : "No"}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <div className="text-xs text-muted">Decided</div>
-            <div className="mt-1 text-lg font-semibold">{quote.decided_at ? "Yes" : "No"}</div>
-          </div>
+          <StatCard label="Total" value={`$${quote.total}`} tone="accent" />
+          <StatCard label="Valid until" value={quote.valid_until ?? "—"} compact />
+          <StatCard label="Sent" value={quote.sent_at ? "Yes" : "No"} tone={quote.sent_at ? "success" : "neutral"} />
+          <StatCard label="Decided" value={quote.decided_at ? "Yes" : "No"} tone={quote.decided_at ? "success" : "neutral"} />
         </div>
 
         {(quote.status === "ACCEPTED" ||
@@ -228,13 +217,13 @@ export default function QuoteDetailPage() {
                 <span className="text-muted">
                   Contract {contract.contract_number}:{" "}
                   {contract.status === "SIGNED" ? (
-                    <span className="text-emerald-600">Signed by {contract.signer_name}</span>
+                    <span className="text-success">Signed by {contract.signer_name}</span>
                   ) : contract.status === "DECLINED" ? (
-                    <span className="text-red-600">Declined</span>
+                    <span className="text-danger">Declined</span>
                   ) : contract.status === "DRAFT" ? (
                     <span className="text-muted">Draft — not yet sent</span>
                   ) : (
-                    <span className="text-amber-700">Awaiting signature ({contract.status.toLowerCase()})</span>
+                    <span className="text-warning">Awaiting signature ({contract.status.toLowerCase()})</span>
                   )}
                 </span>{" "}
                 <Link href={`/contracts/${contract.id}`} className="underline hover:text-foreground">
@@ -252,9 +241,9 @@ export default function QuoteDetailPage() {
             <div className="mb-2 text-muted">
               Deposit: <span className="text-foreground">${quote.deposit_amount ?? "—"}</span>{" "}
               {quote.status === "DEPOSIT_PAID" ? (
-                <span className="text-emerald-600">Paid</span>
+                <span className="text-success">Paid</span>
               ) : (
-                <span className="text-amber-700">Pending</span>
+                <span className="text-warning">Pending</span>
               )}
             </div>
             {quote.status === "DEPOSIT_PENDING" && (
@@ -322,7 +311,7 @@ export default function QuoteDetailPage() {
                       <td className="px-4 py-2">
                         <button
                           onClick={() => removeDraftItem(i)}
-                          className="text-xs text-red-600 hover:underline"
+                          className="text-xs text-danger hover:underline"
                         >
                           Remove
                         </button>

@@ -8,6 +8,7 @@ import { ApiError, ServiceReminderRow, listServiceReminders, markDueReminders, u
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 export default function RemindersPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [reminders, setReminders] = useState<ServiceReminderRow[]>([]);
@@ -71,12 +72,12 @@ export default function RemindersPage() {
           </button>
         </div>
 
-        {notice && <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50/30 p-3 text-sm text-emerald-700">{notice}</div>}
+        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
@@ -107,8 +108,8 @@ export default function RemindersPage() {
                       {(r.status === "SCHEDULED" || r.status === "DUE") && (
                         <>
                           <button disabled={busy} onClick={() => handleStatus(r.id, "SENT")} className="text-xs underline text-muted hover:text-foreground">Send</button>
-                          <button disabled={busy} onClick={() => handleStatus(r.id, "BOOKED")} className="text-xs underline text-emerald-600 hover:text-foreground">Book</button>
-                          <button disabled={busy} onClick={() => handleStatus(r.id, "CANCELLED")} className="text-xs underline text-red-600 hover:text-foreground">Cancel</button>
+                          <button disabled={busy} onClick={() => handleStatus(r.id, "BOOKED")} className="text-xs underline text-success hover:text-foreground">Book</button>
+                          <button disabled={busy} onClick={() => handleStatus(r.id, "CANCELLED")} className="text-xs underline text-danger hover:text-foreground">Cancel</button>
                         </>
                       )}
                       {r.status === "SENT" && (

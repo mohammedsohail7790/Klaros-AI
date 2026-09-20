@@ -8,6 +8,7 @@ import { ApiError, RetentionOpportunityRow, listRetentionOpportunities, updateOp
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 const STATUS_TABS = ["OPEN", "CONTACTED", "CONVERTED", "DISMISSED", "EXPIRED"];
 
 export default function OpportunitiesPage() {
@@ -66,9 +67,9 @@ export default function OpportunitiesPage() {
         </div>
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
@@ -101,8 +102,8 @@ export default function OpportunitiesPage() {
                       {status === "OPEN" && (
                         <>
                           <button disabled={busy} onClick={() => handleUpdate(o.id, "CONTACTED")} className="text-xs underline text-muted hover:text-foreground">Contact</button>
-                          <button disabled={busy} onClick={() => handleUpdate(o.id, "CONVERTED")} className="text-xs underline text-emerald-600 hover:text-foreground">Convert</button>
-                          <button disabled={busy} onClick={() => handleUpdate(o.id, "DISMISSED")} className="text-xs underline text-red-600 hover:text-foreground">Dismiss</button>
+                          <button disabled={busy} onClick={() => handleUpdate(o.id, "CONVERTED")} className="text-xs underline text-success hover:text-foreground">Convert</button>
+                          <button disabled={busy} onClick={() => handleUpdate(o.id, "DISMISSED")} className="text-xs underline text-danger hover:text-foreground">Dismiss</button>
                         </>
                       )}
                     </td>

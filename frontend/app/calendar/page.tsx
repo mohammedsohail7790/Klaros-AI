@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Calendar, CalendarX } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -28,7 +29,7 @@ function todayIso(): string {
 
 export default function CalendarPage() {
   return (
-    <Suspense fallback={<p className="p-8 text-sm text-muted">Loading calendar...</p>}>
+    <Suspense fallback={<Skeleton />}>
       <CalendarPageInner />
     </Suspense>
   );
@@ -183,9 +184,9 @@ function CalendarPageInner() {
         </p>
 
         {authLoading || loading ? (
-          <p className="text-sm text-muted">Loading calendar...</p>
+          <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50/30 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -214,7 +215,7 @@ function CalendarPageInner() {
                             {new Date(a.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC ·{" "}
                             {a.status}
                             {a.external_provider === "google_calendar" && (
-                              <span className="ml-2 text-emerald-600">· synced to Google</span>
+                              <span className="ml-2 text-success">· synced to Google</span>
                             )}
                           </p>
                         </div>
@@ -243,7 +244,7 @@ function CalendarPageInner() {
                           {a.status !== "CANCELLED" && (
                             <button
                               onClick={() => handleCancel(a.id)}
-                              className="text-xs text-red-600 hover:underline"
+                              className="text-xs text-danger hover:underline"
                             >
                               Cancel
                             </button>
@@ -423,7 +424,7 @@ function BookSlotModal({
           </div>
         )}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
