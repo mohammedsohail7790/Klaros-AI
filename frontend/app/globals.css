@@ -70,12 +70,16 @@ body::before {
     @apply text-xs font-medium uppercase tracking-wide text-muted;
   }
 
+  /* Both buttons get the same tactile shape: a soft shadow at rest, a
+     lift + accent-tinted glow on hover, and a press-down on click — the
+     same "hover adds a colored glow" language as the Halla AI family's
+     own primary buttons, not just a flat color swap. */
   .klaros-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-card transition-all duration-200 ease-out hover:-translate-y-px hover:bg-accent-hover hover:shadow-glow active:translate-y-0 active:shadow-card disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
   }
 
   .klaros-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-muted disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground shadow-card transition-all duration-200 ease-out hover:-translate-y-px hover:border-border-strong hover:bg-surface-muted hover:shadow-raised active:translate-y-0 active:shadow-card disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
   }
 
   .klaros-table-wrap {
