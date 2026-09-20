@@ -5,6 +5,7 @@ import { Settings2 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -305,29 +306,21 @@ export default function AutomationSettingsPage() {
         )}
 
         {confirming && (
-          <div className="fixed inset-0 z-30 flex items-center justify-center bg-background/60">
-            <div className="w-96 rounded-lg border border-border bg-surface p-6">
-              <p className="text-sm text-foreground">
-                Change <span className="font-medium">{friendlyToolName(confirming.toolName)}</span> from{" "}
-                <span className="font-medium">{confirming.from.replace("_", " ")}</span> to{" "}
-                <span className="font-medium">{confirming.to.replace("_", " ")}</span>?
-              </p>
-              <div className="mt-5 flex justify-end gap-2">
-                <button
-                  onClick={() => setConfirming(null)}
-                  className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmPolicyChange}
-                  className="rounded-md border border-success/20 bg-success/[0.06] px-3 py-1.5 text-sm text-success hover:bg-success/10"
-                >
-                  Confirm
-                </button>
-              </div>
+          <Modal title="Confirm policy change" onClose={() => setConfirming(null)}>
+            <p className="text-sm text-foreground">
+              Change <span className="font-medium">{friendlyToolName(confirming.toolName)}</span> from{" "}
+              <span className="font-medium">{confirming.from.replace("_", " ")}</span> to{" "}
+              <span className="font-medium">{confirming.to.replace("_", " ")}</span>?
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setConfirming(null)} className="klaros-btn-secondary">
+                Cancel
+              </button>
+              <button onClick={confirmPolicyChange} className="klaros-btn-primary">
+                Confirm
+              </button>
             </div>
-          </div>
+          </Modal>
         )}
       </div>
     </AppShell>

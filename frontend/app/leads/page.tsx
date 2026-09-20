@@ -11,6 +11,8 @@ import { parseCsv } from "@/lib/csv";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Modal } from "@/components/ui/Modal";
+
 const STATUS_TABS = ["ALL", "NEW", "CONTACTED", "QUALIFIED", "BOOKED", "LOST"];
 
 export default function LeadsPage() {
@@ -239,24 +241,16 @@ function CreateLeadModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6"
-      >
-        <h2 className="font-display text-xl text-foreground">New lead</h2>
+    <Modal title="New lead" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-3">
         <input
           required
           placeholder="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+          className="klaros-input"
         />
-        <select
-          value={source}
-          onChange={(e) => setSource(e.target.value)}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
-        >
+        <select value={source} onChange={(e) => setSource(e.target.value)} className="klaros-input">
           {["PHONE", "WEB", "CHAT", "TEXT", "DM", "MARKETPLACE", "REFERRAL", "WALK_IN"].map((s) => (
             <option key={s} value={s}>
               {s}
@@ -267,25 +261,21 @@ function CreateLeadModal({
           placeholder="Email (optional)"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+          className="klaros-input"
         />
         <input
           placeholder="Phone (optional)"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+          className="klaros-input"
         />
         <input
           placeholder="Service requested"
           value={serviceRequested}
           onChange={(e) => setServiceRequested(e.target.value)}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+          className="klaros-input"
         />
-        <select
-          value={urgency}
-          onChange={(e) => setUrgency(e.target.value)}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
-        >
+        <select value={urgency} onChange={(e) => setUrgency(e.target.value)} className="klaros-input">
           {["LOW", "MEDIUM", "HIGH", "EMERGENCY"].map((u) => (
             <option key={u} value={u}>
               {u}
@@ -296,19 +286,15 @@ function CreateLeadModal({
         {error && <p className="text-sm text-danger">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
+          <button type="button" onClick={onClose} className="klaros-btn-secondary">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
-          >
+          <button type="submit" disabled={submitting} className="klaros-btn-primary">
             {submitting ? "Creating..." : "Create lead"}
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }
 
@@ -418,10 +404,8 @@ function ImportLeadsModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/60 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-xl space-y-4 rounded-lg border border-border bg-surface p-6">
-        <h2 className="font-display text-xl text-foreground">Import leads from CSV</h2>
-
+    <Modal title="Import leads from CSV" onClose={onClose} size="lg">
+      <div className="space-y-4">
         {result ? (
           <>
             <div className="rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
@@ -514,6 +498,6 @@ function ImportLeadsModal({
           </>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }

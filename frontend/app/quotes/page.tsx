@@ -20,6 +20,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Modal } from "@/components/ui/Modal";
 const STATUS_TABS = ["ALL", "DRAFT", "SENT", "VIEWED", "ACCEPTED", "DECLINED", "EXPIRED", "CONVERTED"];
 
 export default function QuotesPage() {
@@ -236,13 +237,8 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center overflow-y-auto bg-background/60 px-4 py-8">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-lg space-y-3 rounded-lg border border-border bg-surface p-6"
-      >
-        <h2 className="font-display text-xl text-foreground">New quote</h2>
-
+    <Modal title="New quote" onClose={onClose} size="lg">
+      <form onSubmit={handleSubmit} className="space-y-3">
         <div>
           <input
             placeholder="Search customer by name/email"
@@ -252,7 +248,7 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
               setCustomerQuery(e.target.value);
               setCustomerId("");
             }}
-            className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+            className="w-full klaros-input"
           />
           {customerResults.length > 0 && (
             <ul className="mt-1 rounded-md border border-border bg-surface-muted text-sm">
@@ -284,19 +280,19 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
                 placeholder="Description"
                 value={item.description}
                 onChange={(e) => updateLineItem(i, { description: e.target.value })}
-                className="flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="flex-1 klaros-input"
               />
               <input
                 placeholder="Qty"
                 value={item.quantity}
                 onChange={(e) => updateLineItem(i, { quantity: e.target.value })}
-                className="w-16 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-16 klaros-input"
               />
               <input
                 placeholder="Unit price"
                 value={item.unit_price}
                 onChange={(e) => updateLineItem(i, { unit_price: e.target.value })}
-                className="w-24 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-24 klaros-input"
               />
               {lineItems.length > 1 && (
                 <button
@@ -323,14 +319,14 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+          className="w-full klaros-input"
         />
         <textarea
           placeholder="Terms (optional)"
           value={terms}
           onChange={(e) => setTerms(e.target.value)}
           rows={2}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+          className="w-full klaros-input"
         />
 
         <div>
@@ -339,7 +335,7 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
             <select
               value={depositType}
               onChange={(e) => setDepositType(e.target.value as "" | "FIXED" | "PERCENTAGE")}
-              className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="klaros-input"
             >
               <option value="">No deposit required</option>
               <option value="FIXED">Fixed amount</option>
@@ -350,7 +346,7 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
                 placeholder={depositType === "PERCENTAGE" ? "e.g. 25" : "e.g. 200"}
                 value={depositValue}
                 onChange={(e) => setDepositValue(e.target.value)}
-                className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-28 klaros-input"
               />
             )}
           </div>
@@ -359,18 +355,14 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
         {error && <p className="text-sm text-danger">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
+          <button type="button" onClick={onClose} className="klaros-btn-secondary">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
-          >
+          <button type="submit" disabled={submitting} className="klaros-btn-primary">
             {submitting ? "Creating..." : "Create quote"}
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }

@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -252,17 +253,9 @@ export default function CompliancePage() {
       </div>
 
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm px-4">
-          <form
-            onSubmit={handleCreate}
-            className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6"
-          >
-            <h2 className="font-display text-xl text-foreground">New compliance record</h2>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
-            >
+        <Modal title="New compliance record" onClose={() => setShowCreate(false)}>
+          <form onSubmit={handleCreate} className="space-y-3">
+            <select value={type} onChange={(e) => setType(e.target.value)} className="klaros-input">
               {LICENSE_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {t.replaceAll("_", " ")}
@@ -274,47 +267,47 @@ export default function CompliancePage() {
               placeholder="Name (e.g. General Liability Policy)"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              className="klaros-input"
             />
             <input
               placeholder="License / policy number (optional)"
               value={licenseNumber}
               onChange={(e) => setLicenseNumber(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              className="klaros-input"
             />
             <input
               placeholder="Issuing authority (optional)"
               value={issuingAuthority}
               onChange={(e) => setIssuingAuthority(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              className="klaros-input"
             />
             <input
               placeholder="Holder (worker name, or blank for the business)"
               value={holderName}
               onChange={(e) => setHolderName(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              className="klaros-input"
             />
             <div>
-              <label className="block text-xs text-muted">Expiry date</label>
+              <label className="klaros-label mb-1 block">Expiry date</label>
               <input
                 type="date"
                 required
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
-                className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                className="klaros-input"
               />
             </div>
             {error && <p className="text-sm text-danger">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setShowCreate(false)} className="rounded-md px-3 py-1.5 text-sm text-muted">
+              <button type="button" onClick={() => setShowCreate(false)} className="klaros-btn-secondary">
                 Cancel
               </button>
-              <button type="submit" disabled={submitting} className="klaros-btn-primary disabled:opacity-50">
+              <button type="submit" disabled={submitting} className="klaros-btn-primary">
                 {submitting ? "Creating..." : "Create"}
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
     </AppShell>
   );

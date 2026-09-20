@@ -18,6 +18,8 @@ import { parseCsv } from "@/lib/csv";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Modal } from "@/components/ui/Modal";
+
 export default function CustomersPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -175,46 +177,38 @@ function CreateCustomerModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6"
-      >
-        <h2 className="font-display text-xl text-foreground">New customer</h2>
+    <Modal title="New customer" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-3">
         <input
           required
           placeholder="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+          className="klaros-input"
         />
         <input
           placeholder="Email (optional)"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+          className="klaros-input"
         />
         <input
           placeholder="Phone (optional)"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+          className="klaros-input"
         />
         {error && <p className="text-sm text-danger">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
+          <button type="button" onClick={onClose} className="klaros-btn-secondary">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
-          >
+          <button type="submit" disabled={submitting} className="klaros-btn-primary">
             {submitting ? "Creating..." : "Create customer"}
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }
 
@@ -324,10 +318,8 @@ function ImportCustomersModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/60 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-xl space-y-4 rounded-lg border border-border bg-surface p-6">
-        <h2 className="font-display text-xl text-foreground">Import customers from CSV</h2>
-
+    <Modal title="Import customers from CSV" onClose={onClose} size="lg">
+      <div className="space-y-4">
         {result ? (
           <>
             <div className="rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
@@ -419,6 +411,6 @@ function ImportCustomersModal({
           </>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }

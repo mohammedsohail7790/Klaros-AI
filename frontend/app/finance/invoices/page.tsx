@@ -22,6 +22,7 @@ import { parseCsv } from "@/lib/csv";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Modal } from "@/components/ui/Modal";
 const STATUS_TABS = ["ALL", "DRAFT", "PENDING_APPROVAL", "APPROVED", "SENT", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID"];
 
 export default function InvoicesPage() {
@@ -205,15 +206,10 @@ export default function InvoicesPage() {
       )}
 
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm px-4">
-          <form
-            onSubmit={handleCreate}
-            className="w-full max-w-lg space-y-3 rounded-lg border border-border bg-surface p-6"
-          >
-            <h2 className="font-display text-xl text-foreground">New invoice</h2>
-
+        <Modal title="New invoice" onClose={() => setShowCreate(false)} size="lg">
+          <form onSubmit={handleCreate} className="space-y-3">
             {selectedCustomer ? (
-              <div className="flex items-center justify-between rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm">
+              <div className="flex items-center justify-between klaros-input">
                 <span>{selectedCustomer.name}</span>
                 <button type="button" onClick={() => setSelectedCustomer(null)} className="text-xs text-muted underline">
                   Change
@@ -232,13 +228,9 @@ export default function InvoicesPage() {
                         handleSearchCustomer();
                       }
                     }}
-                    className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                    className="w-full klaros-input"
                   />
-                  <button
-                    type="button"
-                    onClick={handleSearchCustomer}
-                    className="rounded-md border border-border-strong px-3 py-2 text-sm hover:bg-surface-muted"
-                  >
+                  <button type="button" onClick={handleSearchCustomer} className="klaros-btn-secondary shrink-0">
                     Search
                   </button>
                 </div>
@@ -270,19 +262,19 @@ export default function InvoicesPage() {
                     placeholder="Description"
                     value={li.description}
                     onChange={(e) => updateLineItem(i, "description", e.target.value)}
-                    className="min-w-[10rem] flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="min-w-[10rem] flex-1 klaros-input"
                   />
                   <input
                     placeholder="Qty"
                     value={li.quantity}
                     onChange={(e) => updateLineItem(i, "quantity", e.target.value)}
-                    className="w-16 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="w-16 klaros-input"
                   />
                   <input
                     placeholder="Unit price"
                     value={li.unit_price}
                     onChange={(e) => updateLineItem(i, "unit_price", e.target.value)}
-                    className="w-24 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="w-24 klaros-input"
                   />
                   {lineItems.length > 1 && (
                     <button
@@ -306,7 +298,7 @@ export default function InvoicesPage() {
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                className="w-full klaros-input"
               />
             </div>
 
@@ -318,16 +310,16 @@ export default function InvoicesPage() {
                   resetCreateForm();
                   setShowCreate(false);
                 }}
-                className="rounded-md px-3 py-1.5 text-sm text-muted"
+                className="klaros-btn-secondary"
               >
                 Cancel
               </button>
-              <button type="submit" disabled={creating || !selectedCustomer} className="klaros-btn-primary disabled:opacity-50">
+              <button type="submit" disabled={creating || !selectedCustomer} className="klaros-btn-primary">
                 {creating ? "Creating..." : "Create draft"}
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
     </AppShell>
   );
@@ -463,10 +455,8 @@ function ImportInvoicesModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/60 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-xl space-y-4 rounded-lg border border-border bg-surface p-6">
-        <h2 className="font-display text-xl text-foreground">Import open invoices from CSV</h2>
-
+    <Modal title="Import open invoices from CSV" onClose={onClose} size="lg">
+      <div className="space-y-4">
         {result ? (
           <>
             <div className="rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
@@ -504,7 +494,7 @@ function ImportInvoicesModal({
               type="file"
               accept=".csv,text/csv"
               onChange={handleFile}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              className="w-full klaros-input"
             />
             {parseError && <p className="text-sm text-danger">{parseError}</p>}
             <div className="flex justify-end gap-2 pt-2">
@@ -530,7 +520,7 @@ function ImportInvoicesModal({
                   <select
                     value={mapping[field.key] ?? UNMAPPED}
                     onChange={(e) => setMapping((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                    className="flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="flex-1 klaros-input"
                   >
                     <option value={UNMAPPED}>— Don&apos;t import —</option>
                     {headers.map((h) => (
@@ -574,6 +564,6 @@ function ImportInvoicesModal({
           </>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -283,42 +284,38 @@ export default function VendorsPage() {
       </div>
 
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm px-4">
-          <form
-            onSubmit={handleCreate}
-            className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6"
-          >
-            <h2 className="font-display text-xl text-foreground">New vendor</h2>
+        <Modal title="New vendor" onClose={() => setShowCreate(false)}>
+          <form onSubmit={handleCreate} className="space-y-3">
             <input
               required
               placeholder="Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              className="klaros-input"
             />
             <input
               placeholder="Email (optional)"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              className="klaros-input"
             />
             <input
               placeholder="Phone (optional)"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              className="klaros-input"
             />
             {error && <p className="text-sm text-danger">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setShowCreate(false)} className="rounded-md px-3 py-1.5 text-sm text-muted">
+              <button type="button" onClick={() => setShowCreate(false)} className="klaros-btn-secondary">
                 Cancel
               </button>
-              <button type="submit" disabled={submitting} className="klaros-btn-primary disabled:opacity-50">
+              <button type="submit" disabled={submitting} className="klaros-btn-primary">
                 {submitting ? "Creating..." : "Create vendor"}
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
     </AppShell>
   );

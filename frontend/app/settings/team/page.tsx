@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Modal } from "@/components/ui/Modal";
 import {
   ApiError,
   TeamInvite,
@@ -243,25 +244,17 @@ export default function TeamSettingsPage() {
       </div>
 
       {showInvite && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm px-4">
-          <form
-            onSubmit={handleInvite}
-            className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6"
-          >
-            <h2 className="font-display text-xl text-foreground">Invite a team member</h2>
+        <Modal title="Invite a team member" onClose={() => setShowInvite(false)}>
+          <form onSubmit={handleInvite} className="space-y-3">
             <input
               required
               type="email"
               placeholder="Email"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              className="klaros-input"
             />
-            <select
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
-            >
+            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="klaros-input">
               {ROLES.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -270,23 +263,15 @@ export default function TeamSettingsPage() {
             </select>
             {error && <p className="text-sm text-danger">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowInvite(false)}
-                className="rounded-md px-3 py-1.5 text-sm text-muted"
-              >
+              <button type="button" onClick={() => setShowInvite(false)} className="klaros-btn-secondary">
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={inviting}
-                className="klaros-btn-primary disabled:opacity-50"
-              >
+              <button type="submit" disabled={inviting} className="klaros-btn-primary">
                 {inviting ? "Sending..." : "Send invite"}
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
     </AppShell>
   );

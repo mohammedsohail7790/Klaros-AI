@@ -10,6 +10,7 @@ import { ApiError, Customer, Job, createJob, searchCustomers, searchJobs } from 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Modal } from "@/components/ui/Modal";
 const STATUS_TABS = [
   "ALL", "DRAFT", "SCHEDULED", "DISPATCHED", "EN_ROUTE", "ON_SITE",
   "IN_PROGRESS", "BLOCKED", "QA_PENDING", "COMPLETED", "CLOSED",
@@ -179,25 +180,24 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-3 rounded-lg border border-border bg-surface p-6">
-        <h2 className="font-display text-xl text-foreground">New job</h2>
+    <Modal title="New job" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-3">
         <input
           required
           placeholder="Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+          className="klaros-input"
         />
         <div>
           <input
             placeholder="Search customer by name/email"
             value={customerQuery}
             onChange={(e) => setCustomerQuery(e.target.value)}
-            className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+            className="klaros-input"
           />
           {customerResults.length > 0 && (
-            <ul className="mt-1 rounded-md border border-border bg-surface-muted text-sm">
+            <ul className="mt-1 overflow-hidden rounded-lg border border-border bg-surface text-sm shadow-raised">
               {customerResults.map((c) => (
                 <li
                   key={c.id}
@@ -206,7 +206,7 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
                     setCustomerQuery(c.name);
                     setCustomerResults([]);
                   }}
-                  className={`cursor-pointer px-3 py-2 hover:bg-surface-muted ${customerId === c.id ? "bg-surface-muted" : ""}`}
+                  className={`cursor-pointer px-3 py-2 transition-colors hover:bg-accent-soft/40 ${customerId === c.id ? "bg-accent-soft/40" : ""}`}
                 >
                   {c.name} {c.email && `(${c.email})`}
                 </li>
@@ -214,11 +214,7 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
             </ul>
           )}
         </div>
-        <select
-          value={priority}
-          onChange={(e) => setPriority(e.target.value)}
-          className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
-        >
+        <select value={priority} onChange={(e) => setPriority(e.target.value)} className="klaros-input">
           {["LOW", "NORMAL", "HIGH", "URGENT", "CRITICAL"].map((p) => (
             <option key={p} value={p}>
               {p}
@@ -227,18 +223,14 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
         </select>
         {error && <p className="text-sm text-danger">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
+          <button type="button" onClick={onClose} className="klaros-btn-secondary">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
-          >
+          <button type="submit" disabled={submitting} className="klaros-btn-primary">
             {submitting ? "Creating..." : "Create job"}
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }

@@ -36,6 +36,31 @@ body {
   position: relative;
 }
 
+/* Every <select> in the app, styled globally rather than per-file — the
+   native OS dropdown arrow was the single most "unstyled browser default"
+   element on the page, present in 38+ call sites with otherwise-identical
+   border/background classes. A custom chevron + consistent focus ring
+   here upgrades every one of them without touching call sites. Scoped to
+   plain <select> (not [multiple] or [size]) so a native listbox keeps its
+   own OS chrome, which this treatment isn't designed for. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236B6558' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  padding-right: 1.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+select:not([multiple]):not([size]):focus {
+  border-color: rgb(var(--color-accent));
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(var(--color-accent-soft));
+}
+select:not([multiple]):not([size]):disabled {
+  cursor: not-allowed;
+}
+
 /* Subtle film-grain texture for tactile depth — applied as a fixed,
    near-invisible overlay so flat color fields don't read as flat/generated. */
 body::before {
@@ -47,6 +72,18 @@ body::before {
   opacity: 0.025;
   mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Modal entrance — backdrop fades in while the panel itself scales up
+   from 97% with a slight upward drift, the same "settles into place"
+   easing Linear/Stripe use for dialogs rather than a flat opacity pop. */
+@keyframes klaros-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes klaros-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes klaros-float {
