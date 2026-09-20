@@ -158,6 +158,15 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
+      // Promise.allSettled, not Promise.all: this cockpit fans out to 16
+      // independent endpoints, and every section below is already gated
+      // on its own state being non-null. Under Promise.all, one slow or
+      // failing call (a cold start, a transient network hiccup, a tenant
+      // with no morning brief generated yet) rejected the whole batch and
+      // left every section on this page stuck on its skeleton forever,
+      // even ones whose own data had loaded fine. allSettled applies the
+      // same "one section's failure never blocks the rest" rule already
+      // used for the activity feed below to every section on this page.
       const [
         metricsResult,
         pipelineResult,
@@ -175,7 +184,7 @@ export default function DashboardPage() {
         connectionsResult,
         billingResult,
         killSwitchResult,
-      ] = await Promise.all([
+      ] = await Promise.allSettled([
         getCrmMetrics(token),
         getCommercialPipeline(token),
         getOperationsDashboard(token),
@@ -198,22 +207,39 @@ export default function DashboardPage() {
         getBillingStatus(token),
         getKillSwitchStatus(token),
       ]);
-      setMetrics(metricsResult);
-      setPipeline(pipelineResult);
-      setOperations(operationsResult);
-      setFinance(financeResult);
-      setMarketing(marketingResult);
-      setRetention(retentionResult);
-      setBrief(briefResult);
-      setAutonomy(autonomyResult);
-      setAutomations(automationsResult);
-      setAiApprovalsPending(pendingApprovalsResult.approvals.filter((a) => a.requested_by_type === "AI").length);
-      setAiFeedbackPending(aiFeedbackResult.memories.length);
-      setAttention(attentionResult);
-      setAiHealth(aiHealthResult);
-      setConnections(connectionsResult);
-      setBilling(billingResult);
-      setKillSwitchState(killSwitchResult);
+      if (metricsResult.status === "fulfilled") setMetrics(metricsResult.value);
+      if (pipelineResult.status === "fulfilled") setPipeline(pipelineResult.value);
+      if (operationsResult.status === "fulfilled") setOperations(operationsResult.value);
+      if (financeResult.status === "fulfilled") setFinance(financeResult.value);
+      if (marketingResult.status === "fulfilled") setMarketing(marketingResult.value);
+      if (retentionResult.status === "fulfilled") setRetention(retentionResult.value);
+      if (briefResult.status === "fulfilled") setBrief(briefResult.value);
+      if (autonomyResult.status === "fulfilled") setAutonomy(autonomyResult.value);
+      if (automationsResult.status === "fulfilled") setAutomations(automationsResult.value);
+      if (pendingApprovalsResult.status === "fulfilled") {
+        setAiApprovalsPending(pendingApprovalsResult.value.approvals.filter((a) => a.requested_by_type === "AI").length);
+      }
+      if (aiFeedbackResult.status === "fulfilled") setAiFeedbackPending(aiFeedbackResult.value.memories.length);
+      if (attentionResult.status === "fulfilled") setAttention(attentionResult.value);
+      if (aiHealthResult.status === "fulfilled") setAiHealth(aiHealthResult.value);
+      if (connectionsResult.status === "fulfilled") setConnections(connectionsResult.value);
+      if (billingResult.status === "fulfilled") setBilling(billingResult.value);
+      if (killSwitchResult.status === "fulfilled") setKillSwitchState(killSwitchResult.value);
+
+      // Only surface a page-level error banner if literally everything
+      // failed (e.g. the token itself is bad) — a handful of individual
+      // failures among 16 calls is exactly what the per-section null
+      // states already handle gracefully.
+      const allResults = [
+        metricsResult, pipelineResult, operationsResult, financeResult, marketingResult, retentionResult,
+        briefResult, autonomyResult, automationsResult, pendingApprovalsResult, aiFeedbackResult, attentionResult,
+        aiHealthResult, connectionsResult, billingResult, killSwitchResult,
+      ];
+      if (allResults.every((r) => r.status === "rejected")) {
+        const firstRejected = allResults.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+        const reason = firstRejected?.reason;
+        setError(reason instanceof ApiError ? reason.message : "Unable to load business metrics.");
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load business metrics.");
     } finally {
