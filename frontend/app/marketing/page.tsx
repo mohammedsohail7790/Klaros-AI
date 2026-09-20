@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Alert } from "@/components/ui/Alert";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { BarBreakdown } from "@/components/ui/Chart";
 
 export default function MarketingPage() {
   const { token, user, loading: authLoading } = useAuth();
@@ -82,6 +83,20 @@ export default function MarketingPage() {
               />
               <StatCard label="Campaigns" value={summary.campaign_count} />
             </div>
+
+            {summary.leads > 0 && (
+              <div className="mb-8 klaros-card p-5">
+                <div className="mb-3 text-sm font-medium text-muted">Funnel: leads → qualified → booked → won</div>
+                <BarBreakdown
+                  bars={[
+                    { label: "Leads", value: summary.leads, tone: "accent" },
+                    { label: "Qualified", value: summary.qualified_leads, tone: "accent" },
+                    { label: "Booked", value: summary.appointments_booked, tone: "accent" },
+                    { label: "Won", value: summary.jobs_won, tone: "success" },
+                  ]}
+                />
+              </div>
+            )}
 
             <h2 className="mb-3 text-sm font-semibold text-muted">Paid ads integration status</h2>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">

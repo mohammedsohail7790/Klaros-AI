@@ -162,6 +162,8 @@ export default function AppShell({
   })();
 
   const activeSectionLabel = NAV_SECTIONS.find((s) => s.items.some((i) => i.href === activeHref))?.label ?? null;
+  const activeItem = NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.href === activeHref) ?? null;
+  const ActiveIcon = activeItem?.icon ?? null;
 
   useEffect(() => {
     setToken(sessionStorage.getItem("klaros_access_token"));
@@ -341,15 +343,27 @@ export default function AppShell({
           className="pointer-events-none absolute -top-24 right-0 h-64 w-64 -z-10 rounded-full opacity-[0.08] blur-3xl"
           style={{ background: "radial-gradient(circle, rgb(var(--color-accent)) 0%, transparent 70%)" }}
         />
-        <header className="klaros-glass sticky top-0 z-30 flex items-center justify-between px-4 py-2.5 sm:px-6">
+        <header className="klaros-glass sticky top-0 z-30 flex items-center gap-3 px-4 py-2.5 sm:px-6">
           <button
             type="button"
             onClick={() => setMobileNavOpen(true)}
             aria-label="Open menu"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-foreground lg:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-foreground lg:hidden"
           >
             <Menu className="h-5 w-5" strokeWidth={2} />
           </button>
+          {activeItem && (
+            <div className="flex min-w-0 items-center gap-2 text-sm">
+              {activeSectionLabel && activeSectionLabel !== activeItem.label && (
+                <>
+                  <span className="hidden text-muted-foreground sm:inline">{activeSectionLabel}</span>
+                  <span className="hidden text-border-strong sm:inline">/</span>
+                </>
+              )}
+              {ActiveIcon && <ActiveIcon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} />}
+              <span className="truncate font-medium text-foreground">{activeItem.label}</span>
+            </div>
+          )}
           <div className="flex flex-1 justify-end">
             <NotificationBell token={token} />
           </div>

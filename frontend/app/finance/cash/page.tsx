@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Wallet } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { LineChart } from "@/components/ui/Chart";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, CashForecastResult, generateCashForecast } from "@/lib/api";
 
@@ -35,16 +37,15 @@ export default function CashForecastPage() {
   return (
     <AppShell user={user}>
       <div className="px-8 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">13-Week Cash Forecast</h1>
-          <button
-            disabled={authLoading || loading}
-            onClick={handleGenerate}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
-          >
-            Generate forecast
-          </button>
-        </div>
+        <PageHeader
+          title="13-Week Cash Forecast"
+          icon={Wallet}
+          actions={
+            <button disabled={authLoading || loading} onClick={handleGenerate} className="klaros-btn-secondary">
+              {loading ? "Generating..." : "Generate forecast"}
+            </button>
+          }
+        />
 
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
@@ -57,13 +58,26 @@ export default function CashForecastPage() {
           />
         ) : (
           <>
-            <div className="mb-6 rounded-lg border border-border p-4">
+            <div className="mb-6 klaros-card p-4">
               <div className="text-xs text-muted">Starting cash</div>
               <div className="mt-1 text-lg font-semibold">
                 {forecast.starting_cash ? `$${forecast.starting_cash}` : "Not connected"}
               </div>
               <div className="mt-1 text-xs text-muted-foreground">Source: {forecast.starting_cash_source}</div>
             </div>
+
+            {forecast.weeks.every((w) => w.projected_balance !== "NOT_CONNECTED") && (
+              <div className="mb-6 klaros-card p-5">
+                <div className="mb-3 text-sm font-medium text-muted">Projected balance</div>
+                <LineChart
+                  points={forecast.weeks.map((w) => ({
+                    label: new Date(w.week_start).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+                    value: Number(w.projected_balance),
+                  }))}
+                  formatValue={(v) => `$${v.toLocaleString()}`}
+                />
+              </div>
+            )}
 
             <div className="klaros-table-wrap">
               <table className="klaros-table">

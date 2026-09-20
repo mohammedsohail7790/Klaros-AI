@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Alert } from "@/components/ui/Alert";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { BarBreakdown } from "@/components/ui/Chart";
 
 export default function ARPage() {
   const { token, user, loading: authLoading } = useAuth();
@@ -125,6 +126,22 @@ export default function ARPage() {
                 <StatCard label="31-60 days" value={`$${aging.days_31_60}`} tone="warning" />
                 <StatCard label="61-90 days" value={`$${aging.days_61_90}`} tone="warning" />
                 <StatCard label="90+ days" value={`$${aging.days_90_plus}`} tone="danger" />
+              </div>
+            )}
+
+            {aging && Number(aging.total) > 0 && (
+              <div className="mb-8 klaros-card p-5">
+                <div className="mb-3 text-sm font-medium text-muted">Aging breakdown</div>
+                <BarBreakdown
+                  formatValue={(v) => `$${v.toLocaleString()}`}
+                  bars={[
+                    { label: "Current", value: Number(aging.current) },
+                    { label: "1-30 days", value: Number(aging.days_1_30) },
+                    { label: "31-60 days", value: Number(aging.days_31_60), tone: "warning" },
+                    { label: "61-90 days", value: Number(aging.days_61_90), tone: "warning" },
+                    { label: "90+ days", value: Number(aging.days_90_plus), tone: "danger" },
+                  ]}
+                />
               </div>
             )}
 
