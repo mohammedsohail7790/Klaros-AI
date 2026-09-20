@@ -247,7 +247,7 @@ export default function AppShell({
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-5">
           <Link href="/dashboard" className="font-display text-lg italic text-foreground">
-            Klaros
+            Klaros AI
           </Link>
           <button
             type="button"

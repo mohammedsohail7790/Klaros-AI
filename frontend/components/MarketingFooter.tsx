@@ -5,7 +5,7 @@ export default function MarketingFooter() {
     <footer className="border-t border-border px-6 py-12">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 sm:flex-row">
         <div>
-          <div className="font-display text-lg italic text-foreground">Klaros</div>
+          <div className="font-display text-lg italic text-foreground">Klaros AI</div>
           <p className="mt-1 text-xs text-muted-foreground">
             © {new Date().getFullYear()} Klaros AI. The AI operating system for the one-person company.
           </p>

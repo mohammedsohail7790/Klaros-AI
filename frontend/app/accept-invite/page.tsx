@@ -72,7 +72,7 @@ function AcceptInviteInner() {
       <GradientBackdrop />
       <div className="w-full max-w-sm">
         <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground">
-          Klaros
+          Klaros AI
         </Link>
         <div className="klaros-glass rounded-2xl p-7">
           {loadingPreview ? (

@@ -37,11 +37,11 @@ export default function LoginPage() {
       <GradientBackdrop />
       <div className="w-full max-w-sm">
         <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground">
-          Klaros
+          Klaros AI
         </Link>
         <div className="klaros-glass rounded-2xl p-7">
           <h1 className="font-display text-2xl text-foreground">Welcome back</h1>
-          <p className="mt-1 text-sm text-muted">Sign in to your Klaros workspace.</p>
+          <p className="mt-1 text-sm text-muted">Sign in to your Klaros AI workspace.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <Field label="Company slug">
@@ -79,7 +79,7 @@ export default function LoginPage() {
           </form>
         </div>
         <p className="mt-6 text-center text-sm text-muted">
-          New to Klaros?{" "}
+          New to Klaros AI?{" "}
           <Link href="/register" className="font-medium text-accent hover:text-accent-hover">
             Create your company
           </Link>

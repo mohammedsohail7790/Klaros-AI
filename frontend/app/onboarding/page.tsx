@@ -125,7 +125,7 @@ export default function OnboardingPage() {
       <GradientBackdrop />
       <div className="w-full max-w-xl">
         <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground">
-          Klaros
+          Klaros AI
         </Link>
 
         <div className="klaros-glass rounded-2xl p-8">

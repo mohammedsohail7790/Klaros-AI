@@ -11,7 +11,7 @@ export default function MarketingHeader() {
     <header className="klaros-glass sticky top-0 z-40 mx-auto max-w-6xl rounded-b-2xl px-6 py-4">
       <div className="flex items-center justify-between">
         <Link href="/" className="font-display text-xl italic tracking-tight text-foreground">
-          Klaros
+          Klaros AI
         </Link>
         <nav className="hidden items-center gap-8 text-sm font-medium text-muted sm:flex">
           <Link href="/#features" className="transition-colors hover:text-foreground">
