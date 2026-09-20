@@ -24,8 +24,6 @@
   --color-success: 47 107 79;
   --color-warning: 165 105 12;
   --color-danger: 173 59 44;
-
-  --font-sans: var(--font-geist-sans);
 }
 
 body {

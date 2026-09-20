@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces } from "next/font/google";
-import { GeistSans } from "geist/font/sans";
+import { Fraunces, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -11,6 +10,17 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
+// Shared with the Halla AI family's own marketing/product design system —
+// same body typeface across Consultancy, AI Receptionist, and Klaros
+// itself, so the three read as one family while keeping their own accent
+// colors and Klaros's own Fraunces display/wordmark identity.
+const hankenGrotesk = Hanken_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Klaros AI",
   description: "The AI operating system for the one-person company.",
@@ -18,7 +28,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${GeistSans.variable}`}>
+    <html lang="en" className={`${fraunces.variable} ${hankenGrotesk.variable}`}>
       <body className="font-sans">{children}</body>
     </html>
   );
