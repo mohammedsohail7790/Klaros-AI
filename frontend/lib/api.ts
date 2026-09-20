@@ -8,6 +8,43 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Retries a request on failures that are plausibly transient — a network/
+ * CORS-reported failure (fetch throws something other than our own
+ * ApiError for those: a connection reset, a timeout, a proxy hiccup) or a
+ * 5xx/429 from the server — with exponential backoff. A real application
+ * error (401/403/404/422, "not authenticated", "not found", a validation
+ * error) is an ApiError with a 4xx status other than 429, and is rethrown
+ * immediately on the first attempt: retrying those would just repeat the
+ * same wrong request and delay the real error reaching the user.
+ *
+ * Built for the dashboard's own fan-out of ~16 independent calls, where
+ * intermittent host-level flakiness (observed live: the same call
+ * succeeding standalone but occasionally failing under concurrent load,
+ * reported by the browser as a misleading "CORS" error) was leaving
+ * individual sections perpetually stuck on their loading skeleton.
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  options?: { retries?: number; baseDelayMs?: number }
+): Promise<T> {
+  const retries = options?.retries ?? 2;
+  const baseDelayMs = options?.baseDelayMs ?? 500;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const retryable = err instanceof ApiError ? err.status >= 500 || err.status === 429 : true;
+      if (!retryable || attempt === retries) throw err;
+      const delay = baseDelayMs * 2 ** attempt + Math.random() * 200;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}
+
 // Silent access-token refresh (Phase 12): a 401 on an authenticated call no
 // longer forces an immediate re-login — it's tried against /auth/refresh
 // (which was previously issued and stored but never actually consumed by

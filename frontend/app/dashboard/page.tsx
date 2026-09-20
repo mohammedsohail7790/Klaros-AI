@@ -42,6 +42,7 @@ import {
   listCompanyMemories,
   listIntegrationConnections,
   setKillSwitch,
+  withRetry,
 } from "@/lib/api";
 
 import { Badge } from "@/components/ui/Badge";
@@ -138,9 +139,9 @@ export default function DashboardPage() {
       if (!token) return;
       setActivityLoading(true);
       try {
-        const result = await getActivityFeed(token, {
-          page, pageSize: 10, category: category === "ALL" ? undefined : category,
-        });
+        const result = await withRetry(() =>
+          getActivityFeed(token, { page, pageSize: 10, category: category === "ALL" ? undefined : category })
+        );
         setActivity(result);
       } catch {
         // Activity feed failing to load must never block the rest of the
@@ -185,27 +186,32 @@ export default function DashboardPage() {
         billingResult,
         killSwitchResult,
       ] = await Promise.allSettled([
-        getCrmMetrics(token),
-        getCommercialPipeline(token),
-        getOperationsDashboard(token),
-        getFinanceSummary(token),
-        getMarketingSummary(token),
-        getRetentionSummary(token),
-        getLatestMorningBrief(token),
-        getAutonomyStats(token),
-        getAutomationSummary(token),
+        // Each call gets its own retry: the intermittent failures seen live
+        // on this page are transient (a call that fails once here typically
+        // succeeds a moment later), so retrying the single failing call is
+        // far cheaper and faster than the user having to reload the whole
+        // page to get the one section that happened to lose the race.
+        withRetry(() => getCrmMetrics(token)),
+        withRetry(() => getCommercialPipeline(token)),
+        withRetry(() => getOperationsDashboard(token)),
+        withRetry(() => getFinanceSummary(token)),
+        withRetry(() => getMarketingSummary(token)),
+        withRetry(() => getRetentionSummary(token)),
+        withRetry(() => getLatestMorningBrief(token)),
+        withRetry(() => getAutonomyStats(token)),
+        withRetry(() => getAutomationSummary(token)),
         // Phase 21: small cockpit summary counts, reusing the existing
         // Approvals/Company Memory list APIs — no new backend endpoint.
         // AI origin isn't filterable server-side for approvals, so it's
         // counted client-side from the existing PENDING list.
-        listApprovals(token, "PENDING"),
-        listCompanyMemories(token, { status_filter: "PENDING", memory_type: "AI_FEEDBACK" }),
+        withRetry(() => listApprovals(token, "PENDING")),
+        withRetry(() => listCompanyMemories(token, { status_filter: "PENDING", memory_type: "AI_FEEDBACK" })),
         // Phase 26: the single prioritized attention queue.
-        getAttentionQueue(token),
-        getAiHealth(token),
-        listIntegrationConnections(token),
-        getBillingStatus(token),
-        getKillSwitchStatus(token),
+        withRetry(() => getAttentionQueue(token)),
+        withRetry(() => getAiHealth(token)),
+        withRetry(() => listIntegrationConnections(token)),
+        withRetry(() => getBillingStatus(token)),
+        withRetry(() => getKillSwitchStatus(token)),
       ]);
       if (metricsResult.status === "fulfilled") setMetrics(metricsResult.value);
       if (pipelineResult.status === "fulfilled") setPipeline(pipelineResult.value);
