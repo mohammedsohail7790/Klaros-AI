@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { ExternalLink, Menu, X } from "lucide-react";
 
 export default function MarketingHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -23,6 +23,15 @@ export default function MarketingHeader() {
           <Link href="/#faq" className="transition-colors hover:text-foreground">
             FAQ
           </Link>
+          <a
+            href="https://hallaai.com"
+            target="_blank"
+            rel="noopener"
+            className="flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Halla AI
+            <ExternalLink className="h-3 w-3" strokeWidth={2} />
+          </a>
         </nav>
         <div className="hidden items-center gap-3 sm:flex">
           <Link href="/login" className="klaros-btn-secondary">
@@ -53,6 +62,16 @@ export default function MarketingHeader() {
           <Link href="/#faq" onClick={() => setMenuOpen(false)} className="transition-colors hover:text-foreground">
             FAQ
           </Link>
+          <a
+            href="https://hallaai.com"
+            target="_blank"
+            rel="noopener"
+            onClick={() => setMenuOpen(false)}
+            className="flex items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Halla AI
+            <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} />
+          </a>
           <Link href="/login" onClick={() => setMenuOpen(false)} className="klaros-btn-secondary text-center">
             Sign in
           </Link>

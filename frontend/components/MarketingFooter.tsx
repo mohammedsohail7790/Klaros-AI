@@ -9,6 +9,13 @@ export default function MarketingFooter() {
           <p className="mt-1 text-xs text-muted-foreground">
             © {new Date().getFullYear()} Klaros AI. The AI operating system for the one-person company.
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Part of the{" "}
+            <a href="https://hallaai.com" target="_blank" rel="noopener" className="underline hover:text-foreground">
+              Halla AI
+            </a>{" "}
+            family — alongside AI Consultancy and the AI Receptionist.
+          </p>
         </div>
         <nav className="flex items-center gap-6 text-sm text-muted">
           <Link href="/#features" className="transition-colors hover:text-foreground">
