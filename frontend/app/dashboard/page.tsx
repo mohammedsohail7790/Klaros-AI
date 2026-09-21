@@ -47,6 +47,10 @@ import {
 
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { StatCard } from "@/components/ui/StatCard";
+import { Alert } from "@/components/ui/Alert";
+import { PageHeader } from "@/components/ui/PageHeader";
+
 const ACTIVITY_CATEGORIES = ["ALL", "CRM", "SALES", "CONTRACT", "OPERATIONS", "QA", "FINANCE", "RETENTION", "REFERRAL", "AUTOMATION", "AI"];
 
 const ACTIVITY_SEVERITY_STYLE: Record<string, string> = {
@@ -69,7 +73,7 @@ function timeAgo(iso: string): string {
 const PRIORITY_STYLE: Record<AttentionItem["priority"], string> = {
   CRITICAL: "border-danger/25 bg-danger/[0.06] text-danger",
   HIGH: "border-warning/25 bg-warning/[0.07] text-warning",
-  MEDIUM: "border-blue-200 bg-blue-50/20 text-blue-700",
+  MEDIUM: "border-accent-2/25 bg-accent-2/[0.06] text-accent-2",
   LOW: "border-border bg-surface text-muted",
 };
 
@@ -396,18 +400,18 @@ export default function DashboardPage() {
             )}
           </div>
           {!attention ? (
-            <Skeleton />
+            <Skeleton stats={0} rows={3} />
           ) : attention.items.length === 0 ? (
-            <p className="rounded-lg border border-success/20 bg-success/10 p-4 shadow-card text-sm text-success">
+            <p className="klaros-card border-success/20 bg-success/10 p-4 text-sm text-success">
               Nothing needs your attention right now.
             </p>
           ) : (
-            <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
+            <ul className="klaros-card divide-y divide-border overflow-hidden">
               {attention.items.slice(0, 8).map((item) => (
                 <li key={`${item.category}-${item.entity_id}`}>
                   <Link
                     href={item.link}
-                    className="flex items-start justify-between gap-4 p-4 transition hover:bg-surface-muted"
+                    className="flex items-start justify-between gap-4 p-4 transition-colors hover:bg-accent-soft/40"
                   >
                     <div className="min-w-0">
                       <div className="mb-1 flex items-center gap-2">
@@ -440,27 +444,13 @@ export default function DashboardPage() {
           </div>
           {autonomy ? (
             autonomy.total === 0 ? (
-              <p className="rounded-lg border border-border bg-surface p-4 shadow-card text-sm text-muted">
-                No actions yet today.
-              </p>
+              <div className="klaros-card p-4 text-sm text-muted">No actions yet today.</div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-lg border border-success/20 bg-success/10 p-4 shadow-card">
-                  <div className="text-2xl font-semibold text-success">{autonomy.automatic}</div>
-                  <div className="text-xs text-muted">Automatic</div>
-                </div>
-                <div className="rounded-lg border border-warning/25 bg-warning/10 p-4 shadow-card">
-                  <div className="text-2xl font-semibold text-warning">{autonomy.approval_required}</div>
-                  <div className="text-xs text-muted">Awaiting approval</div>
-                </div>
-                <div className="rounded-lg border border-danger/25 bg-danger/10 p-4 shadow-card">
-                  <div className="text-2xl font-semibold text-danger">{autonomy.blocked}</div>
-                  <div className="text-xs text-muted">Blocked</div>
-                </div>
-                <div className="rounded-lg border border-border-strong bg-surface-muted/40 p-4 shadow-card">
-                  <div className="text-2xl font-semibold text-muted">{autonomy.failed}</div>
-                  <div className="text-xs text-muted">Failed</div>
-                </div>
+                <StatCard label="Automatic" value={autonomy.automatic} tone="success" />
+                <StatCard label="Awaiting approval" value={autonomy.approval_required} tone="warning" />
+                <StatCard label="Blocked" value={autonomy.blocked} tone="danger" />
+                <StatCard label="Failed" value={autonomy.failed} />
               </div>
             )
           ) : (
@@ -476,36 +466,29 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Link
-              href="/approvals"
-              className={`rounded-lg border p-4 transition hover:border-violet-400 ${
-                (aiApprovalsPending ?? 0) > 0 ? "border-violet-200 bg-violet-50/20" : "border-border bg-surface"
-              }`}
-            >
-              <div className="text-2xl font-semibold text-violet-700">{aiApprovalsPending ?? 0}</div>
-              <div className="text-xs text-muted">Awaiting approval</div>
+            <Link href="/approvals">
+              <StatCard
+                label="Awaiting approval"
+                value={aiApprovalsPending ?? 0}
+                tone={(aiApprovalsPending ?? 0) > 0 ? "accent" : "neutral"}
+              />
             </Link>
-            <Link
-              href="/settings/memory"
-              className={`rounded-lg border p-4 transition hover:border-violet-400 ${
-                (aiFeedbackPending ?? 0) > 0 ? "border-violet-200 bg-violet-50/20" : "border-border bg-surface"
-              }`}
-            >
-              <div className="text-2xl font-semibold text-violet-700">{aiFeedbackPending ?? 0}</div>
-              <div className="text-xs text-muted">Feedback to review</div>
+            <Link href="/settings/memory">
+              <StatCard
+                label="Feedback to review"
+                value={aiFeedbackPending ?? 0}
+                tone={(aiFeedbackPending ?? 0) > 0 ? "accent" : "neutral"}
+              />
             </Link>
             {aiHealth && (
               <>
-                <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
+                <div className="klaros-card p-4">
                   <div className={`text-sm font-semibold ${aiHealth.provider_configured ? "text-success" : "text-muted"}`}>
                     {aiHealth.provider_configured ? "Connected" : "Not connected"}
                   </div>
                   <div className="mt-1 text-xs text-muted">AI provider ({aiHealth.provider_name})</div>
                 </div>
-                <Link
-                  href="/ai-activity"
-                  className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
-                >
+                <Link href="/ai-activity" className="klaros-card klaros-card-interactive block p-4">
                   <div className="text-2xl font-semibold text-muted">
                     {aiHealth.invocations_24h_succeeded}/{aiHealth.invocations_24h}
                   </div>
@@ -514,10 +497,7 @@ export default function DashboardPage() {
               </>
             )}
             {billing && (
-              <Link
-                href="/settings/billing"
-                className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
-              >
+              <Link href="/settings/billing" className="klaros-card klaros-card-interactive block p-4">
                 <div className="text-sm font-semibold capitalize text-foreground">
                   {billing.plan}
                   {billing.billing_status === "trialing" && billing.trial_ends_at && (
@@ -550,44 +530,26 @@ export default function DashboardPage() {
           </div>
           {automations ? (
             automations.automations_total === 0 ? (
-              <div className="rounded-lg border border-border bg-surface shadow-card">
+              <div className="klaros-card">
                 <EmptyState icon={Workflow} title="No automations set up yet." compact />
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                <Link
-                  href="/automations"
-                  className="rounded-lg border border-blue-200 bg-blue-50/20 p-4 shadow-card transition hover:border-blue-300"
-                >
-                  <div className="text-2xl font-semibold text-blue-700">{automations.executions_running}</div>
-                  <div className="text-xs text-muted">Running now</div>
+                <Link href="/automations">
+                  <StatCard label="Running now" value={automations.executions_running} tone="accent" />
                 </Link>
-                <Link
-                  href="/automations"
-                  className={`rounded-lg border p-4 transition hover:border-danger/40 ${
-                    automations.executions_failed > 0 ? "border-danger/25 bg-danger/10" : "border-border bg-surface"
-                  }`}
-                >
-                  <div className="text-2xl font-semibold text-danger">{automations.executions_failed}</div>
-                  <div className="text-xs text-muted">Failed</div>
+                <Link href="/automations">
+                  <StatCard
+                    label="Failed"
+                    value={automations.executions_failed}
+                    tone={automations.executions_failed > 0 ? "danger" : "neutral"}
+                  />
                 </Link>
-                <div className="rounded-lg border border-success/20 bg-success/10 p-4 shadow-card">
-                  <div className="text-2xl font-semibold text-success">{automations.executions_completed_today}</div>
-                  <div className="text-xs text-muted">Completed today</div>
-                </div>
-                <Link
-                  href="/automations"
-                  className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
-                >
-                  <div className="text-2xl font-semibold text-muted">{automations.automations_scheduled}</div>
-                  <div className="text-xs text-muted">Scheduled</div>
+                <StatCard label="Completed today" value={automations.executions_completed_today} tone="success" />
+                <Link href="/automations">
+                  <StatCard label="Scheduled" value={automations.automations_scheduled} />
                 </Link>
-                <div className="rounded-lg border border-border-strong bg-surface-muted/40 p-4 shadow-card">
-                  <div className="text-2xl font-semibold text-muted">
-                    {automations.automations_enabled}/{automations.automations_total}
-                  </div>
-                  <div className="text-xs text-muted">Enabled</div>
-                </div>
+                <StatCard label="Enabled" value={`${automations.automations_enabled}/${automations.automations_total}`} />
               </div>
             )
           ) : (
@@ -603,7 +565,7 @@ export default function DashboardPage() {
             </Link>
           </div>
           {brief && brief.brief_id ? (
-            <div className="rounded-lg border border-border bg-surface p-6">
+            <div className="klaros-card p-6">
               <div className="mb-2 flex items-center gap-2">
                 <Badge status={brief.mode === "DETERMINISTIC" ? "DRAFT" : "AI"}>
                   {brief.mode === "DETERMINISTIC" ? "DETERMINISTIC SUMMARY — AI NOT CONNECTED" : "AI"}
@@ -656,7 +618,7 @@ export default function DashboardPage() {
               )}
             </div>
           ) : (
-            <div className="rounded-lg border border-border bg-surface shadow-card">
+            <div className="klaros-card">
               <EmptyState
                 icon={Sunrise}
                 title="No brief generated yet."
@@ -676,21 +638,20 @@ export default function DashboardPage() {
           {authLoading || loading ? (
             <Skeleton />
           ) : error ? (
-            <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+            <Alert variant="danger">
               {error}{" "}
               <button onClick={load} className="ml-2 underline">
                 Retry
               </button>
-            </div>
+            </Alert>
           ) : metrics ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
               {METRIC_LABELS.map(({ key, label }) => (
-                <div key={key} className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                  <p className="text-2xl font-semibold">
-                    {key === "conversion_rate_pct" ? `${metrics[key]}%` : metrics[key]}
-                  </p>
-                  <p className="mt-1 text-xs text-muted">{label}</p>
-                </div>
+                <StatCard
+                  key={key}
+                  label={label}
+                  value={key === "conversion_rate_pct" ? `${metrics[key]}%` : metrics[key]}
+                />
               ))}
             </div>
           ) : null}
@@ -704,68 +665,43 @@ export default function DashboardPage() {
             </Link>
           </div>
           {pipeline?.needs_attention && (
-            <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-4 text-sm text-warning">
+            <Alert variant="warning" className="mb-4">
               PIPELINE NEEDS ATTENTION — {pipeline.contracts_awaiting_signature} contract(s) awaiting signature,{" "}
               {pipeline.deposits_awaiting_payment} deposit(s) outstanding.
-            </div>
+            </Alert>
           )}
           {pipeline ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              <Link
-                href="/quotes"
-                className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
-              >
-                <p className="text-2xl font-semibold">{pipeline.quotes_awaiting_response}</p>
-                <p className="mt-1 text-xs text-muted">Quotes awaiting response</p>
+              <Link href="/quotes">
+                <StatCard label="Quotes awaiting response" value={pipeline.quotes_awaiting_response} />
               </Link>
-              <Link
-                href="/quotes"
-                className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
-              >
-                <p className="text-2xl font-semibold">${pipeline.quotes_accepted_value}</p>
-                <p className="mt-1 text-xs text-muted">{pipeline.quotes_accepted} quote(s) accepted</p>
+              <Link href="/quotes">
+                <StatCard
+                  label={`${pipeline.quotes_accepted} quote(s) accepted`}
+                  value={`$${pipeline.quotes_accepted_value}`}
+                  tone="accent"
+                />
               </Link>
-              <Link
-                href="/contracts"
-                className={`rounded-lg border p-4 transition hover:border-border-strong ${
-                  pipeline.contracts_awaiting_signature > 0
-                    ? "border-warning/25 bg-warning/10"
-                    : "border-border bg-surface"
-                }`}
-              >
-                <p className="text-2xl font-semibold">{pipeline.contracts_awaiting_signature}</p>
-                <p className="mt-1 text-xs text-muted">Contracts awaiting signature</p>
+              <Link href="/contracts">
+                <StatCard
+                  label="Contracts awaiting signature"
+                  value={pipeline.contracts_awaiting_signature}
+                  tone={pipeline.contracts_awaiting_signature > 0 ? "warning" : "neutral"}
+                />
               </Link>
-              <Link
-                href="/contracts"
-                className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
-              >
-                <p className="text-2xl font-semibold">{pipeline.contracts_signed}</p>
-                <p className="mt-1 text-xs text-muted">Contracts signed</p>
+              <Link href="/contracts">
+                <StatCard label="Contracts signed" value={pipeline.contracts_signed} tone="success" />
               </Link>
-              <Link
-                href="/quotes"
-                className={`rounded-lg border p-4 transition hover:border-border-strong ${
-                  pipeline.deposits_awaiting_payment > 0
-                    ? "border-warning/25 bg-warning/10"
-                    : "border-border bg-surface"
-                }`}
-              >
-                <p className="text-2xl font-semibold">${pipeline.deposits_awaiting_value}</p>
-                <p className="mt-1 text-xs text-muted">
-                  {pipeline.deposits_awaiting_payment} deposit(s) outstanding
-                </p>
+              <Link href="/quotes">
+                <StatCard
+                  label={`${pipeline.deposits_awaiting_payment} deposit(s) outstanding`}
+                  value={`$${pipeline.deposits_awaiting_value}`}
+                  tone={pipeline.deposits_awaiting_payment > 0 ? "warning" : "neutral"}
+                />
               </Link>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">${pipeline.deposits_collected}</p>
-                <p className="mt-1 text-xs text-muted">Deposits collected</p>
-              </div>
-              <Link
-                href="/jobs"
-                className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong"
-              >
-                <p className="text-2xl font-semibold">{pipeline.jobs_from_quotes}</p>
-                <p className="mt-1 text-xs text-muted">Jobs created from quotes</p>
+              <StatCard label="Deposits collected" value={`$${pipeline.deposits_collected}`} tone="success" />
+              <Link href="/jobs">
+                <StatCard label="Jobs created from quotes" value={pipeline.jobs_from_quotes} />
               </Link>
             </div>
           ) : (
@@ -781,51 +717,42 @@ export default function DashboardPage() {
             </Link>
           </div>
           {operations && (operations.blocked_jobs > 0 || operations.at_risk_jobs > 0 || operations.open_exceptions > 0) && (
-            <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-4 text-sm text-warning">
+            <Alert variant="warning" className="mb-4">
               OPERATIONS NEEDS ATTENTION — {operations.blocked_jobs} blocked job(s), {operations.at_risk_jobs} at-risk
               job(s), {operations.open_exceptions} open exception(s).
-            </div>
+            </Alert>
           )}
           {operations ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong">
-                <p className="text-2xl font-semibold">{operations.jobs_today}</p>
-                <p className="mt-1 text-xs text-muted">Jobs today</p>
+              <Link href="/jobs">
+                <StatCard label="Jobs today" value={operations.jobs_today} />
               </Link>
-              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong">
-                <p className="text-2xl font-semibold">{operations.unassigned_jobs}</p>
-                <p className="mt-1 text-xs text-muted">Unassigned</p>
+              <Link href="/jobs">
+                <StatCard label="Unassigned" value={operations.unassigned_jobs} />
               </Link>
-              <Link
-                href="/operations"
-                className={`rounded-lg border p-4 transition hover:border-border-strong ${
-                  operations.at_risk_jobs > 0 ? "border-warning/25 bg-warning/10" : "border-border bg-surface"
-                }`}
-              >
-                <p className="text-2xl font-semibold">{operations.at_risk_jobs}</p>
-                <p className="mt-1 text-xs text-muted">At risk</p>
+              <Link href="/operations">
+                <StatCard
+                  label="At risk"
+                  value={operations.at_risk_jobs}
+                  tone={operations.at_risk_jobs > 0 ? "warning" : "neutral"}
+                />
               </Link>
-              <Link
-                href="/operations"
-                className={`rounded-lg border p-4 transition hover:border-border-strong ${
-                  operations.blocked_jobs > 0 ? "border-danger/25 bg-danger/10" : "border-border bg-surface"
-                }`}
-              >
-                <p className="text-2xl font-semibold">{operations.blocked_jobs}</p>
-                <p className="mt-1 text-xs text-muted">Blocked</p>
+              <Link href="/operations">
+                <StatCard
+                  label="Blocked"
+                  value={operations.blocked_jobs}
+                  tone={operations.blocked_jobs > 0 ? "danger" : "neutral"}
+                />
               </Link>
-              <Link href="/jobs" className="rounded-lg border border-border bg-surface p-4 shadow-card transition hover:border-border-strong">
-                <p className="text-2xl font-semibold">{operations.qa_pending_jobs}</p>
-                <p className="mt-1 text-xs text-muted">Awaiting QA</p>
+              <Link href="/jobs">
+                <StatCard label="Awaiting QA" value={operations.qa_pending_jobs} />
               </Link>
-              <Link
-                href="/exceptions"
-                className={`rounded-lg border p-4 transition hover:border-border-strong ${
-                  operations.open_exceptions > 0 ? "border-warning/25 bg-warning/10" : "border-border bg-surface"
-                }`}
-              >
-                <p className="text-2xl font-semibold">{operations.open_exceptions}</p>
-                <p className="mt-1 text-xs text-muted">Open exceptions</p>
+              <Link href="/exceptions">
+                <StatCard
+                  label="Open exceptions"
+                  value={operations.open_exceptions}
+                  tone={operations.open_exceptions > 0 ? "warning" : "neutral"}
+                />
               </Link>
             </div>
           ) : (
@@ -836,29 +763,21 @@ export default function DashboardPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-medium text-muted">Business Health — Finance</h2>
           {finance?.needs_attention && (
-            <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-4 text-sm text-warning">
+            <Alert variant="warning" className="mb-4">
               FINANCE NEEDS ATTENTION — {finance.overdue_invoice_count} overdue invoice(s),{" "}
               {finance.open_finance_exception_count} open finance exception(s).
-            </div>
+            </Alert>
           )}
           {finance && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">${finance.total_ar}</p>
-                <p className="mt-1 text-xs text-muted">Total AR outstanding</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">{finance.overdue_invoice_count}</p>
-                <p className="mt-1 text-xs text-muted">Overdue invoices</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">{finance.pending_approval_invoice_count}</p>
-                <p className="mt-1 text-xs text-muted">Pending approval</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">${finance.total_paid}</p>
-                <p className="mt-1 text-xs text-muted">Total paid</p>
-              </div>
+              <StatCard label="Total AR outstanding" value={`$${finance.total_ar}`} tone="accent" />
+              <StatCard
+                label="Overdue invoices"
+                value={finance.overdue_invoice_count}
+                tone={finance.overdue_invoice_count > 0 ? "danger" : "neutral"}
+              />
+              <StatCard label="Pending approval" value={finance.pending_approval_invoice_count} tone="warning" />
+              <StatCard label="Total paid" value={`$${finance.total_paid}`} tone="success" />
             </div>
           )}
         </section>
@@ -866,36 +785,18 @@ export default function DashboardPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-medium text-muted">Marketing &amp; Demand Generation</h2>
           {marketing?.needs_attention && (
-            <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-4 text-sm text-warning">
+            <Alert variant="warning" className="mb-4">
               MARKETING NEEDS ATTENTION — {marketing.open_marketing_exception_count} open marketing exception(s).
-            </div>
+            </Alert>
           )}
           {marketing && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">${marketing.marketing_spend}</p>
-                <p className="mt-1 text-xs text-muted">Marketing spend</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">{marketing.leads}</p>
-                <p className="mt-1 text-xs text-muted">Leads</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">{marketing.jobs_won}</p>
-                <p className="mt-1 text-xs text-muted">Jobs won</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">${marketing.revenue}</p>
-                <p className="mt-1 text-xs text-muted">Revenue attributed</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">{marketing.cac ? `$${marketing.cac}` : "—"}</p>
-                <p className="mt-1 text-xs text-muted">CAC</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">{marketing.roas ? `${marketing.roas}x` : "—"}</p>
-                <p className="mt-1 text-xs text-muted">ROAS</p>
-              </div>
+              <StatCard label="Marketing spend" value={`$${marketing.marketing_spend}`} tone="accent" />
+              <StatCard label="Leads" value={marketing.leads} />
+              <StatCard label="Jobs won" value={marketing.jobs_won} tone="success" />
+              <StatCard label="Revenue attributed" value={`$${marketing.revenue}`} tone="accent" />
+              <StatCard label="CAC" value={marketing.cac ? `$${marketing.cac}` : "—"} />
+              <StatCard label="ROAS" value={marketing.roas ? `${marketing.roas}x` : "—"} />
             </div>
           )}
         </section>
@@ -903,36 +804,26 @@ export default function DashboardPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-medium text-muted">Retention &amp; Referral</h2>
           {retention?.needs_attention && (
-            <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-4 text-sm text-warning">
+            <Alert variant="warning" className="mb-4">
               RETENTION NEEDS ATTENTION — {retention.open_retention_exception_count} open retention exception(s).
-            </div>
+            </Alert>
           )}
           {retention && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">{retention.at_risk_customers}</p>
-                <p className="mt-1 text-xs text-muted">At-risk customers</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">{retention.retention_opportunities_open}</p>
-                <p className="mt-1 text-xs text-muted">Retention opportunities</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">${retention.repeat_customer_revenue}</p>
-                <p className="mt-1 text-xs text-muted">Repeat revenue</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">{retention.referral_leads}</p>
-                <p className="mt-1 text-xs text-muted">Referral leads</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">${retention.referral_revenue}</p>
-                <p className="mt-1 text-xs text-muted">Referral revenue</p>
-              </div>
-              <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-                <p className="text-2xl font-semibold">{retention.negative_feedback_count}</p>
-                <p className="mt-1 text-xs text-muted">Review issues</p>
-              </div>
+              <StatCard
+                label="At-risk customers"
+                value={retention.at_risk_customers}
+                tone={retention.at_risk_customers > 0 ? "danger" : "neutral"}
+              />
+              <StatCard label="Retention opportunities" value={retention.retention_opportunities_open} tone="accent" />
+              <StatCard label="Repeat revenue" value={`$${retention.repeat_customer_revenue}`} tone="success" />
+              <StatCard label="Referral leads" value={retention.referral_leads} />
+              <StatCard label="Referral revenue" value={`$${retention.referral_revenue}`} tone="accent" />
+              <StatCard
+                label="Review issues"
+                value={retention.negative_feedback_count}
+                tone={retention.negative_feedback_count > 0 ? "danger" : "neutral"}
+              />
             </div>
           )}
         </section>
@@ -960,7 +851,7 @@ export default function DashboardPage() {
           {!activity && activityLoading ? (
             <Skeleton />
           ) : !activity || activity.items.length === 0 ? (
-            <div className="rounded-lg border border-border bg-surface shadow-card">
+            <div className="klaros-card">
               <EmptyState icon={Activity} title="No activity yet." compact />
             </div>
           ) : (
@@ -1028,7 +919,7 @@ export default function DashboardPage() {
         </section>
 
         {PENDING_MODULES.length > 0 && (
-          <section className="rounded-lg border border-border bg-surface p-6">
+          <section className="klaros-card p-6">
             <h2 className="mb-2 text-sm font-medium text-muted">Foundation status</h2>
             <p className="text-sm text-muted">
               Authentication, multi-tenancy, RBAC, the event bus, and CRM (leads/customers/
