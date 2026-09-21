@@ -35,6 +35,23 @@ if settings.DATABASE_URL.startswith("sqlite"):
         # locked", since separate connections now really do serialize at the
         # SQLite file level rather than never overlapping at all.
         _engine_kwargs = {"connect_args": {"check_same_thread": False, "timeout": 15}}
+else:
+    # Default SQLAlchemy pool (size 5, overflow 10 = 15 max connections)
+    # was too small for this app's own request shape: the owner dashboard
+    # alone fans out to ~17 endpoints in parallel on a single page load,
+    # each needing its own connection, which on its own was enough to
+    # exhaust the pool and make every waiting request time out after 30s
+    # — visible in prod logs as repeated "QueuePool limit of size 5
+    # overflow 10 reached, connection timed out". Because that exception
+    # is raised before the app's CORS middleware can attach headers to
+    # the response, the browser reported it to users as a misleading
+    # CORS failure rather than the real timeout underneath. Raised to
+    # comfortably clear one dashboard load's own concurrency with
+    # headroom for other simultaneous requests, while staying well under
+    # typical free-tier Postgres connection ceilings for a single app
+    # instance (this service runs numInstances: 1).
+    _engine_kwargs["pool_size"] = 10
+    _engine_kwargs["max_overflow"] = 20
 
 engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
