@@ -21,9 +21,11 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
 const STATUS_TABS = ["ALL", "DRAFT", "SENT", "VIEWED", "ACCEPTED", "DECLINED", "EXPIRED", "CONVERTED"];
 
 export default function QuotesPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [status, setStatus] = useState("ALL");
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -31,7 +33,6 @@ export default function QuotesPage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [detecting, setDetecting] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -54,11 +55,10 @@ export default function QuotesPage() {
   async function handleDetectExpired() {
     if (!token) return;
     setDetecting(true);
-    setNotice(null);
     setError(null);
     try {
       const result = await detectExpiredQuotes(token);
-      setNotice(
+      toast.success(
         result.expired_quote_ids.length === 0
           ? "No newly expired quotes found."
           : `${result.expired_quote_ids.length} quote(s) marked EXPIRED.`
@@ -92,12 +92,6 @@ export default function QuotesPage() {
             </button>
           </div>
         </header>
-
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
 
         <div className="mb-4 flex flex-wrap gap-2">
           {STATUS_TABS.map((s) => (

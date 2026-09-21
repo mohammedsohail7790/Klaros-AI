@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/useAuth";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Alert } from "@/components/ui/Alert";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   Invoice,
@@ -27,11 +28,11 @@ import {
 } from "@/lib/api";
 
 export default function InvoiceDetailPage() {
+  const toast = useToast();
   const { id } = useParams<{ id: string }>();
   const { token, user, loading: authLoading } = useAuth();
   const [invoice, setInvoice] = useState<(Invoice & { line_items: InvoiceLineItem[] }) | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showWriteOffForm, setShowWriteOffForm] = useState(false);
@@ -68,13 +69,12 @@ export default function InvoiceDetailPage() {
     if (!token) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const result = await fn();
       if (result && typeof result === "object" && "status" in result && (result as any).status === "pending_approval") {
-        setNotice("This action requires approval — an ApprovalRequest has been created.");
+        toast.success("This action requires approval — an ApprovalRequest has been created.");
       } else {
-        setNotice(successMsg);
+        toast.success(successMsg);
       }
       await load();
     } catch (err) {
@@ -96,7 +96,7 @@ export default function InvoiceDetailPage() {
     return (
       <AppShell user={user}>
         <div className="px-8 py-8">
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
+          <Alert variant="danger">{error}</Alert>
         </div>
       </AppShell>
     );
@@ -126,10 +126,9 @@ export default function InvoiceDetailPage() {
     if (!token || !invoice) return;
     setQbSyncBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const result = await syncInvoiceToQuickBooks(token, invoice.id);
-      setNotice(
+      toast.success(
         result.already_synced
           ? "Already synced to QuickBooks."
           : `Synced to QuickBooks (invoice ${result.quickbooks_invoice_id}).`
@@ -176,7 +175,7 @@ export default function InvoiceDetailPage() {
     setError(null);
     try {
       await updateInvoiceDraft(token, invoice.id, validItems);
-      setNotice("Line items updated.");
+      toast.success("Line items updated.");
       setShowEditItems(false);
       await load();
     } catch (err) {
@@ -223,10 +222,7 @@ export default function InvoiceDetailPage() {
           <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{invoice.status}</span>
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
-        )}
-        {notice && <Alert variant="success" className="mb-4">{notice}</Alert>}
+        {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
 
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard label="Total" value={`$${invoice.total}`} tone="accent" />

@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   Campaign,
@@ -18,12 +19,12 @@ import {
 } from "@/lib/api";
 
 export default function CampaignDetailPage() {
+  const toast = useToast();
   const { id } = useParams<{ id: string }>();
   const { token, user, loading: authLoading } = useAuth();
   const [campaign, setCampaign] = useState<(Campaign & { performance: CampaignPerformance }) | null>(null);
   const [budgetStatus, setBudgetStatus] = useState<CampaignBudgetStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [spendAmount, setSpendAmount] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,13 +55,12 @@ export default function CampaignDetailPage() {
     e.preventDefault();
     if (!token || !spendAmount) return;
     setBusy(true);
-    setNotice(null);
     try {
       await recordCampaignSpend(token, id, {
         channel: campaign?.channel || "OTHER", amount: spendAmount, spend_date: new Date().toISOString().slice(0, 10),
       });
       setSpendAmount("");
-      setNotice("Spend recorded.");
+      toast.success("Spend recorded.");
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to record spend.");
@@ -111,9 +111,6 @@ export default function CampaignDetailPage() {
           <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{campaign.status}</span>
         </div>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}

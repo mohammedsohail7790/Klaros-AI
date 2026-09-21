@@ -18,15 +18,16 @@ import {
 
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 const VIEWS = ["ALL", "IDEA", "DRAFT", "PENDING_APPROVAL", "APPROVED", "SCHEDULED", "PUBLISHED"];
 
 export default function ContentPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [status, setStatus] = useState("ALL");
   const [items, setItems] = useState<MarketingContentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -66,10 +67,9 @@ export default function ContentPage() {
     if (!token) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       await fn();
-      setNotice("Done.");
+      toast.success("Done.");
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Action failed.");
@@ -109,8 +109,6 @@ export default function ContentPage() {
             </button>
           ))}
         </div>
-
-        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         {authLoading || loading ? (
           <Skeleton />

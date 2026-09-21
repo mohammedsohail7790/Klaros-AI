@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/lib/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   Customer,
@@ -20,11 +21,11 @@ import {
 } from "@/lib/api";
 
 export default function WarrantiesPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [detecting, setDetecting] = useState(false);
   const [checkInBusy, setCheckInBusy] = useState<string | null>(null);
 
@@ -57,12 +58,11 @@ export default function WarrantiesPage() {
   async function handleDetectExpiring() {
     if (!token) return;
     setDetecting(true);
-    setNotice(null);
     setError(null);
     try {
       const result = await detectExpiringWarranties(token);
       const total = result.newly_expiring_soon.length + result.newly_expired.length;
-      setNotice(
+      toast.success(
         total === 0
           ? "Nothing newly expiring or expired."
           : `${result.newly_expiring_soon.length} newly expiring soon, ${result.newly_expired.length} newly expired.`
@@ -117,7 +117,7 @@ export default function WarrantiesPage() {
     setError(null);
     try {
       await checkInWarranty(token, warrantyId);
-      setNotice("Checked in.");
+      toast.success("Checked in.");
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to check in.");
@@ -149,11 +149,6 @@ export default function WarrantiesPage() {
           touchpoint, not a missed one.
         </p>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}

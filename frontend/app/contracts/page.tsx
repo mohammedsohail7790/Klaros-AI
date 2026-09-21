@@ -10,15 +10,16 @@ import { ApiError, Contract, detectPendingContracts, listContracts } from "@/lib
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 const STATUS_TABS = ["ALL", "DRAFT", "SENT", "VIEWED", "SIGNED", "DECLINED", "EXPIRED", "CANCELLED"];
 
 export default function ContractsPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [status, setStatus] = useState("ALL");
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [detecting, setDetecting] = useState(false);
 
   const load = useCallback(async () => {
@@ -42,11 +43,10 @@ export default function ContractsPage() {
   async function handleDetectPending() {
     if (!token) return;
     setDetecting(true);
-    setNotice(null);
     setError(null);
     try {
       const result = await detectPendingContracts(token);
-      setNotice(
+      toast.success(
         result.expired_contract_ids.length === 0
           ? "No newly overdue contracts found."
           : `${result.expired_contract_ids.length} contract(s) marked EXPIRED.`
@@ -76,12 +76,6 @@ export default function ContractsPage() {
           The agreement a customer signs after accepting a quote — an internal attestation, not a third-party
           e-signature.
         </p>
-
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
 
         <div className="mb-4 flex flex-wrap gap-2">
           {STATUS_TABS.map((s) => (

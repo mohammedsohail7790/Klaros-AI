@@ -9,12 +9,13 @@ import { ApiError, ServiceReminderRow, listServiceReminders, markDueReminders, u
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 export default function RemindersPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [reminders, setReminders] = useState<ServiceReminderRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -37,10 +38,9 @@ export default function RemindersPage() {
   async function handleMarkDue() {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     try {
       const result = await markDueReminders(token);
-      setNotice(`${result.due_reminder_ids.length} reminder(s) marked DUE.`);
+      toast.success(`${result.due_reminder_ids.length} reminder(s) marked DUE.`);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to mark reminders due.");
@@ -71,8 +71,6 @@ export default function RemindersPage() {
             Mark due reminders
           </button>
         </div>
-
-        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         {authLoading || loading ? (
           <Skeleton />

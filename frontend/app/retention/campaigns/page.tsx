@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   Customer,
@@ -31,11 +32,11 @@ const TYPES = [
 const STATUSES = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "ACTIVE", "PAUSED", "COMPLETED", "CANCELLED"];
 
 export default function RetentionCampaignsPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState<RetentionCampaignRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -115,7 +116,7 @@ export default function RetentionCampaignsPage() {
     setError(null);
     try {
       await enrollCustomerInRetentionCampaign(token, enrollingCampaignId, customerId);
-      setNotice(`${customerName} enrolled.`);
+      toast.success(`${customerName} enrolled.`);
       setEnrollingCampaignId(null);
       setCustomerQuery("");
       setCustomerResults([]);
@@ -129,11 +130,10 @@ export default function RetentionCampaignsPage() {
   async function handleExecuteDue() {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     setError(null);
     try {
       const result = await executeDueRetentionActivities(token);
-      setNotice(`${result.executed_activity_ids.length} activity(ies) executed.`);
+      toast.success(`${result.executed_activity_ids.length} activity(ies) executed.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to execute due activities.");
     } finally {
@@ -168,11 +168,6 @@ export default function RetentionCampaignsPage() {
 
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
-        )}
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
         )}
 
         {showCreate && (

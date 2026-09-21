@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   AutomationExecutionDetail,
@@ -175,11 +176,11 @@ function parseConditionValue(raw: string): unknown {
 }
 
 export default function AutomationsPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [automations, setAutomations] = useState<AutomationRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
@@ -228,7 +229,7 @@ export default function AutomationsPage() {
     try {
       const result = await setAutomationTimezone(token, timezoneInput);
       setTenantTimezone(result.timezone);
-      setNotice(`Business timezone set to ${result.timezone}.`);
+      toast.success(`Business timezone set to ${result.timezone}.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to set timezone — check the IANA timezone name.");
     } finally {
@@ -240,10 +241,9 @@ export default function AutomationsPage() {
     if (!token) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const result = await dispatchScheduledTick(token);
-      setNotice(
+      toast.success(
         result.dispatched_execution_ids.length > 0
           ? `Scheduler tick ran — ${result.dispatched_execution_ids.length} automation(s) dispatched.`
           : "Scheduler tick ran — nothing was due."
@@ -332,17 +332,16 @@ export default function AutomationsPage() {
     if (!token) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const payload = formToPayload(form);
       if (mode === "create") {
         const automation = await createAutomation(token, { name: form.name, description: form.description || null, ...payload });
-        setNotice("Automation created as a draft.");
+        toast.success("Automation created as a draft.");
         await load();
         await openDetail(automation.id);
       } else if (selectedId) {
         await updateAutomation(token, selectedId, payload);
-        setNotice("Saved as a new version.");
+        toast.success("Saved as a new version.");
         await load();
         await openDetail(selectedId);
       }
@@ -359,7 +358,7 @@ export default function AutomationsPage() {
     setError(null);
     try {
       await publishAutomation(token, selectedId);
-      setNotice("Published — this version is now live.");
+      toast.success("Published — this version is now live.");
       await load();
       await openDetail(selectedId);
     } catch (err) {
@@ -375,7 +374,7 @@ export default function AutomationsPage() {
     setError(null);
     try {
       await setAutomationEnabled(token, selectedId, enabled);
-      setNotice(enabled ? "Enabled." : "Disabled.");
+      toast.success(enabled ? "Enabled." : "Disabled.");
       await load();
       await openDetail(selectedId);
     } catch (err) {
@@ -389,7 +388,6 @@ export default function AutomationsPage() {
     if (!token || !selectedId) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       let context: Record<string, unknown> = {};
       try {
@@ -401,9 +399,9 @@ export default function AutomationsPage() {
       }
       const result = await triggerAutomation(token, selectedId, context);
       if ("deduplicated" in result) {
-        setNotice("Deduplicated — an execution with this exact context already ran.");
+        toast.success("Deduplicated — an execution with this exact context already ran.");
       } else {
-        setNotice(`Triggered — execution ${result.status.toLowerCase()}.`);
+        toast.success(`Triggered — execution ${result.status.toLowerCase()}.`);
       }
       const executionList = await listAutomationExecutions(token, selectedId);
       setExecutions(executionList.executions);
@@ -490,11 +488,6 @@ export default function AutomationsPage() {
           {tenantTimezone && <span className="text-muted-foreground">Current: {tenantTimezone}</span>}
         </div>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}

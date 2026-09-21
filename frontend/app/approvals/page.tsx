@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   ApprovalDetail,
@@ -21,13 +22,13 @@ import {
 const STATUS_FILTERS = ["ALL", "PENDING", "APPROVED", "REJECTED"] as const;
 
 export default function ApprovalsPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [filter, setFilter] = useState<(typeof STATUS_FILTERS)[number]>("PENDING");
   const [approvals, setApprovals] = useState<ApprovalRow[] | null>(null);
   const [selected, setSelected] = useState<ApprovalDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
 
@@ -88,10 +89,9 @@ export default function ApprovalsPage() {
     if (!token || !selected) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const result = await approveApproval(token, selected.approval_request_id, note || undefined);
-      setNotice(
+      toast.success(
         result.execution_status === "EXECUTED"
           ? "Approved — the original action executed automatically."
           : result.execution_status === "FAILED"
@@ -111,10 +111,9 @@ export default function ApprovalsPage() {
     if (!token || !selected) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       await rejectApproval(token, selected.approval_request_id, note || undefined);
-      setNotice("Rejected.");
+      toast.success("Rejected.");
       await refreshSelected();
       await load();
     } catch (err) {
@@ -128,10 +127,9 @@ export default function ApprovalsPage() {
     if (!token || !selected) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const result = await retryApprovalExecution(token, selected.approval_request_id);
-      setNotice(result.execution_status === "EXECUTED" ? "Retried — executed successfully." : "Retried.");
+      toast.success(result.execution_status === "EXECUTED" ? "Retried — executed successfully." : "Retried.");
       await refreshSelected();
       await load();
     } catch (err) {
@@ -167,11 +165,6 @@ export default function ApprovalsPage() {
           including the AI, can approve their own request.
         </p>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}

@@ -7,6 +7,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   MorningBriefData,
@@ -36,12 +37,12 @@ const ENTITY_LINK: Record<string, (id: string) => string> = {
 };
 
 export default function MorningBriefPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [brief, setBrief] = useState<MorningBriefData | null>(null);
   const [settings, setSettings] = useState<MorningBriefSettings | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [rememberingId, setRememberingId] = useState<string | null>(null);
   const [rememberText, setRememberText] = useState("");
@@ -71,7 +72,6 @@ export default function MorningBriefPage() {
   async function handleGenerate() {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     try {
       await generateMorningBrief(token);
       await load();
@@ -85,10 +85,9 @@ export default function MorningBriefPage() {
   async function handleExecute(id: string) {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     try {
       const result = await executeRecommendation(token, id);
-      setNotice(
+      toast.success(
         result.status === "APPROVAL_REQUESTED"
           ? "This action requires approval — a real approval request was created. Review it on the Approvals page."
           : "Recommendation executed through the normal Tool Registry pipeline."
@@ -127,7 +126,7 @@ export default function MorningBriefPage() {
         source: "OWNER_CORRECTION",
         reason: `Owner correction on morning brief recommendation ${recommendationId}`,
       });
-      setNotice("Saved to Company Memory — future AI recommendations will see this.");
+      toast.success("Saved to Company Memory — future AI recommendations will see this.");
       setRememberingId(null);
       setRememberText("");
     } catch (err) {
@@ -163,8 +162,6 @@ export default function MorningBriefPage() {
             Generate now
           </button>
         </div>
-
-        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         {authLoading || loading ? (
           <Skeleton />

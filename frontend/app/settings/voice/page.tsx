@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 
 function outcomeLabel(outcome: string | null): string {
   if (!outcome) return "In progress";
@@ -25,6 +26,7 @@ function outcomeLabel(outcome: string | null): string {
 }
 
 export default function VoiceReceptionistPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [settings, setSettings] = useState<VoiceSettings | null>(null);
   const [calls, setCalls] = useState<VoiceCallRow[] | null>(null);
@@ -33,7 +35,6 @@ export default function VoiceReceptionistPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [selectedCall, setSelectedCall] = useState<VoiceCallRow | null>(null);
 
   const load = useCallback(async () => {
@@ -64,7 +65,7 @@ export default function VoiceReceptionistPage() {
     try {
       const updated = await updateVoiceSettings(token, { enabled: !settings.enabled });
       setSettings(updated);
-      setNotice(updated.enabled ? "AI Voice Receptionist enabled." : "AI Voice Receptionist disabled.");
+      toast.success(updated.enabled ? "AI Voice Receptionist enabled." : "AI Voice Receptionist disabled.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to update settings.");
     } finally {
@@ -81,7 +82,7 @@ export default function VoiceReceptionistPage() {
         greeting: draftGreeting, business_hours_note: draftHours || null,
       });
       setSettings(updated);
-      setNotice("Saved.");
+      toast.success("Saved.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to save.");
     } finally {
@@ -101,11 +102,6 @@ export default function VoiceReceptionistPage() {
           end in a handoff rather than a fabricated resolution.
         </p>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}

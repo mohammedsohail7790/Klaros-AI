@@ -21,13 +21,14 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Alert } from "@/components/ui/Alert";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { BarBreakdown } from "@/components/ui/Chart";
+import { useToast } from "@/components/ui/Toast";
 
 export default function ARPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [aging, setAging] = useState<AgingSummary | null>(null);
   const [actions, setActions] = useState<CollectionActionRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -53,10 +54,9 @@ export default function ARPage() {
   async function handleDetectOverdue() {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     try {
       const result = await detectOverdueInvoices(token);
-      setNotice(`${result.newly_overdue_invoice_ids.length} invoice(s) newly marked OVERDUE.`);
+      toast.success(`${result.newly_overdue_invoice_ids.length} invoice(s) newly marked OVERDUE.`);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to detect overdue invoices.");
@@ -68,10 +68,9 @@ export default function ARPage() {
   async function handleExecuteDue() {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     try {
       const result = await executeDueCollections(token);
-      setNotice(`${result.executed_action_ids.length} collection action(s) executed.`);
+      toast.success(`${result.executed_action_ids.length} collection action(s) executed.`);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to execute collection actions.");
@@ -105,8 +104,6 @@ export default function ARPage() {
             </>
           }
         />
-
-        {notice && <Alert variant="success" className="mb-4">{notice}</Alert>}
 
         {authLoading || loading ? (
           <Skeleton stats={5} />

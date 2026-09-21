@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   TeamInvite,
@@ -19,12 +20,12 @@ import {
 const ROLES = ["OWNER", "ADMIN", "MANAGER", "STAFF", "TECHNICIAN", "ACCOUNTANT", "READ_ONLY"];
 
 export default function TeamSettingsPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [members, setMembers] = useState<TeamMember[] | null>(null);
   const [invites, setInvites] = useState<TeamInvite[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -63,7 +64,7 @@ export default function TeamSettingsPage() {
       const result = await createTeamInvite(token, inviteEmail.trim(), inviteRole);
       const url = `${window.location.origin}${result.invite_url_path}`;
       setLastInviteLink({ url, emailSent: result.email_sent });
-      setNotice(
+      toast.success(
         result.email_sent
           ? `Invite emailed to ${inviteEmail.trim()}.`
           : `Invite created — no email provider configured, so share this link directly.`
@@ -82,7 +83,7 @@ export default function TeamSettingsPage() {
     if (!token) return;
     try {
       await revokeTeamInvite(token, inviteId);
-      setNotice("Invite revoked.");
+      toast.success("Invite revoked.");
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to revoke invite.");
@@ -133,11 +134,6 @@ export default function TeamSettingsPage() {
           </button>
         </div>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}

@@ -18,14 +18,15 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 
 export default function RiskSignalsPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [signals, setSignals] = useState<RiskSignalRow[]>([]);
   const [candidates, setCandidates] = useState<AdvocateCandidateRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -53,12 +54,11 @@ export default function RiskSignalsPage() {
   async function runDetection(name: string, fn: (t: string) => Promise<{ [key: string]: string[] }>) {
     if (!token) return;
     setBusy(name);
-    setNotice(null);
     setError(null);
     try {
       const result = await fn(token);
       const count = Object.values(result)[0]?.length ?? 0;
-      setNotice(`${name}: ${count} customer(s) flagged.`);
+      toast.success(`${name}: ${count} customer(s) flagged.`);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : `Unable to run ${name}.`);
@@ -101,11 +101,6 @@ export default function RiskSignalsPage() {
           payments as a risk, and identifies repeat customers with no complaints as advocate candidates.
         </p>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}

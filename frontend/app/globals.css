@@ -86,6 +86,14 @@ body::before {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Toast entrance — slides up from where it docks (bottom-right on
+   desktop, bottom-center on mobile) rather than just fading in, so a
+   stack of several feels like each one is arriving, not popping. */
+@keyframes klaros-toast-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes klaros-float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-14px); }

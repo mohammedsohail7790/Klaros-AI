@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   Lead,
@@ -25,12 +26,12 @@ import {
 const TRIGGER_TYPES = ["STALE_LEAD", "UNBOOKED_QUALIFIED", "CUSTOM"];
 
 export default function NurturePage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [sequences, setSequences] = useState<NurtureSequenceRow[]>([]);
   const [enrollments, setEnrollments] = useState<NurtureEnrollmentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -117,7 +118,7 @@ export default function NurturePage() {
     setError(null);
     try {
       await enrollLeadInNurture(token, enrollingSequenceId, leadId);
-      setNotice(`${leadName} enrolled.`);
+      toast.success(`${leadName} enrolled.`);
       setEnrollingSequenceId(null);
       setLeadQuery("");
       setLeadResults([]);
@@ -132,11 +133,10 @@ export default function NurturePage() {
   async function handleExecuteDue() {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     setError(null);
     try {
       const result = await executeDueNurtureActivities(token);
-      setNotice(`${result.executed_activity_ids.length} activity(ies) executed.`);
+      toast.success(`${result.executed_activity_ids.length} activity(ies) executed.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to execute due activities.");
     } finally {
@@ -178,11 +178,6 @@ export default function NurturePage() {
 
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
-        )}
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
         )}
         {candidateIds && (
           <div className="mb-4 rounded-md border border-border bg-surface p-3 text-sm">

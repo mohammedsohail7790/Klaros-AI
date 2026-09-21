@@ -8,14 +8,15 @@ import { useAuth } from "@/lib/useAuth";
 import { ApiError, Contract, Quote, getContract, getQuote, sendContract } from "@/lib/api";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
+import { useToast } from "@/components/ui/Toast";
 
 export default function ContractDetailPage() {
+  const toast = useToast();
   const { id } = useParams<{ id: string }>();
   const { token, user, loading: authLoading } = useAuth();
   const [contract, setContract] = useState<Contract | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [viewUrlPath, setViewUrlPath] = useState<string | null>(null);
@@ -52,11 +53,10 @@ export default function ContractDetailPage() {
     if (!token || !id) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const result = await sendContract(token, id);
       setViewUrlPath(result.view_url_path);
-      setNotice("Contract sent — the customer link below is real and ready to share.");
+      toast.success("Contract sent — the customer link below is real and ready to share.");
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to send contract.");
@@ -112,11 +112,6 @@ export default function ContractDetailPage() {
 
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
-        )}
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
         )}
         {viewUrlPath && (
           <div className="mb-4 rounded-md border border-border bg-surface p-3 text-sm text-muted">

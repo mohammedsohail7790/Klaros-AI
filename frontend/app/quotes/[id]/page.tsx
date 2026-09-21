@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/useAuth";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Alert } from "@/components/ui/Alert";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   Contract,
@@ -32,12 +33,12 @@ function toDraftLineItems(items: QuoteLineItem[]): QuoteLineItemInput[] {
 }
 
 export default function QuoteDetailPage() {
+  const toast = useToast();
   const { id } = useParams<{ id: string }>();
   const { token, user, loading: authLoading } = useAuth();
   const [quote, setQuote] = useState<(Quote & { line_items: QuoteLineItem[] }) | null>(null);
   const [contract, setContract] = useState<Contract | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [viewUrlPath, setViewUrlPath] = useState<string | null>(null);
@@ -79,11 +80,10 @@ export default function QuoteDetailPage() {
     if (!token || !id) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const result = await sendQuote(token, id);
       setViewUrlPath(result.view_url_path);
-      setNotice("Quote sent — the customer link below is real and ready to share.");
+      toast.success("Quote sent — the customer link below is real and ready to share.");
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to send quote.");
@@ -136,7 +136,6 @@ export default function QuoteDetailPage() {
     if (!token || !id) return;
     setSaving(true);
     setError(null);
-    setNotice(null);
     try {
       const hadDeposit = quote?.deposit_type != null;
       await updateQuoteDraft(token, id, {
@@ -147,7 +146,7 @@ export default function QuoteDetailPage() {
         deposit_value: draftDepositType ? draftDepositValue.trim() : undefined,
         clear_deposit: hadDeposit && !draftDepositType,
       });
-      setNotice("Quote draft updated.");
+      toast.success("Quote draft updated.");
       setEditing(false);
       await load();
     } catch (err) {
@@ -169,7 +168,7 @@ export default function QuoteDetailPage() {
     return (
       <AppShell user={user}>
         <div className="px-8 py-8">
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
+          <Alert variant="danger">{error}</Alert>
         </div>
       </AppShell>
     );
@@ -185,12 +184,7 @@ export default function QuoteDetailPage() {
           <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{quote.status}</span>
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
-        )}
-        {notice && (
-          <Alert variant="success" className="mb-4">{notice}</Alert>
-        )}
+        {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
         {viewUrlPath && (
           <div className="mb-4 rounded-md border border-border bg-surface p-3 text-sm text-muted">
             Customer view link:{" "}

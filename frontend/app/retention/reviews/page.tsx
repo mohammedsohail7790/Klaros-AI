@@ -19,13 +19,14 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 export default function ReviewsPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [requests, setRequests] = useState<ReviewRequestRow[]>([]);
   const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [fbCustomerId, setFbCustomerId] = useState("");
   const [fbRating, setFbRating] = useState("5");
@@ -53,13 +54,12 @@ export default function ReviewsPage() {
   async function handleSend(id: string) {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     try {
       const result = await sendReviewRequest(token, id);
       if (result && "status" in result && (result as any).status === "pending_approval") {
-        setNotice("Sending a review request requires approval — an ApprovalRequest has been created.");
+        toast.success("Sending a review request requires approval — an ApprovalRequest has been created.");
       } else {
-        setNotice("Review request sent.");
+        toast.success("Review request sent.");
       }
       await load();
     } catch (err) {
@@ -72,10 +72,9 @@ export default function ReviewsPage() {
   async function handleConsent(feedbackId: string, consent: boolean) {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     try {
       await recordReviewConsent(token, feedbackId, consent);
-      setNotice(consent ? "Consent recorded — this review can now become marketing content." : "Recorded: customer declined.");
+      toast.success(consent ? "Consent recorded — this review can now become marketing content." : "Recorded: customer declined.");
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to record consent.");
@@ -87,13 +86,12 @@ export default function ReviewsPage() {
   async function handleCreateContent(feedbackId: string) {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     try {
       const result = await createContentFromReview(token, feedbackId);
       if (result && "status" in result && (result as { status?: string }).status === "pending_approval") {
-        setNotice("Creating marketing content requires approval — an ApprovalRequest has been created.");
+        toast.success("Creating marketing content requires approval — an ApprovalRequest has been created.");
       } else {
-        setNotice("Marketing content idea created — review it on the Content page.");
+        toast.success("Marketing content idea created — review it on the Content page.");
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to create content from this review.");
@@ -105,14 +103,13 @@ export default function ReviewsPage() {
   async function handleRecordFeedback() {
     if (!token || !fbCustomerId.trim()) return;
     setBusy(true);
-    setNotice(null);
     try {
       const result = await recordFeedback(token, {
         customer_id: fbCustomerId.trim(),
         rating: Number(fbRating),
         comment: fbComment.trim() || undefined,
       });
-      setNotice(`Feedback recorded (sentiment: ${result.sentiment ?? "n/a"}).`);
+      toast.success(`Feedback recorded (sentiment: ${result.sentiment ?? "n/a"}).`);
       setFbComment("");
       await load();
     } catch (err) {
@@ -133,8 +130,6 @@ export default function ReviewsPage() {
           External Google/Yelp reviews are NOT CONNECTED — no external review has ever been fetched. Everything below is
           internal.
         </p>
-
-        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         {authLoading || loading ? (
           <Skeleton />

@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/lib/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   IntegrationStatusRow,
@@ -63,13 +64,13 @@ function friendlyType(type: string): string {
 }
 
 export default function AutomationSettingsPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [policies, setPolicies] = useState<PolicyRow[] | null>(null);
   const [preferences, setPreferences] = useState<NotificationPreferenceRow[] | null>(null);
   const [integrations, setIntegrations] = useState<IntegrationStatusRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<{ toolName: string; from: string; to: string } | null>(null);
 
@@ -106,11 +107,10 @@ export default function AutomationSettingsPage() {
     if (!token || !confirming) return;
     const { toolName, to } = confirming;
     setBusyKey(toolName);
-    setNotice(null);
     setError(null);
     try {
       await setAutomationPolicy(token, toolName, to);
-      setNotice(`${friendlyToolName(toolName)} is now ${to.replace("_", " ")}.`);
+      toast.success(`${friendlyToolName(toolName)} is now ${to.replace("_", " ")}.`);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to change policy.");
@@ -168,11 +168,6 @@ export default function AutomationSettingsPage() {
           your attention.
         </p>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}

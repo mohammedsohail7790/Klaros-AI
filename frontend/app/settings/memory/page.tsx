@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -42,7 +43,7 @@ export default function CompanyMemoryPage() {
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("ALL");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<CompanyMemoryRow | null>(null);
   const [history, setHistory] = useState<CompanyMemoryRow[] | null>(null);
@@ -88,13 +89,12 @@ export default function CompanyMemoryPage() {
     if (!token || !form.key || !form.value) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       await createCompanyMemory(token, {
         memory_type: form.memory_type, key: form.key, value: form.value, description: form.description || null,
         source: "OWNER_EXPLICIT",
       });
-      setNotice("Preference saved.");
+      toast.success("Preference saved.");
       setForm({ memory_type: "OWNER_PREFERENCE", key: "", value: "", description: "" });
       await load();
     } catch (err) {
@@ -110,7 +110,7 @@ export default function CompanyMemoryPage() {
     setError(null);
     try {
       await confirmMemory(token, id);
-      setNotice("Confirmed — now active and part of AI context.");
+      toast.success("Confirmed — now active and part of AI context.");
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to confirm.");
@@ -125,7 +125,7 @@ export default function CompanyMemoryPage() {
     setError(null);
     try {
       await updatePendingMemory(token, id, editValue.trim());
-      setNotice("Updated.");
+      toast.success("Updated.");
       setEditingId(null);
       await load();
     } catch (err) {
@@ -141,7 +141,7 @@ export default function CompanyMemoryPage() {
     setError(null);
     try {
       await rejectMemory(token, id);
-      setNotice("Rejected — this candidate will never become memory.");
+      toast.success("Rejected — this candidate will never become memory.");
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to reject.");
@@ -156,7 +156,7 @@ export default function CompanyMemoryPage() {
     setError(null);
     try {
       await revokeMemory(token, id);
-      setNotice("Revoked — no longer part of AI context.");
+      toast.success("Revoked — no longer part of AI context.");
       if (selected?.id === id) setSelected(null);
       await load();
     } catch (err) {
@@ -189,11 +189,6 @@ export default function CompanyMemoryPage() {
           Revoking is the only way to remove an active preference — the full history stays auditable.
         </p>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}

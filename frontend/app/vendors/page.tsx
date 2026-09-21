@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/lib/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   Vendor,
@@ -20,12 +21,12 @@ import {
 } from "@/lib/api";
 
 export default function VendorsPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [bills, setBills] = useState<VendorBill[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
@@ -88,7 +89,7 @@ export default function VendorsPage() {
       setBillVendorId(null);
       setBillAmount("");
       setBillDueDate("");
-      setNotice("Bill recorded.");
+      toast.success("Bill recorded.");
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to record bill.");
@@ -101,10 +102,9 @@ export default function VendorsPage() {
     if (!token) return;
     setPayoutBusy(bill.id);
     setError(null);
-    setNotice(null);
     try {
       const result = await recordVendorPayout(token, bill.id, bill.vendor_id);
-      setNotice(
+      toast.success(
         result.status === "pending_approval"
           ? "Payout requires approval — a request was created and nothing has been paid yet."
           : "Payout recorded."
@@ -134,11 +134,6 @@ export default function VendorsPage() {
           </button>
         </header>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}

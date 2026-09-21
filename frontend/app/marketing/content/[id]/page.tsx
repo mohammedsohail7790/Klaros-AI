@@ -7,6 +7,7 @@ import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   addContentVariant,
@@ -30,13 +31,13 @@ interface ContentDetail {
 }
 
 export default function ContentDetailPage() {
+  const toast = useToast();
   const { id } = useParams<{ id: string }>();
   const { token, user, loading: authLoading } = useAuth();
   const [content, setContent] = useState<ContentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
   const [channel, setChannel] = useState(CHANNELS[0]);
   const [bodyText, setBodyText] = useState("");
 
@@ -62,10 +63,9 @@ export default function ContentDetailPage() {
     if (!token) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       await fn();
-      setNotice(successMessage);
+      toast.success(successMessage);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Action failed.");
@@ -85,10 +85,9 @@ export default function ContentDetailPage() {
     if (!token) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const result = await publishContentVariant(token, variantId);
-      setNotice(
+      toast.success(
         "approval_request_id" in result
           ? "Publish requires approval — an approval request was created."
           : "Published."
@@ -133,12 +132,6 @@ export default function ContentDetailPage() {
                 <Badge status={content.status}>{content.status}</Badge>
               </div>
               {content.summary && <p className="mt-3 text-sm text-muted">{content.summary}</p>}
-
-              {notice && (
-                <div className="mt-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-                  {notice}
-                </div>
-              )}
 
               <div className="mt-4 flex gap-2">
                 {(content.status === "IDEA" || content.status === "DRAFT") && (

@@ -22,15 +22,16 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 
 export default function OutboundPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [lists, setLists] = useState<OutboundListRow[]>([]);
   const [contacts, setContacts] = useState<OutboundContactRow[]>([]);
   const [sequences, setSequences] = useState<OutboundSequenceRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [listName, setListName] = useState("");
   const [selectedList, setSelectedList] = useState<string>("");
   const [contactEmail, setContactEmail] = useState("");
@@ -127,7 +128,7 @@ export default function OutboundPage() {
         channel: stepChannel,
         subject: stepSubject.trim() || undefined,
       });
-      setNotice("Step added.");
+      toast.success("Step added.");
       setAddingStepSequenceId(null);
       setStepDayOffset("0");
       setStepSubject("");
@@ -144,7 +145,7 @@ export default function OutboundPage() {
     setError(null);
     try {
       await enrollOutboundContact(token, sequenceId, enrollContactId);
-      setNotice("Contact enrolled.");
+      toast.success("Contact enrolled.");
       setEnrollingSequenceId(null);
       setEnrollContactId("");
     } catch (err) {
@@ -157,11 +158,10 @@ export default function OutboundPage() {
   async function handleExecuteDue() {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     setError(null);
     try {
       const result = await executeDueOutboundActivities(token);
-      setNotice(`${result.executed_activity_ids.length} activity(ies) executed.`);
+      toast.success(`${result.executed_activity_ids.length} activity(ies) executed.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to execute due activities.");
     } finally {
@@ -184,7 +184,6 @@ export default function OutboundPage() {
         </div>
 
         {error && <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>}
-        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-lg border border-border bg-surface p-4 shadow-card">

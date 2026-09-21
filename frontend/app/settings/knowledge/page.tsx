@@ -6,6 +6,7 @@ import AppShell from "@/components/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   KnowledgeAskResponse,
@@ -31,6 +32,7 @@ function titleOf(path: string): string {
 }
 
 export default function KnowledgePage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [files, setFiles] = useState<KnowledgeFileRow[] | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
@@ -39,7 +41,6 @@ export default function KnowledgePage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const [mode, setMode] = useState<"browse" | "search">("browse");
   const [queryDraft, setQueryDraft] = useState("");
@@ -69,7 +70,6 @@ export default function KnowledgePage() {
   function selectFile(f: KnowledgeFileRow) {
     setSelectedPath(f.path);
     setDraft(f.content);
-    setNotice(null);
   }
 
   async function handleSave() {
@@ -85,13 +85,13 @@ export default function KnowledgePage() {
       // embedding provider configured) shouldn't block the save itself.
       try {
         const indexResult = await indexKnowledgeFile(token, selectedPath);
-        setNotice(
+        toast.success(
           indexResult.status === "skipped_no_provider"
             ? "Saved. Not indexed for search — no AI provider configured."
             : "Saved and indexed for search."
         );
       } catch {
-        setNotice("Saved, but re-indexing for search failed — try again from the file list.");
+        toast.success("Saved, but re-indexing for search failed — try again from the file list.");
       }
       await load();
     } catch (err) {
@@ -209,11 +209,6 @@ export default function KnowledgePage() {
           </button>
         </div>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}

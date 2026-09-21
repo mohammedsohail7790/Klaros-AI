@@ -26,10 +26,12 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH"];
 
 export default function SEOPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [pages, setPages] = useState<SEOPageSummary[]>([]);
   const [keywords, setKeywords] = useState<SEOKeywordRow[]>([]);
@@ -37,7 +39,6 @@ export default function SEOPage() {
   const [reviews, setReviews] = useState<LocalReviewRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [service, setService] = useState("");
   const [location, setLocation] = useState("");
   const [busy, setBusy] = useState(false);
@@ -134,7 +135,7 @@ export default function SEOPage() {
       setOppService("");
       setOppLocation("");
       setOppRationale("");
-      setNotice("Opportunity recorded.");
+      toast.success("Opportunity recorded.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to record opportunity.");
     } finally {
@@ -190,13 +191,12 @@ export default function SEOPage() {
     if (!token || !responseText.trim()) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const result = await respondToLocalReview(token, reviewId, responseText.trim());
       if (result && "status" in result && (result as any).status === "pending_approval") {
-        setNotice("Responding requires approval — an ApprovalRequest has been created.");
+        toast.success("Responding requires approval — an ApprovalRequest has been created.");
       } else {
-        setNotice("Response posted.");
+        toast.success("Response posted.");
       }
       setRespondingReviewId(null);
       setResponseText("");
@@ -211,13 +211,12 @@ export default function SEOPage() {
   async function handlePublish(pageId: string) {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     try {
       const result = await publishSEOPage(token, pageId);
       if (result && "status" in result && (result as any).status === "pending_approval") {
-        setNotice("Publishing requires approval — an ApprovalRequest has been created.");
+        toast.success("Publishing requires approval — an ApprovalRequest has been created.");
       } else {
-        setNotice("Page published.");
+        toast.success("Page published.");
       }
       await load();
     } catch (err) {
@@ -245,8 +244,6 @@ export default function SEOPage() {
             Generate draft
           </button>
         </form>
-
-        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         {authLoading || loading ? (
           <Skeleton />

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/lib/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
   License,
@@ -29,11 +30,11 @@ const LICENSE_TYPES = [
 ];
 
 export default function CompliancePage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [licenses, setLicenses] = useState<License[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [detecting, setDetecting] = useState(false);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -70,12 +71,11 @@ export default function CompliancePage() {
   async function handleDetectExpiring() {
     if (!token) return;
     setDetecting(true);
-    setNotice(null);
     setError(null);
     try {
       const result = await detectExpiringLicenses(token);
       const total = result.newly_expiring_soon.length + result.newly_expired.length;
-      setNotice(
+      toast.success(
         total === 0
           ? "Nothing newly expiring or expired."
           : `${result.newly_expiring_soon.length} newly expiring soon, ${result.newly_expired.length} newly expired.`
@@ -123,7 +123,7 @@ export default function CompliancePage() {
     setError(null);
     try {
       await renewLicense(token, renewingId, { expiry_date: renewExpiry });
-      setNotice("Renewed.");
+      toast.success("Renewed.");
       setRenewingId(null);
       setRenewExpiry("");
       await load();
@@ -157,11 +157,6 @@ export default function CompliancePage() {
           before they lapse.
         </p>
 
-        {notice && (
-          <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
-            {notice}
-          </div>
-        )}
         {error && (
           <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}

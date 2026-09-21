@@ -21,9 +21,11 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 const STATUS_TABS = ["ALL", "PUBLISHED", "PROCESSING", "RETRYING", "PROCESSED", "FAILED", "DEAD_LETTER"];
 
 export default function EventsPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [status, setStatus] = useState("ALL");
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -31,7 +33,6 @@ export default function EventsPage() {
   const [metrics, setMetrics] = useState<EventWorkerMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<EventDetail | null>(null);
@@ -65,10 +66,9 @@ export default function EventsPage() {
   async function handleReplay(deadLetterId: string) {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     try {
       const result = await replayDeadLetter(token, deadLetterId);
-      setNotice(`Replay result: ${result.result}`);
+      toast.success(`Replay result: ${result.result}`);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to replay.");
@@ -105,8 +105,6 @@ export default function EventsPage() {
             Refresh
           </button>
         </div>
-
-        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
 
         {authLoading || loading ? (
           <Skeleton />

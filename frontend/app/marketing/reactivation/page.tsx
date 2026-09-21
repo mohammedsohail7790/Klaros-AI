@@ -18,13 +18,14 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 export default function ReactivationPage() {
+  const toast = useToast();
   const { token, user, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState<ReactivationCampaignRow[]>([]);
   const [candidates, setCandidates] = useState<ReactivationCandidateRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -67,10 +68,9 @@ export default function ReactivationPage() {
   async function handleIdentify(campaignId: string, kind: "customers" | "leads") {
     if (!token) return;
     setBusy(true);
-    setNotice(null);
     try {
       const result = kind === "customers" ? await identifyInactiveCustomers(token, campaignId) : await identifyUnbookedQualifiedLeads(token, campaignId);
-      setNotice(`${result.candidate_ids.length} new candidate(s) identified.`);
+      toast.success(`${result.candidate_ids.length} new candidate(s) identified.`);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to identify candidates.");
@@ -94,7 +94,6 @@ export default function ReactivationPage() {
           </button>
         </form>
 
-        {notice && <div className="mb-4 rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">{notice}</div>}
         {error && <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>}
 
         {authLoading || loading ? (
