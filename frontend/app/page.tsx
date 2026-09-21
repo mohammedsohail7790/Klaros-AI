@@ -143,6 +143,24 @@ export default function Home() {
         <HeroVisual />
       </section>
 
+      {/* Product facts, not vanity metrics — real capabilities of the
+          platform today, not fabricated customer/usage numbers. */}
+      <section className="border-y border-border bg-surface/60 px-6 py-10">
+        <div className="mx-auto grid max-w-4xl grid-cols-2 gap-8 text-center sm:grid-cols-4">
+          {[
+            { value: "100%", label: "AI actions policy-checked & audited" },
+            { value: "5", label: "modules in one operating system" },
+            { value: "3", label: "real integrations, live-verified" },
+            { value: "24/7", label: "Owner Attention Queue coverage" },
+          ].map((stat) => (
+            <div key={stat.label}>
+              <div className="font-display text-3xl text-accent">{stat.value}</div>
+              <div className="mt-1 text-xs leading-snug text-muted">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* How it works */}
       <section className="border-t border-border bg-surface px-6 py-20">
         <div className="mx-auto max-w-5xl">
