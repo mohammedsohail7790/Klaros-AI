@@ -319,6 +319,16 @@ class ReferralReward(TenantScopedMixin, Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=RewardStatus.PENDING)
     requested_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     approved_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    # Phase 10 (Medical Tourism, KLAROS_DOMAIN_EXTENSIBILITY_SPEC.md §3):
+    # additive, nullable columns closing the currency/commission-basis gap
+    # the Medical Tourism validation walkthrough identifies on this table.
+    # Generic, not vertical-specific — any reward can carry a currency and
+    # a computation basis; `app/models/medical_tourism.ReferralCommission`
+    # is the one entity that actually populates them today, but nothing
+    # here branches on a vertical. Both nullable/unset for every existing
+    # (pre-Phase-10) reward row and for non-Medical-Tourism tenants.
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)  # ISO 4217
+    commission_basis: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "referral_id", name="uq_referral_rewards_tenant_referral"),

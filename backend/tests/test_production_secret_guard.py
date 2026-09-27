@@ -56,3 +56,31 @@ async def test_development_env_is_unaffected_by_the_default_secret() -> None:
         _assert_production_secrets_are_real()  # must not raise — dev is allowed the default
     finally:
         settings.ENV, settings.JWT_SECRET = original_env, original_secret
+
+
+async def test_refuses_to_start_in_staging_with_default_secret() -> None:
+    """Phase 0 (KLAROS_PHASE_0_IMPLEMENTATION_PLAN.md §0.5): staging is a
+    network-reachable environment, exactly like production, so it must be
+    held to the same secret-hygiene bar — a staging deploy that silently
+    reuses the public default secret is just as forgeable as production."""
+    original_env, original_secret = settings.ENV, settings.JWT_SECRET
+    try:
+        settings.ENV = "staging"
+        settings.JWT_SECRET = _INSECURE_DEFAULT_JWT_SECRET
+        with pytest.raises(RuntimeError, match="insecure default"):
+            _assert_production_secrets_are_real()
+    finally:
+        settings.ENV, settings.JWT_SECRET = original_env, original_secret
+
+
+async def test_starts_in_staging_with_real_secrets() -> None:
+    original_env, original_secret = settings.ENV, settings.JWT_SECRET
+    original_cred_key = settings.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY
+    try:
+        settings.ENV = "staging"
+        settings.JWT_SECRET = "a-real-random-staging-secret"
+        settings.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY = "a-real-random-staging-credential-key"
+        _assert_production_secrets_are_real()  # must not raise
+    finally:
+        settings.ENV, settings.JWT_SECRET = original_env, original_secret
+        settings.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY = original_cred_key

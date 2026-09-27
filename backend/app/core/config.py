@@ -1,10 +1,39 @@
+import os
+import sys
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Credential-isolation guard (see the backend/.env incident documented in
+# PHASE_0_POSTGRES_VERIFICATION.md §2): pydantic-settings' `env_file` is a
+# fallback source used only for fields not already present in the real
+# process environment — so under a normal `pytest` run it silently filled
+# in any provider credential (OPENAI_API_KEY, STRIPE_SECRET_KEY,
+# TWILIO_*, SENDGRID_API_KEY, ...) a developer's own gitignored
+# `backend/.env` happened to contain, even though tests/conftest.py never
+# asked for those values. That once caused real outbound calls to
+# api.stripe.com / api.twilio.com during a test run using someone's local
+# credentials. Detecting "are we running under pytest" this way (rather
+# than requiring `ENV=test` to be set everywhere, which would also change
+# app/main.py's production/staging-only guards) is reliable at both
+# collection time and test-run time: pytest imports itself as a top-level
+# module before it ever imports conftest.py or a test module, and (pytest
+# 8+, this repo pins 9.0.3) also sets `PYTEST_VERSION` for the whole
+# process as soon as it starts, so either check alone is sufficient and
+# together they don't depend on pytest-version-specific behavior.
+_RUNNING_UNDER_PYTEST = "pytest" in sys.modules or os.environ.get("PYTEST_VERSION") is not None
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # Never auto-load the developer's real `backend/.env` while running
+    # under pytest — tests must be fully deterministic and provider-
+    # credential-free regardless of what a developer's own local `.env`
+    # contains, and this must not require deleting or renaming that file.
+    # `tests/conftest.py` is solely responsible for seeding every
+    # test-safe env var pytest needs (see its `os.environ.setdefault`
+    # calls); real deployments (dev/staging/production) are unaffected
+    # and continue to load `.env` exactly as before.
+    model_config = SettingsConfigDict(env_file=None if _RUNNING_UNDER_PYTEST else ".env", extra="ignore")
 
     ENV: str = "development"
     DATABASE_URL: str = "postgresql+asyncpg://klaros:klaros@localhost:5432/klaros"

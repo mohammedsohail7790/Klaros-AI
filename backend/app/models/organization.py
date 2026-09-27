@@ -10,6 +10,28 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class AutonomyLevel(StrEnum):
+    """DEPRECATED (Phase 0, KLAROS_PHASE_0_IMPLEMENTATION_PLAN.md §0.4):
+    this enum and Organization.autonomy_level below are stored and
+    defaulted, but READ BY NO ENFORCING CODE PATH anywhere in the
+    application — re-verified by a fresh grep across the whole backend as
+    part of this Phase 0 pass (KLAROS_ARCHITECTURE_REVIEW.md §5 first
+    flagged this; confirmed independently three times since). The real,
+    enforced AI kill switch is `Organization.ai_paused`, checked inside
+    `app.tools.registry.ToolRegistry.execute()` — see its docstring below.
+
+    Do not read this field to gate any behavior. Do not treat its presence
+    as evidence that per-organization autonomy tiers are implemented. A
+    future Agent-level autonomy model (Phase 7+, out of Phase 0's scope —
+    see KLAROS_FINAL_AGENT_MODEL.md) will supersede this field with real,
+    enforced per-agent permission/autonomy scoping; until that ships, this
+    column is kept (not dropped — no migration removes it in Phase 0) only
+    for backward compatibility with anything already writing to it (e.g.
+    onboarding/settings UI that sets a value a human expects to "stick"),
+    and CI (see .github/workflows/ci.yml's autonomy-level guardrail step)
+    fails any PR that adds a new *read* of this field from application
+    logic, to stop it from being mistaken for functional under time
+    pressure."""
+
     LEVEL_0 = "LEVEL_0"  # AI only recommends
     LEVEL_1 = "LEVEL_1"  # AI can perform low-risk actions
     LEVEL_2 = "LEVEL_2"  # AI can perform configured actions automatically
@@ -26,6 +48,11 @@ class Organization(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # See app/services/billing_service.py::PLAN_LIMITS for what each tier
     # actually gates.
     plan: Mapped[str] = mapped_column(String(50), nullable=False, default="starter")
+    # DEPRECATED — unenforced/decorative. See AutonomyLevel's docstring
+    # above for the full explanation and `ai_paused` below for the real,
+    # enforced kill switch. Column kept for backward compatibility only;
+    # not read by any enforcing code path. Do not build new functionality
+    # against this field.
     autonomy_level: Mapped[str] = mapped_column(
         String(20), nullable=False, default=AutonomyLevel.LEVEL_0
     )

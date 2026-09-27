@@ -37,6 +37,11 @@ class ListGoogleCalendars(Tool):
     input_schema = ListGoogleCalendarsInput
     output_schema = ListGoogleCalendarsOutput
     required_permission = Permission.MANAGE_INTEGRATIONS
+    # Phase 8 idempotency audit: verified naturally idempotent — a pure
+    # read-only GET (GoogleCalendarSyncService.list_calendars issues no
+    # write of any kind, internal or external). See
+    # PHASE_8_TOOL_IDEMPOTENCY_AUDIT.md.
+    supports_idempotency = True
 
     def __init__(self, sync_service: GoogleCalendarSyncService) -> None:
         self._sync_service = sync_service
@@ -71,6 +76,10 @@ class CheckGoogleAvailability(Tool):
     input_schema = CheckGoogleAvailabilityInput
     output_schema = CheckGoogleAvailabilityOutput
     required_permission = Permission.READ_APPOINTMENTS
+    # Phase 8 idempotency audit: verified naturally idempotent — a pure
+    # read-only free/busy GET query, no write of any kind. See
+    # PHASE_8_TOOL_IDEMPOTENCY_AUDIT.md.
+    supports_idempotency = True
 
     def __init__(self, sync_service: GoogleCalendarSyncService) -> None:
         self._sync_service = sync_service
@@ -112,6 +121,20 @@ class SyncAppointmentToGoogle(Tool):
     input_schema = SyncAppointmentToGoogleInput
     output_schema = SyncAppointmentToGoogleOutput
     required_permission = Permission.CREATE_APPOINTMENT
+    # Phase 8 idempotency audit: deliberately LEFT False despite this
+    # class's own docstring claim above. The Google Calendar API's
+    # events.insert has no provider-documented idempotency-key/dedup
+    # mechanism, and GoogleCalendarSyncService.sync_appointment's
+    # pg_advisory_xact_lock only serializes CONCURRENT callers — it does
+    # not protect a crash between "Google accepted the real create-event
+    # call" and "appointment.external_id committed", after which a retry
+    # would create a second real Google Calendar event. The class
+    # docstring's "never creates a duplicate" is accurate for the
+    # concurrency case that motivated the advisory-lock fix, but is an
+    # overclaim for the crash-then-retry case this phase's idempotency
+    # contract is actually about — per the strict no-false-idempotency
+    # rule, that gap is enough to keep this False. See
+    # PHASE_8_TOOL_IDEMPOTENCY_AUDIT.md.
 
     def __init__(self, sync_service: GoogleCalendarSyncService) -> None:
         self._sync_service = sync_service
@@ -162,6 +185,11 @@ class ImportFromGoogleCalendar(Tool):
     input_schema = ImportFromGoogleCalendarInput
     output_schema = ImportFromGoogleCalendarOutput
     required_permission = Permission.MANAGE_INTEGRATIONS
+    # Phase 8 idempotency audit: deliberately LEFT False — same reasoning
+    # as finance.import_from_quickbooks (ImportFromQuickBooks): the
+    # docstring's steady-state dedup claim was not verified to be
+    # per-record-atomic across a crash mid-batch. Kept at the conservative
+    # default. See PHASE_8_TOOL_IDEMPOTENCY_AUDIT.md.
 
     def __init__(self, sync_service: GoogleCalendarSyncService) -> None:
         self._sync_service = sync_service

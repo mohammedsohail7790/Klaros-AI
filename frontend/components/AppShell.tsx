@@ -37,6 +37,9 @@ import {
   Search,
   Menu,
   X,
+  Globe,
+  Sparkles,
+  Bot,
 } from "lucide-react";
 import { UserResponse, logout as logoutRequest } from "@/lib/api";
 import NotificationBell from "./NotificationBell";
@@ -47,6 +50,7 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/morning-brief", label: "Morning Brief", icon: Sunrise },
+      { href: "/business", label: "Build Your Business", icon: Sparkles },
     ],
   },
   {
@@ -80,6 +84,10 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
     ],
   },
   {
+    label: "Website",
+    items: [{ href: "/website", label: "Website Builder", icon: Globe }],
+  },
+  {
     label: "Marketing",
     items: [
       { href: "/marketing", label: "Marketing", icon: Megaphone },
@@ -107,6 +115,7 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
   {
     label: "AI & Automation",
     items: [
+      { href: "/agents", label: "Agents", icon: Bot },
       { href: "/events", label: "Events", icon: Radio },
       { href: "/automations", label: "Automations", icon: Workflow },
       { href: "/approvals", label: "Approvals", icon: CheckSquare },

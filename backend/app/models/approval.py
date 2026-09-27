@@ -71,3 +71,19 @@ class ApprovalRequest(TenantScopedMixin, Base):
     # execution_status, which is the actual concurrency guarantee — see
     # ApprovalExecutionService). Kept for traceability/audit correlation.
     idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # --- Added Phase 4 (Agent Runtime): additive, nullable columns only —
+    # every pre-existing row/call-site is unaffected. Populated only when
+    # `requested_by_type == ActorType.AGENT`, so ApprovalExecutionService's
+    # `_reconstruct_context` (approval_execution_service.py) can rebuild
+    # the exact ExecutionContext.agent_id/agent_version_id an Agent-
+    # initiated call needs to pass registry.py's new agent-governance
+    # checks again on resume — the same "reconstruct, never trust a
+    # client-supplied value" pattern already used for
+    # requested_by_role/requested_by_id. `agent_execution_id` closes the
+    # loop the other way: it lets the approval-resume path update the
+    # originating AgentExecution's status (WAITING_APPROVAL ->
+    # COMPLETED/FAILED) without a second lookup mechanism.
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    agent_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    agent_execution_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)

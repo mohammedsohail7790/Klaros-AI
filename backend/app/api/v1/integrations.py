@@ -7,9 +7,18 @@ from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, get_current_user, require_permission
 from app.api.tool_deps import execution_context, get_tool_registry, raise_http_for_tool_error
-from app.api.tool_deps_integrations import get_integration_connection_service
+from app.api.tool_deps_integrations import (
+    get_integration_catalog_service,
+    get_integration_connection_service,
+)
 from app.integrations.adapters import ALL_ADAPTERS
 from app.models.rbac import Permission
+from app.services.integration_catalog_service import (
+    CatalogProviderAlreadyExistsError,
+    CatalogProviderNotFoundError,
+    IntegrationCatalogService,
+    derive_tenant_status,
+)
 from app.services.integration_connection_service import (
     ConnectionNotFoundError,
     IntegrationConnectionService,
@@ -153,3 +162,135 @@ async def import_from_quickbooks(
     except ToolError as exc:
         raise_http_for_tool_error(exc)
     return output.model_dump(mode="json")
+
+
+# --- Phase 1 (KLAROS_PHASE_1_IMPLEMENTATION_PLAN.md §1.2): the
+# IntegrationProviderCatalog sub-route. Deliberately nested under the
+# existing `/integrations` router rather than a new top-level router — see
+# KLAROS_FINAL_API_ARCHITECTURE.md's "Duplication check": this keeps the
+# tenant-connection and catalog-reference concerns visibly related without
+# merging their permission models. `IntegrationProviderCatalog` is
+# tenant-independent reference data; only the merge with the requesting
+# tenant's own `IntegrationConnection` state (below) is tenant-scoped. ---
+
+
+class CatalogEntryResponse(BaseModel):
+    provider_key: str
+    display_name: str
+    category: str
+    implementation_status: str
+    auth_shape: str
+    description: str | None
+    recommended_for_verticals: list[str]
+    health_check_strategy_ref: str | None
+    # Derived, per-request field — never persisted on the catalog row
+    # itself. See app.services.integration_catalog_service.derive_tenant_status:
+    # a STUB/WEBHOOK_NORMALIZER provider can never render CONNECTED here,
+    # regardless of what any IntegrationConnection row says.
+    tenant_status: str
+
+    @classmethod
+    def from_model(cls, entry, *, connection_status: str | None) -> "CatalogEntryResponse":
+        return cls(
+            provider_key=entry.provider_key,
+            display_name=entry.display_name,
+            category=entry.category,
+            implementation_status=entry.implementation_status,
+            auth_shape=entry.auth_shape,
+            description=entry.description,
+            recommended_for_verticals=list(entry.recommended_for_verticals or []),
+            health_check_strategy_ref=entry.health_check_strategy_ref,
+            tenant_status=derive_tenant_status(entry.implementation_status, connection_status),
+        )
+
+
+@router.get("/catalog", response_model=list[CatalogEntryResponse])
+async def list_integration_catalog(
+    category: str | None = None,
+    current_user: CurrentUser = Depends(get_current_user),
+    catalog_service: IntegrationCatalogService = Depends(get_integration_catalog_service),
+    connection_service: IntegrationConnectionService = Depends(get_integration_connection_service),
+) -> list[CatalogEntryResponse]:
+    """Read merges the tenant-independent catalog with the CALLING
+    tenant's own connection state only — never another tenant's. This is
+    the property tests/test_integration_provider_catalog.py proves
+    explicitly (a catalog read must never expose or depend on any specific
+    OTHER tenant's IntegrationConnection row)."""
+    entries = await catalog_service.list_catalog(category=category)
+    connections = await connection_service.list_connections(current_user.tenant_id)
+    connection_by_provider = {c.provider: c.status for c in connections}
+    return [
+        CatalogEntryResponse.from_model(e, connection_status=connection_by_provider.get(e.provider_key))
+        for e in entries
+    ]
+
+
+@router.get("/catalog/{provider_key}", response_model=CatalogEntryResponse)
+async def get_integration_catalog_entry(
+    provider_key: str,
+    current_user: CurrentUser = Depends(get_current_user),
+    catalog_service: IntegrationCatalogService = Depends(get_integration_catalog_service),
+    connection_service: IntegrationConnectionService = Depends(get_integration_connection_service),
+) -> CatalogEntryResponse:
+    try:
+        entry = await catalog_service.get_by_provider_key(provider_key)
+    except CatalogProviderNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    connection = await connection_service.get_connection(current_user.tenant_id, provider_key)
+    return CatalogEntryResponse.from_model(
+        entry, connection_status=connection.status if connection is not None else None
+    )
+
+
+class CatalogEntryWriteRequest(BaseModel):
+    display_name: str
+    category: str
+    implementation_status: str
+    auth_shape: str
+    description: str | None = None
+    recommended_for_verticals: list[str] = []
+    health_check_strategy_ref: str | None = None
+
+
+@router.put("/catalog/{provider_key}", response_model=CatalogEntryResponse)
+async def upsert_integration_catalog_entry(
+    provider_key: str,
+    body: CatalogEntryWriteRequest,
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_INTEGRATIONS_CATALOG)),
+    catalog_service: IntegrationCatalogService = Depends(get_integration_catalog_service),
+) -> CatalogEntryResponse:
+    """Platform-admin catalog curation. NOTE (known limitation, recorded in
+    PHASE_1_IMPLEMENTATION_LOG.md): this codebase has no cross-tenant
+    "platform admin" role distinct from a tenant's own OWNER/ADMIN — the
+    `MANAGE_INTEGRATIONS_CATALOG` permission is granted to OWNER/ADMIN
+    within the existing per-organization RBAC model (see
+    app/models/rbac.py), the closest existing approximation. A genuine
+    platform-wide admin boundary, separate from any single tenant's role
+    grants, is out of Phase 1's scope and deferred."""
+    try:
+        entry = await catalog_service.update_entry(
+            provider_key,
+            display_name=body.display_name,
+            category=body.category,
+            implementation_status=body.implementation_status,
+            auth_shape=body.auth_shape,
+            description=body.description,
+            recommended_for_verticals=body.recommended_for_verticals,
+            health_check_strategy_ref=body.health_check_strategy_ref,
+        )
+    except CatalogProviderNotFoundError:
+        try:
+            entry = await catalog_service.create_entry(
+                provider_key=provider_key,
+                display_name=body.display_name,
+                category=body.category,
+                implementation_status=body.implementation_status,
+                auth_shape=body.auth_shape,
+                description=body.description,
+                recommended_for_verticals=body.recommended_for_verticals,
+                health_check_strategy_ref=body.health_check_strategy_ref,
+            )
+        except CatalogProviderAlreadyExistsError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    del current_user
+    return CatalogEntryResponse.from_model(entry, connection_status=None)

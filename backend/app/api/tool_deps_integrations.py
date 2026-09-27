@@ -30,6 +30,7 @@ from app.db.session import async_session_maker
 from app.integrations.google_calendar_client import GoogleCalendarAPIError, GoogleCalendarClient
 from app.integrations.quickbooks_client import QuickBooksAPIError, QuickBooksClient
 from app.integrations.stripe_client import StripeClient
+from app.services.integration_catalog_service import IntegrationCatalogService
 from app.services.integration_connection_service import IntegrationConnectionService
 from app.services.notification_service import NotificationService
 
@@ -97,3 +98,11 @@ def get_integration_connection_service() -> IntegrationConnectionService:
     service.register_verifier("quickbooks", _quickbooks_verifier)
     service.register_verifier("google_calendar", _google_calendar_verifier)
     return service
+
+
+@lru_cache
+def get_integration_catalog_service() -> IntegrationCatalogService:
+    """Phase 1 (KLAROS_PHASE_1_IMPLEMENTATION_PLAN.md §1.2): the
+    IntegrationProviderCatalog service — reference data, unrelated to the
+    tenant-scoped verifiers registered above."""
+    return IntegrationCatalogService(async_session_maker)

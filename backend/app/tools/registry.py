@@ -137,6 +137,18 @@ class ToolRegistry:
         """
         tool = self.get(name)
 
+        if context.actor_type == ActorType.AGENT:
+            # Phase 4 (KLAROS_FINAL_AGENT_MODEL.md "Governance chain"
+            # steps 4-5): two new pre-checks, inserted before every
+            # existing check below (including the kill switch and RBAC
+            # checks that already run) — never replacing or reordering
+            # them. Both can only NARROW what would otherwise be allowed;
+            # neither can widen it.
+            await self._check_agent_tool_permission(name, context)
+            policy_ceiling = await self._check_agent_autonomy(name, context)
+        else:
+            policy_ceiling = None
+
         if context.actor_type != ActorType.USER and context.tenant_id is not None:
             org = await self._get_organization(context.tenant_id)
             if org is not None and org.ai_paused:
@@ -186,6 +198,15 @@ class ToolRegistry:
             raise ToolValidationError(str(exc)) from exc
 
         policy = await self._policy_service.resolve(context.tenant_id, name)
+
+        if policy_ceiling is not None:
+            # Stricter of the tool's own resolved policy and the agent's
+            # autonomy-tier ceiling wins — composition can only narrow,
+            # never widen (KLAROS_FINAL_AGENT_MODEL.md). Strictness order:
+            # BLOCKED > APPROVAL_REQUIRED > AUTO.
+            _STRICTNESS = {ActionPolicy.AUTO: 0, ActionPolicy.APPROVAL_REQUIRED: 1, ActionPolicy.BLOCKED: 2}
+            if _STRICTNESS[policy_ceiling] > _STRICTNESS[policy]:
+                policy = policy_ceiling
 
         if policy == ActionPolicy.BLOCKED:
             await self._audit(
@@ -239,6 +260,14 @@ class ToolRegistry:
                 status=ApprovalStatus.PENDING,
                 correlation_id=context.correlation_id,
                 idempotency_key=f"approval-exec-{context.correlation_id or uuid.uuid4()}",
+                # Phase 4: carried through so ApprovalExecutionService can
+                # reconstruct the agent-governed ExecutionContext on resume
+                # (see approval.py's Phase 4 column comment) and so the
+                # originating AgentExecution can be found and updated
+                # without a second lookup mechanism.
+                agent_id=context.agent_id,
+                agent_version_id=context.agent_version_id,
+                agent_execution_id=context.correlation_id if context.actor_type == ActorType.AGENT else None,
             )
             session.add(request)
             await session.commit()
@@ -258,6 +287,61 @@ class ToolRegistry:
                 correlation_id=context.correlation_id,
             )
         return request_id
+
+    async def _check_agent_tool_permission(self, tool_name: str, context: ExecutionContext) -> None:
+        """KLAROS_FINAL_AGENT_MODEL.md governance chain step 4. Checks the
+        immutable `AgentVersion.tool_permissions_snapshot` for the exact
+        version this call is running under — never the live
+        `AgentToolPermission` table — so a published version's authorized
+        tool set can never silently change after the fact (Version
+        Immutability). Deny-by-default: no `agent_version_id` context, no
+        snapshot, or the tool simply absent from it, all reject."""
+        from app.models.agent import Agent, AgentStatus, AgentVersion, AgentVersionStatus
+
+        if context.agent_id is None or context.agent_version_id is None:
+            raise ToolPermissionError("Agent-actor tool call missing agent identity")
+
+        async with self._session_factory() as session:
+            agent = await session.get(Agent, context.agent_id)
+            if agent is None or agent.tenant_id != context.tenant_id:
+                raise ToolPermissionError("Unknown agent")
+            if agent.status != AgentStatus.ACTIVE:
+                raise ToolPermissionError(f"Agent is not ACTIVE (status={agent.status})")
+
+            version = await session.get(AgentVersion, context.agent_version_id)
+            if version is None or version.tenant_id != context.tenant_id or version.agent_id != agent.id:
+                raise ToolPermissionError("Unknown agent version")
+            if version.status != AgentVersionStatus.PUBLISHED:
+                raise ToolPermissionError(f"Agent version is not PUBLISHED (status={version.status})")
+            if agent.current_version_id != version.id:
+                raise ToolPermissionError("Only the agent's current active version may execute")
+
+        granted = {entry.get("tool_name") for entry in (version.tool_permissions_snapshot or [])}
+        if tool_name not in granted:
+            raise ToolPermissionError(
+                f"Agent '{agent.id}' is not granted tool '{tool_name}' (deny-by-default)"
+            )
+
+    async def _check_agent_autonomy(self, tool_name: str, context: ExecutionContext) -> ActionPolicy | None:
+        """KLAROS_FINAL_AGENT_MODEL.md governance chain step 5. Returns the
+        autonomy-tier's policy CEILING for this call — composed with (never
+        replacing) the tool's own resolved ActionPolicy in `execute()`
+        above, always taking whichever is stricter. See
+        app/models/agent.py::AgentAutonomyTier's docstring for the exact
+        per-tier semantics this implements."""
+        from app.models.agent import Agent, AgentAutonomyTier
+
+        async with self._session_factory() as session:
+            agent = await session.get(Agent, context.agent_id)
+        if agent is None:
+            raise ToolPermissionError("Unknown agent")
+
+        tier = agent.autonomy_tier
+        if tier in (AgentAutonomyTier.OBSERVE, AgentAutonomyTier.RECOMMEND):
+            return ActionPolicy.BLOCKED
+        if tier == AgentAutonomyTier.EXECUTE_WITH_APPROVAL:
+            return ActionPolicy.APPROVAL_REQUIRED
+        return ActionPolicy.AUTO
 
     async def _get_organization(self, tenant_id: uuid.UUID):
         from app.models.organization import Organization

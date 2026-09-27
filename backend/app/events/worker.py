@@ -178,6 +178,7 @@ async def _standalone_main() -> None:
     from app.api.tool_deps import (
         get_automation_service, get_morning_brief_service, get_tool_registry, get_wired_event_bus,
     )
+    from app.api.tool_deps_agents import get_agent_recovery_service, get_agent_trigger_service
     from app.core.config import get_settings
     from app.core.error_monitoring import init_error_monitoring
     from app.core.logging import configure_logging
@@ -185,10 +186,16 @@ async def _standalone_main() -> None:
     configure_logging()
     init_error_monitoring()
     settings = get_settings()
-    bus = get_wired_event_bus()
+    bus = get_wired_event_bus()  # also registers the Phase 6 agent-event-trigger handler
     tool_registry = get_tool_registry()
     morning_brief_service = get_morning_brief_service(tool_registry, bus)
     automation_service = get_automation_service(tool_registry)
+    # Phase 6 (Agent Runtime Reliability): the SAME piggyback-on-this-tick
+    # mechanism the Automation Engine and Morning Brief already use — see
+    # agent_recovery_service.py/agent_trigger_service.py's module
+    # docstrings for why no new poller/scheduler was introduced.
+    agent_recovery_service = get_agent_recovery_service(tool_registry)
+    agent_trigger_service = get_agent_trigger_service(tool_registry)
 
     shutdown_event = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -206,6 +213,8 @@ async def _standalone_main() -> None:
         on_tick=combine_on_tick(
             morning_brief_service.check_and_generate_scheduled,
             automation_service.check_and_dispatch_scheduled,
+            agent_trigger_service.check_and_dispatch_scheduled,
+            agent_recovery_service.sweep_once,
         ),
     )
     await worker.run_forever(shutdown_event)

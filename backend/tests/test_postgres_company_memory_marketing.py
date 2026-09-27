@@ -126,9 +126,20 @@ async def test_active_memory_uniqueness_constraint_intact_for_marketing_consumer
 @requires_real_postgres
 async def test_alembic_head_unchanged_this_phase() -> None:
     """No schema change was needed for this phase — confirms the real
-    database is at the same head Phase 14 left it at."""
+    database's applied migration matches the codebase's live Alembic head
+    (whatever that head currently is, not a hardcoded revision id frozen
+    at the phase this test was written in — the intent is "the DB is
+    fully migrated," which a stale literal silently stops verifying every
+    time a later phase adds a new migration)."""
+    from pathlib import Path
+
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
     from sqlalchemy import text
+
+    alembic_ini = Path(__file__).resolve().parent.parent / "alembic.ini"
+    expected_head = ScriptDirectory.from_config(Config(str(alembic_ini))).get_current_head()
 
     async with async_session_maker() as session:
         result = (await session.execute(text("SELECT version_num FROM alembic_version"))).scalar_one()
-    assert result == "0034"
+    assert result == expected_head

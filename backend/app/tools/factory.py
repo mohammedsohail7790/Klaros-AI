@@ -724,4 +724,29 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     # Phase 20: the second scenario, same service, same governed boundary.
     registry.register(ProposeInvoiceFollowup(ai_next_action_service))
 
+    # --- Phase 10: Medical Tourism vertical extension. Tenant-scoped
+    # domain tools, registered on the same ToolRegistry as every other
+    # domain — no Medical Tourism code path bypasses permission/tenant/
+    # schema/policy/audit enforcement. See PHASE_10_MEDICAL_TOURISM_
+    # DOMAIN_DESIGN.md and app/services/medical_tourism_service.py. ---
+    from app.services.medical_tourism_service import MedicalTourismService
+    from app.tools.builtin.medical_tourism_tools import (
+        CreateProcedure,
+        CreateProvider,
+        CreateProviderOffering,
+        GetProvider,
+        ListProviderOfferings,
+        SearchProcedures,
+        SearchProviders,
+    )
+
+    medical_tourism_service = MedicalTourismService(session_factory)
+    registry.register(SearchProviders(medical_tourism_service))
+    registry.register(GetProvider(medical_tourism_service))
+    registry.register(SearchProcedures(medical_tourism_service))
+    registry.register(ListProviderOfferings(medical_tourism_service))
+    registry.register(CreateProvider(medical_tourism_service))
+    registry.register(CreateProcedure(medical_tourism_service))
+    registry.register(CreateProviderOffering(medical_tourism_service))
+
     return registry

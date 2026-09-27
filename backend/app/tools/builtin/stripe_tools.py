@@ -66,6 +66,18 @@ class CreateStripeCheckoutSession(Tool):
     input_schema = CreateStripeCheckoutInput
     output_schema = CreateStripeCheckoutOutput
     required_permission = Permission.RECORD_PAYMENT
+    # Phase 7 (Agent Runtime Reliability II): verified true — Stripe's own
+    # "Idempotency-Key" header (app/integrations/stripe_client.py) makes a
+    # retried `create_checkout_session` call with the same key resolve to
+    # Stripe's cached original response, never a second Checkout Session.
+    # This tool already derives its own key from business identity
+    # (invoice_id + amount_due, see below) rather than from
+    # `context.idempotency_key` — a deliberately STRONGER guarantee than a
+    # per-agent-step key, since it also dedupes a human's manual retry
+    # through an entirely different AgentExecution for the same invoice,
+    # not only a crash-recovery retry of the same step. Proven by
+    # `tests/test_stripe_client.py` and this phase's own recovery tests.
+    supports_idempotency = True
 
     def __init__(self, session_factory, connection_service: IntegrationConnectionService) -> None:
         self._session_factory = session_factory

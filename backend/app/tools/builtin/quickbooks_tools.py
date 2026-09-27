@@ -64,6 +64,16 @@ class SyncInvoiceToQuickBooks(Tool):
     input_schema = SyncInvoiceToQuickBooksInput
     output_schema = SyncInvoiceToQuickBooksOutput
     required_permission = Permission.SEND_INVOICE
+    # Phase 8 idempotency audit: deliberately LEFT False. Unlike the
+    # payment/refund sync tools below, QuickBooksClient.create_invoice
+    # accepts no `request_id`/`?requestid=` parameter at all (verified by
+    # direct inspection of app/integrations/quickbooks_client.py) — there
+    # is no provider-side dedup mechanism to reuse. QuickBooksSyncService.
+    # sync_invoice's pg_advisory_xact_lock only serializes CONCURRENT
+    # callers; it does not protect a crash between "QuickBooks accepted
+    # the real create_invoice call" and "invoice.external_id committed" —
+    # a retry after such a crash would create a second real QuickBooks
+    # invoice. See PHASE_8_TOOL_IDEMPOTENCY_AUDIT.md.
 
     def __init__(self, sync_service: QuickBooksSyncService) -> None:
         self._sync_service = sync_service
@@ -110,6 +120,17 @@ class SyncDepositPaymentToQuickBooks(Tool):
     input_schema = SyncDepositPaymentToQuickBooksInput
     output_schema = SyncDepositPaymentToQuickBooksOutput
     required_permission = Permission.SEND_INVOICE
+    # Phase 8 idempotency audit: verified — QuickBooksPaymentSyncService.
+    # sync_deposit_payment passes a deterministic request_id
+    # (f"klaros-deposit-payment-{payment.id}") through to
+    # QuickBooksClient.create_payment's `?requestid=` query param, Intuit's
+    # own documented write-deduplication mechanism (see
+    # app/integrations/quickbooks_client.py's create_payment docstring),
+    # plus a pg_advisory_xact_lock serializing concurrent syncs of the same
+    # payment. See PHASE_8_TOOL_IDEMPOTENCY_AUDIT.md for the full contrast
+    # with SyncInvoiceToQuickBooks (NOT marked — create_invoice has no such
+    # mechanism).
+    supports_idempotency = True
 
     def __init__(self, payment_sync_service: QuickBooksPaymentSyncService) -> None:
         self._payment_sync_service = payment_sync_service
@@ -153,6 +174,12 @@ class SyncInvoicePaymentToQuickBooks(Tool):
     input_schema = SyncInvoicePaymentToQuickBooksInput
     output_schema = SyncInvoicePaymentToQuickBooksOutput
     required_permission = Permission.SEND_INVOICE
+    # Phase 8 idempotency audit: verified — same mechanism as
+    # SyncDepositPaymentToQuickBooks (deterministic
+    # f"klaros-invoice-payment-{payment.id}" request_id ->
+    # QuickBooksClient.create_payment's `?requestid=` dedup + advisory
+    # lock). See PHASE_8_TOOL_IDEMPOTENCY_AUDIT.md.
+    supports_idempotency = True
 
     def __init__(self, payment_sync_service: QuickBooksPaymentSyncService) -> None:
         self._payment_sync_service = payment_sync_service
@@ -199,6 +226,11 @@ class SyncRefundToQuickBooks(Tool):
     input_schema = SyncRefundToQuickBooksInput
     output_schema = SyncRefundToQuickBooksOutput
     required_permission = Permission.SEND_INVOICE
+    # Phase 8 idempotency audit: verified — QuickBooksRefundSyncService
+    # passes a deterministic f"klaros-refund-{refund.id}" request_id to
+    # QuickBooksClient.create_refund_receipt's `?requestid=` dedup, plus an
+    # advisory lock. See PHASE_8_TOOL_IDEMPOTENCY_AUDIT.md.
+    supports_idempotency = True
 
     def __init__(self, refund_sync_service: QuickBooksRefundSyncService) -> None:
         self._refund_sync_service = refund_sync_service
@@ -254,6 +286,15 @@ class ImportFromQuickBooks(Tool):
     input_schema = ImportFromQuickBooksInput
     output_schema = ImportFromQuickBooksOutput
     required_permission = Permission.MANAGE_INTEGRATIONS
+    # Phase 8 idempotency audit: deliberately LEFT False. The docstring's
+    # "idempotent: a repeat call only pulls in what's new" claim describes
+    # steady-state behavior (already-imported rows are skipped via
+    # external_id linkage) but was NOT verified to hold per-record across a
+    # crash mid-batch (whether each imported record's Klaros-side
+    # persistence is atomic with the read that decided to import it). Per
+    # the strict no-false-idempotency rule, an unverified docstring claim
+    # is not sufficient evidence — kept at the conservative default. See
+    # PHASE_8_TOOL_IDEMPOTENCY_AUDIT.md.
 
     def __init__(self, import_service: QuickBooksImportService) -> None:
         self._import_service = import_service

@@ -214,3 +214,149 @@ body::before {
     @apply border border-white/10 bg-foreground/70 text-white shadow-popover backdrop-blur-xl;
   }
 }
+
+/* Phase 12: Website Builder public runtime (frontend/app/w/[tenantId]).
+   Deliberately plain CSS (not Tailwind @apply) because every color/font/
+   spacing value here comes from the tenant's own ThemeTokens
+   (backend/app/schemas/website_specification.py) at request time via CSS
+   custom properties set inline on .klaros-site-root — there is no
+   Tailwind class for an arbitrary tenant-chosen hex color. This is
+   layout/typography only: no raw HTML from spec content is ever injected
+   here (see components/website/ComponentRegistry.tsx). */
+.klaros-site-root {
+  --klaros-site-primary: #1a1a2e;
+  --klaros-site-secondary: #e94560;
+  --klaros-site-bg: #ffffff;
+  --klaros-site-text: #1a1a2e;
+  --klaros-site-heading-font: system-ui;
+  --klaros-site-body-font: system-ui;
+  --klaros-site-radius: 8px;
+  --klaros-site-max-width: 1200px;
+  background: var(--klaros-site-bg);
+  color: var(--klaros-site-text);
+  font-family: var(--klaros-site-body-font), system-ui, sans-serif;
+  min-height: 100vh;
+}
+.klaros-site-root h1,
+.klaros-site-root h2,
+.klaros-site-root h3 {
+  font-family: var(--klaros-site-heading-font), system-ui, sans-serif;
+  color: var(--klaros-site-text);
+}
+.klaros-site-nav {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  max-width: var(--klaros-site-max-width);
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem;
+}
+.klaros-site-nav a {
+  color: var(--klaros-site-text);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.klaros-site-nav a:hover {
+  color: var(--klaros-site-primary);
+}
+.klaros-site-hero,
+.klaros-site-text,
+.klaros-site-cta-block,
+.klaros-site-features,
+.klaros-site-items,
+.klaros-site-contact {
+  max-width: var(--klaros-site-max-width);
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem;
+}
+.klaros-site-hero h1 {
+  font-size: 2.5rem;
+  margin: 0 0 1rem;
+}
+.klaros-site-cta,
+.klaros-site-contact-form button {
+  display: inline-block;
+  background: var(--klaros-site-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--klaros-site-radius);
+  padding: 0.65rem 1.4rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+.klaros-site-cta-block {
+  background: color-mix(in srgb, var(--klaros-site-secondary) 10%, transparent);
+  border-radius: var(--klaros-site-radius);
+}
+.klaros-site-feature-grid,
+.klaros-site-item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+.klaros-site-feature,
+.klaros-site-item-card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--klaros-site-radius);
+  padding: 1.25rem;
+}
+.klaros-site-item-meta {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+.klaros-site-empty {
+  opacity: 0.7;
+  font-style: italic;
+}
+.klaros-site-contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 480px;
+}
+.klaros-site-contact-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+.klaros-site-contact-field input,
+.klaros-site-contact-field textarea {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--klaros-site-radius);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+.klaros-site-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.klaros-site-form-error {
+  color: #b3261e;
+  font-size: 0.85rem;
+}
+.klaros-site-footer {
+  max-width: var(--klaros-site-max-width);
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 0.85rem;
+  opacity: 0.8;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+.klaros-site-footer nav {
+  display: flex;
+  gap: 1rem;
+}
+.klaros-site-footer a {
+  color: inherit;
+}

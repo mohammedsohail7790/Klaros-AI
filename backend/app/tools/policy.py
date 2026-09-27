@@ -391,6 +391,21 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "insights.get_latest_morning_brief": ActionPolicy.AUTO,
     "insights.execute_recommendation": ActionPolicy.AUTO,
     "insights.dismiss_recommendation": ActionPolicy.AUTO,
+
+    # Phase 10 (Medical Tourism vertical extension): read-only search/get
+    # tools and internal domain-directory writes, same AUTO tier as their
+    # exact analogues elsewhere in this table (crm.create_lead,
+    # crm.search_leads/search_customers, retention.create_referral) — none
+    # of these tools move real money or call an external provider; each
+    # write has its own DB-level dedup (idempotency_key / provider+
+    # procedure uniqueness), same as those analogues.
+    "medical_tourism.search_providers": ActionPolicy.AUTO,
+    "medical_tourism.get_provider": ActionPolicy.AUTO,
+    "medical_tourism.search_procedures": ActionPolicy.AUTO,
+    "medical_tourism.list_provider_offerings": ActionPolicy.AUTO,
+    "medical_tourism.create_provider": ActionPolicy.AUTO,
+    "medical_tourism.create_procedure": ActionPolicy.AUTO,
+    "medical_tourism.create_provider_offering": ActionPolicy.AUTO,
 }
 
 

@@ -2,6 +2,13 @@ from app.models.approval import ApprovalRequest
 from app.models.audit_log import AuditLog
 from app.models.communication import CommunicationLog
 from app.models.compliance import License
+from app.models.integration_catalog import IntegrationProviderCatalog
+from app.models.vertical_extension import OrganizationVerticalExtension, VerticalExtension
+from app.models.business_discovery import DiscoverySession, DiscoveryTurn
+from app.models.business_blueprint import BusinessBlueprint, BlueprintSection, BlueprintClaim
+from app.models.recommendation import Recommendation, RecommendationRun
+from app.models.agent import Agent, AgentExecution, AgentExecutionStep, AgentToolPermission, AgentVersion
+from app.models.mcp_server import McpClientCredential, McpToolExposure
 from app.models.crm import Appointment, Customer, CustomerNote, Lead
 from app.models.event import DeadLetterEvent, Event, EventProcessingRecord
 from app.models.finance import (
@@ -100,6 +107,17 @@ from app.models.ai_invocation import AIInvocationLog
 from app.models.quote import Quote, QuoteLineItem
 from app.models.contract import Contract, ContractStatus
 from app.models.company_memory import CompanyMemory
+from app.models.medical_tourism import (
+    Consultation,
+    PatientLead,
+    Procedure,
+    Provider,
+    ProviderCredential,
+    ProviderProcedure,
+    ReferralCommission,
+)
+from app.models.website import Website, WebsitePage, WebsiteSection, WebsiteVersion
+from app.models.business_journey import BusinessJourney
 
 __all__ = [
     "Organization",
@@ -208,4 +226,33 @@ __all__ = [
     "AutomationExecution",
     "AutomationExecutionStep",
     "License",
+    "VerticalExtension",
+    "OrganizationVerticalExtension",
+    "IntegrationProviderCatalog",
+    "DiscoverySession",
+    "DiscoveryTurn",
+    "BusinessBlueprint",
+    "BlueprintSection",
+    "BlueprintClaim",
+    "Recommendation",
+    "RecommendationRun",
+    "Agent",
+    "AgentVersion",
+    "AgentToolPermission",
+    "AgentExecution",
+    "AgentExecutionStep",
+    "McpToolExposure",
+    "McpClientCredential",
+    "Provider",
+    "ProviderCredential",
+    "Procedure",
+    "ProviderProcedure",
+    "PatientLead",
+    "Consultation",
+    "ReferralCommission",
+    "Website",
+    "WebsiteVersion",
+    "WebsitePage",
+    "WebsiteSection",
+    "BusinessJourney",
 ]

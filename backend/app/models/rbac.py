@@ -103,6 +103,112 @@ class Permission(StrEnum):
     MANAGE_MEMORY = "MANAGE_MEMORY"
     READ_COMPLIANCE = "READ_COMPLIANCE"
     MANAGE_COMPLIANCE = "MANAGE_COMPLIANCE"
+    # Phase 1 (KLAROS_PHASE_1_IMPLEMENTATION_PLAN.md §1.2): curation of the
+    # tenant-independent IntegrationProviderCatalog reference table.
+    # Deliberately kept separate from the existing, tenant-scoped
+    # MANAGE_INTEGRATIONS (which gates a tenant's own connect/disconnect of
+    # a specific IntegrationConnection) per
+    # KLAROS_ARCHITECTURE_RECONCILIATION.md #3 — conflating the two would
+    # either over-grant catalog-editing to every org admin or under-grant
+    # integration-connecting to roles that need it.
+    MANAGE_INTEGRATIONS_CATALOG = "MANAGE_INTEGRATIONS_CATALOG"
+    # Phase 2 (KLAROS_BUSINESS_DISCOVERY_SPEC.md, KLAROS_BUSINESS_BLUEPRINT_SPEC.md,
+    # KLAROS_ARCHITECTURE_RECONCILIATION.md #2): Business Discovery + Business
+    # Blueprint permissions. `MANAGE_BLUEPRINT` is the exact permission name
+    # the reconciliation mandates for gating blueprint section edits and
+    # claim confirm/reject — granted to OWNER/ADMIN/MANAGER, matching the
+    # existing MANAGE_MEMORY pattern (reconciliation's explicit guidance).
+    # `READ_BLUEPRINT`/`READ_BUSINESS_DISCOVERY`/`MANAGE_BUSINESS_DISCOVERY`
+    # are this implementation's own additions (not literally named in any
+    # doc), added for the same read/manage split every other domain in this
+    # file already uses (READ_MEMORY/MANAGE_MEMORY, READ_KNOWLEDGE/
+    # MANAGE_KNOWLEDGE, ...).
+    READ_BUSINESS_DISCOVERY = "READ_BUSINESS_DISCOVERY"
+    MANAGE_BUSINESS_DISCOVERY = "MANAGE_BUSINESS_DISCOVERY"
+    READ_BLUEPRINT = "READ_BLUEPRINT"
+    MANAGE_BLUEPRINT = "MANAGE_BLUEPRINT"
+    # Phase 3 (Recommendation Engine): distinct from the pre-existing
+    # `Permission.EXECUTE_RECOMMENDATION` (app/models/morning_brief.py's
+    # MorningBriefRecommendation — a different, already-shipped concept).
+    # `READ_RECOMMENDATIONS`/`MANAGE_RECOMMENDATIONS` follow the same
+    # read/manage split every other domain in this file uses
+    # (READ_BLUEPRINT/MANAGE_BLUEPRINT, READ_MEMORY/MANAGE_MEMORY, ...).
+    # `MANAGE_RECOMMENDATIONS` gates run-generation and accept/reject —
+    # one canonical name, never a second competing
+    # EDIT_RECOMMENDATIONS/ADMIN_RECOMMENDATIONS.
+    READ_RECOMMENDATIONS = "READ_RECOMMENDATIONS"
+    MANAGE_RECOMMENDATIONS = "MANAGE_RECOMMENDATIONS"
+    # Phase 13 (Business Orchestration Foundation): the thin journey
+    # coordinator sitting above Discovery/Blueprint/Recommendations. Its own
+    # read/manage split, same convention as every other domain in this file
+    # (READ_BLUEPRINT/MANAGE_BLUEPRINT, READ_RECOMMENDATIONS/
+    # MANAGE_RECOMMENDATIONS, ...) — a new pair is justified here (rather
+    # than reusing e.g. MANAGE_BUSINESS_DISCOVERY) because a journey action
+    # can trigger Blueprint activation and Recommendation generation too, so
+    # no single existing subsystem permission covers it; the journey layer
+    # never uses this permission to bypass a subsystem's own permission
+    # check (it still calls BusinessBlueprintService/RecommendationService
+    # directly, which enforce tenant scoping themselves).
+    READ_BUSINESS_JOURNEY = "READ_BUSINESS_JOURNEY"
+    MANAGE_BUSINESS_JOURNEY = "MANAGE_BUSINESS_JOURNEY"
+    # Phase 4 (Agent Runtime, KLAROS_FINAL_API_ARCHITECTURE.md's
+    # `/api/v1/agents` table): `MANAGE_AGENTS` gates create/edit/publish/
+    # pause/archive lifecycle actions and tool-permission grants;
+    # `EXECUTE_AGENT` gates POST /agents/{id}/execute specifically — kept
+    # separate from MANAGE_AGENTS because a role that can trigger a run
+    # (e.g. STAFF) should not necessarily be able to redefine what the
+    # agent is allowed to do. Deliberately distinct from the pre-existing
+    # `Permission.EXECUTE_RECOMMENDATION` (app/models/morning_brief.py's
+    # MorningBriefRecommendation — a different, already-shipped concept
+    # this phase must never touch or be confused with, per this phase's
+    # own instructions). `READ_AGENTS`/`READ_AGENT_EXECUTIONS` follow the
+    # same read/manage split every other domain in this file uses.
+    READ_AGENTS = "READ_AGENTS"
+    MANAGE_AGENTS = "MANAGE_AGENTS"
+    EXECUTE_AGENT = "EXECUTE_AGENT"
+    READ_AGENT_EXECUTIONS = "READ_AGENT_EXECUTIONS"
+    # Phase 9 (MCP server exposure): a single permission gates BOTH halves
+    # of the admin-facing MCP surface — deciding which already-governed
+    # tools are allowlisted for external MCP exposure, and issuing/revoking
+    # the scoped credentials external MCP clients authenticate with. Both
+    # are the same class of action (granting a non-human caller reach into
+    # governed tools) as the existing MANAGE_AGENTS/MANAGE_INTEGRATIONS_
+    # CATALOG permissions, so this follows the same "one canonical
+    # permission, no read/manage split" shape MANAGE_INTEGRATIONS_CATALOG
+    # already uses — there is no meaningful "read-only" version of "can see
+    # which tools are MCP-exposed" that isn't itself security-sensitive
+    # (it reveals the tenant's external attack surface), so it is not
+    # split into READ_/MANAGE_ the way most other domains in this file are.
+    # Deliberately NOT granted to MANAGER/STAFF/ACCOUNTANT/TECHNICIAN/
+    # READ_ONLY below — exposing tools to an external, potentially
+    # adversarial client is an OWNER/ADMIN-tier decision only.
+    MANAGE_MCP_SERVER = "MANAGE_MCP_SERVER"
+    # Phase 10 (Medical Tourism vertical extension): gates the new
+    # `/api/v1/medical-tourism/*` domain (providers, credentials,
+    # procedures, offerings, patient leads, consultations, referral
+    # commissions) and its ToolRegistry tools. Follows the same
+    # read/manage split every other domain in this file uses
+    # (READ_BLUEPRINT/MANAGE_BLUEPRINT, READ_RECOMMENDATIONS/
+    # MANAGE_RECOMMENDATIONS, ...) — READ_MEDICAL_TOURISM for list/get,
+    # MANAGE_MEDICAL_TOURISM for create/update of providers, credentials,
+    # procedures, and offerings. Deliberately vertical-domain-scoped, not
+    # a generic "MANAGE_VERTICAL_DATA" — mirrors how MANAGE_RETENTION is
+    # its own domain's permission, not a generic CRM one.
+    READ_MEDICAL_TOURISM = "READ_MEDICAL_TOURISM"
+    MANAGE_MEDICAL_TOURISM = "MANAGE_MEDICAL_TOURISM"
+    # Phase 11 (Website Builder, PHASE_11_WEBSITE_BUILDER_DESIGN.md §10 RBAC):
+    # three permissions, not the usual two-way read/manage split — mirrors
+    # how MANAGE_AGENTS/EXECUTE_AGENT are kept separate (Phase 4's own
+    # reasoning): a role that can edit a draft website
+    # (`MANAGE_WEBSITE`: create/update pages/sections/theme/generate) should
+    # not automatically be able to make it live (`PUBLISH_WEBSITE`) — the
+    # same "editing != releasing" split this codebase already applies to
+    # MANAGE_MARKETING_CONTENT vs APPROVE_MARKETING_CONTENT and
+    # UPDATE_INVOICE vs APPROVE_INVOICE. `READ_WEBSITE` gates list/get/
+    # preview.
+    READ_WEBSITE = "READ_WEBSITE"
+    MANAGE_WEBSITE = "MANAGE_WEBSITE"
+    PUBLISH_WEBSITE = "PUBLISH_WEBSITE"
 
 
 # Permission matrix: role -> allowed permissions.
@@ -197,6 +303,23 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.MANAGE_MEMORY,
         Permission.READ_COMPLIANCE,
         Permission.MANAGE_COMPLIANCE,
+        Permission.READ_BUSINESS_DISCOVERY,
+        Permission.MANAGE_BUSINESS_DISCOVERY,
+        Permission.READ_BLUEPRINT,
+        Permission.MANAGE_BLUEPRINT,
+        Permission.READ_RECOMMENDATIONS,
+        Permission.MANAGE_RECOMMENDATIONS,
+        Permission.READ_BUSINESS_JOURNEY,
+        Permission.MANAGE_BUSINESS_JOURNEY,
+        Permission.READ_AGENTS,
+        Permission.MANAGE_AGENTS,
+        Permission.EXECUTE_AGENT,
+        Permission.READ_AGENT_EXECUTIONS,
+        Permission.READ_MEDICAL_TOURISM,
+        Permission.MANAGE_MEDICAL_TOURISM,
+        Permission.READ_WEBSITE,
+        Permission.MANAGE_WEBSITE,
+        Permission.PUBLISH_WEBSITE,
     },
     Role.STAFF: {
         Permission.READ_CUSTOMERS,
@@ -207,6 +330,14 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.SCHEDULE_JOB,
         Permission.SEND_CUSTOMER_MESSAGE,
         Permission.READ_LEADS,
+        Permission.READ_BUSINESS_DISCOVERY,
+        Permission.MANAGE_BUSINESS_DISCOVERY,
+        Permission.READ_BLUEPRINT,
+        Permission.READ_RECOMMENDATIONS,
+        Permission.READ_BUSINESS_JOURNEY,
+        Permission.READ_AGENTS,
+        Permission.EXECUTE_AGENT,
+        Permission.READ_AGENT_EXECUTIONS,
         Permission.CREATE_LEAD,
         Permission.UPDATE_LEAD,
         Permission.READ_APPOINTMENTS,
@@ -216,6 +347,18 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.MANAGE_TASKS,
         Permission.MANAGE_MATERIALS,
         Permission.UPLOAD_JOB_ATTACHMENT,
+        # STAFF can view the vertical directory (e.g. to reference a
+        # provider while working a patient lead) but must not mutate
+        # vertical configuration merely by having generic platform access.
+        Permission.READ_MEDICAL_TOURISM,
+        # STAFF can view and edit a draft website, but publishing (making it
+        # the tenant's live, customer-facing site) is a MANAGER-tier
+        # decision, not granted here — the same "can edit, cannot release"
+        # split UPDATE_INVOICE (STAFF has no invoice permissions at all,
+        # but the same pattern) vs. APPROVE_INVOICE (MANAGER-only) applies
+        # elsewhere in this matrix.
+        Permission.READ_WEBSITE,
+        Permission.MANAGE_WEBSITE,
     },
     Role.TECHNICIAN: {
         Permission.READ_JOBS,
@@ -269,6 +412,14 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.READ_AUTOMATIONS,
         Permission.READ_MEMORY,
         Permission.READ_COMPLIANCE,
+        Permission.READ_BUSINESS_DISCOVERY,
+        Permission.READ_BLUEPRINT,
+        Permission.READ_RECOMMENDATIONS,
+        Permission.READ_BUSINESS_JOURNEY,
+        Permission.READ_AGENTS,
+        Permission.READ_AGENT_EXECUTIONS,
+        Permission.READ_MEDICAL_TOURISM,
+        Permission.READ_WEBSITE,
     },
 }
 

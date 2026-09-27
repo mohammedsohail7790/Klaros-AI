@@ -47,7 +47,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import structlog
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.events.bus import EventBus
@@ -79,7 +79,9 @@ class SelfApprovalError(Exception):
 
 
 class ApprovalExecutionService:
-    def __init__(self, session_factory: async_sessionmaker, registry: ToolRegistry, bus: EventBus) -> None:
+    def __init__(
+        self, session_factory: async_sessionmaker, registry: ToolRegistry, bus: EventBus, *, ai_provider=None
+    ) -> None:
         self._session_factory = session_factory
         self._registry = registry
         self._bus = bus
@@ -88,6 +90,15 @@ class ApprovalExecutionService:
         # (Morning Brief, Qualification, Marketing, SEO, Knowledge Q&A,
         # AI Next Action).
         self._memory = CompanyMemoryService(session_factory)
+        # Phase 5: optional override for the AgentReasoningService this
+        # service lazily constructs to continue a REASONING-mode
+        # execution after an approval resumes (see
+        # `_record_execution_outcome` below) — None (the default) means
+        # "use the real, process-wide AIProvider" in production; tests
+        # inject a scripted provider so the full approve -> resume ->
+        # continue -> complete/halt path is exercised end to end, not
+        # just the single-tool-call resume Phase 4 already covered.
+        self._reasoning_ai_provider = ai_provider
 
     async def _load(self, session, tenant_id: uuid.UUID, approval_id: uuid.UUID) -> ApprovalRequest:
         request = await session.get(ApprovalRequest, approval_id)
@@ -155,6 +166,23 @@ class ApprovalExecutionService:
             if cas.rowcount != 1:
                 current = await self._load(session, tenant_id, approval_id)
                 raise ApprovalStateError(f"Approval already {current.status} — cannot reject again")
+
+            if request.agent_execution_id is not None:
+                # Phase 4: a rejected approval means the originating
+                # AgentExecution never runs — HALTED, not FAILED (FAILED is
+                # reserved for the tool actually having been attempted and
+                # erroring; a rejection means it was never attempted at
+                # all), matching KLAROS_FINAL_AGENT_MODEL.md governance
+                # chain step 12's "or surfaces to the approval/notification
+                # queue" language — the halt IS the surfaced outcome here.
+                from app.models.agent import AgentExecution, AgentExecutionStatus
+
+                execution = await session.get(AgentExecution, request.agent_execution_id)
+                if execution is not None and execution.tenant_id == tenant_id:
+                    execution.status = AgentExecutionStatus.HALTED
+                    execution.error_message = "Approval request was rejected"
+                    execution.completed_at = now
+                    await session.commit()
 
             refreshed = await self._load(session, tenant_id, approval_id)
             result = _detached_copy(refreshed)
@@ -255,12 +283,71 @@ class ApprovalExecutionService:
         correlation_id: uuid.UUID | None,
     ) -> ApprovalRequest:
         now = datetime.now(timezone.utc)
+        continue_reasoning_execution_id: uuid.UUID | None = None
         async with self._session_factory() as session:
             request = await self._load(session, tenant_id, approval_id)
             request.execution_status = ApprovalExecutionStatus.EXECUTED if success else ApprovalExecutionStatus.FAILED
             request.execution_result = result
             request.execution_error = error
             request.executed_at = now
+            if request.agent_execution_id is not None:
+                # Phase 4/5: closes the approval-integration loop for an
+                # Agent-initiated call — the AgentExecution that was parked
+                # in WAITING_APPROVAL now reflects the resumed outcome.
+                # Best-effort: a missing/foreign row never blocks recording
+                # the ApprovalRequest's own (authoritative) outcome above.
+                from app.models.agent import AgentExecution, AgentExecutionMode, AgentExecutionStatus
+
+                execution = await session.get(AgentExecution, request.agent_execution_id)
+                if execution is not None and execution.tenant_id == tenant_id:
+                    if execution.mode == AgentExecutionMode.REASONING:
+                        # Phase 5: a REASONING-mode execution's status is
+                        # NOT set here — the bounded reasoning loop owns
+                        # that transition (it may CONTINUE to another
+                        # step, not just COMPLETE/FAIL outright). Flag it
+                        # so this method calls back into
+                        # AgentReasoningService.resume_after_approval
+                        # AFTER this transaction commits, never a second,
+                        # parallel tool-execution path — the tool above
+                        # already ran through the one governed
+                        # ToolRegistry.execute() choke point.
+                        continue_reasoning_execution_id = execution.id
+                    else:
+                        # Phase 7: SINGLE_ACTION now has its own durable
+                        # step (written by AgentExecutionService.run_action
+                        # before the approval gate was ever hit — see that
+                        # module's docstring) — finish it from the exact
+                        # same outcome the AgentExecution row itself is
+                        # about to record, so a crash between this point
+                        # and commit still leaves a step-level record
+                        # AgentExecutionService.resume_recovered can find
+                        # already terminal (never re-invoking the tool).
+                        from app.models.agent import AgentExecutionStep, AgentExecutionStepStatus
+
+                        step = (
+                            await session.execute(
+                                select(AgentExecutionStep).where(
+                                    AgentExecutionStep.execution_id == execution.id,
+                                    AgentExecutionStep.step_number == 1,
+                                )
+                            )
+                        ).scalar_one_or_none()
+                        if step is not None:
+                            step.status = (
+                                AgentExecutionStepStatus.EXECUTED if success else AgentExecutionStepStatus.FAILED
+                            )
+                            if success:
+                                step.output_summary = result
+                            else:
+                                step.error_code = (error or "tool_execution_error")[:100]
+                            step.completed_at = now
+
+                        execution.status = (
+                            AgentExecutionStatus.COMPLETED if success else AgentExecutionStatus.FAILED
+                        )
+                        execution.result_summary = result
+                        execution.error_message = error
+                        execution.completed_at = now
             await session.commit()
             await session.refresh(request)
             snapshot = _detached_copy(request)
@@ -275,6 +362,30 @@ class ApprovalExecutionService:
             approval_id=approval_id, correlation_id=correlation_id,
             result="success" if success else "failure", error=error,
         )
+
+        if continue_reasoning_execution_id is not None:
+            # Phase 5: resume the bounded reasoning loop with the outcome
+            # of the tool call ToolRegistry.execute() already ran above —
+            # this NEVER re-executes the tool, only records the outcome as
+            # this step's observation and continues (or halts) the loop.
+            # Lazy import / lazy construction avoids a module-load-time
+            # circular import (agent_reasoning_service.py doesn't import
+            # this module, but keeping the wiring lazy here matches this
+            # file's existing convention for every other Phase 4/5 agent
+            # cross-reference — see the `from app.models.agent import ...`
+            # imports above).
+            from app.services.agent_execution_service import AgentExecutionService
+            from app.services.agent_reasoning_service import AgentReasoningService
+
+            reasoning = AgentReasoningService(
+                self._session_factory, self._registry, AgentExecutionService(self._session_factory, self._registry),
+                ai_provider=self._reasoning_ai_provider,
+            )
+            await reasoning.resume_after_approval(
+                tenant_id, continue_reasoning_execution_id,
+                tool_success=success, tool_result=result, tool_error=error,
+            )
+
         return snapshot
 
     async def _reconstruct_context(self, tenant_id: uuid.UUID, request: ApprovalRequest) -> ExecutionContext:
@@ -296,6 +407,12 @@ class ApprovalExecutionService:
             actor_id=request.requested_by_id,
             role=role,
             correlation_id=request.correlation_id,
+            # Phase 4: only ever set on rows created by an Agent-actor call
+            # (see approval.py's Phase 4 column comment / registry.py's
+            # _create_approval_request) — None for every pre-existing row
+            # and every non-Agent actor, matching every other field here.
+            agent_id=request.agent_id,
+            agent_version_id=request.agent_version_id,
         )
 
     async def _learn_from_ai_decision(
@@ -415,6 +532,14 @@ def _detached_copy(request: ApprovalRequest) -> ApprovalRequest:
         executed_at=request.executed_at,
         execution_attempts=request.execution_attempts,
         idempotency_key=request.idempotency_key,
+        # Phase 4 columns — omitting these here would silently drop the
+        # agent-identity context every resumed call needs (discovered via
+        # a real, failing test: an Agent-initiated approval's resume
+        # attempt raised "missing agent identity" because this snapshot
+        # helper predates these columns and wasn't taught about them).
+        agent_id=request.agent_id,
+        agent_version_id=request.agent_version_id,
+        agent_execution_id=request.agent_execution_id,
     )
     copy.id = request.id
     copy.created_at = request.created_at

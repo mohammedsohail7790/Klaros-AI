@@ -26,6 +26,7 @@ from typing import Any
 import httpx
 
 from app.core.config import get_settings
+from app.models.knowledge import EMBEDDING_DIMENSIONS
 
 _WORD_RE = re.compile(r"[a-z0-9]+")
 
@@ -175,7 +176,12 @@ def get_embedding_provider() -> EmbeddingProvider:
         # Explicit opt-in only — tests set EMBEDDING_PROVIDER=deterministic
         # (see tests/conftest.py) to exercise real retrieval/ranking logic
         # without an API key. Never the silent default for real usage.
-        return DeterministicEmbeddingProvider()
+        # Must match KnowledgeChunk.embedding's real fixed-width column
+        # (app/models/knowledge.py::EMBEDDING_DIMENSIONS, vector(1536) on
+        # PostgreSQL) — the class default of 64 exists only for tests that
+        # construct DeterministicEmbeddingProvider() directly for pure
+        # ranking-logic checks unrelated to the real DB column.
+        return DeterministicEmbeddingProvider(dimensions=EMBEDDING_DIMENSIONS)
     if choice == "openai":
         return OpenAIEmbeddingProvider(settings.OPENAI_API_KEY) if settings.OPENAI_API_KEY else NotConfiguredEmbeddingProvider()
 

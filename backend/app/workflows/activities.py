@@ -22,7 +22,7 @@ from temporalio import activity
 
 from app.ai.execution_service import AIExecutionService
 from app.core.logging import configure_logging
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.events.factory import get_event_bus
 from app.models.actor import ActorType
 from app.models.automation import AutomationVersion
@@ -81,7 +81,13 @@ async def resume_automation_execution_activity(execution_id: str, tenant_id: str
     tenant_uuid = uuid.UUID(tenant_id)
     execution_uuid = uuid.UUID(execution_id)
 
+    # Phase 0 §0.2: this activity runs outside any HTTP request, so there is
+    # no get_current_user() to establish tenant context — the Temporal
+    # workflow input (tenant_id, already required by this activity's own
+    # signature) is the only trustworthy source here, matching the "worker
+    # context" tenant-identity trace required by the Phase 0 plan.
     async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_uuid)
         execution = await session.get(AutomationExecution, execution_uuid)
         if execution is None or execution.tenant_id != tenant_uuid:
             return {"status": "not_found"}
@@ -89,6 +95,7 @@ async def resume_automation_execution_activity(execution_id: str, tenant_id: str
 
     if not evaluate_condition(version.condition, execution.context):
         async with async_session_maker() as session:
+            await set_tenant_context(session, tenant_uuid)
             row = await session.get(AutomationExecution, execution_uuid)
             row.status = ExecutionStatus.COMPLETED
             row.completed_at = datetime.now(timezone.utc)

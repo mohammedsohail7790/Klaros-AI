@@ -3832,3 +3832,773 @@ export function createBillingPortalSession(token: string, returnUrl: string) {
     body: JSON.stringify({ return_url: returnUrl }),
   });
 }
+
+// --- Phase 12: Website Builder — authenticated tenant-side editor API
+// (backend/app/api/v1/websites.py). Every write here is re-validated
+// server-side against the closed WebsiteSpecification schema; nothing in
+// this client is a second source of truth for what's a valid section. ---
+
+export interface Website {
+  id: string;
+  name: string;
+  slug: string;
+  blueprint_id: string | null;
+  current_published_version_id: string | null;
+}
+
+export interface WebsiteVersion {
+  id: string;
+  website_id: string;
+  version: number;
+  status: "DRAFT" | "PUBLISHED" | "SUPERSEDED";
+  theme: Record<string, unknown>;
+  navigation: Record<string, unknown>;
+  seo_defaults: Record<string, unknown>;
+  generation_provenance: Record<string, unknown>;
+  published_at: string | null;
+  created_at: string;
+}
+
+export interface WebsiteSection {
+  component_type:
+    | "HERO"
+    | "TEXT"
+    | "CTA"
+    | "FEATURE_GRID"
+    | "PROVIDER_DIRECTORY"
+    | "PROCEDURE_LIST"
+    | "CONTACT_FORM"
+    | "FOOTER";
+  props: Record<string, unknown>;
+  data_source?: { provider_key: string; params?: Record<string, unknown> } | null;
+  order_index?: number;
+}
+
+export interface RenderedSection {
+  component_type: string;
+  props: Record<string, unknown>;
+  data?: unknown;
+}
+
+export interface RenderedPage {
+  slug: string;
+  title: string;
+  seo: { title: string | null; description: string | null; og_image_url: string | null };
+  sections: RenderedSection[];
+}
+
+export interface RenderedWebsite {
+  theme: Record<string, unknown>;
+  navigation: { items: { label: string; page_slug: string }[] };
+  seo_defaults: { title: string | null; description: string | null; og_image_url: string | null };
+  pages: RenderedPage[];
+}
+
+export function generateWebsite(token: string) {
+  return request<{ website: Website; version: WebsiteVersion; ai_used: boolean }>(
+    "/api/v1/websites/generate",
+    { method: "POST", headers: authHeaders(token) }
+  );
+}
+
+export function getMyWebsite(token: string) {
+  return request<Website | null>("/api/v1/websites", { headers: authHeaders(token) });
+}
+
+export function listWebsiteVersions(token: string, websiteId: string) {
+  return request<WebsiteVersion[]>(`/api/v1/websites/${websiteId}/versions`, { headers: authHeaders(token) });
+}
+
+export function previewWebsiteVersion(token: string, websiteId: string, versionId: string) {
+  return request<RenderedWebsite>(`/api/v1/websites/${websiteId}/versions/${versionId}/preview`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function addWebsitePage(
+  token: string,
+  websiteId: string,
+  versionId: string,
+  body: { slug: string; title: string; sections?: WebsiteSection[] }
+) {
+  return request<{ id: string; slug: string; title: string }>(
+    `/api/v1/websites/${websiteId}/versions/${versionId}/pages`,
+    { method: "POST", headers: authHeaders(token), body: JSON.stringify(body) }
+  );
+}
+
+export function replaceWebsitePageSections(
+  token: string,
+  websiteId: string,
+  versionId: string,
+  slug: string,
+  sections: WebsiteSection[]
+) {
+  return request<{ id: string; slug: string; section_count: number }>(
+    `/api/v1/websites/${websiteId}/versions/${versionId}/pages/${slug}/sections`,
+    { method: "PUT", headers: authHeaders(token), body: JSON.stringify({ sections }) }
+  );
+}
+
+export function updateWebsiteTheme(token: string, websiteId: string, versionId: string, theme: Record<string, unknown>) {
+  return request<WebsiteVersion>(`/api/v1/websites/${websiteId}/versions/${versionId}/theme`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(theme),
+  });
+}
+
+export function newWebsiteDraft(token: string, websiteId: string, versionId: string) {
+  return request<WebsiteVersion>(`/api/v1/websites/${websiteId}/versions/${versionId}/new-draft`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function publishWebsiteVersion(token: string, websiteId: string, versionId: string) {
+  return request<WebsiteVersion>(`/api/v1/websites/${websiteId}/versions/${versionId}/publish`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function unpublishWebsite(token: string, websiteId: string) {
+  return request<Website>(`/api/v1/websites/${websiteId}/unpublish`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+// --- Public (unauthenticated) website runtime. Mirrors the public
+// quote/contract/lead pattern: no Authorization header, ever. The path
+// parameter is an unguessable tenant UUID, not a role/selector — the
+// backend (app/api/v1/public_websites.py) never trusts anything else from
+// this client, and only ever resolves the tenant's current PUBLISHED
+// version. ---
+
+export function getPublicWebsite(tenantId: string) {
+  return request<RenderedWebsite>(`/api/v1/public/websites/${tenantId}`);
+}
+
+// Public, unauthenticated lead submission from a rendered CONTACT_FORM
+// section (backend/app/api/v1/public_leads.py) — the same endpoint an
+// embedded chat widget would use. Never send tenant_id in the body; it is
+// only ever a path parameter naming which tenant's public form this is.
+export interface PublicLeadFormInput {
+  name: string;
+  email?: string;
+  phone?: string;
+  description?: string;
+  website?: string; // honeypot field — always left empty by a real visitor
+}
+
+export function submitPublicWebsiteLead(tenantId: string, body: PublicLeadFormInput) {
+  return request<{ received: boolean; lead_id: string | null }>(`/api/v1/public/leads/${tenantId}`, {
+    method: "POST",
+    body: JSON.stringify({ ...body, source: "WEB" }),
+  });
+}
+
+// --- Business Journey / Discovery / Blueprint / Recommendations (Phase 14
+// frontend). Thin typed wrappers around Phase 13's business-journey API
+// (app/api/v1/business_journey.py) and the underlying Phase 2/3 Discovery,
+// Blueprint and Recommendation APIs it orchestrates. The journey is the
+// frontend's source of truth for where a tenant is in the "build your
+// business" flow — these functions never infer state client-side, they
+// only call the named backend actions and return exactly what the server
+// says. Tenant identity always comes from the bearer token; no function
+// here ever takes or sends a tenant_id/role/actor_type. ---
+
+export type BusinessJourneyStatus =
+  | "DISCOVERY_ACTIVE"
+  | "BLUEPRINT_REVIEW"
+  | "BLUEPRINT_ACTIVE"
+  | "RECOMMENDATIONS_READY"
+  | "COMPLETED"
+  | "ABANDONED";
+
+export interface BusinessJourney {
+  id: string;
+  status: BusinessJourneyStatus;
+  discovery_session_id: string | null;
+  blueprint_id: string | null;
+  recommendation_run_id: string | null;
+  created_by: string | null;
+  completed_at: string | null;
+  abandoned_at: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function startBusinessJourney(token: string, businessIdea: string) {
+  return request<BusinessJourney>("/api/v1/business-journey", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ business_idea: businessIdea }),
+  });
+}
+
+/** Resume entry point. Returns null (not an error) when the tenant has no
+ * active journey — the backend 404s in that case, which this wrapper is
+ * the one place that translates into a plain "nothing yet" value, exactly
+ * like getMyWebsite() does for websites. */
+export async function getCurrentBusinessJourney(token: string): Promise<BusinessJourney | null> {
+  try {
+    return await request<BusinessJourney>("/api/v1/business-journey", { headers: authHeaders(token) });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export function getBusinessJourney(token: string, journeyId: string) {
+  return request<BusinessJourney>(`/api/v1/business-journey/${journeyId}`, { headers: authHeaders(token) });
+}
+
+export function listBusinessJourneys(token: string) {
+  return request<BusinessJourney[]>("/api/v1/business-journey/history", { headers: authHeaders(token) });
+}
+
+export function completeDiscoveryJourneyStep(token: string, journeyId: string) {
+  return request<BusinessJourney>(`/api/v1/business-journey/${journeyId}/complete-discovery`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function confirmBlueprintJourneyStep(token: string, journeyId: string) {
+  return request<BusinessJourney>(`/api/v1/business-journey/${journeyId}/confirm-blueprint`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function generateRecommendationsJourneyStep(token: string, journeyId: string) {
+  return request<BusinessJourney>(`/api/v1/business-journey/${journeyId}/generate-recommendations`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function completeBusinessJourney(token: string, journeyId: string) {
+  return request<BusinessJourney>(`/api/v1/business-journey/${journeyId}/complete`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function abandonBusinessJourney(token: string, journeyId: string, reason?: string) {
+  return request<BusinessJourney>(`/api/v1/business-journey/${journeyId}/abandon`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ reason: reason ?? null }),
+  });
+}
+
+// --- Business Discovery (Phase 2) ---
+
+export interface DiscoveryTurnResponse {
+  session_id: string;
+  session_status: string;
+  questions_asked: number;
+  turn_sequence: number;
+  proposed_claim_ids: string[];
+  next_question: string | null;
+  extraction_available: boolean;
+  extraction_error: string | null;
+}
+
+export interface DiscoverySession {
+  id: string;
+  blueprint_id: string | null;
+  status: string;
+  business_idea: string;
+  questions_asked: number;
+  max_questions: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscoveryTurn {
+  id: string;
+  sequence: number;
+  kind: string;
+  question: string | null;
+  answer: string | null;
+  extraction_error: string | null;
+  created_at: string;
+}
+
+export function startDiscoverySession(token: string, description: string) {
+  return request<DiscoveryTurnResponse>("/api/v1/business-discovery/sessions", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ description }),
+  });
+}
+
+export function answerDiscoveryQuestion(token: string, sessionId: string, answer: string) {
+  return request<DiscoveryTurnResponse>(`/api/v1/business-discovery/sessions/${sessionId}/answer`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ answer }),
+  });
+}
+
+export function getDiscoverySession(token: string, sessionId: string) {
+  return request<{ session: DiscoverySession; turns: DiscoveryTurn[] }>(
+    `/api/v1/business-discovery/sessions/${sessionId}`,
+    { headers: authHeaders(token) }
+  );
+}
+
+// --- Business Blueprint (Phase 2) ---
+
+export const BLUEPRINT_SECTION_KEYS = [
+  "IDENTITY",
+  "INDUSTRY",
+  "BUSINESS_MODEL",
+  "CUSTOMERS",
+  "PRODUCTS_SERVICES",
+  "SUPPLIERS_PROVIDERS",
+  "GEOGRAPHY",
+  "CHANNELS",
+  "REVENUE",
+  "CUSTOMER_JOURNEY",
+  "OPERATIONS",
+  "FINANCE",
+  "MARKETING",
+  "COMMUNICATIONS",
+  "COMPLIANCE",
+  "REQUIRED_CAPABILITIES",
+  "CONSTRAINTS",
+  "ASSUMPTIONS",
+  "DECISIONS",
+  "GOALS",
+] as const;
+
+export type BlueprintSectionKey = (typeof BLUEPRINT_SECTION_KEYS)[number];
+
+/** Product-facing labels for the fixed 20 section keys — presentation only,
+ * never a second schema: every key here must exist in BLUEPRINT_SECTION_KEYS. */
+export const BLUEPRINT_SECTION_LABELS: Record<BlueprintSectionKey, string> = {
+  IDENTITY: "Business Identity",
+  INDUSTRY: "Industry",
+  BUSINESS_MODEL: "Business Model",
+  CUSTOMERS: "Target Customers",
+  PRODUCTS_SERVICES: "Products & Services",
+  SUPPLIERS_PROVIDERS: "Suppliers & Providers",
+  GEOGRAPHY: "Geography",
+  CHANNELS: "Channels",
+  REVENUE: "Revenue",
+  CUSTOMER_JOURNEY: "Customer Journey",
+  OPERATIONS: "Operations",
+  FINANCE: "Finance",
+  MARKETING: "Marketing",
+  COMMUNICATIONS: "Communications",
+  COMPLIANCE: "Compliance",
+  REQUIRED_CAPABILITIES: "Required Capabilities",
+  CONSTRAINTS: "Constraints",
+  ASSUMPTIONS: "Assumptions",
+  DECISIONS: "Decisions",
+  GOALS: "Goals",
+};
+
+export interface BusinessBlueprint {
+  id: string;
+  status: "DRAFT" | "ACTIVE" | "SUPERSEDED" | string;
+  version: number;
+  created_by: string | null;
+  confirmed_at: string | null;
+  vertical_extension_id: string | null;
+  supersedes_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BlueprintSection {
+  id: string;
+  section_key: string;
+  status: "EMPTY" | "DRAFT" | "COMPLETE" | string;
+  data: Record<string, unknown>;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export interface BlueprintClaim {
+  id: string;
+  blueprint_id: string;
+  section_key: string;
+  claim_type: string;
+  key: string;
+  value: unknown;
+  confidence: number | null;
+  provenance: string;
+  discovery_turn_id: string | null;
+  evidence_ref: string | null;
+  status: "PROPOSED" | "CONFIRMED" | "REJECTED" | "SUPERSEDED" | string;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+  rejected_reason: string | null;
+}
+
+export interface FullBlueprintResponse {
+  blueprint: BusinessBlueprint;
+  sections: BlueprintSection[];
+  claims: BlueprintClaim[];
+}
+
+export async function getActiveBlueprint(token: string): Promise<FullBlueprintResponse | null> {
+  try {
+    return await request<FullBlueprintResponse>("/api/v1/business-blueprint", { headers: authHeaders(token) });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export function getDraftBlueprint(token: string) {
+  return request<FullBlueprintResponse>("/api/v1/business-blueprint/draft", { headers: authHeaders(token) });
+}
+
+export function updateBlueprintSection(
+  token: string,
+  sectionKey: string,
+  blueprintId: string,
+  data: Record<string, unknown>
+) {
+  return request<{ blueprint: BusinessBlueprint; section: BlueprintSection }>(
+    `/api/v1/business-blueprint/sections/${sectionKey}`,
+    {
+      method: "PUT",
+      headers: authHeaders(token),
+      body: JSON.stringify({ blueprint_id: blueprintId, data }),
+    }
+  );
+}
+
+export function activateBlueprint(token: string, blueprintId: string) {
+  return request<BusinessBlueprint>("/api/v1/business-blueprint/activate", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ blueprint_id: blueprintId }),
+  });
+}
+
+export function confirmBlueprintClaim(token: string, claimId: string) {
+  return request<BlueprintClaim>(`/api/v1/business-blueprint/claims/${claimId}/confirm`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function rejectBlueprintClaim(token: string, claimId: string, reason?: string) {
+  return request<BlueprintClaim>(`/api/v1/business-blueprint/claims/${claimId}/reject`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ reason: reason ?? null }),
+  });
+}
+
+// --- Recommendations (Phase 3) ---
+
+export interface Recommendation {
+  id: string;
+  run_id: string;
+  blueprint_id: string;
+  blueprint_version: number;
+  type: "CAPABILITY" | "INTEGRATION" | "TOOL" | string;
+  capability_key: string | null;
+  provider_key: string | null;
+  provider_implementation_status: string | null;
+  tool_name: string | null;
+  what: string;
+  why: string;
+  based_on: unknown;
+  dependencies: string[] | null;
+  cost_estimate: unknown;
+  required: boolean;
+  alternatives: unknown;
+  confidence: number | null;
+  source: string;
+  source_vertical_key: string | null;
+  status: "PROPOSED" | "ACCEPTED" | "REJECTED" | "SUPERSEDED" | string;
+  decided_by: string | null;
+  decided_at: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecommendationRun {
+  id: string;
+  blueprint_id: string;
+  blueprint_version: number;
+  status: "COMPLETED" | "FAILED" | string;
+  triggered_by: string | null;
+  verticals_considered: unknown;
+  recommendation_count: number;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export function listRecommendations(
+  token: string,
+  filters?: { blueprintId?: string; status?: string; type?: string }
+) {
+  const params = new URLSearchParams();
+  if (filters?.blueprintId) params.set("blueprint_id", filters.blueprintId);
+  if (filters?.status) params.set("status_filter", filters.status);
+  if (filters?.type) params.set("type_filter", filters.type);
+  const qs = params.toString();
+  return request<Recommendation[]>(`/api/v1/recommendations${qs ? `?${qs}` : ""}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function getRecommendationRun(token: string, runId: string) {
+  return request<RecommendationRun>(`/api/v1/recommendations/runs/${runId}`, { headers: authHeaders(token) });
+}
+
+export function acceptRecommendation(token: string, recommendationId: string) {
+  return request<Recommendation>(`/api/v1/recommendations/${recommendationId}/accept`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function rejectRecommendation(token: string, recommendationId: string, reason?: string) {
+  return request<Recommendation>(`/api/v1/recommendations/${recommendationId}/reject`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ reason: reason ?? null }),
+  });
+}
+
+// --- Phase 15 (Agent Configuration Frontend) ---------------------------
+//
+// Every shape below mirrors the ACTUAL response dicts built by
+// backend/app/api/v1/agents.py's `_agent_to_dict` / `_version_to_dict` /
+// `_grant_to_dict` / `_execution_to_dict` / `_step_to_dict`, and
+// backend/app/api/v1/tools.py's `ToolCatalogEntryResponse` — read from
+// source, not guessed, per the Phase 14 mocked-contract lesson. The
+// backend is the sole authority for validation/authorization/versioning/
+// autonomy/approvals/execution: this client only calls its existing
+// endpoints and reconciles the state it returns.
+
+export interface ToolCatalogEntry {
+  name: string;
+  description: string;
+  required_permission: string | null;
+  tenant_scoped: boolean;
+  counts_toward_ai_usage: boolean;
+}
+
+export function getToolCatalog(token: string) {
+  return request<ToolCatalogEntry[]>("/api/v1/tools/catalog", { headers: authHeaders(token) });
+}
+
+export interface Agent {
+  id: string;
+  name: string;
+  purpose: string;
+  status: "DRAFT" | "ACTIVE" | "PAUSED" | "ARCHIVED" | string;
+  autonomy_tier: "OBSERVE" | "RECOMMEND" | "EXECUTE_WITH_APPROVAL" | "EXECUTE_AUTONOMOUS" | string;
+  acting_role: string;
+  current_version_id: string | null;
+  source_blueprint_id: string | null;
+  source_blueprint_version: number | null;
+  source_recommendation_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentVersion {
+  id: string;
+  agent_id: string;
+  version: number;
+  status: "DRAFT" | "PUBLISHED" | "DEPRECATED" | string;
+  instructions_snapshot: string;
+  tool_permissions_snapshot: { tool_name: string; constraint: Record<string, unknown> | null }[];
+  memory_refs: string[];
+  triggers: {
+    schedule?: { enabled: boolean; frequency?: string; time?: string; weekdays?: number[]; goal?: string };
+    event?: { enabled: boolean; event_type?: string; conditions?: Record<string, unknown>; goal?: string };
+  };
+  max_executions_per_hour: number;
+  max_concurrent_executions: number;
+  max_tool_chain_depth: number;
+  approval_policy_override: string | null;
+  created_at: string;
+}
+
+export interface AgentToolPermissionGrant {
+  id: string;
+  agent_id: string;
+  tool_name: string;
+  constraint: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AgentExecution {
+  id: string;
+  agent_id: string;
+  agent_version_id: string;
+  trigger_source: "MANUAL" | "SCHEDULED" | "EVENT" | string;
+  status: "PENDING" | "RUNNING" | "WAITING_APPROVAL" | "COMPLETED" | "FAILED" | "HALTED" | string;
+  mode: "SINGLE_ACTION" | "REASONING" | string;
+  tool_name: string | null;
+  tool_input_summary: Record<string, unknown>;
+  result_summary: Record<string, unknown> | null;
+  error_message: string | null;
+  goal: string | null;
+  final_response: string | null;
+  termination_reason: string | null;
+  step_count: number;
+  approval_request_id: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface AgentExecutionStep {
+  id: string;
+  execution_id: string;
+  step_number: number;
+  step_type: "TOOL_CALL" | "COMPLETE" | string;
+  status: "EXECUTED" | "APPROVAL_REQUIRED" | "REJECTED" | "FAILED" | "BLOCKED" | "DENIED" | string;
+  tool_name: string | null;
+  input_summary: Record<string, unknown> | null;
+  output_summary: Record<string, unknown> | null;
+  decision_summary: string | null;
+  error_code: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export function listAgents(token: string, statusFilter?: string) {
+  const qs = statusFilter ? `?status_filter=${encodeURIComponent(statusFilter)}` : "";
+  return request<Agent[]>(`/api/v1/agents${qs}`, { headers: authHeaders(token) });
+}
+
+export function createAgent(token: string, body: { name: string; purpose?: string; autonomy_tier?: string }) {
+  return request<Agent>("/api/v1/agents", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function getAgent(token: string, agentId: string) {
+  return request<Agent>(`/api/v1/agents/${agentId}`, { headers: authHeaders(token) });
+}
+
+export function updateAgent(
+  token: string,
+  agentId: string,
+  body: { name?: string; purpose?: string; autonomy_tier?: string }
+) {
+  return request<Agent>(`/api/v1/agents/${agentId}`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function activateAgent(token: string, agentId: string) {
+  return request<Agent>(`/api/v1/agents/${agentId}/activate`, { method: "POST", headers: authHeaders(token) });
+}
+
+export function pauseAgent(token: string, agentId: string) {
+  return request<Agent>(`/api/v1/agents/${agentId}/pause`, { method: "POST", headers: authHeaders(token) });
+}
+
+export function archiveAgent(token: string, agentId: string) {
+  return request<Agent>(`/api/v1/agents/${agentId}/archive`, { method: "POST", headers: authHeaders(token) });
+}
+
+export function listAgentToolPermissions(token: string, agentId: string) {
+  return request<AgentToolPermissionGrant[]>(`/api/v1/agents/${agentId}/tool-permissions`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function grantAgentToolPermission(
+  token: string,
+  agentId: string,
+  body: { tool_name: string; constraint?: Record<string, unknown> | null }
+) {
+  return request<AgentToolPermissionGrant>(`/api/v1/agents/${agentId}/tool-permissions`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function revokeAgentToolPermission(token: string, agentId: string, toolName: string) {
+  return request<void>(`/api/v1/agents/${agentId}/tool-permissions/${encodeURIComponent(toolName)}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+}
+
+export function listAgentVersions(token: string, agentId: string) {
+  return request<AgentVersion[]>(`/api/v1/agents/${agentId}/versions`, { headers: authHeaders(token) });
+}
+
+export function createAgentVersion(
+  token: string,
+  agentId: string,
+  body: {
+    instructions: string;
+    memory_refs?: string[];
+    triggers?: AgentVersion["triggers"];
+    max_executions_per_hour?: number;
+    max_concurrent_executions?: number;
+    max_tool_chain_depth?: number;
+    approval_policy_override?: string | null;
+  }
+) {
+  return request<AgentVersion>(`/api/v1/agents/${agentId}/versions`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function publishAgentVersion(token: string, agentId: string, versionId: string) {
+  return request<AgentVersion>(`/api/v1/agents/${agentId}/versions/${versionId}/publish`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function executeAgent(
+  token: string,
+  agentId: string,
+  body: { tool_name?: string; tool_input?: Record<string, unknown>; goal?: string; idempotency_key?: string }
+) {
+  return request<AgentExecution>(`/api/v1/agents/${agentId}/execute`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function listAgentExecutions(token: string, agentId: string) {
+  return request<AgentExecution[]>(`/api/v1/agents/${agentId}/executions`, { headers: authHeaders(token) });
+}
+
+export function getAgentExecution(token: string, agentId: string, executionId: string) {
+  return request<AgentExecution>(`/api/v1/agents/${agentId}/executions/${executionId}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function listAgentExecutionSteps(token: string, agentId: string, executionId: string) {
+  return request<AgentExecutionStep[]>(`/api/v1/agents/${agentId}/executions/${executionId}/steps`, {
+    headers: authHeaders(token),
+  });
+}

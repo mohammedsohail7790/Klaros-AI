@@ -29,6 +29,37 @@ from app.services.openai_realtime_voice_service import (
 pytestmark = pytest.mark.asyncio
 
 
+@pytest.fixture(autouse=True)
+def _fake_openai_api_key(monkeypatch):
+    """Every test in this file drives OpenAIRealtimeVoiceBridge against a
+    fully scripted fake WebSocket (_FakeRealtimeWebSocket, see below) or a
+    monkeypatched `_synthesize_verbatim` — never a real OpenAI connection
+    (see module docstring). `OpenAIRealtimeVoiceBridge.open()` still
+    legitimately refuses to open a session with no configured API key (a
+    real, correct fail-closed guard against ever opening a billed Realtime
+    session with no credentials — see app/services/openai_realtime_voice_
+    service.py::open()), so these fully-mocked tests need *some* non-empty
+    value to satisfy that config-presence check before reaching the mocked
+    connector; the network boundary itself is what's actually mocked, not
+    this check. This must never be a real-looking secret (see the
+    backend/.env credential-isolation incident this project treats as
+    safety-critical) — it is an obviously-fake placeholder, and it is
+    never sent anywhere real because the WebSocket connector and the
+    speech-synthesis call are both replaced with fakes in every test that
+    reaches them.
+
+    test_open_without_api_key_raises_honestly explicitly overrides this
+    with an empty string, in the same test, to prove the guard itself.
+    """
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    monkeypatch.setenv("OPENAI_API_KEY", "test-fake-not-a-real-key-do-not-use")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 class _FakeRealtimeWebSocket:
     """A real in-process fake of the `websockets` client connection
     object — records every event this module sends, and replays a

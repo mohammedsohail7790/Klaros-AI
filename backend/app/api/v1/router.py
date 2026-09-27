@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    agents,
     ai_activity,
     appointments,
     approvals,
@@ -9,6 +10,9 @@ from app.api.v1 import (
     automation,
     automations,
     billing,
+    business_blueprint,
+    business_discovery,
+    business_journey,
     cash,
     company_memory,
     credit_notes,
@@ -34,6 +38,9 @@ from app.api.v1 import (
     marketing_outbound,
     marketing_reactivation,
     marketing_seo,
+    mcp,
+    medical_tourism,
+    mcp_admin,
     marketplace_webhooks,
     morning_brief,
     notifications,
@@ -45,9 +52,11 @@ from app.api.v1 import (
     public_invites,
     public_leads,
     public_quotes,
+    public_websites,
     quickbooks_oauth,
     quotes,
     contracts,
+    recommendations,
     refunds,
     retention,
     retention_campaigns,
@@ -63,6 +72,7 @@ from app.api.v1 import (
     voice,
     voice_stream,
     webhooks,
+    websites,
     workers,
     writeoffs,
 )
@@ -78,6 +88,11 @@ api_router.include_router(tools.router)
 api_router.include_router(approvals.router)
 api_router.include_router(ai_activity.router)
 api_router.include_router(integrations.router)
+api_router.include_router(business_discovery.router)
+api_router.include_router(business_blueprint.router)
+api_router.include_router(recommendations.router)
+api_router.include_router(business_journey.router)
+api_router.include_router(agents.router)
 api_router.include_router(quickbooks_oauth.router)
 api_router.include_router(google_calendar_oauth.router)
 api_router.include_router(google_calendar.router)
@@ -99,6 +114,7 @@ api_router.include_router(public_quotes.router)
 api_router.include_router(public_contracts.router)
 api_router.include_router(public_leads.router)
 api_router.include_router(public_invites.router)
+api_router.include_router(public_websites.router)
 api_router.include_router(payments.router)
 api_router.include_router(ar.router)
 api_router.include_router(refunds.router)
@@ -132,3 +148,7 @@ api_router.include_router(webhooks.router)
 api_router.include_router(marketplace_webhooks.router)
 api_router.include_router(voice.router)
 api_router.include_router(voice_stream.router)
+api_router.include_router(mcp.router)
+api_router.include_router(mcp_admin.router)
+api_router.include_router(medical_tourism.router)
+api_router.include_router(websites.router)

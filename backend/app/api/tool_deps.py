@@ -74,6 +74,16 @@ def get_wired_event_bus() -> EventBus:
     register_retention_handlers(bus, async_session_maker)
     register_notification_handlers(bus, async_session_maker)
     register_automation_handlers(bus, async_session_maker, AIExecutionService(get_tool_registry()))
+    # Phase 6 (Agent Runtime Reliability): wires AgentTriggerSource.EVENT
+    # through this SAME wired bus — see
+    # app/events/agent_trigger_handlers.py's module docstring. Registered
+    # here (not in app/main.py/app/events/worker.py) for the same reason
+    # every other domain handler above is: this is the one bootstrap root
+    # every runtime path (HTTP, in-process worker, standalone worker
+    # process, tests) shares.
+    from app.events.agent_trigger_handlers import register_agent_trigger_handlers
+
+    register_agent_trigger_handlers(bus, async_session_maker, get_tool_registry())
     return bus
 
 

@@ -21,16 +21,30 @@ logger = get_logger(__name__)
 _INSECURE_DEFAULT_JWT_SECRET = "change-me-in-production"
 
 
+_REACHABLE_ENVIRONMENTS = ("production", "staging")
+
+
 def _assert_production_secrets_are_real() -> None:
-    """Refuse to boot in production with the publicly-visible default JWT
-    secret — every valid token is signed with it, so anyone reading this
-    open-source codebase could forge a token for any tenant/user/role
-    against a deployment that forgot to override it. This check has to
-    live in code, not just documentation, since a missed .env value is
-    exactly the kind of mistake documentation doesn't catch."""
-    if settings.ENV == "production" and settings.JWT_SECRET == _INSECURE_DEFAULT_JWT_SECRET:
+    """Refuse to boot with the publicly-visible default JWT secret in any
+    environment that is actually network-reachable by someone other than
+    the developer running it locally — every valid token is signed with
+    it, so anyone reading this open-source codebase could forge a token
+    for any tenant/user/role against a deployment that forgot to override
+    it. This check has to live in code, not just documentation, since a
+    missed .env value is exactly the kind of mistake documentation
+    doesn't catch.
+
+    Phase 0 (KLAROS_PHASE_0_IMPLEMENTATION_PLAN.md §0.5 — staging
+    foundation): extended from "production only" to also cover
+    ENV=staging. A staging environment that reuses the insecure default
+    secret is exactly as exploitable as production reusing it — staging
+    just didn't exist as a concept in this codebase before this Phase 0
+    pass. This does NOT change docs_url/redoc_url exposure below, which
+    stays intentionally unchanged for staging (an existing, deliberate
+    choice predating this change — see its own comment)."""
+    if settings.ENV in _REACHABLE_ENVIRONMENTS and settings.JWT_SECRET == _INSECURE_DEFAULT_JWT_SECRET:
         raise RuntimeError(
-            "Refusing to start: ENV=production but JWT_SECRET is still the insecure default "
+            f"Refusing to start: ENV={settings.ENV} but JWT_SECRET is still the insecure default "
             "('change-me-in-production'). Set a real, random JWT_SECRET before deploying."
         )
     # Phase 12D: same reasoning as JWT_SECRET above, for tenant-owned
@@ -39,9 +53,9 @@ def _assert_production_secrets_are_real() -> None:
     # app/integrations/credential_store.py, which would let anyone reading
     # this codebase decrypt any tenant's stored credential in a deployment
     # that forgot to set a real one.
-    if settings.ENV == "production" and not settings.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY:
+    if settings.ENV in _REACHABLE_ENVIRONMENTS and not settings.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY:
         raise RuntimeError(
-            "Refusing to start: ENV=production but INTEGRATION_CREDENTIAL_ENCRYPTION_KEY is unset "
+            f"Refusing to start: ENV={settings.ENV} but INTEGRATION_CREDENTIAL_ENCRYPTION_KEY is unset "
             "(would fall back to a publicly-known default key). Set a real, random value before deploying."
         )
 
@@ -73,16 +87,24 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         # `event-worker` Docker Compose service consumes the same Redis
         # Streams the API publishes to, genuinely out-of-process.
         from app.api.tool_deps import get_automation_service, get_morning_brief_service
+        from app.api.tool_deps_agents import get_agent_recovery_service, get_agent_trigger_service
         from app.events.worker import EventWorker, combine_on_tick
 
         morning_brief_service = get_morning_brief_service(tool_registry, bus)
         automation_service = get_automation_service(tool_registry)
+        # Phase 6 (Agent Runtime Reliability): same piggyback-on-this-tick
+        # mechanism as the Automation Engine/Morning Brief above — see
+        # agent_recovery_service.py/agent_trigger_service.py.
+        agent_recovery_service = get_agent_recovery_service(tool_registry)
+        agent_trigger_service = get_agent_trigger_service(tool_registry)
         worker = EventWorker(
             bus,
             poll_interval_seconds=settings.EVENT_WORKER_POLL_SECONDS,
             on_tick=combine_on_tick(
                 morning_brief_service.check_and_generate_scheduled,
                 automation_service.check_and_dispatch_scheduled,
+                agent_trigger_service.check_and_dispatch_scheduled,
+                agent_recovery_service.sweep_once,
             ),
         )
         worker_task = asyncio.create_task(worker.run_forever(shutdown_event))
