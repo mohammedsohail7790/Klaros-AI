@@ -11,6 +11,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.operations import Job, ScopeChange, ScopeChangeStatus
@@ -37,6 +38,7 @@ class ScopeChangeService:
         created_by: uuid.UUID | None,
     ) -> ScopeChange:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id:
                 raise JobNotFoundError("Job not found")

@@ -20,6 +20,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import LeadSource
 from app.models.event import EventType
@@ -74,6 +75,7 @@ class ReferralService:
             objective=CampaignObjective.LEAD_GEN,
         )
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             program = ReferralProgram(
                 tenant_id=tenant_id, name=name, campaign_id=campaign.id, reward_type=reward_type,
                 reward_amount=reward_amount, status=ReferralProgramStatus.ACTIVE,
@@ -85,6 +87,7 @@ class ReferralService:
 
     async def get_or_create_code(self, tenant_id: uuid.UUID, program_id: uuid.UUID, customer_id: uuid.UUID) -> ReferralCode:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             program = await session.get(ReferralProgram, program_id)
             if program is None or program.tenant_id != tenant_id:
                 raise ProgramNotFoundError("Referral program not found")
@@ -121,6 +124,7 @@ class ReferralService:
     async def create_referral(self, tenant_id: uuid.UUID, referral_code_id: uuid.UUID) -> Referral:
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             code = await session.get(ReferralCode, referral_code_id)
             if code is None or code.tenant_id != tenant_id:
                 raise ReferralNotFoundError("Referral code not found")
@@ -149,6 +153,7 @@ class ReferralService:
         (`referral-{referral_id}`) guarantees that, and this method itself
         no-ops if the referral already has a `lead_id`."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             referral = await session.get(Referral, referral_id)
             if referral is None or referral.tenant_id != tenant_id:
                 raise ReferralNotFoundError("Referral not found")
@@ -166,6 +171,7 @@ class ReferralService:
         )
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             referral = await session.get(Referral, referral_id)
             referral.lead_id = lead.id
             referral.status = ReferralStatus.LEAD_CREATED
@@ -185,6 +191,7 @@ class ReferralService:
 
     async def _advance_status(self, tenant_id: uuid.UUID, lead_id: uuid.UUID, status: str, **fields) -> Referral | None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             referral = (
                 await session.execute(select(Referral).where(Referral.tenant_id == tenant_id, Referral.lead_id == lead_id))
             ).scalar_one_or_none()
@@ -227,6 +234,7 @@ class ReferralService:
         same invoice does not double-fire the event or re-request a
         reward — checked via referral.status before advancing."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             referral = (
                 await session.execute(select(Referral).where(Referral.tenant_id == tenant_id, Referral.lead_id == lead_id))
             ).scalar_one_or_none()
@@ -246,6 +254,7 @@ class ReferralService:
 
         program = None
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             program = await session.get(ReferralProgram, referral.program_id)
         if program and program.reward_amount:
             await self.request_reward(tenant_id, referral.id, amount=program.reward_amount, requested_by=None)
@@ -257,6 +266,7 @@ class ReferralService:
 
     async def request_reward(self, tenant_id: uuid.UUID, referral_id: uuid.UUID, *, amount: Decimal, requested_by: uuid.UUID | None) -> ReferralReward:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             referral = await session.get(Referral, referral_id)
             if referral is None or referral.tenant_id != tenant_id:
                 raise ReferralNotFoundError("Referral not found")
@@ -298,6 +308,7 @@ class ReferralService:
         from app.models.approval import ApprovalRequest, ApprovalStatus
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             reward = await session.get(ReferralReward, reward_id)
             if reward is None or reward.tenant_id != tenant_id:
                 raise RewardNotFoundError("Referral reward not found")
@@ -335,6 +346,7 @@ class ReferralService:
         """Internal record only — no real payment provider is ever
         called."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             reward = await session.get(ReferralReward, reward_id)
             if reward is None or reward.tenant_id != tenant_id:
                 raise RewardNotFoundError("Referral reward not found")

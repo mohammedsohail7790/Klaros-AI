@@ -321,6 +321,14 @@ class WebsiteGenerationService:
         if not enabled:
             return []
         vertical_ids = [e.vertical_extension_id for e in enabled]
+        # Phase 17B-2R classification: this session only reads
+        # `VerticalExtension` — the GLOBAL platform catalog table (see
+        # vertical_extension_service.py's own docstring), never the
+        # tenant-scoped `OrganizationVerticalExtension` join (already
+        # queried above via `self._verticals.list_enabled_for_organization`,
+        # which sets tenant context on its own session). Correctly
+        # excluded here, not a gap — same pattern as
+        # recommendation_service.py's `_collect_capability_requirements`.
         async with self._session_factory() as session:
             verticals = (
                 await session.execute(select(VerticalExtension).where(VerticalExtension.id.in_(vertical_ids)))

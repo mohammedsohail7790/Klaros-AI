@@ -18,6 +18,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.automation import Automation, AutomationStatus, AutomationVersion, TriggerType
 from app.models.crm import Lead
@@ -56,6 +57,7 @@ def register_automation_handlers(bus: EventBus, session_factory: async_sessionma
 
     async def automation_dispatch_handler(event: Event) -> None:
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             versions = (
                 await session.execute(
                     select(AutomationVersion, Automation)
@@ -76,6 +78,7 @@ def register_automation_handlers(bus: EventBus, session_factory: async_sessionma
             return
 
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             context = await _build_event_context(session, event)
 
         for version, automation in matches:

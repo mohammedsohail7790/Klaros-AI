@@ -47,6 +47,13 @@ def derive_tenant_status(implementation_status: str, connection_status: str | No
 
 
 class IntegrationCatalogService:
+    # Phase 17B-2R classification: every session-open site in this class
+    # operates ONLY on `IntegrationProviderCatalog`, deliberately NOT
+    # `TenantScopedMixin` (see app/models/integration_catalog.py's own
+    # docstring — "tenant-independent reference data, read by every
+    # tenant"). Correctly GLOBAL/SHARED — no tenant_id parameter exists on
+    # any method here, and none of this class's 4 session-open sites call
+    # `set_tenant_context`. Not a gap.
     def __init__(self, session_factory: async_sessionmaker) -> None:
         self._session_factory = session_factory
 

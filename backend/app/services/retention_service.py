@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.finance import Invoice, InvoiceStatus
@@ -106,6 +107,7 @@ class RetentionService:
         the event itself."""
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id or job.status != JobStatus.CLOSED:
                 return
@@ -166,6 +168,7 @@ class RetentionService:
         changed: list[uuid.UUID] = []
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             profiles = (
                 await session.execute(
                     select(CustomerLifecycleProfile).where(
@@ -207,6 +210,7 @@ class RetentionService:
 
     async def customer_service_history(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> ServiceHistory:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             jobs = (
                 await session.execute(select(Job).where(Job.tenant_id == tenant_id, Job.customer_id == customer_id))
             ).scalars().all()
@@ -281,6 +285,7 @@ class RetentionService:
         rollback/re-fetch CAS pattern."""
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(RetentionOpportunity).where(
@@ -340,6 +345,7 @@ class RetentionService:
         invoice PAID (or no invoice needed), no unresolved complaint for
         this customer, and no existing request for this job."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(ReviewRequest).where(ReviewRequest.tenant_id == tenant_id, ReviewRequest.job_id == job.id)
@@ -374,6 +380,7 @@ class RetentionService:
             return
         reminder_date = (job.completed_at + timedelta(days=SERVICE_INTERVAL_DAYS)).date()
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(ServiceReminder).where(
@@ -406,6 +413,7 @@ class RetentionService:
     async def mark_due_reminders(self, tenant_id: uuid.UUID, *, as_of: date | None = None) -> list[uuid.UUID]:
         as_of = as_of or date.today()
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             due = (
                 await session.execute(
                     select(ServiceReminder).where(
@@ -433,6 +441,7 @@ class RetentionService:
         except ValueError:
             raise ValueError(f"Invalid reminder status: {status!r}") from None
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             reminder = await session.get(ServiceReminder, reminder_id)
             if reminder is None or reminder.tenant_id != tenant_id:
                 raise ValueError("Service reminder not found")
@@ -443,6 +452,7 @@ class RetentionService:
 
     async def update_opportunity_status(self, tenant_id: uuid.UUID, opportunity_id: uuid.UUID, status: str) -> RetentionOpportunity:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             opp = await session.get(RetentionOpportunity, opportunity_id)
             if opp is None or opp.tenant_id != tenant_id:
                 raise ValueError("Retention opportunity not found")
@@ -457,6 +467,7 @@ class RetentionService:
         self, tenant_id: uuid.UUID, *, customer_id: uuid.UUID, signal_type: str, severity: str, description: str,
     ) -> tuple[CustomerRiskSignal, bool]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(CustomerRiskSignal).where(
@@ -479,6 +490,7 @@ class RetentionService:
     async def detect_payment_issue_risk(self, tenant_id: uuid.UUID, *, as_of: date | None = None) -> list[uuid.UUID]:
         as_of = as_of or date.today()
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             overdue = (
                 await session.execute(
                     select(Invoice).where(
@@ -508,6 +520,7 @@ class RetentionService:
         customer are PAID/VOID (nothing overdue)."""
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             profiles = (
                 await session.execute(
                     select(CustomerLifecycleProfile).where(

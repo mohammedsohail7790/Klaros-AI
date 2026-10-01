@@ -31,6 +31,11 @@ services:
       # config`/`up` command loudly if POSTGRES_PASSWORD isn't set,
       # instead of silently accepting the "klaros" dev default.
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set explicitly for a production deployment — do not use the local-dev default}
+      # Phase 17B-1: same rule for the restricted runtime application
+      # role's password — never the "klaros_app" local-dev default in a
+      # real deployment. APP_DB_USER may keep its dev-matching default
+      # name (it's not a secret), only the password is required here.
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD must be set explicitly for a production deployment — do not use the local-dev default}
 
   backend:
     # Same command as the base file, minus --reload (which watches the

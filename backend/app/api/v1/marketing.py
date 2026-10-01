@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, get_current_user
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.marketing_ads.base import (
     NotConnectedGoogleAdsAdapter,
     NotConnectedLocalServicesAdsAdapter,
@@ -40,6 +40,7 @@ async def marketing_summary(current_user: CurrentUser = Depends(get_current_user
     attribution_service = AttributionService(async_session_maker)
 
     async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
         campaigns = (await session.execute(select(Campaign).where(Campaign.tenant_id == tenant_id))).scalars().all()
 
         open_exceptions = (

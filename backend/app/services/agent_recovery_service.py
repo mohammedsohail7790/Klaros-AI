@@ -133,6 +133,7 @@ import structlog
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.agent import (
     AgentExecution,
@@ -215,6 +216,14 @@ class AgentRecoveryService:
         self, tenant_id: uuid.UUID | None, limit: int, now_utc: datetime
     ) -> list[uuid.UUID]:
         async with self._session_factory() as session:
+            # Same shape as AgentTriggerService.check_and_dispatch_scheduled:
+            # tenant_id is optional here — None means this worker's own
+            # sweep-all-tenants tick (a genuine, intentional multi-tenant
+            # scan, flagged for Phase 17B-3's system/global context design
+            # rather than faked here); a real tenant_id is an ordinary
+            # per-tenant operation this phase's contract covers.
+            if tenant_id is not None:
+                await set_tenant_context(session, tenant_id)
             pending_orphan_cutoff = now_utc - PENDING_ORPHAN_THRESHOLD
             query = (
                 select(AgentExecution.id)
@@ -257,6 +266,14 @@ class AgentRecoveryService:
         matched."""
         pending_orphan_cutoff = now_utc - PENDING_ORPHAN_THRESHOLD
         async with self._session_factory() as session:
+            # No tenant_id parameter on this method (a pure claim-by-
+            # execution_id conditional UPDATE) — look up the owning tenant
+            # first so this transaction's UPDATE below runs with tenant
+            # context set.
+            owner_tenant_id = await session.scalar(
+                select(AgentExecution.tenant_id).where(AgentExecution.id == execution_id)
+            )
+            await set_tenant_context(session, owner_tenant_id)
             result = await session.execute(
                 update(AgentExecution)
                 .where(
@@ -293,6 +310,7 @@ class AgentRecoveryService:
     async def _recover_one(self, execution_id: uuid.UUID) -> None:
         async with self._session_factory() as session:
             execution = await session.get(AgentExecution, execution_id)
+            await set_tenant_context(session, execution.tenant_id if execution else None)
             tenant_id = execution.tenant_id
             mode = execution.mode
             attempt_count = execution.recovery_attempt_count
@@ -333,6 +351,7 @@ class AgentRecoveryService:
 
     async def _halt(self, tenant_id, execution_id, termination_reason, *, error: str) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
             execution.status = AgentExecutionStatus.FAILED
             execution.termination_reason = termination_reason
@@ -345,6 +364,7 @@ class AgentRecoveryService:
             execution = await session.get(AgentExecution, execution_id)
             if execution is None:
                 return
+            await set_tenant_context(session, execution.tenant_id)
             session.add(
                 AuditLog(
                     tenant_id=execution.tenant_id,

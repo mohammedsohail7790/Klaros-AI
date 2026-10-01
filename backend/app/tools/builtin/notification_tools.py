@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.notification import Notification
 from app.tools.base import ExecutionContext, Tool
 
@@ -29,6 +30,7 @@ class CreateNotification(Tool):
         self, input: CreateNotificationInput, context: ExecutionContext
     ) -> CreateNotificationOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             notification = Notification(
                 tenant_id=context.tenant_id,
                 title=input.title,

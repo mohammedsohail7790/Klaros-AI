@@ -66,6 +66,22 @@ export default function DiscoveryPage() {
       if (j.discovery_session_id) {
         const { session: s, turns } = await getDiscoverySession(token, j.discovery_session_id);
         setSession(s);
+        if (s.status === "COMPLETED") {
+          // The Discovery session already reached COMPLETED server-side —
+          // this happens on a refresh/direct navigation after the final
+          // answer, or if the in-flight advance after that answer was
+          // interrupted (tab closed, network error, etc). The journey
+          // itself is still DISCOVERY_ACTIVE (we only got here because the
+          // earlier stage guard let us render this page), so drive the
+          // same server-authoritative handoff used right after the last
+          // answer is submitted: call complete-discovery, refresh the
+          // journey, and navigate on. This must never be skipped — a
+          // COMPLETED session with no further action is exactly the "stuck
+          // on Loading your next question..." bug.
+          setQuestion(null);
+          await advanceToBlueprint(j);
+          return;
+        }
         // The backend stores the currently-pending question on the LATEST
         // turn's `question` field alongside that same turn's already-filled
         // `answer` (the answer to the PREVIOUS question) — a turn with
@@ -122,12 +138,21 @@ export default function DiscoveryPage() {
     }
   }
 
-  async function advanceToBlueprint() {
-    if (!token || !journey) return;
+  async function advanceToBlueprint(journeyOverride?: BusinessJourney) {
+    // Accepts an explicit journey rather than only reading the `journey`
+    // state variable: when called from `load()` right after `setJourney(j)`,
+    // the state update has not yet committed (React batches it to the next
+    // render), so the closed-over `journey` would still be the stale
+    // pre-load value (often `undefined` on first load) and this would
+    // silently no-op — the exact shape of the "stuck on Loading your next
+    // question..." bug. Callers that already have a fresh journey object
+    // (namely `load()`) must pass it explicitly.
+    const activeJourney = journeyOverride ?? journey;
+    if (!token || !activeJourney) return;
     setAdvancing(true);
     setError(null);
     try {
-      const updated = await completeDiscoveryJourneyStep(token, journey.id);
+      const updated = await completeDiscoveryJourneyStep(token, activeJourney.id);
       router.replace(getJourneyDestination(updated.status));
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {

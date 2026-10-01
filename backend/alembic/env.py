@@ -13,7 +13,15 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", get_settings().DATABASE_URL)
+# Phase 17B-1: migrations must run as the schema-owning role, never the
+# restricted runtime application role DATABASE_URL may point at once an
+# environment is cut over (see backend/app/core/config.py's
+# DATABASE_MIGRATION_URL docstring and
+# backend/scripts/db/provision_app_role.py). Falls back to DATABASE_URL
+# when DATABASE_MIGRATION_URL is unset, matching every environment's
+# existing single-role behavior until it is explicitly cut over.
+_settings = get_settings()
+config.set_main_option("sqlalchemy.url", _settings.DATABASE_MIGRATION_URL or _settings.DATABASE_URL)
 
 target_metadata = Base.metadata
 

@@ -11,6 +11,7 @@ import uuid
 import structlog
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import Appointment
 from app.models.event import Event, EventType
@@ -32,6 +33,7 @@ def register_marketing_handlers(bus: EventBus, session_factory: async_sessionmak
         if event.entity_id is None:
             return
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             appt = await session.get(Appointment, event.entity_id)
         if appt is None or appt.lead_id is None:
             return
@@ -45,6 +47,7 @@ def register_marketing_handlers(bus: EventBus, session_factory: async_sessionmak
         from app.models.operations import Job
 
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             job = await session.get(Job, job_id)
         if job is None:
             return
@@ -62,6 +65,7 @@ def register_marketing_handlers(bus: EventBus, session_factory: async_sessionmak
         if lead_id is None:
             return
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             invoice = await session.get(Invoice, invoice_id)
         if invoice is None:
             return
@@ -75,6 +79,7 @@ def register_marketing_handlers(bus: EventBus, session_factory: async_sessionmak
             if lead_id is None:
                 continue
             async with session_factory() as session:
+                await set_tenant_context(session, event.tenant_id)
                 invoice = await session.get(Invoice, invoice_id)
             if invoice is None:
                 continue

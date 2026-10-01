@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import Lead, LeadStatus, QualificationStatus
 from app.models.event import EventType
@@ -67,6 +68,7 @@ class LeadService:
         pattern already proven in Phase 29's `CollectionService.
         schedule_next_action` fix."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             if data.idempotency_key:
                 existing = (
                     await session.execute(

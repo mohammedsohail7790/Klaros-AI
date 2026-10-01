@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, get_current_user, require_permission
 from app.api.tool_deps import execution_context, get_tool_registry, get_wired_event_bus, raise_http_for_tool_error
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import Event
 from app.models.rbac import Permission
@@ -164,6 +164,7 @@ async def get_event(
     event_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user)
 ) -> EventResponse:
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         event = await session.get(Event, event_id)
         if event is None or event.tenant_id != current_user.tenant_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")

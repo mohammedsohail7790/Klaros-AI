@@ -19,6 +19,7 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.tool_policy import TenantToolPolicy
@@ -62,6 +63,7 @@ class PolicyService:
             return ActionPolicy.BLOCKED
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = (
                 await session.execute(
                     select(TenantToolPolicy).where(
@@ -81,6 +83,7 @@ class PolicyService:
         complete catalog of tools this system has ever assigned a default
         to), merged with this tenant's overrides, if any."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(TenantToolPolicy).where(TenantToolPolicy.tenant_id == tenant_id)
@@ -146,6 +149,7 @@ class PolicyService:
         # guarantees this converges instead of just the version CAS alone.
         for _ in range(8):
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 existing = (
                     await session.execute(
                         select(TenantToolPolicy).where(
@@ -217,6 +221,7 @@ class PolicyService:
 
         old_policy = await self.resolve(tenant_id, tool_name)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(TenantToolPolicy).where(
@@ -248,6 +253,7 @@ class PolicyService:
         reset: bool = False,
     ) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             session.add(
                 AuditLog(
                     tenant_id=tenant_id,

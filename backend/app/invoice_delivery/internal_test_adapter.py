@@ -9,6 +9,7 @@ from decimal import Decimal
 import structlog
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.invoice_delivery.base import DeliveryResult, InvoiceDeliveryProvider
 from app.models.communication import CommunicationLog
 
@@ -32,6 +33,7 @@ class InternalTestInvoiceDeliveryAdapter(InvoiceDeliveryProvider):
     ) -> DeliveryResult:
         recipient = customer_email or "unknown@no-email-on-file.invalid"
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             session.add(
                 CommunicationLog(
                     tenant_id=tenant_id,
@@ -60,6 +62,7 @@ class InternalTestInvoiceDeliveryAdapter(InvoiceDeliveryProvider):
     ) -> DeliveryResult:
         recipient = customer_email or "unknown@no-email-on-file.invalid"
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             session.add(
                 CommunicationLog(
                     tenant_id=tenant_id,

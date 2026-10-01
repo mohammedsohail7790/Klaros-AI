@@ -13,6 +13,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.finance import (
     CashForecast,
     CashForecastItem,
@@ -28,6 +29,19 @@ from app.models.organization import Organization
 WEEKS = 13
 
 
+class CashForecastNotFoundError(Exception):
+    """Raised when a forecast_id does not exist, or exists but belongs to a
+    different tenant than the one requesting it. Phase 17B-4: previously
+    `weekly_projection` resolved the forecast row via a bare `session.get`
+    with no tenant_id check, which let a caller who knew (or guessed) another
+    tenant's forecast_id read that tenant's `starting_cash`,
+    `starting_cash_source`, `generated_at`, and real `tenant_id` — a
+    cross-tenant metadata leak even though the forecast's line ITEMS were
+    already correctly tenant-filtered. Treat "exists but not mine" the same
+    as "does not exist" so no cross-tenant existence/metadata is disclosed.
+    """
+
+
 def _week_start(d: date) -> date:
     return d - timedelta(days=d.weekday())
 
@@ -41,6 +55,7 @@ class CashForecastService:
         horizon_end = today + timedelta(weeks=WEEKS)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             org = await session.get(Organization, tenant_id)
             starting_cash = org.manual_starting_cash if org else None
             starting_cash_source = "MANUAL_INTERNAL_TEST_DATA" if starting_cash is not None else "NOT_CONNECTED"
@@ -119,7 +134,18 @@ class CashForecastService:
 
     async def weekly_projection(self, tenant_id: uuid.UUID, forecast_id: uuid.UUID) -> list[dict]:
         async with self._session_factory() as session:
-            forecast = await session.get(CashForecast, forecast_id)
+            await set_tenant_context(session, tenant_id)
+            forecast = (
+                await session.execute(
+                    select(CashForecast).where(
+                        CashForecast.id == forecast_id, CashForecast.tenant_id == tenant_id
+                    )
+                )
+            ).scalar_one_or_none()
+            if forecast is None:
+                raise CashForecastNotFoundError(
+                    f"CashForecast {forecast_id} not found for tenant {tenant_id}"
+                )
             items = (
                 await session.execute(
                     select(CashForecastItem).where(

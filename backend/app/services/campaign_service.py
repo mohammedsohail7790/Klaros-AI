@@ -13,6 +13,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.marketing import Campaign, CampaignStatus, MarketingSpend, MarketingSpendAllocation
@@ -57,6 +58,7 @@ class CampaignService:
         external_provider: str | None = None,
     ) -> Campaign:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             campaign = Campaign(
                 tenant_id=tenant_id,
                 name=name,
@@ -85,6 +87,7 @@ class CampaignService:
 
     async def set_status(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, status: str) -> Campaign:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             campaign = await session.get(Campaign, campaign_id)
             if campaign is None or campaign.tenant_id != tenant_id:
                 raise CampaignNotFoundError("Campaign not found")
@@ -109,6 +112,7 @@ class CampaignService:
             raise ValueError(f"Allocations (${allocated_total}) exceed spend amount (${amount})")
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             spend = MarketingSpend(
                 tenant_id=tenant_id,
                 channel=channel,
@@ -151,6 +155,7 @@ class CampaignService:
 
     async def budget_status(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID) -> BudgetStatus:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             campaign = await session.get(Campaign, campaign_id)
             if campaign is None or campaign.tenant_id != tenant_id:
                 raise CampaignNotFoundError("Campaign not found")
@@ -190,6 +195,7 @@ class CampaignService:
         Phase 5's `ARService.detect_overdue` on-demand pattern."""
         flagged: list[uuid.UUID] = []
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             campaigns = (await session.execute(select(Campaign).where(Campaign.tenant_id == tenant_id))).scalars().all()
 
         for campaign in campaigns:

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.crm import Customer, Lead, LeadStatus
 from app.models.marketing import ReactivationCampaign, ReactivationCandidate, ReactivationCandidateStatus
 from app.models.operations import Job
@@ -28,6 +29,7 @@ class ReactivationService:
 
     async def create_campaign(self, tenant_id: uuid.UUID, *, name: str, target_criteria: str | None) -> ReactivationCampaign:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = ReactivationCampaign(tenant_id=tenant_id, name=name, target_criteria=target_criteria)
             session.add(row)
             await session.commit()
@@ -44,6 +46,7 @@ class ReactivationService:
         cutoff = as_of - timedelta(days=CUSTOMER_INACTIVITY_DAYS)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             campaign = await session.get(ReactivationCampaign, campaign_id)
             if campaign is None or campaign.tenant_id != tenant_id:
                 raise CampaignNotFoundError("Reactivation campaign not found")
@@ -106,6 +109,7 @@ class ReactivationService:
     ) -> list[ReactivationCandidate]:
         as_of = as_of or datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             campaign = await session.get(ReactivationCampaign, campaign_id)
             if campaign is None or campaign.tenant_id != tenant_id:
                 raise CampaignNotFoundError("Reactivation campaign not found")

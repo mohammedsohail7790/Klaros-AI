@@ -11,6 +11,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.finance import (
     Payout,
     PayoutStatus,
@@ -37,6 +38,7 @@ class VendorService:
 
     async def create_vendor(self, tenant_id: uuid.UUID, *, name: str, email: str | None, phone: str | None) -> Vendor:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             vendor = Vendor(tenant_id=tenant_id, name=name, email=email, phone=phone, status=VendorStatus.ACTIVE)
             session.add(vendor)
             await session.commit()
@@ -53,6 +55,7 @@ class VendorService:
         due_date: date,
     ) -> VendorBill:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             vendor = await session.get(Vendor, vendor_id)
             if vendor is None or vendor.tenant_id != tenant_id:
                 raise VendorNotFoundError("Vendor not found")
@@ -84,6 +87,7 @@ class VendorService:
 
     async def list_vendors(self, tenant_id: uuid.UUID) -> list[Vendor]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(select(Vendor).where(Vendor.tenant_id == tenant_id).order_by(Vendor.name))
             ).scalars().all()
@@ -91,6 +95,7 @@ class VendorService:
 
     async def list_vendor_bills(self, tenant_id: uuid.UUID, *, vendor_id: uuid.UUID | None = None) -> list[VendorBill]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             query = select(VendorBill).where(VendorBill.tenant_id == tenant_id)
             if vendor_id is not None:
                 query = query.where(VendorBill.vendor_id == vendor_id)
@@ -99,6 +104,7 @@ class VendorService:
 
     async def record_payout(self, tenant_id: uuid.UUID, *, vendor_id: uuid.UUID, bill_id: uuid.UUID) -> Payout:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             bill = await session.get(VendorBill, bill_id)
             if bill is None or bill.tenant_id != tenant_id:
                 raise VendorBillNotFoundError("Vendor bill not found")

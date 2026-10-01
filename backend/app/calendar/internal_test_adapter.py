@@ -19,6 +19,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.calendar.base import BookingRequest, CalendarProvider, DoubleBookingError, TimeSlot
+from app.db.session import set_tenant_context
 from app.models.crm import Appointment, AppointmentStatus, Customer
 
 BUSINESS_START = time(9, 0)
@@ -53,6 +54,7 @@ class InternalTestCalendarAdapter(CalendarProvider):
         assigned_user_id: uuid.UUID | None = None,
     ) -> list[TimeSlot]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             query = select(Appointment).where(
                 Appointment.tenant_id == tenant_id,
                 Appointment.status.in_(ACTIVE_STATUSES),
@@ -77,6 +79,7 @@ class InternalTestCalendarAdapter(CalendarProvider):
 
     async def create_event(self, request: BookingRequest) -> Appointment:
         async with self._session_factory() as session:
+            await set_tenant_context(session, request.tenant_id)
             customer = await session.get(Customer, request.customer_id)
             if customer is None or customer.tenant_id != request.tenant_id:
                 raise ValueError("Customer not found")
@@ -149,6 +152,7 @@ class InternalTestCalendarAdapter(CalendarProvider):
 
     async def update_event(self, tenant_id: uuid.UUID, appointment_id: uuid.UUID, **changes) -> Appointment:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             appointment = await session.get(Appointment, appointment_id)
             if appointment is None or appointment.tenant_id != tenant_id:
                 raise ValueError("Appointment not found")

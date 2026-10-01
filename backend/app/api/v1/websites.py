@@ -131,7 +131,25 @@ async def preview_version(
         spec = await service.load_specification(current_user.tenant_id, version_id)
     except WebsiteVersionNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return await render_website(current_user.tenant_id, spec)
+    rendered = await render_website(current_user.tenant_id, spec)
+    # Editor-only overlay (this authenticated preview endpoint is never used
+    # by the public read path — app/api/v1/public_websites.py calls
+    # render_website() directly on its own spec load, so this never reaches
+    # unauthenticated output): `render_website`/`render_section` deliberately
+    # never put `data_source` on a rendered section (shared contract with
+    # the public renderer, app/services/website_renderer.py). But the
+    # Website Builder editor (frontend/components/website/SectionEditor.tsx)
+    # needs the saved provider_key back to rehydrate its form after a
+    # save/reload, and this is the only endpoint it has to ask. `spec.pages`
+    # and `rendered["pages"]` are built from the exact same ordered
+    # `page.sections` list (website_renderer.render_page), so a positional
+    # zip is safe here without re-touching the renderer itself.
+    for page_spec, page_rendered in zip(spec.pages, rendered["pages"], strict=True):
+        for section_spec, section_rendered in zip(page_spec.sections, page_rendered["sections"], strict=True):
+            section_rendered["data_source"] = (
+                section_spec.data_source.model_dump() if section_spec.data_source is not None else None
+            )
+    return rendered
 
 
 class AddPageRequest(BaseModel):

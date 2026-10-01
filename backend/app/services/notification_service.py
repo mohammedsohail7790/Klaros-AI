@@ -22,6 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.notification import (
     Notification,
     NotificationChannelName,
@@ -90,6 +91,7 @@ class NotificationService:
         Returns the created row, or None if a duplicate was silently
         absorbed by the dedupe constraint."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             notification = Notification(
                 tenant_id=tenant_id,
                 recipient_id=recipient_id,
@@ -136,6 +138,7 @@ class NotificationService:
             return
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             recipients: list[User]
             if recipient_id is not None:
                 user = await session.get(User, recipient_id)
@@ -168,6 +171,7 @@ class NotificationService:
         if notification_type in _ALWAYS_IN_APP and channel == NotificationChannelName.IN_APP:
             return True
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             pref = (
                 await session.execute(
                     select(NotificationPreference).where(
@@ -186,6 +190,7 @@ class NotificationService:
         self, tenant_id: uuid.UUID, *, unread_only: bool = False, limit: int = 50
     ) -> list[Notification]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             query = select(Notification).where(Notification.tenant_id == tenant_id)
             if unread_only:
                 query = query.where(Notification.read_at.is_(None))
@@ -194,6 +199,7 @@ class NotificationService:
 
     async def unread_count(self, tenant_id: uuid.UUID) -> int:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             result = await session.execute(
                 select(func.count()).select_from(Notification).where(
                     Notification.tenant_id == tenant_id, Notification.read_at.is_(None)
@@ -203,6 +209,7 @@ class NotificationService:
 
     async def mark_read(self, tenant_id: uuid.UUID, notification_id: uuid.UUID) -> Notification:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             notification = await session.get(Notification, notification_id)
             if notification is None or notification.tenant_id != tenant_id:
                 raise ValueError("Notification not found")
@@ -215,6 +222,7 @@ class NotificationService:
 
     async def mark_all_read(self, tenant_id: uuid.UUID) -> int:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(Notification).where(
@@ -231,6 +239,7 @@ class NotificationService:
 
     async def dismiss(self, tenant_id: uuid.UUID, notification_id: uuid.UUID) -> Notification:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             notification = await session.get(Notification, notification_id)
             if notification is None or notification.tenant_id != tenant_id:
                 raise ValueError("Notification not found")
@@ -243,6 +252,7 @@ class NotificationService:
 
     async def get_preferences(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> list[dict]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(NotificationPreference).where(
@@ -273,6 +283,7 @@ class NotificationService:
         if notification_type in _ALWAYS_IN_APP and channel == NotificationChannelName.IN_APP and not enabled:
             raise ValueError(f"{notification_type} cannot be disabled in-app — it is always visible")
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(NotificationPreference).where(

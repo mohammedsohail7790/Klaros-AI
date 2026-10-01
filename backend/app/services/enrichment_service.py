@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import set_tenant_context
 from app.models.crm import Appointment, Customer, Lead
 from app.services.customer_matching import normalize_email, normalize_phone
 
@@ -36,6 +37,7 @@ class LeadEnrichmentService:
 
     async def enrich(self, tenant_id: uuid.UUID, lead: Lead) -> EnrichmentResult:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             matched_customer = await self._find_customer(session, tenant_id, lead)
             previous_lead_count = 0
             previous_appointment_count = 0

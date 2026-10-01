@@ -19,6 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.contract import Contract, ContractStatus, compute_content_hash
 from app.models.crm import Customer
@@ -99,6 +100,7 @@ class ContractService:
         try/except/rollback/re-fetch CAS pattern."""
         idempotency_key = f"contract-for-quote-{quote_id}"
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(Contract).where(
@@ -164,6 +166,7 @@ class ContractService:
 
     async def get(self, tenant_id: uuid.UUID, contract_id: uuid.UUID) -> Contract:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             contract = await session.get(Contract, contract_id)
         if contract is None or contract.tenant_id != tenant_id:
             raise ContractNotFoundError("Contract not found")
@@ -171,6 +174,7 @@ class ContractService:
 
     async def send(self, tenant_id: uuid.UUID, contract_id: uuid.UUID) -> Contract:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             contract = await session.get(Contract, contract_id)
             if contract is None or contract.tenant_id != tenant_id:
                 raise ContractNotFoundError("Contract not found")
@@ -197,6 +201,7 @@ class ContractService:
         """Marks VIEWED the first time (SENT -> VIEWED); a safe no-op on
         any later view. Never mutates an already-decided contract."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             contract = await session.get(Contract, contract_id)
             if contract is None or contract.tenant_id != tenant_id:
                 raise ContractNotFoundError("Contract not found")
@@ -227,6 +232,7 @@ class ContractService:
         real attestation of what was agreed to and by whom -- never
         represented as a third-party-verified signature."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             contract = await session.get(Contract, contract_id)
             if contract is None or contract.tenant_id != tenant_id:
                 raise ContractNotFoundError("Contract not found")
@@ -258,6 +264,7 @@ class ContractService:
         self, tenant_id: uuid.UUID, contract_id: uuid.UUID, *, reason: str | None = None,
     ) -> Contract:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             contract = await session.get(Contract, contract_id)
             if contract is None or contract.tenant_id != tenant_id:
                 raise ContractNotFoundError("Contract not found")
@@ -318,6 +325,7 @@ class ContractService:
         now = as_of or datetime.now(timezone.utc)
         threshold = now - timedelta(days=CONTRACT_PENDING_THRESHOLD_DAYS)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(Contract).where(

@@ -81,6 +81,30 @@ jobs:
       - name: pytest (full suite — sqlite-backed tests + postgres-only tests, since DATABASE_URL is real Postgres here)
         run: python -m pytest -q
 
+      - name: Phase 17B-1 — provision the restricted application DB role and verify it
+        # Does NOT repoint this job's own DATABASE_URL at the new role — most
+        # of this suite's ~1800 other real-Postgres tests manage their own
+        # schema via Base.metadata.create_all() (conftest.py's autouse
+        # _reset_database fixture), which is itself an owner-level
+        # operation incompatible with a restricted, non-owning connection.
+        # This step instead runs the exact provisioning script every real
+        # environment is meant to run, against this job's own Postgres
+        # service container, and confirms the role it creates is
+        # genuinely non-superuser/non-bypassrls/non-owner — the same
+        # thing tests/test_restricted_app_role_cutover.py already proves
+        # per-test with its own throwaway role, run once here end-to-end
+        # against a role name/password an operator would actually use.
+        env:
+          DATABASE_MIGRATION_URL: postgresql+asyncpg://klaros:klaros@localhost:5432/klaros
+          APP_DB_USER: klaros_app
+          APP_DB_PASSWORD: ci-only-not-a-real-secret-app-role-password
+        run: |
+          python -m scripts.db.provision_app_role
+          PGPASSWORD=klaros psql -h localhost -U klaros -d klaros -v ON_ERROR_STOP=1 -c \
+            "SELECT rolname, rolsuper, rolbypassrls, rolcanlogin FROM pg_roles WHERE rolname = 'klaros_app';"
+          PGPASSWORD=klaros psql -h localhost -U klaros -d klaros -v ON_ERROR_STOP=1 -c \
+            "SELECT count(*) AS app_role_owned_tables FROM pg_tables WHERE schemaname = 'public' AND tableowner = 'klaros_app';"
+
       - name: autonomy_level deprecation guardrail
         run: ./scripts/check_autonomy_deprecation.sh
 

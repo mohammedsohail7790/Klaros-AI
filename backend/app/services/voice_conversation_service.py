@@ -42,6 +42,7 @@ from pydantic import BaseModel, ValidationError
 
 from app.ai.execution_service import AIExecutionService, ToolRequest
 from app.core.config import get_settings
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.crm import Customer
 from app.models.rbac import Role
@@ -382,6 +383,7 @@ class VoiceConversationService:
         if not caller_number:
             return None
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             return await find_matching_customer(session, tenant_id=tenant_id, email=None, phone=caller_number)
 
     async def _start_booking(self, tenant_id: uuid.UUID, call_id: uuid.UUID, call, classification: VoiceTurnClassification) -> TurnResult:

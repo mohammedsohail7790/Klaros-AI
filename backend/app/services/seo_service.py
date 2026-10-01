@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.marketing import SEOKeyword, SEOOpportunity, SEOPage, SEOPageStatus
 from app.services.ai_content_service import (
@@ -83,6 +84,7 @@ class SEOService:
             )
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             page = SEOPage(
                 tenant_id=tenant_id, service=service, location=location,
                 url_slug=f"{service}-{location}".lower().replace(" ", "-").replace(",", ""),
@@ -96,6 +98,7 @@ class SEOService:
 
     async def publish_page(self, tenant_id: uuid.UUID, page_id: uuid.UUID) -> SEOPage:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             page = await session.get(SEOPage, page_id)
             if page is None or page.tenant_id != tenant_id:
                 raise SEOPageNotFoundError("SEO page not found")
@@ -109,6 +112,7 @@ class SEOService:
         search_volume: int | None = None, current_ranking: int | None = None,
     ) -> SEOKeyword:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = SEOKeyword(
                 tenant_id=tenant_id, keyword=keyword, target_location=target_location, page_id=page_id,
                 search_volume=search_volume, current_ranking=current_ranking,
@@ -123,6 +127,7 @@ class SEOService:
         self, tenant_id: uuid.UUID, *, service: str, location: str, rationale: str | None, priority: str = "MEDIUM",
     ) -> SEOOpportunity:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = SEOOpportunity(tenant_id=tenant_id, service=service, location=location, rationale=rationale, priority=priority)
             session.add(row)
             await session.commit()

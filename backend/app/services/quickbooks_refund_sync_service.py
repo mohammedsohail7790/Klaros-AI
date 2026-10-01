@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.integrations.credential_store import decrypt_credential
 from app.integrations.quickbooks_client import QuickBooksAPIError, QuickBooksClient, QuickBooksErrorType
 from app.models.crm import Customer
@@ -99,6 +100,7 @@ class QuickBooksRefundSyncService:
         # spanning the whole operation including the external QuickBooks
         # call, closes the same class of duplicate-RefundReceipt race.
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             if session.bind is not None and session.bind.dialect.name == "postgresql":
                 lock_key = f"quickbooks-sync-refund:{tenant_id}:{refund_id}"
                 await session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key))"), {"key": lock_key})

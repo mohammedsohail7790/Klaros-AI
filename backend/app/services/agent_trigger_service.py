@@ -70,6 +70,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.agent import Agent, AgentStatus, AgentTriggerSource, AgentVersion
 from app.models.audit_log import AuditLog
 from app.models.actor import ActorType
@@ -101,6 +102,16 @@ class AgentTriggerService:
         dispatched: list[uuid.UUID] = []
 
         async with self._session_factory() as session:
+            # Called with an explicit tenant_id (a single tenant's own
+            # schedule check) OR with none at all (this worker's own
+            # tick-all-tenants scan, per its own docstring) — only the
+            # former is a real per-tenant DB operation this phase's
+            # tenant-context contract covers. The latter is a genuine,
+            # intentional multi-tenant scan; flagged for Phase 17B-3's
+            # system/global context design rather than faked here (same
+            # reasoning as EventBus.reconcile_stuck_events).
+            if tenant_id is not None:
+                await set_tenant_context(session, tenant_id)
             query = (
                 select(Agent, AgentVersion)
                 .join(AgentVersion, Agent.current_version_id == AgentVersion.id)
@@ -163,6 +174,7 @@ class AgentTriggerService:
 
     async def _audit_dispatch(self, agent: Agent, execution_id: uuid.UUID) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, agent.tenant_id)
             session.add(
                 AuditLog(
                     tenant_id=agent.tenant_id, actor_type=ActorType.SYSTEM, actor_id=None,
@@ -175,6 +187,7 @@ class AgentTriggerService:
 
     async def _audit_skip(self, agent: Agent, action: str, *, reason: str) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, agent.tenant_id)
             session.add(
                 AuditLog(
                     tenant_id=agent.tenant_id, actor_type=ActorType.SYSTEM, actor_id=None,

@@ -13,6 +13,7 @@ import uuid
 import structlog
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.approval import ApprovalRequest
 from app.models.event import Event, EventType
@@ -38,6 +39,7 @@ def register_notification_handlers(bus: EventBus, session_factory: async_session
     async def on_approval_requested(event: Event) -> None:
         approval_id = event.entity_id
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             request = await session.get(ApprovalRequest, approval_id)
         if request is None:
             return
@@ -113,6 +115,7 @@ def register_notification_handlers(bus: EventBus, session_factory: async_session
         if exception_id is None:
             return
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             exc = await session.get(OperationsException, uuid.UUID(exception_id))
         if exc is None:
             return
@@ -159,6 +162,7 @@ def register_notification_handlers(bus: EventBus, session_factory: async_session
 
     async def on_lead_created(event: Event) -> None:
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             lead = await session.get(Lead, event.entity_id)
         name = lead.name if lead is not None else "a new lead"
         await notifications.notify(

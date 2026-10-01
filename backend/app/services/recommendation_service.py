@@ -18,9 +18,15 @@ Pipeline (all deterministic — see "Why no AI" below):
      merged by capability_key (case-insensitive, deduplicated):
        a. The blueprint's own CONFIRMED claims under the
           REQUIRED_CAPABILITIES section (BlueprintSectionKey.
-          REQUIRED_CAPABILITIES) — each list/string claim value's entries
-          are capability keys the business itself stated it needs
-          (source=BASELINE_RULE, required=True, evidence=the claim's id).
+          REQUIRED_CAPABILITIES) — capability keys the business itself
+          stated it needs (source=BASELINE_RULE, required=True,
+          evidence=the claim's id). Supports both valid structured-claim
+          shapes the extraction schema can produce for this section: a
+          value-shaped claim (list/string of capability keys in
+          `claim.value`) and a key-shaped claim (`claim.key` IS the
+          capability key, `claim.value is True`) — see
+          `_capability_keys_from_claim`'s own docstring for the exact,
+          deliberately conservative rules.
        b. Every VerticalExtension the organization has enabled
           (OrganizationVerticalExtension, looked up via
           VerticalExtensionService — the exact "plugin function per
@@ -100,6 +106,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.business_blueprint import (
@@ -165,6 +172,46 @@ def _tokenize_words(text: str) -> set[str]:
     return {tok for tok in "".join(c if c.isalnum() else " " for c in text.lower()).split() if len(tok) >= 4}
 
 
+def _capability_keys_from_claim(claim: BlueprintClaim) -> list[str]:
+    """Extract candidate capability keys from one CONFIRMED
+    REQUIRED_CAPABILITIES `BlueprintClaim`, supporting both valid
+    structured-claim representations the extraction schema
+    (`DiscoveryExtractionService.ExtractedClaim`, which always carries both
+    a `key` and a `value` field) can legitimately produce for this section:
+
+      - value-shaped (pre-existing): the capability name(s) live in
+        `claim.value` — either a single non-empty string, or a list of
+        non-empty strings — and `claim.key` is just a free-form/generic
+        label for the claim itself (e.g. "required_capabilities.summary",
+        as emitted by the deterministic fallback). This is unchanged.
+
+      - key-shaped: `claim.key` itself IS the capability name (e.g.
+        "telemedicine"), and `claim.value` is the literal boolean `True`
+        — a per-capability Requirement claim, one row per stated
+        capability, rather than one row bundling a list. This shape was
+        previously silently dropped (`claim.value` is neither a list nor
+        a string), which is the bug this function fixes.
+
+    Deliberately conservative to satisfy "never fabricate a capability
+    from an arbitrary claim key": the key-shaped interpretation only ever
+    fires when `claim.value is True` exactly (never a merely-truthy value
+    such as a non-empty dict/number/string — those are not this schema's
+    boolean-flag shape and are treated as malformed/unrelated instead).
+    `False`, `None`, numbers, dicts, and empty/blank strings never yield a
+    capability either way. The REQUIRED_CAPABILITIES section_key filter is
+    applied by the caller's query, not here — this function trusts that
+    scoping and does not re-check it.
+    """
+    value = claim.value
+    if isinstance(value, list):
+        return [v.strip().lower() for v in value if isinstance(v, str) and v.strip()]
+    if isinstance(value, str):
+        return [value.strip().lower()] if value.strip() else []
+    if value is True and isinstance(claim.key, str) and claim.key.strip():
+        return [claim.key.strip().lower()]
+    return []
+
+
 class RecommendationService:
     def __init__(self, session_factory: async_sessionmaker) -> None:
         self._session_factory = session_factory
@@ -180,6 +227,7 @@ class RecommendationService:
         triggered_by: uuid.UUID | None,
     ) -> RecommendationRun:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             blueprint = (
                 await session.execute(
                     select(BusinessBlueprint).where(
@@ -299,6 +347,7 @@ class RecommendationService:
                 )
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             # Blueprint version binding: supersede prior still-PROPOSED
             # recommendations left over from an older blueprint for this
             # tenant. ACCEPTED/REJECTED rows are a human decision and are
@@ -367,6 +416,7 @@ class RecommendationService:
         merged: dict[str, _CapabilityRequirement] = {}
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             claims = (
                 await session.execute(
                     select(BlueprintClaim).where(
@@ -379,11 +429,7 @@ class RecommendationService:
             ).scalars().all()
 
         for claim in claims:
-            values = claim.value if isinstance(claim.value, list) else ([claim.value] if claim.value else [])
-            for raw in values:
-                if not isinstance(raw, str) or not raw.strip():
-                    continue
-                key = raw.strip().lower()
+            for key in _capability_keys_from_claim(claim):
                 evidence = {
                     "kind": "blueprint_claim",
                     "claim_id": str(claim.id),
@@ -421,6 +467,13 @@ class RecommendationService:
         enabled_links = await self._verticals.list_enabled_for_organization(tenant_id)
         verticals_considered: list[str] = []
         if enabled_links:
+            # Phase 17B-2R classification: this session only reads
+            # `VerticalExtension` — the GLOBAL platform catalog table (see
+            # vertical_extension_service.py's own docstring), never the
+            # tenant-scoped `OrganizationVerticalExtension` join (already
+            # queried above via `self._verticals.list_enabled_for_organization`,
+            # which does set tenant context on its own session). Correctly
+            # excluded here, not a gap.
             async with self._session_factory() as session:
                 vertical_ids = [link.vertical_extension_id for link in enabled_links]
                 verticals = (
@@ -461,6 +514,10 @@ class RecommendationService:
         return list(merged.values()), verticals_considered
 
     async def _load_providers(self) -> list[IntegrationProviderCatalog]:
+        # Phase 17B-2R classification: `IntegrationProviderCatalog` is
+        # deliberately NOT tenant-scoped (see app/models/integration_catalog.py's
+        # own docstring — "tenant-independent reference data"). GLOBAL/SHARED,
+        # correctly excluded, not a gap.
         async with self._session_factory() as session:
             return list((await session.execute(select(IntegrationProviderCatalog))).scalars().all())
 
@@ -486,6 +543,7 @@ class RecommendationService:
         type_: str | None = None,
     ) -> list[Recommendation]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             stmt = select(Recommendation).where(Recommendation.tenant_id == tenant_id)
             if blueprint_id is not None:
                 stmt = stmt.where(Recommendation.blueprint_id == blueprint_id)
@@ -498,6 +556,7 @@ class RecommendationService:
 
     async def get_run(self, tenant_id: uuid.UUID, run_id: uuid.UUID) -> RecommendationRun:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             run = await session.get(RecommendationRun, run_id)
             if run is None or run.tenant_id != tenant_id:
                 raise RecommendationNotFoundError(f"RecommendationRun {run_id} not found")
@@ -509,6 +568,7 @@ class RecommendationService:
         self, tenant_id: uuid.UUID, recommendation_id: uuid.UUID, *, decided_by: uuid.UUID | None
     ) -> Recommendation:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rec = await session.get(Recommendation, recommendation_id)
             if rec is None or rec.tenant_id != tenant_id:
                 raise RecommendationNotFoundError(f"Recommendation {recommendation_id} not found")
@@ -550,6 +610,7 @@ class RecommendationService:
         reason: str | None,
     ) -> Recommendation:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rec = await session.get(Recommendation, recommendation_id)
             if rec is None or rec.tenant_id != tenant_id:
                 raise RecommendationNotFoundError(f"Recommendation {recommendation_id} not found")

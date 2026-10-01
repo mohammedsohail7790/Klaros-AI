@@ -40,6 +40,9 @@ import {
   Globe,
   Sparkles,
   Bot,
+  Stethoscope,
+  CalendarCheck,
+  HandCoins,
 } from "lucide-react";
 import { UserResponse, logout as logoutRequest } from "@/lib/api";
 import NotificationBell from "./NotificationBell";
@@ -120,6 +123,16 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
       { href: "/automations", label: "Automations", icon: Workflow },
       { href: "/approvals", label: "Approvals", icon: CheckSquare },
       { href: "/ai-activity", label: "AI Activity", icon: BrainCircuit },
+    ],
+  },
+  {
+    label: "Medical Tourism",
+    items: [
+      { href: "/medical-tourism/providers", label: "Providers", icon: Stethoscope },
+      { href: "/medical-tourism/procedures", label: "Procedures", icon: FileText },
+      { href: "/medical-tourism/leads", label: "Patient Leads", icon: Users },
+      { href: "/medical-tourism/consultations", label: "Consultations", icon: CalendarCheck },
+      { href: "/medical-tourism/referrals", label: "Referral Commissions", icon: HandCoins },
     ],
   },
   {

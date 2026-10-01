@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, get_current_user, require_permission
 from app.api.tool_deps import execution_context, get_tool_registry, raise_http_for_tool_error
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.models.organization import Organization
 from app.models.rbac import Permission
 from app.tools.errors import ToolError
@@ -93,6 +93,7 @@ async def get_morning_brief_settings(
     current_user: CurrentUser = Depends(require_permission(Permission.READ_MORNING_BRIEF)),
 ) -> MorningBriefSettingsResponse:
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         org = await session.get(Organization, current_user.tenant_id)
         if org is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
@@ -109,6 +110,7 @@ async def update_morning_brief_settings(
     current_user: CurrentUser = Depends(require_permission(Permission.GENERATE_MORNING_BRIEF)),
 ) -> MorningBriefSettingsResponse:
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         org = await session.get(Organization, current_user.tenant_id)
         if org is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")

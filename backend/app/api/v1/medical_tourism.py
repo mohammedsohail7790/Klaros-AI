@@ -12,6 +12,7 @@ already use for their own read paths).
 
 import uuid
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -19,8 +20,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.deps import CurrentUser, get_current_user
 from app.api.tool_deps import execution_context, get_tool_registry, raise_http_for_tool_error
 from app.db.session import async_session_maker
+from app.models.medical_tourism import ReferralCommissionBasis
 from app.models.rbac import Permission, role_has_permission
-from app.services.medical_tourism_service import MedicalTourismService, NotFoundError
+from app.services.medical_tourism_service import InvalidRelationshipError, MedicalTourismService, NotFoundError
 from app.tools.errors import ToolError
 from app.tools.registry import ToolRegistry
 
@@ -91,6 +93,53 @@ def _credential_to_dict(c) -> dict[str, Any]:
         "status": c.status,
         "verified_at": c.verified_at.isoformat() if c.verified_at else None,
     }
+
+
+def _patient_lead_to_dict(pl) -> dict[str, Any]:
+    return {
+        "id": str(pl.id),
+        "lead_id": str(pl.lead_id),
+        "procedure_id": str(pl.procedure_id) if pl.procedure_id else None,
+        "preferred_destination_country": pl.preferred_destination_country,
+        "medical_history_summary": pl.medical_history_summary,
+        "travel_start_date": pl.travel_start_date.isoformat() if pl.travel_start_date else None,
+        "travel_end_date": pl.travel_end_date.isoformat() if pl.travel_end_date else None,
+        "has_insurance": pl.has_insurance,
+        "insurance_notes": pl.insurance_notes,
+        "created_at": pl.created_at.isoformat(),
+    }
+
+
+def _consultation_to_dict(c) -> dict[str, Any]:
+    return {
+        "id": str(c.id),
+        "appointment_id": str(c.appointment_id),
+        "provider_id": str(c.provider_id),
+        "procedure_id": str(c.procedure_id) if c.procedure_id else None,
+        "status": c.status,
+        "notes": c.notes,
+        "created_at": c.created_at.isoformat(),
+    }
+
+
+def _referral_commission_to_dict(rc) -> dict[str, Any]:
+    return {
+        "id": str(rc.id),
+        "referral_id": str(rc.referral_id),
+        "provider_id": str(rc.provider_id) if rc.provider_id else None,
+        "basis": rc.basis,
+        "commission_percentage": str(rc.commission_percentage) if rc.commission_percentage is not None else None,
+        "flat_amount": str(rc.flat_amount) if rc.flat_amount is not None else None,
+        "computed_amount": str(rc.computed_amount) if rc.computed_amount is not None else None,
+        "currency": rc.currency,
+        "status": rc.status,
+        "created_at": rc.created_at.isoformat(),
+    }
+
+
+def _require_manage(current_user: CurrentUser) -> None:
+    if current_user.role is None or not role_has_permission(current_user.role, Permission.MANAGE_MEDICAL_TOURISM):
+        raise HTTPException(status_code=403, detail="Missing permission: MANAGE_MEDICAL_TOURISM")
 
 
 # --- Providers -----------------------------------------------------------
@@ -288,3 +337,240 @@ async def create_offering(
     except (ToolError, ValueError) as exc:
         raise_http_for_tool_error(exc)
     return output.model_dump(mode="json")
+
+
+# --- Patient leads (extends Lead) ------------------------------------------
+#
+# Not routed through ToolRegistry: per medical_tourism_tools.py's module
+# docstring, the PatientLead/Consultation/ReferralCommission extension
+# writes are deliberately NOT exposed as agent-callable tools in this phase
+# (nothing in the validated walkthrough requires an agent to perform them
+# autonomously). These mutating endpoints go straight through the service
+# layer with the same manual RBAC check the credential-management endpoints
+# above already use.
+
+
+@router.get("/patient-leads")
+async def list_patient_leads(
+    procedure_id: uuid.UUID | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    _require_read(current_user)
+    service = _service()
+    patient_leads, total = await service.list_patient_leads(
+        current_user.tenant_id, procedure_id=procedure_id, limit=limit, offset=offset
+    )
+    return {
+        "patient_leads": [_patient_lead_to_dict(pl) for pl in patient_leads],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.get("/patient-leads/{patient_lead_id}")
+async def get_patient_lead(
+    patient_lead_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user)
+) -> dict[str, Any]:
+    _require_read(current_user)
+    service = _service()
+    try:
+        patient_lead = await service.get_patient_lead(current_user.tenant_id, patient_lead_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"patient_lead": _patient_lead_to_dict(patient_lead)}
+
+
+@router.post("/patient-leads")
+async def create_patient_lead(
+    body: dict,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """body = {lead_id, procedure_id?, preferred_destination_country?, medical_history_summary?,
+    travel_start_date?, travel_end_date?, has_insurance?, insurance_notes?}"""
+    _require_manage(current_user)
+    service = _service()
+    travel_start_date = date.fromisoformat(body["travel_start_date"]) if body.get("travel_start_date") else None
+    travel_end_date = date.fromisoformat(body["travel_end_date"]) if body.get("travel_end_date") else None
+    try:
+        patient_lead = await service.create_patient_lead(
+            current_user.tenant_id,
+            uuid.UUID(body["lead_id"]),
+            procedure_id=uuid.UUID(body["procedure_id"]) if body.get("procedure_id") else None,
+            preferred_destination_country=body.get("preferred_destination_country"),
+            medical_history_summary=body.get("medical_history_summary"),
+            travel_start_date=travel_start_date,
+            travel_end_date=travel_end_date,
+            has_insurance=body.get("has_insurance"),
+            insurance_notes=body.get("insurance_notes"),
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvalidRelationshipError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"patient_lead": _patient_lead_to_dict(patient_lead)}
+
+
+# --- Consultations (extends Appointment) ------------------------------------
+
+
+@router.get("/consultations")
+async def list_consultations(
+    provider_id: uuid.UUID | None = None,
+    status: str | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    _require_read(current_user)
+    service = _service()
+    consultations, total = await service.list_consultations(
+        current_user.tenant_id, provider_id=provider_id, status=status, limit=limit, offset=offset
+    )
+    return {
+        "consultations": [_consultation_to_dict(c) for c in consultations],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.get("/consultations/{consultation_id}")
+async def get_consultation(
+    consultation_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user)
+) -> dict[str, Any]:
+    _require_read(current_user)
+    service = _service()
+    try:
+        consultation = await service.get_consultation(current_user.tenant_id, consultation_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"consultation": _consultation_to_dict(consultation)}
+
+
+@router.post("/consultations")
+async def create_consultation(
+    body: dict,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """body = {appointment_id, provider_id, procedure_id?, notes?}"""
+    _require_manage(current_user)
+    service = _service()
+    try:
+        consultation = await service.create_consultation(
+            current_user.tenant_id,
+            uuid.UUID(body["appointment_id"]),
+            uuid.UUID(body["provider_id"]),
+            procedure_id=uuid.UUID(body["procedure_id"]) if body.get("procedure_id") else None,
+            notes=body.get("notes"),
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvalidRelationshipError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"consultation": _consultation_to_dict(consultation)}
+
+
+@router.patch("/consultations/{consultation_id}")
+async def update_consultation(
+    consultation_id: uuid.UUID,
+    body: dict,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """body = {status?, notes?}"""
+    _require_manage(current_user)
+    service = _service()
+    try:
+        consultation = await service.update_consultation(
+            current_user.tenant_id,
+            consultation_id,
+            status=body.get("status"),
+            notes=body.get("notes"),
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"consultation": _consultation_to_dict(consultation)}
+
+
+# --- Referral commissions (extends Referral) ---------------------------------
+
+
+@router.get("/referral-commissions")
+async def list_referral_commissions(
+    provider_id: uuid.UUID | None = None,
+    status: str | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    _require_read(current_user)
+    service = _service()
+    commissions, total = await service.list_referral_commissions(
+        current_user.tenant_id, provider_id=provider_id, status=status, limit=limit, offset=offset
+    )
+    return {
+        "referral_commissions": [_referral_commission_to_dict(rc) for rc in commissions],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.get("/referral-commissions/{commission_id}")
+async def get_referral_commission(
+    commission_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user)
+) -> dict[str, Any]:
+    _require_read(current_user)
+    service = _service()
+    try:
+        commission = await service.get_referral_commission(current_user.tenant_id, commission_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"referral_commission": _referral_commission_to_dict(commission)}
+
+
+@router.post("/referral-commissions")
+async def create_referral_commission(
+    body: dict,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """body = {referral_id, currency, provider_id?, basis?, commission_percentage?, flat_amount?}"""
+    _require_manage(current_user)
+    service = _service()
+    try:
+        commission = await service.create_referral_commission(
+            current_user.tenant_id,
+            uuid.UUID(body["referral_id"]),
+            currency=body["currency"],
+            provider_id=uuid.UUID(body["provider_id"]) if body.get("provider_id") else None,
+            basis=body.get("basis", ReferralCommissionBasis.PERCENTAGE),
+            commission_percentage=(
+                Decimal(str(body["commission_percentage"])) if body.get("commission_percentage") is not None else None
+            ),
+            flat_amount=Decimal(str(body["flat_amount"])) if body.get("flat_amount") is not None else None,
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvalidRelationshipError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"referral_commission": _referral_commission_to_dict(commission)}
+
+
+@router.patch("/referral-commissions/{commission_id}/status")
+async def update_referral_commission_status(
+    commission_id: uuid.UUID,
+    body: dict,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """body = {status}"""
+    _require_manage(current_user)
+    service = _service()
+    try:
+        commission = await service.update_referral_commission_status(
+            current_user.tenant_id, commission_id, body["status"]
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"referral_commission": _referral_commission_to_dict(commission)}

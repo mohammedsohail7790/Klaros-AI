@@ -35,6 +35,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.config import get_settings
+from app.db.session import set_tenant_context
 from app.models.knowledge import KnowledgeChunk, KnowledgeFile
 from app.services.embedding_provider import EmbeddingProvider, get_embedding_provider
 from app.services.knowledge_service import KnowledgeService
@@ -165,6 +166,7 @@ class KnowledgeRetrievalService:
                 )
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             await session.execute(delete(KnowledgeChunk).where(KnowledgeChunk.file_id == file.id))
             for index, (chunk_content, vector) in enumerate(zip(chunks, vectors)):
                 session.add(
@@ -230,6 +232,7 @@ class KnowledgeRetrievalService:
             raise EmbeddingProviderNotConfiguredError(f"embedding call failed: {outcome.error_detail}")
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             is_postgres = session.bind is not None and session.bind.dialect.name == "postgresql"
             if is_postgres:
                 results = await self._search_postgres_vector(
@@ -318,5 +321,6 @@ class KnowledgeRetrievalService:
         exists for callers that need to re-index without deleting the file
         itself (e.g. before a full re-chunk)."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             await session.execute(delete(KnowledgeChunk).where(KnowledgeChunk.file_id == file_id))
             await session.commit()

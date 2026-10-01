@@ -12,6 +12,7 @@ import structlog
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.knowledge import KnowledgeChunk, KnowledgeFile
@@ -45,12 +46,14 @@ class KnowledgeService:
 
     async def seed_defaults(self, tenant_id: uuid.UUID) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             for path, content in DEFAULT_FILES.items():
                 session.add(KnowledgeFile(tenant_id=tenant_id, path=path, content=content, updated_by=None))
             await session.commit()
 
     async def list_files(self, tenant_id: uuid.UUID, *, prefix: str | None = None) -> list[KnowledgeFile]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             query = select(KnowledgeFile).where(KnowledgeFile.tenant_id == tenant_id)
             if prefix:
                 query = query.where(KnowledgeFile.path.like(f"{prefix}%"))
@@ -58,6 +61,7 @@ class KnowledgeService:
 
     async def get_file(self, tenant_id: uuid.UUID, path: str) -> KnowledgeFile | None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             return (
                 await session.execute(
                     select(KnowledgeFile).where(KnowledgeFile.tenant_id == tenant_id, KnowledgeFile.path == path)
@@ -77,6 +81,7 @@ class KnowledgeService:
     ) -> KnowledgeFile:
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(KnowledgeFile).where(KnowledgeFile.tenant_id == tenant_id, KnowledgeFile.path == path)
@@ -109,6 +114,7 @@ class KnowledgeService:
 
     async def delete_file(self, tenant_id: uuid.UUID, path: str, *, actor_id: uuid.UUID | None) -> bool:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(KnowledgeFile).where(KnowledgeFile.tenant_id == tenant_id, KnowledgeFile.path == path)

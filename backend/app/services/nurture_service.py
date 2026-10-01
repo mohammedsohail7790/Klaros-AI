@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import CommunicationProvider, MessageTemplate
+from app.db.session import set_tenant_context
 from app.models.crm import Lead, LeadStatus
 from app.models.marketing import (
     ActivityStatus,
@@ -41,6 +42,7 @@ class NurtureService:
 
     async def create_sequence(self, tenant_id: uuid.UUID, *, name: str, trigger_type: str) -> NurtureSequence:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = NurtureSequence(tenant_id=tenant_id, name=name, trigger_type=trigger_type)
             session.add(row)
             await session.commit()
@@ -51,6 +53,7 @@ class NurtureService:
         as_of = as_of or datetime.now(timezone.utc)
         cutoff = as_of - timedelta(days=STALE_LEAD_DAYS)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             leads = (
                 await session.execute(
                     select(Lead).where(
@@ -66,6 +69,7 @@ class NurtureService:
         as_of = as_of or datetime.now(timezone.utc)
         cutoff = as_of - timedelta(days=UNBOOKED_QUALIFIED_DAYS)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             leads = (
                 await session.execute(
                     select(Lead).where(
@@ -78,6 +82,7 @@ class NurtureService:
     async def enroll_lead(self, tenant_id: uuid.UUID, sequence_id: uuid.UUID, lead_id: uuid.UUID) -> NurtureEnrollment:
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             sequence = await session.get(NurtureSequence, sequence_id)
             if sequence is None or sequence.tenant_id != tenant_id:
                 raise SequenceNotFoundError("Nurture sequence not found")
@@ -120,6 +125,7 @@ class NurtureService:
         now = datetime.now(timezone.utc)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             due = (
                 await session.execute(
                     select(NurtureActivity).where(

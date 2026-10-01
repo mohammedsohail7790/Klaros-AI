@@ -26,6 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.crm import Lead
 from app.models.medical_tourism import (
     Consultation,
@@ -111,6 +112,7 @@ class MedicalTourismService:
     async def create_provider(self, tenant_id: uuid.UUID, data: CreateProviderInput) -> tuple[Provider, bool]:
         """Returns (provider, was_deduplicated)."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             if data.idempotency_key:
                 existing = (
                     await session.execute(
@@ -159,6 +161,7 @@ class MedicalTourismService:
 
     async def get_provider(self, tenant_id: uuid.UUID, provider_id: uuid.UUID) -> Provider:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             provider = (
                 await session.execute(
                     select(Provider).where(Provider.id == provider_id, Provider.tenant_id == tenant_id)
@@ -178,6 +181,7 @@ class MedicalTourismService:
         offset: int = 0,
     ) -> tuple[list[Provider], int]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             from sqlalchemy import func
 
             query = select(Provider).where(Provider.tenant_id == tenant_id)
@@ -211,6 +215,7 @@ class MedicalTourismService:
             "status",
         }
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             provider = (
                 await session.execute(
                     select(Provider).where(Provider.id == provider_id, Provider.tenant_id == tenant_id)
@@ -238,6 +243,7 @@ class MedicalTourismService:
         expiry_date: date | None = None,
     ) -> ProviderCredential:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             provider = (
                 await session.execute(
                     select(Provider).where(Provider.id == provider_id, Provider.tenant_id == tenant_id)
@@ -264,6 +270,7 @@ class MedicalTourismService:
         self, tenant_id: uuid.UUID, credential_id: uuid.UUID, verified_by: uuid.UUID
     ) -> ProviderCredential:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             credential = (
                 await session.execute(
                     select(ProviderCredential).where(
@@ -284,6 +291,7 @@ class MedicalTourismService:
         self, tenant_id: uuid.UUID, provider_id: uuid.UUID
     ) -> list[ProviderCredential]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(ProviderCredential).where(
@@ -299,6 +307,7 @@ class MedicalTourismService:
         self, tenant_id: uuid.UUID, data: CreateProcedureInput
     ) -> tuple[Procedure, bool]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             if data.idempotency_key:
                 existing = (
                     await session.execute(
@@ -343,6 +352,7 @@ class MedicalTourismService:
 
     async def get_procedure(self, tenant_id: uuid.UUID, procedure_id: uuid.UUID) -> Procedure:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             procedure = (
                 await session.execute(
                     select(Procedure).where(Procedure.id == procedure_id, Procedure.tenant_id == tenant_id)
@@ -362,6 +372,7 @@ class MedicalTourismService:
         offset: int = 0,
     ) -> tuple[list[Procedure], int]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             from sqlalchemy import func
 
             query = select(Procedure).where(Procedure.tenant_id == tenant_id)
@@ -386,6 +397,7 @@ class MedicalTourismService:
         self, tenant_id: uuid.UUID, data: CreateOfferingInput
     ) -> tuple[ProviderProcedure, bool]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             provider = (
                 await session.execute(
                     select(Provider).where(Provider.id == data.provider_id, Provider.tenant_id == tenant_id)
@@ -454,6 +466,7 @@ class MedicalTourismService:
         offset: int = 0,
     ) -> tuple[list[ProviderProcedure], int]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             from sqlalchemy import func
 
             query = select(ProviderProcedure).where(ProviderProcedure.tenant_id == tenant_id)
@@ -496,6 +509,7 @@ class MedicalTourismService:
         insurance_notes: str | None = None,
     ) -> PatientLead:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             lead = (
                 await session.execute(select(Lead).where(Lead.id == lead_id, Lead.tenant_id == tenant_id))
             ).scalar_one_or_none()
@@ -536,6 +550,57 @@ class MedicalTourismService:
             await session.refresh(patient_lead)
             return patient_lead
 
+    async def get_patient_lead(self, tenant_id: uuid.UUID, patient_lead_id: uuid.UUID) -> PatientLead:
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            patient_lead = (
+                await session.execute(
+                    select(PatientLead).where(
+                        PatientLead.id == patient_lead_id, PatientLead.tenant_id == tenant_id
+                    )
+                )
+            ).scalar_one_or_none()
+            if patient_lead is None:
+                raise NotFoundError(f"PatientLead {patient_lead_id} not found")
+            return patient_lead
+
+    async def get_patient_lead_by_lead_id(self, tenant_id: uuid.UUID, lead_id: uuid.UUID) -> PatientLead:
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            patient_lead = (
+                await session.execute(
+                    select(PatientLead).where(PatientLead.tenant_id == tenant_id, PatientLead.lead_id == lead_id)
+                )
+            ).scalar_one_or_none()
+            if patient_lead is None:
+                raise NotFoundError(f"PatientLead for Lead {lead_id} not found")
+            return patient_lead
+
+    async def list_patient_leads(
+        self,
+        tenant_id: uuid.UUID,
+        *,
+        procedure_id: uuid.UUID | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[PatientLead], int]:
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            from sqlalchemy import func
+
+            query = select(PatientLead).where(PatientLead.tenant_id == tenant_id)
+            count_query = select(func.count()).select_from(PatientLead).where(PatientLead.tenant_id == tenant_id)
+            if procedure_id:
+                query = query.where(PatientLead.procedure_id == procedure_id)
+                count_query = count_query.where(PatientLead.procedure_id == procedure_id)
+            total = (await session.execute(count_query)).scalar_one()
+            rows = (
+                (await session.execute(query.order_by(PatientLead.created_at.desc()).limit(limit).offset(offset)))
+                .scalars()
+                .all()
+            )
+            return list(rows), total
+
     # --- Consultations (extends Appointment) ------------------------------
 
     async def create_consultation(
@@ -549,6 +614,7 @@ class MedicalTourismService:
         from app.models.crm import Appointment
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             appointment = (
                 await session.execute(
                     select(Appointment).where(
@@ -591,6 +657,80 @@ class MedicalTourismService:
             await session.refresh(consultation)
             return consultation
 
+    async def get_consultation(self, tenant_id: uuid.UUID, consultation_id: uuid.UUID) -> Consultation:
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            consultation = (
+                await session.execute(
+                    select(Consultation).where(
+                        Consultation.id == consultation_id, Consultation.tenant_id == tenant_id
+                    )
+                )
+            ).scalar_one_or_none()
+            if consultation is None:
+                raise NotFoundError(f"Consultation {consultation_id} not found")
+            return consultation
+
+    async def list_consultations(
+        self,
+        tenant_id: uuid.UUID,
+        *,
+        provider_id: uuid.UUID | None = None,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[Consultation], int]:
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            from sqlalchemy import func
+
+            query = select(Consultation).where(Consultation.tenant_id == tenant_id)
+            count_query = select(func.count()).select_from(Consultation).where(Consultation.tenant_id == tenant_id)
+            if provider_id:
+                query = query.where(Consultation.provider_id == provider_id)
+                count_query = count_query.where(Consultation.provider_id == provider_id)
+            if status:
+                query = query.where(Consultation.status == status)
+                count_query = count_query.where(Consultation.status == status)
+            total = (await session.execute(count_query)).scalar_one()
+            rows = (
+                (
+                    await session.execute(
+                        query.order_by(Consultation.created_at.desc()).limit(limit).offset(offset)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return list(rows), total
+
+    async def update_consultation(
+        self,
+        tenant_id: uuid.UUID,
+        consultation_id: uuid.UUID,
+        *,
+        status: str | None = None,
+        notes: str | None = None,
+    ) -> Consultation:
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            consultation = (
+                await session.execute(
+                    select(Consultation).where(
+                        Consultation.id == consultation_id, Consultation.tenant_id == tenant_id
+                    )
+                )
+            ).scalar_one_or_none()
+            if consultation is None:
+                raise NotFoundError(f"Consultation {consultation_id} not found")
+            if status is not None:
+                consultation.status = status
+            if notes is not None:
+                consultation.notes = notes
+            await session.commit()
+            await session.refresh(consultation)
+            return consultation
+
     # --- Referral commissions (extends Referral) --------------------------
 
     async def create_referral_commission(
@@ -604,6 +744,7 @@ class MedicalTourismService:
         flat_amount: Decimal | None = None,
     ) -> ReferralCommission:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             referral = (
                 await session.execute(
                     select(Referral).where(Referral.id == referral_id, Referral.tenant_id == tenant_id)
@@ -648,6 +789,76 @@ class MedicalTourismService:
             await session.refresh(commission)
             return commission
 
+    async def get_referral_commission(
+        self, tenant_id: uuid.UUID, commission_id: uuid.UUID
+    ) -> ReferralCommission:
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            commission = (
+                await session.execute(
+                    select(ReferralCommission).where(
+                        ReferralCommission.id == commission_id, ReferralCommission.tenant_id == tenant_id
+                    )
+                )
+            ).scalar_one_or_none()
+            if commission is None:
+                raise NotFoundError(f"ReferralCommission {commission_id} not found")
+            return commission
+
+    async def list_referral_commissions(
+        self,
+        tenant_id: uuid.UUID,
+        *,
+        provider_id: uuid.UUID | None = None,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[ReferralCommission], int]:
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            from sqlalchemy import func
+
+            query = select(ReferralCommission).where(ReferralCommission.tenant_id == tenant_id)
+            count_query = (
+                select(func.count()).select_from(ReferralCommission).where(ReferralCommission.tenant_id == tenant_id)
+            )
+            if provider_id:
+                query = query.where(ReferralCommission.provider_id == provider_id)
+                count_query = count_query.where(ReferralCommission.provider_id == provider_id)
+            if status:
+                query = query.where(ReferralCommission.status == status)
+                count_query = count_query.where(ReferralCommission.status == status)
+            total = (await session.execute(count_query)).scalar_one()
+            rows = (
+                (
+                    await session.execute(
+                        query.order_by(ReferralCommission.created_at.desc()).limit(limit).offset(offset)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return list(rows), total
+
+    async def update_referral_commission_status(
+        self, tenant_id: uuid.UUID, commission_id: uuid.UUID, status: str
+    ) -> ReferralCommission:
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            commission = (
+                await session.execute(
+                    select(ReferralCommission).where(
+                        ReferralCommission.id == commission_id, ReferralCommission.tenant_id == tenant_id
+                    )
+                )
+            ).scalar_one_or_none()
+            if commission is None:
+                raise NotFoundError(f"ReferralCommission {commission_id} not found")
+            commission.status = status
+            await session.commit()
+            await session.refresh(commission)
+            return commission
+
 
 # ---------------------------------------------------------------------------
 # Phase 11 (Website Builder, PHASE_11_WEBSITE_BUILDER_DESIGN.md §11/§12):
@@ -685,6 +896,7 @@ async def _provide_website_provider_directory(tenant_id: uuid.UUID, params: dict
         procedure_names: dict[uuid.UUID, str] = {}
         if procedure_ids:
             async with _async_session_maker() as session:
+                await set_tenant_context(session, tenant_id)
                 rows = (
                     await session.execute(
                         select(Procedure).where(

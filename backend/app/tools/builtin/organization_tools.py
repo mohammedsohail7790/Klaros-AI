@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.organization import Organization
 from app.models.rbac import Role
 from app.tools.base import ExecutionContext, Tool
@@ -39,6 +40,7 @@ class GetKillSwitchStatus(Tool):
 
     async def execute(self, input: EmptyInput, context: ExecutionContext) -> KillSwitchStatus:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             org = await session.get(Organization, context.tenant_id)
         if org is None:
             return KillSwitchStatus(ai_paused=False, ai_paused_at=None, ai_paused_by=None)
@@ -67,6 +69,7 @@ class SetKillSwitch(Tool):
             raise ToolPermissionError("Only an owner can change the AI kill switch")
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             org = await session.get(Organization, context.tenant_id)
             if org is None:
                 raise ToolPermissionError("Organization not found")

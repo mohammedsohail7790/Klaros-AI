@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.voice import CallSession, CallStatus, VoiceReceptionistSettings
 
 
@@ -22,6 +23,7 @@ class VoiceCallService:
 
     async def get_settings(self, tenant_id: uuid.UUID) -> VoiceReceptionistSettings:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(VoiceReceptionistSettings).where(VoiceReceptionistSettings.tenant_id == tenant_id)
@@ -43,6 +45,7 @@ class VoiceCallService:
     ) -> VoiceReceptionistSettings:
         await self.get_settings(tenant_id)  # ensures a row exists
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = (
                 await session.execute(
                     select(VoiceReceptionistSettings).where(VoiceReceptionistSettings.tenant_id == tenant_id)
@@ -67,6 +70,7 @@ class VoiceCallService:
         """Idempotent against repeated provider webhook delivery — same
         (provider, external_call_id) never creates a second CallSession."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(CallSession).where(
@@ -102,6 +106,7 @@ class VoiceCallService:
 
     async def get_call(self, tenant_id: uuid.UUID, call_id: uuid.UUID) -> CallSession:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             call = (
                 await session.execute(
                     select(CallSession).where(CallSession.tenant_id == tenant_id, CallSession.id == call_id)
@@ -113,6 +118,7 @@ class VoiceCallService:
 
     async def list_calls(self, tenant_id: uuid.UUID, *, limit: int = 50) -> list[CallSession]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(CallSession)
@@ -125,6 +131,7 @@ class VoiceCallService:
 
     async def append_transcript_turn(self, tenant_id: uuid.UUID, call_id: uuid.UUID, *, role: str, text: str) -> CallSession:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             call = (
                 await session.execute(
                     select(CallSession).where(CallSession.tenant_id == tenant_id, CallSession.id == call_id)
@@ -139,6 +146,7 @@ class VoiceCallService:
         self, tenant_id: uuid.UUID, call_id: uuid.UUID, **fields,
     ) -> CallSession:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             call = (
                 await session.execute(
                     select(CallSession).where(CallSession.tenant_id == tenant_id, CallSession.id == call_id)

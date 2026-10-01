@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, get_current_user, get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.models.crm import Customer
 from app.models.finance import Invoice, InvoiceStatus
 from app.models.operations import ExceptionStatus, OperationsException
@@ -52,6 +52,7 @@ RETENTION_EXCEPTION_TYPES = (
 async def retention_summary(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
     tenant_id = current_user.tenant_id
     async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
         profiles = (
             await session.execute(select(CustomerLifecycleProfile).where(CustomerLifecycleProfile.tenant_id == tenant_id))
         ).scalars().all()
@@ -146,6 +147,7 @@ async def retention_analytics(current_user: CurrentUser = Depends(get_current_us
     instead of a fabricated number."""
     tenant_id = current_user.tenant_id
     async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
         profiles = (
             await session.execute(select(CustomerLifecycleProfile).where(CustomerLifecycleProfile.tenant_id == tenant_id))
         ).scalars().all()
@@ -186,6 +188,7 @@ async def retention_analytics(current_user: CurrentUser = Depends(get_current_us
 
     # Average customer value: total collected across all invoices / customers with >=1 invoice.
     async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
         invoices = (await session.execute(select(Invoice).where(Invoice.tenant_id == tenant_id))).scalars().all()
     customers_with_invoices = {inv.customer_id for inv in invoices}
     if not customers_with_invoices:
@@ -211,6 +214,7 @@ async def retention_analytics(current_user: CurrentUser = Depends(get_current_us
 
     repeat_customer_ids = {p.customer_id for p in profiles if p.jobs_completed_count >= 2}
     async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
         repeat_invoices = (
             await session.execute(select(Invoice).where(Invoice.tenant_id == tenant_id, Invoice.customer_id.in_(repeat_customer_ids)))
         ).scalars().all() if repeat_customer_ids else []

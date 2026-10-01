@@ -6,6 +6,7 @@ policy" dead end would be silly)."""
 
 from pydantic import BaseModel
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.rbac import Permission
 from app.services.policy_service import PolicyService
@@ -139,6 +140,7 @@ class GetAutonomyStats(Tool):
 
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             rows = (
                 await session.execute(
                     select(AuditLog.result, AuditLog.input_summary).where(

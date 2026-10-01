@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from app.api.deps import CurrentUser, get_current_user
 from app.api.tool_deps import execution_context, get_tool_registry, raise_http_for_tool_error
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.models.crm import Appointment
 from app.tools.errors import ToolError
 from app.tools.registry import ToolRegistry
@@ -47,6 +47,7 @@ async def list_appointments(
     business action, so it reads directly rather than through a tool, same
     pattern as GET /crm/metrics."""
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         rows = (
             await session.execute(
                 select(Appointment).where(

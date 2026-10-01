@@ -23,6 +23,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import CommunicationProvider, MessageTemplate
+from app.db.session import set_tenant_context
 from app.core.security import TokenError, create_invite_token, decode_invite_token, hash_password
 from app.models.organization import Organization
 from app.models.rbac import Role
@@ -72,6 +73,7 @@ class TeamService:
 
     async def list_members(self, tenant_id: uuid.UUID) -> list[User]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(select(User).where(User.tenant_id == tenant_id).order_by(User.created_at))
             ).scalars().all()
@@ -95,6 +97,7 @@ class TeamService:
                 raise InvalidRoleError(f"Invalid role: {role}") from exc
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             user = await session.get(User, user_id)
             if user is None or user.tenant_id != tenant_id:
                 raise UserNotFoundError("Team member not found")
@@ -128,6 +131,7 @@ class TeamService:
 
         normalized_email = email.strip().lower()
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing_user = (
                 await session.execute(
                     select(User).where(User.tenant_id == tenant_id, User.email == normalized_email)
@@ -176,6 +180,7 @@ class TeamService:
 
     async def list_invites(self, tenant_id: uuid.UUID) -> list[TeamInvite]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(TeamInvite)
@@ -187,6 +192,7 @@ class TeamService:
 
     async def revoke_invite(self, tenant_id: uuid.UUID, invite_id: uuid.UUID) -> TeamInvite:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invite = await session.get(TeamInvite, invite_id)
             if invite is None or invite.tenant_id != tenant_id:
                 raise InviteNotFoundError("Invite not found")
@@ -213,8 +219,19 @@ class TeamService:
         return invite
 
     async def preview_invite(self, token: str) -> InvitePreview:
+        """`token` is this codebase's own signed invite JWT
+        (`create_invite_token`/`decode_invite_token`) — its `tenant_id`
+        claim is cryptographically verified before `_resolve_pending_invite`
+        ever returns, and is cross-checked again against the real
+        `TeamInvite` row's own `tenant_id` column. Context is set only
+        AFTER that verification succeeds (not before, when no trusted
+        tenant identity yet exists) — the same "resolve first, then stamp"
+        shape as `McpCredentialService.authenticate`/the Stripe webhook
+        dedup lookup, just with a verified token instead of a hashed
+        credential."""
         async with self._session_factory() as session:
             invite = await self._resolve_pending_invite(session, token)
+            await set_tenant_context(session, invite.tenant_id)
             org = await session.get(Organization, invite.tenant_id)
             return InvitePreview(
                 organization_name=org.name if org else "your team", email=invite.email, role=invite.role
@@ -223,6 +240,7 @@ class TeamService:
     async def accept_invite(self, token: str, *, full_name: str, password: str) -> User:
         async with self._session_factory() as session:
             invite = await self._resolve_pending_invite(session, token)
+            await set_tenant_context(session, invite.tenant_id)
 
             already_a_user = (
                 await session.execute(

@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import CommunicationProvider, MessageTemplate
+from app.db.session import set_tenant_context
 from app.models.crm import Customer
 from app.models.retention import (
     RetentionActivity,
@@ -45,6 +46,7 @@ class RetentionCampaignService:
 
     async def create_campaign(self, tenant_id: uuid.UUID, *, name: str, type: str) -> RetentionCampaign:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             campaign = RetentionCampaign(tenant_id=tenant_id, name=name, type=type, status=RetentionCampaignStatus.DRAFT)
             session.add(campaign)
             await session.commit()
@@ -53,6 +55,7 @@ class RetentionCampaignService:
 
     async def set_status(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, status: str) -> RetentionCampaign:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             campaign = await session.get(RetentionCampaign, campaign_id)
             if campaign is None or campaign.tenant_id != tenant_id:
                 raise CampaignNotFoundError("Retention campaign not found")
@@ -64,6 +67,7 @@ class RetentionCampaignService:
     async def enroll_customer(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, customer_id: uuid.UUID) -> RetentionEnrollment:
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             campaign = await session.get(RetentionCampaign, campaign_id)
             if campaign is None or campaign.tenant_id != tenant_id:
                 raise CampaignNotFoundError("Retention campaign not found")
@@ -100,6 +104,7 @@ class RetentionCampaignService:
         now = datetime.now(timezone.utc)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             due = (
                 await session.execute(
                     select(RetentionActivity).where(

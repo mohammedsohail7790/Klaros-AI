@@ -30,6 +30,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.company_memory import (
@@ -157,6 +158,7 @@ class CompanyMemoryService:
         _validate_value_and_description(value, description)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing_active = (
                 await session.execute(
                     select(CompanyMemory).where(
@@ -216,6 +218,7 @@ class CompanyMemoryService:
             raise MemoryValidationError("confidence must be between 0.0 and 1.0")
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             memory = CompanyMemory(
                 tenant_id=tenant_id, memory_type=memory_type, key=key, value=value, description=description,
                 source=MemorySource.AI_PROPOSED, source_entity_type=source_entity_type,
@@ -239,6 +242,7 @@ class CompanyMemoryService:
 
     async def confirm_memory(self, tenant_id: uuid.UUID, memory_id: uuid.UUID, *, confirmed_by: uuid.UUID | None) -> CompanyMemory:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             memory = await self._get_owned(session, tenant_id, memory_id)
             if memory.status != MemoryStatus.PENDING:
                 raise MemoryStateError(f"cannot confirm a memory in status {memory.status!r} (must be PENDING)")
@@ -278,6 +282,7 @@ class CompanyMemoryService:
 
     async def reject_memory(self, tenant_id: uuid.UUID, memory_id: uuid.UUID, *, rejected_by: uuid.UUID | None, reason: str | None = None) -> CompanyMemory:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             memory = await self._get_owned(session, tenant_id, memory_id)
             if memory.status != MemoryStatus.PENDING:
                 raise MemoryStateError(f"cannot reject a memory in status {memory.status!r} (must be PENDING)")
@@ -302,6 +307,7 @@ class CompanyMemoryService:
         transitions to REVOKED and simply stops appearing in
         get_context()."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             memory = await self._get_owned(session, tenant_id, memory_id)
             if memory.status != MemoryStatus.ACTIVE:
                 raise MemoryStateError(f"cannot revoke a memory in status {memory.status!r} (must be ACTIVE)")
@@ -332,6 +338,7 @@ class CompanyMemoryService:
         overwrite)."""
         _validate_value_and_description(value, description)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             memory = await self._get_owned(session, tenant_id, memory_id)
             if memory.status != MemoryStatus.PENDING:
                 raise MemoryStateError(
@@ -356,6 +363,7 @@ class CompanyMemoryService:
 
     async def get_memory(self, tenant_id: uuid.UUID, memory_id: uuid.UUID) -> CompanyMemory:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             return await self._get_owned(session, tenant_id, memory_id)
 
     async def list_memories(
@@ -363,6 +371,7 @@ class CompanyMemoryService:
         key: str | None = None, source: str | None = None,
     ) -> list[CompanyMemory]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             query = select(CompanyMemory).where(CompanyMemory.tenant_id == tenant_id)
             if memory_type is not None:
                 query = query.where(CompanyMemory.memory_type == memory_type)
@@ -380,6 +389,7 @@ class CompanyMemoryService:
         walks naturally from created_at since every supersession is a
         brand-new row (Rule 7)."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(CompanyMemory)
@@ -395,6 +405,7 @@ class CompanyMemoryService:
         never includes a not-yet-effective or expired ACTIVE row."""
         now = now or datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(CompanyMemory)

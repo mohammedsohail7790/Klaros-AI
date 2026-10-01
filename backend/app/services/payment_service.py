@@ -16,6 +16,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.finance import (
@@ -76,6 +77,7 @@ class PaymentService:
         quote_id: uuid.UUID | None = None,
     ) -> tuple[Payment, bool]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(Payment).where(
@@ -203,6 +205,7 @@ class PaymentService:
         await self._publish_payment_received(tenant_id, payment, touched_invoice_ids)
         for invoice_id in touched_invoice_ids:
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 invoice = await session.get(Invoice, invoice_id)
             if invoice and invoice.status == InvoiceStatus.PAID:
                 await self._bus.publish(
@@ -293,6 +296,7 @@ class PaymentService:
         silently ignores this hint — this fix is verified against real
         Postgres specifically, matching the project's established pattern."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             payment = await session.get(Payment, payment_id, with_for_update=True)
             if payment is None or payment.tenant_id != tenant_id:
                 raise PaymentNotFoundError("Payment not found")
@@ -380,6 +384,7 @@ class PaymentService:
         stripe_payment_intent_id: str | None = None
         if approved:
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 claim_result = await session.execute(
                     sa_update(Refund)
                     .where(
@@ -393,12 +398,14 @@ class PaymentService:
 
             if not claimed:
                 async with self._session_factory() as session:
+                    await set_tenant_context(session, tenant_id)
                     existing = await session.get(Refund, refund_id)
                 if existing is None or existing.tenant_id != tenant_id:
                     raise InvalidRefundError("Refund not found")
                 raise InvalidRefundError("Refund is not pending")
 
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 refund_preview = await session.get(Refund, refund_id)
                 payment_preview = await session.get(Payment, refund_preview.payment_id)
                 if payment_preview is not None and payment_preview.provider == "stripe":
@@ -418,6 +425,7 @@ class PaymentService:
             secret_key = await resolve_stripe_secret_key(self._connection_service, tenant_id)
             if not secret_key:
                 async with self._session_factory() as session:
+                    await set_tenant_context(session, tenant_id)
                     r = await session.get(Refund, refund_id)
                     if r is not None and r.status == RefundStatus.APPROVED:
                         r.status = RefundStatus.REQUESTED
@@ -430,6 +438,7 @@ class PaymentService:
             try:
                 refund_amount_preview: Decimal | None = None
                 async with self._session_factory() as session:
+                    await set_tenant_context(session, tenant_id)
                     r = await session.get(Refund, refund_id)
                     if r is not None:
                         refund_amount_preview = r.amount
@@ -443,6 +452,7 @@ class PaymentService:
                 # retryable — never leave the refund stuck in APPROVED
                 # with no real refund behind it.
                 async with self._session_factory() as session:
+                    await set_tenant_context(session, tenant_id)
                     r = await session.get(Refund, refund_id)
                     if r is not None and r.status == RefundStatus.APPROVED:
                         r.status = RefundStatus.REQUESTED
@@ -450,6 +460,7 @@ class PaymentService:
                 raise InvalidRefundError(f"Stripe refund failed, no DB state changed: {exc}") from exc
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             refund = await session.get(Refund, refund_id)
             if refund is None or refund.tenant_id != tenant_id:
                 raise InvalidRefundError("Refund not found")
@@ -557,6 +568,7 @@ class PaymentService:
         Returns (None, None) for that legitimate no-op case, and
         (None, error_detail) for a genuine failure (no matching Payment)."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             payment = (
                 await session.execute(
                     select(Payment).where(

@@ -11,6 +11,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.operations import (
     Job,
     JobMaterial,
@@ -42,6 +43,7 @@ class MaterialService:
         supplier: str | None = None,
     ) -> JobMaterial:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id:
                 raise JobNotFoundError("Job not found")
@@ -66,6 +68,7 @@ class MaterialService:
         self, tenant_id: uuid.UUID, job_id: uuid.UUID, *, supplier: str | None = None
     ) -> tuple[PurchaseOrder, list[PurchaseOrderItem]]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id:
                 raise JobNotFoundError("Job not found")

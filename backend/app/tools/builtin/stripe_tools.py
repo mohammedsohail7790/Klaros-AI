@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from app.core.config import get_settings
 from app.integrations.credential_store import decrypt_credential
 from app.integrations.stripe_client import StripeAPIError, StripeClient
+from app.db.session import set_tenant_context
 from app.models.finance import Invoice
 from app.models.integration import ConnectionStatus
 from app.models.rbac import Permission
@@ -91,6 +92,7 @@ class CreateStripeCheckoutSession(Tool):
             raise ToolError("Stripe is not connected (no tenant connection and STRIPE_SECRET_KEY not configured)")
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             invoice = await session.get(Invoice, input.invoice_id)
             if invoice is None or invoice.tenant_id != context.tenant_id:
                 raise ToolError(f"Invoice {input.invoice_id} not found")

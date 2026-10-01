@@ -17,6 +17,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.finance import Invoice, InvoiceStatus
 from app.models.operations import ExceptionType
 from app.services.collection_service import CollectionService
@@ -68,6 +69,7 @@ class ARService:
         as_of = as_of or date.today()
         summary = AgingSummary()
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoices = (
                 await session.execute(
                     select(Invoice).where(Invoice.tenant_id == tenant_id, Invoice.status.in_(OPEN_STATUSES))
@@ -90,6 +92,7 @@ class ARService:
 
     async def customer_balance(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> Decimal:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoices = (
                 await session.execute(
                     select(Invoice).where(
@@ -106,6 +109,7 @@ class ARService:
         newly_overdue: list[uuid.UUID] = []
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             candidates = (
                 await session.execute(
                     select(Invoice).where(
@@ -123,6 +127,7 @@ class ARService:
 
         for invoice_id in newly_overdue:
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 inv = await session.get(Invoice, invoice_id)
             days_overdue = (as_of - inv.due_date).days
             await self._exception_service.create_exception(

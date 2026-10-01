@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, get_current_user
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.models.ai_invocation import AIInvocationLog
 from app.services.owner_activity_service import (
     DEFAULT_PAGE_SIZE,
@@ -84,6 +84,7 @@ async def get_ai_health(current_user: CurrentUser = Depends(get_current_user)) -
     provider = get_ai_provider()
     since = datetime.now(timezone.utc) - timedelta(hours=24)
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         total = (
             await session.execute(
                 select(func.count()).where(

@@ -62,6 +62,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.business_blueprint import BlueprintStatus, BusinessBlueprint
@@ -111,6 +112,7 @@ class BusinessJourneyService:
         what a client calls to "resume": re-fetch this, then call whichever
         named action corresponds to `journey.status`."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             return (
                 await session.execute(
                     select(BusinessJourney)
@@ -125,6 +127,7 @@ class BusinessJourneyService:
 
     async def get_by_id(self, tenant_id: uuid.UUID, journey_id: uuid.UUID) -> BusinessJourney:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             journey = await session.get(BusinessJourney, journey_id)
             if journey is None or journey.tenant_id != tenant_id:
                 raise BusinessJourneyNotFoundError(f"BusinessJourney {journey_id} not found")
@@ -134,6 +137,7 @@ class BusinessJourneyService:
         """Historical journeys too (a tenant may abandon/complete one and
         start another) — newest first."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(BusinessJourney)
@@ -176,6 +180,7 @@ class BusinessJourneyService:
         # no-op on SQLite (unit tests never run this concurrently).
         lock_session = self._session_factory()
         try:
+            await set_tenant_context(lock_session, tenant_id)
             is_postgres = lock_session.get_bind().dialect.name == "postgresql"
             if is_postgres:
                 await lock_session.execute(
@@ -196,6 +201,7 @@ class BusinessJourneyService:
             )
 
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 journey = BusinessJourney(
                     tenant_id=tenant_id,
                     status=BusinessJourneyStatus.DISCOVERY_ACTIVE,
@@ -267,6 +273,7 @@ class BusinessJourneyService:
             )
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = await session.get(BusinessJourney, journey_id)
             row.status = BusinessJourneyStatus.BLUEPRINT_REVIEW
             row.blueprint_id = discovery_session.blueprint_id
@@ -336,6 +343,7 @@ class BusinessJourneyService:
         # the journey, never re-activating.
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = await session.get(BusinessJourney, journey_id)
             row.status = BusinessJourneyStatus.BLUEPRINT_ACTIVE
             row.last_error = None
@@ -396,6 +404,7 @@ class BusinessJourneyService:
         # which does not support row-level locking but also never runs
         # these calls concurrently.
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             locked = (
                 await session.execute(
                     select(BusinessJourney).where(BusinessJourney.id == journey_id).with_for_update()
@@ -448,6 +457,7 @@ class BusinessJourneyService:
         self, tenant_id: uuid.UUID, blueprint_id: uuid.UUID, blueprint_version: int
     ) -> RecommendationRun | None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             return (
                 await session.execute(
                     select(RecommendationRun)
@@ -480,6 +490,7 @@ class BusinessJourneyService:
             )
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = await session.get(BusinessJourney, journey_id)
             row.status = BusinessJourneyStatus.COMPLETED
             row.completed_at = datetime.now(timezone.utc)
@@ -510,6 +521,7 @@ class BusinessJourneyService:
             raise InvalidJourneyTransitionError("Journey is COMPLETED — cannot abandon")
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = await session.get(BusinessJourney, journey_id)
             row.status = BusinessJourneyStatus.ABANDONED
             row.abandoned_at = datetime.now(timezone.utc)

@@ -121,7 +121,7 @@ export default function WebsitePage() {
             }
           />
         ) : (
-          <div className="grid grid-cols-[280px_1fr] gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr]">
             <div>
               <div className="mb-3 text-sm text-muted">
                 {website.name} <span className="text-muted-foreground">/{website.slug}</span>
@@ -206,22 +206,23 @@ function VersionEditor({
       setEditSections(null);
       return;
     }
-    // Reconstruct an editable WebsiteSection[] from the rendered tree.
-    // KNOWN LIMITATION (documented in PHASE_12_WEBSITE_BUILDER_PRODUCTIZATION_IMPLEMENTATION_LOG.md):
-    // the preview/render endpoint does not echo back `data_source`, so an
-    // existing data-bound section's provider_key is NOT known to this
-    // editor after a reload — it starts blank (see the "Data source
-    // provider key" field in SectionPropsForm) rather than being silently
-    // guessed at, which would risk hardcoding a vertical assumption into
-    // generic editor code. A user re-saving a PROVIDER_DIRECTORY/
-    // PROCEDURE_LIST section without re-typing its provider_key will
-    // clear that section's data binding — deferred work, not silently
-    // masked.
+    // Reconstruct an editable WebsiteSection[] from the rendered tree. The
+    // authenticated preview endpoint now echoes each section's saved
+    // `data_source` back (backend/app/api/v1/websites.py's preview_version
+    // overlay — editor-only, never present on the public render path), so
+    // an existing PROVIDER_DIRECTORY/PROCEDURE_LIST section's provider key
+    // rehydrates correctly after save/reload instead of starting blank.
+    // `data_source` is `undefined` rather than `null` only if an older
+    // cached response is somehow replayed; fall back to the generic
+    // (always-null) default in that case rather than guessing a value.
     setEditSections(
       activePage.sections.map((s) => ({
         component_type: s.component_type as WebsiteSection["component_type"],
         props: s.props,
-        data_source: defaultDataSourceFor(s.component_type as WebsiteSection["component_type"]),
+        data_source:
+          s.data_source !== undefined
+            ? s.data_source
+            : defaultDataSourceFor(s.component_type as WebsiteSection["component_type"]),
       }))
     );
   }, [activePage]);

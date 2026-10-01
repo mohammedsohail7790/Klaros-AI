@@ -33,7 +33,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api.tool_deps import get_wired_event_bus
 from app.api.tool_deps_integrations import get_integration_connection_service
 from app.core.rate_limit import rate_limit, tenant_and_ip_key
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.events.bus import EventBus
 from app.integrations.credential_store import decrypt_credential
 from app.integrations.marketplace_adapters import MARKETPLACE_ADAPTERS
@@ -109,6 +109,10 @@ async def marketplace_lead_webhook(
 
     external_event_id = f"{tenant_id}:{normalized.external_lead_id}"
     async with async_session_maker() as session:
+        # tenant_id (path param) is only trusted from here on — it has
+        # already been verified above via the tenant's own webhook_secret
+        # signature (_verify_signature), so it is safe to stamp now.
+        await set_tenant_context(session, tenant_id)
         existing = (
             await session.execute(
                 select(WebhookEvent).where(

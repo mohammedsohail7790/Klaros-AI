@@ -25,6 +25,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.config import get_settings
+from app.db.session import set_tenant_context
 from app.integrations.stripe_client import StripeClient
 from app.models.ai_invocation import AIInvocationLog
 from app.models.organization import Organization
@@ -98,6 +99,7 @@ class BillingService:
 
     async def _count_ai_usage_this_month(self, tenant_id: uuid.UUID, now: datetime) -> int:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             result = await session.execute(
                 select(func.count()).select_from(AIInvocationLog).where(
                     AIInvocationLog.tenant_id == tenant_id,
@@ -155,6 +157,7 @@ class BillingService:
         client = _platform_stripe_client()
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, org.id)
             db_org = await session.get(Organization, org.id)
             if db_org is None:
                 raise UnknownPlanError("Organization not found")
@@ -185,6 +188,7 @@ class BillingService:
 
     async def apply_checkout_completed(self, tenant_id: uuid.UUID, plan: str, customer_id: str, subscription_id: str) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             org = await session.get(Organization, tenant_id)
             if org is None:
                 return
@@ -209,6 +213,14 @@ class BillingService:
             ).scalar_one_or_none()
             if org is None:
                 return
+            # Phase 17B-2R: tenant identity here comes from the verified
+            # Stripe webhook payload's subscription id, resolved to an
+            # Organization row by this SAME query above — no tenant_id
+            # parameter exists on this method because none is known until
+            # this lookup returns one (matches the "resolve trusted
+            # identity first, stamp after" shape used by
+            # McpCredentialService.authenticate / TeamService.preview_invite).
+            await set_tenant_context(session, org.id)
             org.billing_status = mapped_status
             if current_period_end is not None:
                 org.current_period_end = current_period_end
@@ -221,5 +233,6 @@ class BillingService:
             ).scalar_one_or_none()
             if org is None:
                 return
+            await set_tenant_context(session, org.id)
             org.billing_status = "canceled"
             await session.commit()

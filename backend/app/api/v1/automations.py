@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, require_permission
 from app.api.tool_deps import get_automation_service
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.models.organization import Organization
 from app.models.rbac import Permission
 from app.services.automation_schedule import InvalidScheduleError, validate_timezone
@@ -128,6 +128,7 @@ async def get_tenant_timezone(
     Registered before /{automation_id} so the literal path "timezone" is
     never captured by that route's UUID path parameter."""
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         org = await session.get(Organization, current_user.tenant_id)
         return TimezoneResponse(timezone=org.timezone if org else "UTC")
 
@@ -142,6 +143,7 @@ async def update_tenant_timezone(
     except InvalidScheduleError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         org = await session.get(Organization, current_user.tenant_id)
         org.timezone = body.timezone
         await session.commit()

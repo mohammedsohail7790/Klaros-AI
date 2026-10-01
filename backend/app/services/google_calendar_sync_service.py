@@ -29,6 +29,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import text
 
+from app.db.session import set_tenant_context
 from app.integrations.credential_store import decrypt_credential
 from app.integrations.google_calendar_client import (
     GoogleCalendarAPIError,
@@ -180,6 +181,7 @@ class GoogleCalendarSyncService:
         # no-op on SQLite (single-writer serialization already prevents
         # this race there, and SQLite has no advisory locks).
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             if session.bind is not None and session.bind.dialect.name == "postgresql":
                 lock_key = f"google-calendar-sync:{tenant_id}:{appointment_id}"
                 await session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key))"), {"key": lock_key})
@@ -300,6 +302,7 @@ class GoogleCalendarSyncService:
             return None
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             already_linked = (
                 await session.execute(
                     select(Appointment).where(
@@ -331,6 +334,7 @@ class GoogleCalendarSyncService:
         status = AppointmentStatus.COMPLETED if end_dt < datetime.now(timezone.utc) else AppointmentStatus.CONFIRMED
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             appointment = Appointment(
                 tenant_id=tenant_id,
                 customer_id=customer_id,
@@ -361,6 +365,7 @@ class GoogleCalendarSyncService:
         name = (attendee.displayName if attendee and attendee.displayName else None) or (email.split("@")[0] if email else None)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             if email:
                 match = await find_matching_customer(session, tenant_id=tenant_id, email=email, phone=None)
                 if match is not None:

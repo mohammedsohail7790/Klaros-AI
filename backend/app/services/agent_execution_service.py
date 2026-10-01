@@ -90,6 +90,7 @@ from app.models.agent import (
     AgentVersion,
     AgentVersionStatus,
 )
+from app.db.session import set_tenant_context
 from app.models.audit_log import AuditLog
 from app.models.rbac import Role
 from app.tools.base import ExecutionContext
@@ -275,6 +276,7 @@ class AgentExecutionService:
             idempotency identity the original attempt used (Case 1). False
             -> never guess; safe-halt for a human to inspect (Case 2)."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
             if execution is None or execution.tenant_id != tenant_id:
                 raise AgentExecutionError("Execution not found")
@@ -320,6 +322,7 @@ class AgentExecutionService:
                 # Already durably parked on ApprovalExecutionService's own
                 # governed resume path — nothing for this service to do.
                 async with self._session_factory() as session:
+                    await set_tenant_context(session, tenant_id)
                     return await session.get(AgentExecution, execution_id)
             return await self._mark_failed(
                 execution_id,
@@ -348,7 +351,12 @@ class AgentExecutionService:
 
     async def _halt_ambiguous(self, execution_id: uuid.UUID) -> AgentExecution:
         async with self._session_factory() as session:
+            # tenant_id is not a parameter here (this is an internal
+            # recovery helper keyed only by execution_id); load the row by
+            # PK first, then stamp its own tenant_id onto this same
+            # transaction before the subsequent UPDATE below.
             execution = await session.get(AgentExecution, execution_id)
+            await set_tenant_context(session, execution.tenant_id if execution else None)
             execution.status = AgentExecutionStatus.HALTED
             execution.termination_reason = AgentExecutionTerminationReason.AMBIGUOUS_TOOL_OUTCOME_SAFE_HALT
             execution.error_message = (
@@ -366,6 +374,7 @@ class AgentExecutionService:
             execution = await session.get(AgentExecution, execution_id)
             if execution is None:
                 return
+            await set_tenant_context(session, execution.tenant_id)
             session.add(
                 AuditLog(
                     tenant_id=execution.tenant_id,
@@ -392,6 +401,7 @@ class AgentExecutionService:
         for REASONING steps; this service's own `resume_recovered` keys off
         the identical signal."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             session.add(
                 AgentExecutionStep(
                     tenant_id=tenant_id, execution_id=execution_id, step_number=_SINGLE_ACTION_STEP_NUMBER,
@@ -408,6 +418,7 @@ class AgentExecutionService:
         status: str, output_summary: dict | None = None, error_code: str | None = None,
     ) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = (
                 await session.execute(
                     select(AgentExecutionStep).where(
@@ -428,6 +439,7 @@ class AgentExecutionService:
 
     async def list_steps(self, tenant_id: uuid.UUID, execution_id: uuid.UUID) -> list[AgentExecutionStep]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(AgentExecutionStep)
@@ -441,6 +453,7 @@ class AgentExecutionService:
 
     async def _load_executable(self, tenant_id: uuid.UUID, agent_id: uuid.UUID) -> tuple[Agent, AgentVersion]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             agent = await session.get(Agent, agent_id)
             if agent is None or agent.tenant_id != tenant_id:
                 raise AgentNotExecutableError("Agent not found")
@@ -459,6 +472,7 @@ class AgentExecutionService:
         self, tenant_id: uuid.UUID, agent_id: uuid.UUID, key: str
     ) -> AgentExecution | None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = (
                 await session.execute(
                     select(AgentExecution).where(
@@ -475,6 +489,7 @@ class AgentExecutionService:
     ) -> None:
         """KLAROS_FINAL_AGENT_MODEL.md governance chain step 9."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
             hourly_count = (
                 await session.execute(
@@ -532,6 +547,7 @@ class AgentExecutionService:
         back, and re-raise as `DuplicateExecutionRequestError` pointing at
         whichever row actually won."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = AgentExecution(
                 tenant_id=tenant_id, agent_id=agent.id, agent_version_id=version.id,
                 trigger_source=trigger_source, triggered_by=triggered_by,
@@ -555,6 +571,7 @@ class AgentExecutionService:
     async def _mark_running(self, execution_id: uuid.UUID) -> None:
         async with self._session_factory() as session:
             execution = await session.get(AgentExecution, execution_id)
+            await set_tenant_context(session, execution.tenant_id if execution else None)
             now = datetime.now(timezone.utc)
             execution.status = AgentExecutionStatus.RUNNING
             execution.started_at = now
@@ -571,6 +588,7 @@ class AgentExecutionService:
     async def _mark_completed(self, execution_id: uuid.UUID, *, result: dict | None) -> AgentExecution:
         async with self._session_factory() as session:
             execution = await session.get(AgentExecution, execution_id)
+            await set_tenant_context(session, execution.tenant_id if execution else None)
             execution.status = AgentExecutionStatus.COMPLETED
             execution.result_summary = result
             execution.completed_at = datetime.now(timezone.utc)
@@ -581,6 +599,7 @@ class AgentExecutionService:
     async def _mark_failed(self, execution_id: uuid.UUID, *, error: str) -> AgentExecution:
         async with self._session_factory() as session:
             execution = await session.get(AgentExecution, execution_id)
+            await set_tenant_context(session, execution.tenant_id if execution else None)
             execution.status = AgentExecutionStatus.FAILED
             execution.error_message = error[:2000]
             execution.completed_at = datetime.now(timezone.utc)
@@ -593,6 +612,7 @@ class AgentExecutionService:
     ) -> AgentExecution:
         async with self._session_factory() as session:
             execution = await session.get(AgentExecution, execution_id)
+            await set_tenant_context(session, execution.tenant_id if execution else None)
             execution.status = AgentExecutionStatus.WAITING_APPROVAL
             execution.approval_request_id = approval_request_id
             await session.commit()
@@ -601,6 +621,7 @@ class AgentExecutionService:
 
     async def get_execution(self, tenant_id: uuid.UUID, execution_id: uuid.UUID) -> AgentExecution:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
             if execution is None or execution.tenant_id != tenant_id:
                 raise AgentExecutionError("Execution not found")

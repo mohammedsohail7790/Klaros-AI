@@ -58,6 +58,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
@@ -189,6 +190,7 @@ class OwnerActivityService:
     async def _collect_all(self, tenant_id: uuid.UUID) -> list[Activity]:
         activities: list[Activity] = []
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             # --- LEAD_CREATED / LEAD_QUALIFIED ---------------------------
             leads = (
                 await session.execute(

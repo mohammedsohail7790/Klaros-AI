@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.business_blueprint import MINIMUM_BAR_SECTIONS, BlueprintSectionStatus
 from app.models.business_discovery import (
     DiscoverySession,
@@ -76,6 +77,7 @@ class BusinessDiscoveryService:
         blueprint = await self._blueprint_service.get_or_create_draft(tenant_id, created_by=created_by)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             discovery_session = DiscoverySession(
                 tenant_id=tenant_id,
                 blueprint_id=blueprint.id,
@@ -106,6 +108,7 @@ class BusinessDiscoveryService:
         self, tenant_id: uuid.UUID, discovery_session_id: uuid.UUID, *, answer: str, actor_id: uuid.UUID | None
     ) -> DiscoveryTurnResult:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             discovery_session = await session.get(DiscoverySession, discovery_session_id)
             if discovery_session is None or discovery_session.tenant_id != tenant_id:
                 raise DiscoverySessionNotFoundError(f"DiscoverySession {discovery_session_id} not found")
@@ -161,12 +164,14 @@ class BusinessDiscoveryService:
             gap_keys=gap_keys,
             is_initial=is_initial,
             actor_id=actor_id,
+            turn_sequence=turn.sequence,
         )
 
         proposed_ids: list[uuid.UUID] = []
         next_question: str | None = None
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             discovery_session = await session.get(DiscoverySession, discovery_session_id)
 
             if not outcome.available:
@@ -199,7 +204,20 @@ class BusinessDiscoveryService:
 
         remaining_gaps = await self._gap_keys(tenant_id, blueprint_id)
 
+        # Phase 16a: a third, independent completion trigger — the
+        # deterministic (no-provider) fallback's own short fixed question
+        # sequence running out. Distinct from "at_cap" (a hard safety-net
+        # cap that also applies to a connected, adaptively-questioning
+        # provider) and from "remaining_gaps empty" (which, for the
+        # fallback path, is structurally unreachable — its claims are
+        # always PROPOSED, never CONFIRMED, so no gap ever legitimately
+        # closes that way without a human first visiting Blueprint review).
+        # A connected provider's `DiscoveryExtractionResult.exhausted` is
+        # never True, so this branch is inert for that path.
+        fallback_exhausted = outcome.deterministic_fallback and outcome.result.exhausted
+
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             discovery_session = await session.get(DiscoverySession, discovery_session_id)
             at_cap = discovery_session.questions_asked >= discovery_session.max_questions
             if not remaining_gaps and not at_cap:
@@ -212,6 +230,12 @@ class BusinessDiscoveryService:
                 discovery_session.status = DiscoverySessionStatus.COMPLETED
                 next_question = None
             elif at_cap:
+                discovery_session.status = DiscoverySessionStatus.COMPLETED
+                next_question = None
+            elif fallback_exhausted:
+                # The deterministic fallback has genuinely asked everything
+                # in its bounded sequence (never exceeds max_questions) —
+                # legitimate completion, not a "no question this turn" stall.
                 discovery_session.status = DiscoverySessionStatus.COMPLETED
                 next_question = None
             else:
@@ -237,6 +261,7 @@ class BusinessDiscoveryService:
 
     async def get_session(self, tenant_id: uuid.UUID, discovery_session_id: uuid.UUID) -> DiscoverySession:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             discovery_session = await session.get(DiscoverySession, discovery_session_id)
             if discovery_session is None or discovery_session.tenant_id != tenant_id:
                 raise DiscoverySessionNotFoundError(f"DiscoverySession {discovery_session_id} not found")
@@ -244,6 +269,7 @@ class BusinessDiscoveryService:
 
     async def get_turns(self, tenant_id: uuid.UUID, discovery_session_id: uuid.UUID) -> list[DiscoveryTurn]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(DiscoveryTurn)

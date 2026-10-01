@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.tools.base import ExecutionContext, Tool
 
@@ -38,6 +39,7 @@ class CreateApprovalRequest(Tool):
         self, input: CreateApprovalRequestInput, context: ExecutionContext
     ) -> CreateApprovalRequestOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             request = ApprovalRequest(
                 tenant_id=context.tenant_id,
                 requested_by_type=context.actor_type,
@@ -215,6 +217,7 @@ class ListApprovals(Tool):
             raise ValueError("Actor lacks required permission: READ_APPROVALS")
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             query = select(ApprovalRequest).where(ApprovalRequest.tenant_id == context.tenant_id)
             if input.status:
                 query = query.where(ApprovalRequest.status == input.status)
@@ -281,6 +284,7 @@ class GetApprovalDetail(Tool):
             raise ValueError("Actor lacks required permission: READ_APPROVALS")
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             request = await session.get(ApprovalRequest, input.approval_request_id)
             if request is None or request.tenant_id != context.tenant_id:
                 raise ValueError("Approval request not found")

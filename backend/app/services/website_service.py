@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.website import Website, WebsitePage, WebsiteSection, WebsiteVersion, WebsiteVersionStatus
@@ -72,12 +73,14 @@ class WebsiteService:
 
     async def get_website(self, tenant_id: uuid.UUID) -> Website | None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             return (
                 await session.execute(select(Website).where(Website.tenant_id == tenant_id))
             ).scalar_one_or_none()
 
     async def get_website_by_id(self, tenant_id: uuid.UUID, website_id: uuid.UUID) -> Website:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             website = await session.get(Website, website_id)
             if website is None or website.tenant_id != tenant_id:
                 raise WebsiteNotFoundError(f"Website {website_id} not found")
@@ -85,6 +88,7 @@ class WebsiteService:
 
     async def get_version(self, tenant_id: uuid.UUID, version_id: uuid.UUID) -> WebsiteVersion:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             version = await session.get(WebsiteVersion, version_id)
             if version is None or version.tenant_id != tenant_id:
                 raise WebsiteVersionNotFoundError(f"WebsiteVersion {version_id} not found")
@@ -92,6 +96,7 @@ class WebsiteService:
 
     async def list_versions(self, tenant_id: uuid.UUID, website_id: uuid.UUID) -> list[WebsiteVersion]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(WebsiteVersion)
@@ -103,6 +108,7 @@ class WebsiteService:
 
     async def get_current_draft(self, tenant_id: uuid.UUID, website_id: uuid.UUID) -> WebsiteVersion | None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             return (
                 await session.execute(
                     select(WebsiteVersion).where(
@@ -133,6 +139,7 @@ class WebsiteService:
         app/services/website_generation_service.py both hand this an
         already-`WebsiteSpecification.model_validate`d object."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             website = (
                 await session.execute(select(Website).where(Website.tenant_id == tenant_id))
             ).scalar_one_or_none()
@@ -212,6 +219,7 @@ class WebsiteService:
 
     async def load_specification(self, tenant_id: uuid.UUID, version_id: uuid.UUID) -> WebsiteSpecification:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             version = await session.get(WebsiteVersion, version_id)
             if version is None or version.tenant_id != tenant_id:
                 raise WebsiteVersionNotFoundError(f"WebsiteVersion {version_id} not found")
@@ -274,6 +282,7 @@ class WebsiteService:
         self, tenant_id: uuid.UUID, version_id: uuid.UUID, theme: ThemeTokens, *, updated_by: uuid.UUID | None
     ) -> WebsiteVersion:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             version = await self._require_draft(session, tenant_id, version_id)
             version.theme = theme.model_dump()
             session.add(
@@ -301,6 +310,7 @@ class WebsiteService:
         updated_by: uuid.UUID | None,
     ) -> WebsitePage:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             await self._require_draft(session, tenant_id, version_id)
             existing = (
                 await session.execute(
@@ -368,6 +378,7 @@ class WebsiteService:
         updated_by: uuid.UUID | None,
     ) -> WebsitePage:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             await self._require_draft(session, tenant_id, version_id)
             page = (
                 await session.execute(
@@ -439,6 +450,7 @@ class WebsiteService:
             created_by=created_by,
         )
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = await session.get(WebsiteVersion, new_version.id)
             row.supersedes_id = source_version_id
             await session.commit()
@@ -456,6 +468,7 @@ class WebsiteService:
             await self.load_specification(tenant_id, version_id)
         except Exception as exc:  # noqa: BLE001
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 session.add(
                     AuditLog(
                         tenant_id=tenant_id,
@@ -472,6 +485,7 @@ class WebsiteService:
             raise
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             website = await session.get(Website, website_id)
             if website is None or website.tenant_id != tenant_id:
                 raise WebsiteNotFoundError(f"Website {website_id} not found")
@@ -532,6 +546,7 @@ class WebsiteService:
         history/immutability is preserved), it is simply no longer served
         as the current site."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             website = await session.get(Website, website_id)
             if website is None or website.tenant_id != tenant_id:
                 raise WebsiteNotFoundError(f"Website {website_id} not found")

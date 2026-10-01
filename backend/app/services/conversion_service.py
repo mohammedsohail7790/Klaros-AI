@@ -19,6 +19,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.calendar.base import BookingRequest, CalendarProvider
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import Customer, CustomerStatus, Lead, LeadStatus
 from app.models.event import EventType
@@ -68,6 +69,7 @@ class LeadConversionService:
         idempotency_key = idempotency_key or f"lead-conversion-{lead_id}"
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             lead = await session.get(Lead, lead_id)
             if lead is None or lead.tenant_id != tenant_id:
                 raise LeadNotFoundError("Lead not found")

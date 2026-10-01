@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.config import get_settings
+from app.db.session import set_tenant_context
 from app.models.contract import Contract, ContractStatus
 from app.models.crm import Appointment, AppointmentStatus, Lead, LeadStatus, QualificationStatus
 from app.models.finance import Invoice, InvoiceStatus, Payment
@@ -122,6 +123,7 @@ class InsightService:
         now = datetime.now(timezone.utc)
         since = now - timedelta(hours=24)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             open_statuses = [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE]
             total_ar = (
                 await session.execute(
@@ -168,6 +170,7 @@ class InsightService:
         now = datetime.now(timezone.utc)
         since = now - timedelta(hours=24)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             closed_count = (
                 await session.execute(
                     select(func.count()).where(
@@ -210,6 +213,7 @@ class InsightService:
         now = datetime.now(timezone.utc)
         day_start, day_end = _day_bounds(now)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             new_leads = (
                 await session.execute(
                     select(func.count()).where(
@@ -284,6 +288,7 @@ class InsightService:
         contract/quote that needs attention, matching every other
         recommendation's `related_entity_id` traceability."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             pending_contracts = (
                 await session.execute(
                     select(Contract).where(
@@ -341,6 +346,7 @@ class InsightService:
         since_24h = now - timedelta(hours=24)
         since_30d = (now - timedelta(days=30)).date()
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             active_campaigns = (
                 await session.execute(
                     select(func.count()).where(
@@ -370,6 +376,7 @@ class InsightService:
         now = datetime.now(timezone.utc)
         since = now - timedelta(hours=24)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             at_risk = (
                 await session.execute(
                     select(func.count()).where(
@@ -488,6 +495,7 @@ class InsightService:
 
     async def exception_snapshot(self, tenant_id: uuid.UUID) -> ExceptionSnapshot:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             open_rows = (
                 await session.execute(
                     select(OperationsException)
@@ -517,6 +525,7 @@ class InsightService:
         now = datetime.now(timezone.utc)
         since = now - timedelta(hours=24)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             calls = (
                 await session.execute(
                     select(CallSession)

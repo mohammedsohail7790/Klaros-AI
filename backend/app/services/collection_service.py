@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import CommunicationProvider, MessageTemplate
+from app.db.session import set_tenant_context
 from app.models.crm import Customer
 from app.models.finance import (
     CollectionAction,
@@ -73,6 +74,7 @@ class CollectionService:
         the winner's real row instead of raising."""
         action_type = _action_for_days_overdue(days_overdue)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(CollectionAction).where(
@@ -118,6 +120,7 @@ class CollectionService:
         now = datetime.now(timezone.utc)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             due = (
                 await session.execute(
                     select(CollectionAction).where(

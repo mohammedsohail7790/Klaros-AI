@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.config import get_settings
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.marketing import (
@@ -99,6 +100,7 @@ class ContentService:
 
     async def create_idea(self, tenant_id: uuid.UUID, *, title: str, summary: str | None, created_by: uuid.UUID | None) -> MarketingContent:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             content = MarketingContent(
                 tenant_id=tenant_id, title=title, summary=summary, status=ContentStatus.IDEA, created_by=created_by,
             )
@@ -125,6 +127,7 @@ class ContentService:
         does not call an LLM."""
         settings = get_settings()
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             feedback = await session.get(CustomerFeedback, feedback_id)
             if feedback is None or feedback.tenant_id != tenant_id:
                 raise FeedbackNotFoundError("Feedback not found")
@@ -192,6 +195,7 @@ class ContentService:
         configured (the only case in this sandbox), behavior is
         byte-for-byte unchanged from before this phase."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id:
                 raise JobNotFoundError("Job not found")
@@ -240,6 +244,7 @@ class ContentService:
             caption = generate_job_caption(job_input)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             content = MarketingContent(
                 tenant_id=tenant_id, source_job_id=job_id, title=job_title, summary=caption.text,
                 status=ContentStatus.DRAFT, created_by=created_by, ai_generated=True,
@@ -267,6 +272,7 @@ class ContentService:
 
     async def add_variant(self, tenant_id: uuid.UUID, content_id: uuid.UUID, *, channel: str, body_text: str | None) -> ContentVariant:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             content = await session.get(MarketingContent, content_id)
             if content is None or content.tenant_id != tenant_id:
                 raise ContentNotFoundError("Content not found")
@@ -278,6 +284,7 @@ class ContentService:
 
     async def request_approval(self, tenant_id: uuid.UUID, content_id: uuid.UUID, requested_by: uuid.UUID | None) -> MarketingContent:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             content = await session.get(MarketingContent, content_id)
             if content is None or content.tenant_id != tenant_id:
                 raise ContentNotFoundError("Content not found")
@@ -299,6 +306,7 @@ class ContentService:
         from app.models.approval import ApprovalRequest, ApprovalStatus
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             content = await session.get(MarketingContent, content_id)
             if content is None or content.tenant_id != tenant_id:
                 raise ContentNotFoundError("Content not found")
@@ -332,6 +340,7 @@ class ContentService:
 
     async def publish_variant(self, tenant_id: uuid.UUID, content_variant_id: uuid.UUID) -> ContentPublication:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             variant = await session.get(ContentVariant, content_variant_id)
             if variant is None or variant.tenant_id != tenant_id:
                 raise ContentNotFoundError("Content variant not found")

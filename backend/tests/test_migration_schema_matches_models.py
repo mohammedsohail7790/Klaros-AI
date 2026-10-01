@@ -30,6 +30,20 @@ def test_migration_chain_produces_columns_the_orm_models_declare(tmp_path):
     env = {
         **__import__("os").environ,
         "DATABASE_URL": f"sqlite+aiosqlite:///{db_path}",
+        # Phase 17B-1: alembic/env.py now prefers DATABASE_MIGRATION_URL
+        # over DATABASE_URL when the former is set (see
+        # backend/app/core/config.py's DATABASE_MIGRATION_URL docstring),
+        # so it can point migrations at the schema-owning role while
+        # DATABASE_URL points the application at a restricted runtime
+        # role. Without this override, a DATABASE_MIGRATION_URL already
+        # present in this process's own environment (e.g. an operator
+        # validating the Phase 17B-1 role cutover locally) would leak into
+        # this subprocess and silently migrate a completely different
+        # database than the disposable sqlite file this test actually
+        # inspects — explicitly pointing both at the same disposable file
+        # keeps this test's behavior identical regardless of the parent
+        # process's own DATABASE_MIGRATION_URL.
+        "DATABASE_MIGRATION_URL": f"sqlite+aiosqlite:///{db_path}",
     }
 
     result = subprocess.run(

@@ -22,7 +22,7 @@ from app.core.config import get_settings
 from app.core.rate_limit import path_param_and_ip_key, rate_limit
 from app.api.tool_deps import get_wired_event_bus
 from app.core.security import TokenError, decode_quote_view_token
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.events.bus import EventBus
 from app.models.quote import Quote, QuoteLineItem
 from app.services.quote_deposit_service import (
@@ -95,6 +95,10 @@ async def _quote_to_dict_with_items(tenant_id: uuid.UUID, quote: Quote) -> dict[
     frontend's `PublicQuote` type), so every handler below must attach
     them the same way `view_quote` always has, not just the GET path."""
     async with async_session_maker() as session:
+        # tenant_id here is only ever the verified, signed quote_view
+        # token's own payload (see _resolve_token above) — never a
+        # client-supplied path/query value trusted on its own.
+        await set_tenant_context(session, tenant_id)
         items = (
             await session.execute(
                 select(QuoteLineItem)

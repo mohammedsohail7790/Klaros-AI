@@ -22,6 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.ai.execution_service import AIExecutionService, ToolRequest
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.automation import (
     Automation,
@@ -142,6 +143,7 @@ class AutomationService:
         _validate_steps(steps)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             automation = Automation(tenant_id=tenant_id, name=name, description=description, created_by=created_by)
             session.add(automation)
             await session.flush()
@@ -169,6 +171,7 @@ class AutomationService:
         _validate_steps(steps)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             automation = await session.get(Automation, automation_id)
             if automation is None or automation.tenant_id != tenant_id:
                 raise AutomationNotFoundError(f"Automation {automation_id} not found")
@@ -192,6 +195,7 @@ class AutomationService:
 
     async def publish(self, tenant_id: uuid.UUID, automation_id: uuid.UUID) -> Automation:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             automation = await session.get(Automation, automation_id)
             if automation is None or automation.tenant_id != tenant_id:
                 raise AutomationNotFoundError(f"Automation {automation_id} not found")
@@ -212,6 +216,7 @@ class AutomationService:
 
     async def set_enabled(self, tenant_id: uuid.UUID, automation_id: uuid.UUID, enabled: bool) -> Automation:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             automation = await session.get(Automation, automation_id)
             if automation is None or automation.tenant_id != tenant_id:
                 raise AutomationNotFoundError(f"Automation {automation_id} not found")
@@ -224,6 +229,7 @@ class AutomationService:
 
     async def get_automation(self, tenant_id: uuid.UUID, automation_id: uuid.UUID) -> Automation:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             automation = await session.get(Automation, automation_id)
             if automation is None or automation.tenant_id != tenant_id:
                 raise AutomationNotFoundError(f"Automation {automation_id} not found")
@@ -231,6 +237,7 @@ class AutomationService:
 
     async def list_automations(self, tenant_id: uuid.UUID) -> list[Automation]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(select(Automation).where(Automation.tenant_id == tenant_id))
             ).scalars().all()
@@ -238,6 +245,7 @@ class AutomationService:
 
     async def list_versions(self, tenant_id: uuid.UUID, automation_id: uuid.UUID) -> list[AutomationVersion]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(AutomationVersion)
@@ -249,6 +257,7 @@ class AutomationService:
 
     async def get_version(self, tenant_id: uuid.UUID, version_id: uuid.UUID) -> AutomationVersion:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             version = await session.get(AutomationVersion, version_id)
             if version is None or version.tenant_id != tenant_id:
                 raise AutomationNotFoundError(f"AutomationVersion {version_id} not found")
@@ -288,6 +297,7 @@ class AutomationService:
         simplified to Optional since callers here don't need the original
         row back)."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = AutomationExecution(
                 tenant_id=tenant_id, automation_id=automation.id, automation_version_id=version.id,
                 trigger_type=trigger_type, source_event_id=source_event_id, entity_type=entity_type,
@@ -345,6 +355,7 @@ class AutomationService:
         dispatched: list[uuid.UUID] = []
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             query = (
                 select(AutomationVersion, Automation)
                 .join(Automation, Automation.published_version_id == AutomationVersion.id)
@@ -374,6 +385,16 @@ class AutomationService:
             )
 
             async with self._session_factory() as session:
+                # Phase 17B-3: this per-candidate dedup check is itself a
+                # single-tenant operation (automation.id, and therefore the
+                # execution rows it can ever match, belong to exactly one
+                # tenant) even during the global sweep (`tenant_id` param
+                # None). Stamp `automation.tenant_id` — the tenant this
+                # specific candidate actually belongs to — never the
+                # outer, possibly-None `tenant_id` parameter, which would
+                # silently leave this query with no tenant context at all
+                # during the real worker-tick sweep.
+                await set_tenant_context(session, automation.tenant_id)
                 already_fired = (
                     await session.execute(
                         select(AutomationExecution.id).where(
@@ -416,6 +437,7 @@ class AutomationService:
             return
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = await session.get(AutomationExecution, execution.id)
             row.status = ExecutionStatus.WAITING
             row.temporal_workflow_id = workflow_id
@@ -434,6 +456,7 @@ class AutomationService:
             await self._run_one_step(tenant_id, execution_id, i, action, step.get("params", {}))
 
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 exec_row = await session.get(AutomationExecution, execution_id)
                 if exec_row.status == ExecutionStatus.FAILED:
                     return  # a step failed — do not run subsequent steps
@@ -443,6 +466,7 @@ class AutomationService:
     async def _run_one_step(self, tenant_id: uuid.UUID, execution_id: uuid.UUID, step_index: int, action: str, params: dict) -> None:
         step_row_id: uuid.UUID
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             exec_row = await session.get(AutomationExecution, execution_id)
             step_row = AutomationExecutionStep(
                 tenant_id=tenant_id, execution_id=execution_id, step_index=step_index, action=action,
@@ -475,6 +499,7 @@ class AutomationService:
             return
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             step_row = await session.get(AutomationExecutionStep, step_row_id)
             step_row.status = StepStatus.SUCCEEDED
             step_row.result = result.model_dump(mode="json") if hasattr(result, "model_dump") else None
@@ -483,6 +508,7 @@ class AutomationService:
 
     async def _fail_step(self, tenant_id: uuid.UUID, step_id: uuid.UUID, execution_id: uuid.UUID, error: str) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             step_row = await session.get(AutomationExecutionStep, step_id)
             step_row.status = StepStatus.FAILED
             step_row.error = error
@@ -492,6 +518,7 @@ class AutomationService:
 
     async def _fail_execution(self, tenant_id: uuid.UUID, execution_id: uuid.UUID, error: str) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             exec_row = await session.get(AutomationExecution, execution_id)
             exec_row.status = ExecutionStatus.FAILED
             exec_row.error = error
@@ -500,6 +527,7 @@ class AutomationService:
 
     async def _complete_execution(self, tenant_id: uuid.UUID, execution_id: uuid.UUID, status: str) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             exec_row = await session.get(AutomationExecution, execution_id)
             exec_row.status = status
             exec_row.completed_at = datetime.now(timezone.utc)
@@ -507,6 +535,7 @@ class AutomationService:
 
     async def get_execution(self, tenant_id: uuid.UUID, execution_id: uuid.UUID) -> AutomationExecution:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AutomationExecution, execution_id)
             if execution is None or execution.tenant_id != tenant_id:
                 raise AutomationNotFoundError(f"AutomationExecution {execution_id} not found")
@@ -514,6 +543,7 @@ class AutomationService:
 
     async def list_executions(self, tenant_id: uuid.UUID, automation_id: uuid.UUID | None = None) -> list[AutomationExecution]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             query = select(AutomationExecution).where(AutomationExecution.tenant_id == tenant_id)
             if automation_id is not None:
                 query = query.where(AutomationExecution.automation_id == automation_id)
@@ -528,6 +558,7 @@ class AutomationService:
         from app.models.organization import Organization
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             automation = await session.get(Automation, automation_id)
             if automation is None or automation.tenant_id != tenant_id:
                 raise AutomationNotFoundError(f"Automation {automation_id} not found")
@@ -557,6 +588,7 @@ class AutomationService:
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             automations_total = (
                 await session.execute(
                     select(func.count()).select_from(Automation).where(Automation.tenant_id == tenant_id)
@@ -620,6 +652,7 @@ class AutomationService:
 
     async def list_execution_steps(self, tenant_id: uuid.UUID, execution_id: uuid.UUID) -> list[AutomationExecutionStep]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(AutomationExecutionStep)

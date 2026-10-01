@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.marketing import LocalListing, LocalReputationEvent, LocalReview
 
 
@@ -22,6 +23,7 @@ class LocalService:
         self, tenant_id: uuid.UUID, *, business_name: str, address: str | None, city: str | None, state: str | None
     ) -> LocalListing:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             listing = LocalListing(tenant_id=tenant_id, business_name=business_name, address=address, city=city, state=state)
             session.add(listing)
             await session.commit()
@@ -33,6 +35,7 @@ class LocalService:
         source: str = "manual",
     ) -> LocalReview:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             listing = await session.get(LocalListing, listing_id)
             if listing is None or listing.tenant_id != tenant_id:
                 raise ListingNotFoundError("Listing not found")
@@ -47,6 +50,7 @@ class LocalService:
 
     async def respond_to_review(self, tenant_id: uuid.UUID, review_id: uuid.UUID, response_text: str) -> LocalReview:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             review = await session.get(LocalReview, review_id)
             if review is None or review.tenant_id != tenant_id:
                 raise ListingNotFoundError("Review not found")
@@ -60,6 +64,7 @@ class LocalService:
         self, tenant_id: uuid.UUID, listing_id: uuid.UUID, *, event_type: str, description: str | None
     ) -> LocalReputationEvent:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             listing = await session.get(LocalListing, listing_id)
             if listing is None or listing.tenant_id != tenant_id:
                 raise ListingNotFoundError("Listing not found")

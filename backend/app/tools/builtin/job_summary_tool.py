@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.crm import Customer
 from app.models.operations import (
     ExceptionStatus,
@@ -43,6 +44,7 @@ class GenerateJobSummary(Tool):
 
     async def execute(self, input: GenerateJobSummaryInput, context: ExecutionContext) -> GenerateJobSummaryOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             job = await session.get(Job, input.job_id)
             if job is None or job.tenant_id != context.tenant_id:
                 raise ValueError("Job not found")

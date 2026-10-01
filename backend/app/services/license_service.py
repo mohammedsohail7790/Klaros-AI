@@ -12,6 +12,7 @@ from datetime import date, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.compliance import License, LicenseStatus
 from app.models.operations import ExceptionSeverity, ExceptionType
 from app.services.exception_service import ExceptionService
@@ -45,6 +46,7 @@ class LicenseService:
     ) -> License:
         status = LicenseStatus.EXPIRED if expiry_date < date.today() else LicenseStatus.ACTIVE
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             lic = License(
                 tenant_id=tenant_id, type=type, name=name, license_number=license_number,
                 issuing_authority=issuing_authority, holder_name=holder_name, holder_user_id=holder_user_id,
@@ -60,6 +62,7 @@ class LicenseService:
         self, tenant_id: uuid.UUID, *, status: str | None = None, type: str | None = None
     ) -> list[License]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             query = select(License).where(License.tenant_id == tenant_id)
             if status:
                 query = query.where(License.status == status)
@@ -70,6 +73,7 @@ class LicenseService:
 
     async def get(self, tenant_id: uuid.UUID, license_id: uuid.UUID) -> License:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             lic = await session.get(License, license_id)
             if lic is None or lic.tenant_id != tenant_id:
                 raise LicenseNotFoundError("License not found")
@@ -89,6 +93,7 @@ class LicenseService:
         clock" reasoning as `quotes.detect_expired_quotes` never touching
         a quote whose expiry has moved forward."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             lic = await session.get(License, license_id)
             if lic is None or lic.tenant_id != tenant_id:
                 raise LicenseNotFoundError("License not found")
@@ -108,6 +113,7 @@ class LicenseService:
         newly_expired: list[str] = []
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(License).where(
@@ -130,6 +136,7 @@ class LicenseService:
 
         for lic_id in newly_expired:
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 lic = await session.get(License, uuid.UUID(lic_id))
             await self._exceptions.create_exception(
                 tenant_id,
@@ -143,6 +150,7 @@ class LicenseService:
 
         for lic_id in newly_expiring:
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 lic = await session.get(License, uuid.UUID(lic_id))
             await self._exceptions.create_exception(
                 tenant_id,

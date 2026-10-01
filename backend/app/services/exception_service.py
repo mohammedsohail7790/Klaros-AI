@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.operations import ExceptionStatus, OperationsException
@@ -39,6 +40,7 @@ class ExceptionService:
         assigned_to: uuid.UUID | None = None,
     ) -> tuple[OperationsException, bool]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(OperationsException).where(
@@ -93,6 +95,7 @@ class ExceptionService:
 
     async def resolve_exception(self, tenant_id: uuid.UUID, exception_id: uuid.UUID) -> OperationsException:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             exc = await session.get(OperationsException, exception_id)
             if exc is None or exc.tenant_id != tenant_id:
                 raise ExceptionNotFoundError("Exception not found")

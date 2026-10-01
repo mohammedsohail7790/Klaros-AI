@@ -20,6 +20,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import Customer
 from app.models.event import EventType
@@ -145,6 +146,7 @@ class QuoteService:
             if deposit_type == DepositType.FIXED and deposit_value <= 0:
                 raise InvalidDepositError("Fixed deposit must be > 0")
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             if idempotency_key:
                 existing = (
                     await session.execute(
@@ -208,6 +210,7 @@ class QuoteService:
         clear_deposit: bool = False,
     ) -> Quote:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             quote = await session.get(Quote, quote_id)
             if quote is None or quote.tenant_id != tenant_id:
                 raise QuoteNotFoundError("Quote not found")
@@ -237,6 +240,7 @@ class QuoteService:
 
     async def send(self, tenant_id: uuid.UUID, quote_id: uuid.UUID, delivery_provider, view_url: str) -> Quote:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             quote = await session.get(Quote, quote_id)
             if quote is None or quote.tenant_id != tenant_id:
                 raise QuoteNotFoundError("Quote not found")
@@ -272,6 +276,7 @@ class QuoteService:
         expires it first, if past `valid_until`) as a real side effect of
         a real customer visit, not a fabricated status."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             quote = await session.get(Quote, quote_id)
             if quote is None or quote.tenant_id != tenant_id:
                 raise QuoteNotFoundError("Quote not found")
@@ -314,6 +319,7 @@ class QuoteService:
         create_job`, idempotent via `quote-{quote_id}` so a doubled
         request/replayed link can never create two jobs)."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             quote = await session.get(Quote, quote_id)
             if quote is None or quote.tenant_id != tenant_id:
                 raise QuoteNotFoundError("Quote not found")
@@ -394,6 +400,7 @@ class QuoteService:
         )
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             refreshed_quote = await session.get(Quote, quote_id)
             refreshed_quote.status = QuoteStatus.CONVERTED
             refreshed_quote.job_id = job.id
@@ -437,6 +444,7 @@ class QuoteService:
         (`job-from-quote-{quote_id}`) to make this safe even under
         concurrent retries."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             quote = await session.get(Quote, quote_id)
             if quote is None or quote.tenant_id != tenant_id:
                 raise QuoteNotFoundError("Quote not found")
@@ -519,6 +527,7 @@ class QuoteService:
         regression proof."""
         today = as_of or date.today()
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(Quote).where(

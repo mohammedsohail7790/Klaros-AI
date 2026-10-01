@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import Lead, LeadStatus, QualificationStatus
 from app.models.event import EventType
@@ -46,6 +47,7 @@ class LeadQualificationService:
 
     async def qualify(self, tenant_id: uuid.UUID, lead_id: uuid.UUID) -> QualificationOutcome:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             lead = await session.get(Lead, lead_id)
             if lead is None or lead.tenant_id != tenant_id:
                 raise LeadNotFoundError(f"Lead {lead_id} not found for tenant {tenant_id}")

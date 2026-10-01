@@ -30,6 +30,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.integrations.credential_store import decrypt_credential
 from app.integrations.quickbooks_client import QuickBooksAPIError, QuickBooksClient, QuickBooksErrorType
 from app.integrations.quickbooks_schemas import QuickBooksCustomerQueryRow, QuickBooksInvoiceQueryRow
@@ -141,6 +142,7 @@ class QuickBooksImportService:
 
     async def _import_one_customer(self, tenant_id: uuid.UUID, row: QuickBooksCustomerQueryRow) -> str:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             already_linked = (
                 await session.execute(
                     select(Customer).where(
@@ -210,6 +212,7 @@ class QuickBooksImportService:
         if ref is None:
             return None
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             if ref.value:
                 linked = (
                     await session.execute(
@@ -237,6 +240,7 @@ class QuickBooksImportService:
 
     async def _import_one_invoice(self, tenant_id: uuid.UUID, row: QuickBooksInvoiceQueryRow) -> InvoiceImportRowResult | None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             already_linked = (
                 await session.execute(
                     select(Invoice).where(

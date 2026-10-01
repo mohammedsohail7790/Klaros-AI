@@ -18,6 +18,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.crm import Lead
 from app.models.finance import Invoice
 from app.models.marketing import (
@@ -99,6 +100,7 @@ class AttributionService:
     ) -> LeadAttribution:
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             lead = await session.get(Lead, lead_id)
             if lead is None or lead.tenant_id != tenant_id:
                 raise LeadNotFoundError("Lead not found")
@@ -167,6 +169,7 @@ class AttributionService:
     async def _advance(self, tenant_id: uuid.UUID, lead_id: uuid.UUID, stage: str, **fields) -> None:
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             conversions = (
                 await session.execute(
                     select(CampaignConversion).where(
@@ -205,6 +208,7 @@ class AttributionService:
         if job_id is None:
             return None
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id:
                 return None
@@ -214,6 +218,7 @@ class AttributionService:
         if invoice_id is None:
             return None
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoice = await session.get(Invoice, invoice_id)
             if invoice is None or invoice.tenant_id != tenant_id or invoice.job_id is None:
                 return None
@@ -224,6 +229,7 @@ class AttributionService:
 
     async def campaign_performance(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID) -> CampaignPerformance:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             campaign = await session.get(Campaign, campaign_id)
             if campaign is None or campaign.tenant_id != tenant_id:
                 raise CampaignNotFoundError("Campaign not found")

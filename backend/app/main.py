@@ -244,6 +244,10 @@ async def ready(response: Response) -> dict[str, object]:
     checks: dict[str, str] = {}
     CHECK_TIMEOUT_SECONDS = 3.0
 
+    # Phase 17B-2R classification: both sessions below (database + migration
+    # head checks) are GLOBAL/system-level — they touch no tenant-owned row
+    # (`SELECT 1`, `alembic_version`), so no tenant context is meaningful or
+    # set here.
     async def _check_database() -> None:
         async with async_session_maker() as session:
             await session.execute(text("SELECT 1"))

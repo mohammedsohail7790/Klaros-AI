@@ -50,6 +50,7 @@ import structlog
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.actor import ActorType
 from app.models.approval import ApprovalExecutionStatus, ApprovalRequest, ApprovalStatus
@@ -119,6 +120,7 @@ class ApprovalExecutionService:
         note: str | None = None,
     ) -> ApprovalRequest:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             request = await self._load(session, tenant_id, approval_id)
 
             if request.requested_by_type == ActorType.USER and request.requested_by_id == decided_by_id:
@@ -154,6 +156,7 @@ class ApprovalExecutionService:
         note: str | None = None,
     ) -> ApprovalRequest:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             request = await self._load(session, tenant_id, approval_id)
 
             now = datetime.now(timezone.utc)
@@ -198,6 +201,7 @@ class ApprovalExecutionService:
 
     async def execute_approved(self, tenant_id: uuid.UUID, approval_id: uuid.UUID) -> ApprovalRequest:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             request = await self._load(session, tenant_id, approval_id)
             if request.status != ApprovalStatus.APPROVED:
                 raise ApprovalStateError("Approval must be APPROVED before its action can execute")
@@ -251,6 +255,7 @@ class ApprovalExecutionService:
         self, tenant_id: uuid.UUID, approval_id: uuid.UUID, *, actor_id: uuid.UUID
     ) -> ApprovalRequest:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             request = await self._load(session, tenant_id, approval_id)
             if request.status != ApprovalStatus.APPROVED or request.execution_status != ApprovalExecutionStatus.FAILED:
                 raise ApprovalStateError("Only a FAILED execution can be retried")
@@ -285,6 +290,7 @@ class ApprovalExecutionService:
         now = datetime.now(timezone.utc)
         continue_reasoning_execution_id: uuid.UUID | None = None
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             request = await self._load(session, tenant_id, approval_id)
             request.execution_status = ApprovalExecutionStatus.EXECUTED if success else ApprovalExecutionStatus.FAILED
             request.execution_result = result
@@ -398,6 +404,7 @@ class ApprovalExecutionService:
             # fall back to the requester's *current* role rather than
             # guessing or defaulting to something permissive.
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 user = await session.get(User, request.requested_by_id)
                 if user is not None:
                     role = Role(user.role)
@@ -490,6 +497,7 @@ class ApprovalExecutionService:
         error: str | None = None,
     ) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             session.add(
                 AuditLog(
                     tenant_id=tenant_id,

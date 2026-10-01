@@ -18,6 +18,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import Customer
 from app.models.event import EventType
@@ -135,6 +136,7 @@ class InvoiceService:
         idempotency_key = f"invoice-for-job-{job_id}"
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(Invoice).where(
@@ -236,6 +238,7 @@ class InvoiceService:
     ) -> Invoice:
         today = date.today()
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoice = Invoice(
                 tenant_id=tenant_id,
                 invoice_number=await self._next_invoice_number(session, tenant_id),
@@ -308,6 +311,7 @@ class InvoiceService:
         sent_at = datetime.combine(issue_date, datetime.min.time(), tzinfo=timezone.utc)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             number = invoice_number or await self._next_invoice_number(session, tenant_id)
             invoice = Invoice(
                 tenant_id=tenant_id,
@@ -354,6 +358,7 @@ class InvoiceService:
         self, tenant_id: uuid.UUID, invoice_id: uuid.UUID, items: list[LineItemInput]
     ) -> Invoice:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoice = await session.get(Invoice, invoice_id)
             if invoice is None or invoice.tenant_id != tenant_id:
                 raise InvoiceNotFoundError("Invoice not found")
@@ -386,6 +391,7 @@ class InvoiceService:
         layer; decides AUTO-approve vs. pending-approval itself using
         `invoice_policy.py` — see that module's docstring."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoice = await session.get(Invoice, invoice_id)
             if invoice is None or invoice.tenant_id != tenant_id:
                 raise InvoiceNotFoundError("Invoice not found")
@@ -442,6 +448,7 @@ class InvoiceService:
         from app.models.approval import ApprovalRequest, ApprovalStatus
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoice = await session.get(Invoice, invoice_id)
             if invoice is None or invoice.tenant_id != tenant_id:
                 raise InvoiceNotFoundError("Invoice not found")
@@ -479,6 +486,7 @@ class InvoiceService:
 
     async def send_invoice(self, tenant_id: uuid.UUID, invoice_id: uuid.UUID, delivery_provider) -> Invoice:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoice = await session.get(Invoice, invoice_id)
             if invoice is None or invoice.tenant_id != tenant_id:
                 raise InvoiceNotFoundError("Invoice not found")
@@ -509,6 +517,7 @@ class InvoiceService:
 
     async def void_invoice(self, tenant_id: uuid.UUID, invoice_id: uuid.UUID, reason: str) -> Invoice:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoice = await session.get(Invoice, invoice_id)
             if invoice is None or invoice.tenant_id != tenant_id:
                 raise InvoiceNotFoundError("Invoice not found")

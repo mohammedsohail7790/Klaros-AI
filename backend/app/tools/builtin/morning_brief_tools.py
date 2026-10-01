@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.morning_brief import (
     MorningBrief,
     MorningBriefInsight,
@@ -94,6 +95,7 @@ class GetLatestMorningBrief(Tool):
 
     async def execute(self, input: EmptyInput, context: ExecutionContext) -> GetLatestMorningBriefOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             brief = (
                 await session.execute(
                     select(MorningBrief)
@@ -200,6 +202,7 @@ class ExecuteRecommendation(Tool):
         from app.tools.errors import ToolApprovalRequiredError
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             rec = await session.get(MorningBriefRecommendation, input.recommendation_id)
             if rec is None or rec.tenant_id != context.tenant_id:
                 raise ValueError("Recommendation not found")
@@ -262,6 +265,7 @@ class DismissRecommendation(Tool):
         self, input: DismissRecommendationInput, context: ExecutionContext
     ) -> DismissRecommendationOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             rec = await session.get(MorningBriefRecommendation, input.recommendation_id)
             if rec is None or rec.tenant_id != context.tenant_id:
                 raise ValueError("Recommendation not found")

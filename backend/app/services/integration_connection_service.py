@@ -23,6 +23,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.integrations.credential_store import decrypt_credential, encrypt_credential
 from app.models.integration import ConnectionStatus, IntegrationConnection
 
@@ -59,6 +60,7 @@ class IntegrationConnectionService:
 
     async def get_connection(self, tenant_id: uuid.UUID, provider: str) -> IntegrationConnection | None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             return (
                 await session.execute(
                     select(IntegrationConnection).where(
@@ -70,6 +72,7 @@ class IntegrationConnectionService:
 
     async def list_connections(self, tenant_id: uuid.UUID) -> list[IntegrationConnection]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(IntegrationConnection).where(IntegrationConnection.tenant_id == tenant_id)
@@ -95,6 +98,7 @@ class IntegrationConnectionService:
         encrypted = encrypt_credential(credential_data)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(IntegrationConnection).where(
@@ -137,6 +141,7 @@ class IntegrationConnectionService:
         credential. Always updates last_verified_at (attempted, regardless
         of outcome) and last_error (cleared on success)."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             connection = (
                 await session.execute(
                     select(IntegrationConnection).where(
@@ -218,6 +223,7 @@ class IntegrationConnectionService:
 
     async def disconnect(self, tenant_id: uuid.UUID, provider: str) -> IntegrationConnection:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             connection = (
                 await session.execute(
                     select(IntegrationConnection).where(

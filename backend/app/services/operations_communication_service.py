@@ -11,6 +11,7 @@ import uuid
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import CommunicationProvider, MessageTemplate
+from app.db.session import set_tenant_context
 from app.models.crm import Customer
 from app.models.operations import Job
 
@@ -22,6 +23,7 @@ class OperationsCommunicationService:
 
     async def _customer_email(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> str | None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             customer = await session.get(Customer, customer_id)
             if customer is None or customer.tenant_id != tenant_id:
                 return None

@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.operations import ExceptionSeverity, ExceptionType
 from app.models.retention import Warranty, WarrantyStatus
 from app.services.exception_service import ExceptionService
@@ -43,6 +44,7 @@ class WarrantyService:
     ) -> Warranty:
         status = WarrantyStatus.EXPIRED if expiry_date < date.today() else WarrantyStatus.ACTIVE
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             warranty = Warranty(
                 tenant_id=tenant_id, customer_id=customer_id, job_id=job_id, item_description=item_description,
                 start_date=start_date, expiry_date=expiry_date, status=status, notes=notes,
@@ -56,6 +58,7 @@ class WarrantyService:
         self, tenant_id: uuid.UUID, *, customer_id: uuid.UUID | None = None, status: str | None = None
     ) -> list[Warranty]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             query = select(Warranty).where(Warranty.tenant_id == tenant_id)
             if customer_id:
                 query = query.where(Warranty.customer_id == customer_id)
@@ -66,6 +69,7 @@ class WarrantyService:
 
     async def check_in(self, tenant_id: uuid.UUID, warranty_id: uuid.UUID, *, notes: str | None) -> Warranty:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             warranty = await session.get(Warranty, warranty_id)
             if warranty is None or warranty.tenant_id != tenant_id:
                 raise WarrantyNotFoundError("Warranty not found")
@@ -83,6 +87,7 @@ class WarrantyService:
         newly_expired: list[str] = []
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(Warranty).where(
@@ -105,6 +110,7 @@ class WarrantyService:
 
         for w_id in newly_expiring:
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 w = await session.get(Warranty, uuid.UUID(w_id))
             await self._exceptions.create_exception(
                 tenant_id,

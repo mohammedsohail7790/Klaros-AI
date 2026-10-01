@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.vertical_extension import (
     OrganizationVerticalExtension,
     VerticalExtension,
@@ -99,12 +100,19 @@ class VerticalExtensionService:
             return vertical
 
     # --- Organization opt-in (tenant-scoped) -------------------------------
+    # Phase 17B-2R classification: `VerticalExtension` itself (above) is a
+    # GLOBAL/SHARED platform catalog table — no tenant_id column exists on
+    # it at all (create_vertical/get_by_key/list_verticals/set_status
+    # correctly never call set_tenant_context). `OrganizationVerticalExtension`
+    # below IS genuinely tenant-scoped (the actual per-tenant opt-in row),
+    # and its 3 session sites do call set_tenant_context.
 
     async def enable_for_organization(
         self, tenant_id: uuid.UUID, vertical_key: str, *, enabled_by: uuid.UUID | None = None
     ) -> OrganizationVerticalExtension:
         vertical = await self.get_by_key(vertical_key)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             link = OrganizationVerticalExtension(
                 tenant_id=tenant_id,
                 vertical_extension_id=vertical.id,
@@ -124,6 +132,7 @@ class VerticalExtensionService:
 
     async def list_enabled_for_organization(self, tenant_id: uuid.UUID) -> list[OrganizationVerticalExtension]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             query = select(OrganizationVerticalExtension).where(
                 OrganizationVerticalExtension.tenant_id == tenant_id
             )
@@ -137,6 +146,7 @@ class VerticalExtensionService:
         registry-backed shape any future caller must use."""
         vertical = await self.get_by_key(vertical_key)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             query = select(OrganizationVerticalExtension).where(
                 OrganizationVerticalExtension.tenant_id == tenant_id,
                 OrganizationVerticalExtension.vertical_extension_id == vertical.id,

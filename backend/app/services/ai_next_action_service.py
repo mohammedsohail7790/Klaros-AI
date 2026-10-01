@@ -61,6 +61,7 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.ai.execution_service import AIExecutionService, ToolRequest
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.crm import Customer
 from app.models.finance import Invoice
@@ -235,6 +236,7 @@ class AINextActionService:
     ) -> NextActionDecision:
         # --- OBSERVE (scenario-specific) ---
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             quote = await session.get(Quote, quote_id)
             if quote is None or quote.tenant_id != tenant_id:
                 return NextActionDecision(outcome="quote_not_found")
@@ -265,6 +267,7 @@ class AINextActionService:
     ) -> NextActionDecision:
         # --- OBSERVE (scenario-specific) ---
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoice = await session.get(Invoice, invoice_id)
             if invoice is None or invoice.tenant_id != tenant_id:
                 return NextActionDecision(outcome="invoice_not_found")

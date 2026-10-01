@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.db.session import set_tenant_context
 from app.models.finance import Invoice
 from app.models.rbac import Permission
 from app.invoice_delivery.factory import get_invoice_delivery_provider
@@ -345,6 +346,7 @@ class BulkImportInvoices(Tool):
         from sqlalchemy import func, select
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             match = await find_matching_customer(
                 session, tenant_id=tenant_id, email=row.customer_email, phone=row.customer_phone
             )
@@ -426,6 +428,7 @@ class GetInvoice(Tool):
 
     async def execute(self, input: GetInvoiceInput, context: ExecutionContext) -> InvoiceOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             invoice = await session.get(Invoice, input.invoice_id)
         if invoice is None or invoice.tenant_id != context.tenant_id:
             raise ValueError("Invoice not found")

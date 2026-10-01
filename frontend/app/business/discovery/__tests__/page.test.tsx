@@ -134,6 +134,45 @@ describe("Discovery page", () => {
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/business/blueprint"));
   });
 
+  it("advances via complete-discovery on load when the session is already COMPLETED (refresh/direct-nav after the last answer)", async () => {
+    // Regression test: the session reached COMPLETED server-side (e.g. the
+    // in-flight advance after the last answer was interrupted, or the user
+    // refreshed/navigated directly), but the journey itself is still
+    // DISCOVERY_ACTIVE. The page must not get stuck showing "Loading your
+    // next question..." forever — it must drive the same server-authoritative
+    // handoff on load as it does right after the final answer.
+    getCurrentBusinessJourneyMock.mockResolvedValue(journey("DISCOVERY_ACTIVE"));
+    getDiscoverySessionMock.mockResolvedValue({
+      session: { id: "d1", blueprint_id: null, status: "COMPLETED", business_idea: "A bakery", questions_asked: 8, max_questions: 8, created_at: "x", updated_at: "x" },
+      turns: [{ id: "t1", sequence: 8, kind: "QUESTION_ANSWER", question: "Last question?", answer: "Final answer", extraction_error: null, created_at: "x" }],
+    });
+    completeDiscoveryJourneyStepMock.mockResolvedValue(journey("BLUEPRINT_REVIEW"));
+
+    render(<DiscoveryPage />);
+
+    await waitFor(() => expect(completeDiscoveryJourneyStepMock).toHaveBeenCalledWith("test-token", "j1"));
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/business/blueprint"));
+  });
+
+  it("reconciles against the journey (does not loop) when complete-discovery reports 409 on load", async () => {
+    getCurrentBusinessJourneyMock.mockResolvedValue(journey("DISCOVERY_ACTIVE"));
+    getDiscoverySessionMock.mockResolvedValue({
+      session: { id: "d1", blueprint_id: null, status: "COMPLETED", business_idea: "A bakery", questions_asked: 8, max_questions: 8, created_at: "x", updated_at: "x" },
+      turns: [{ id: "t1", sequence: 8, kind: "QUESTION_ANSWER", question: "Last question?", answer: "Final answer", extraction_error: null, created_at: "x" }],
+    });
+    const { ApiError } = await import("@/lib/api");
+    completeDiscoveryJourneyStepMock.mockRejectedValueOnce(new ApiError(409, "Already advanced"));
+    // The reconciling `load()` call after the 409 finds the journey has
+    // already moved on.
+    getCurrentBusinessJourneyMock.mockResolvedValueOnce(journey("DISCOVERY_ACTIVE"));
+    getCurrentBusinessJourneyMock.mockResolvedValue(journey("BLUEPRINT_REVIEW"));
+
+    render(<DiscoveryPage />);
+
+    await waitFor(() => expect(completeDiscoveryJourneyStepMock).toHaveBeenCalledWith("test-token", "j1"));
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/business/blueprint"));
+  });
+
   it("redirects away when the journey is not actually at the Discovery stage (direct-URL guard)", async () => {
     getCurrentBusinessJourneyMock.mockResolvedValue(journey("RECOMMENDATIONS_READY"));
     render(<DiscoveryPage />);

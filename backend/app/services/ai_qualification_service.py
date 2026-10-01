@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.crm import Lead
 from app.services.ai_invocation_log_service import record_ai_invocation
@@ -131,6 +132,7 @@ class AIQualificationService:
         correlation_id: uuid.UUID | None = None,
     ) -> AIQualificationResult:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             lead = await session.get(Lead, lead_id)
             if lead is None or lead.tenant_id != tenant_id:
                 raise LeadNotFoundError(f"Lead {lead_id} not found")

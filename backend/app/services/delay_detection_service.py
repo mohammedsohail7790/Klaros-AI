@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.operations import ExceptionSeverity, ExceptionType, Job, JobStatus
@@ -35,6 +36,7 @@ class DelayDetectionService:
         created = {"JOB_DELAYED": 0, "JOB_OVERDUE": 0, "JOB_UNASSIGNED": 0}
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             jobs = (
                 await session.execute(
                     select(Job).where(

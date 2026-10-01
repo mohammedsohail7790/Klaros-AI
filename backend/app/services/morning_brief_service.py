@@ -23,6 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.ai.execution_service import AIExecutionService, ToolRequest
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.morning_brief import (
     InsightCategory,
@@ -523,6 +524,7 @@ class MorningBriefService:
         }
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             brief = MorningBrief(
                 tenant_id=tenant_id,
                 brief_date=now.date(),
@@ -604,25 +606,43 @@ class MorningBriefService:
         `on_tick` hook) — piggybacks on the already-running poll loop
         instead of adding a second sleep-based scheduler. Idempotent: only
         generates a brief for a tenant if today's (tenant-local) brief
-        doesn't already exist, so running this every tick is safe."""
-        async with self._session_factory() as session:
+        doesn't already exist, so running this every tick is safe.
+
+        Phase 17B-2R classification, refined by Phase 17B-3: tenant
+        *discovery* here is a genuine CROSS_TENANT_SYSTEM scan — finding
+        which orgs have `morning_brief_enabled` requires reading across
+        every tenant, and there is no single tenant_id to scope that
+        query to (see `PHASE_17B3_SYSTEM_GLOBAL_CONTEXT_IMPLEMENTATION_LOG.md`
+        for the full design rationale). That discovery session below reads
+        ONLY `Organization` and sets no tenant context, by design — it is
+        never used to read or write any other, genuinely tenant-owned
+        table. Every subsequent per-tenant check (the `MorningBrief`
+        existence lookup, a genuinely tenant-scoped table) and every
+        per-tenant mutation (`self.generate`) now runs in its OWN,
+        separately-opened session with `set_tenant_context(session, org.id)`
+        called first — tenant-by-tenant iteration, not a single
+        cross-tenant session touching tenant-owned rows."""
+        async with self._session_factory() as session:  # CROSS_TENANT_SYSTEM discovery — Organization only, see docstring
             orgs = (
                 await session.execute(select(Organization).where(Organization.morning_brief_enabled.is_(True)))
             ).scalars().all()
-            due: list[uuid.UUID] = []
-            for org in orgs:
-                try:
-                    tz = ZoneInfo(org.morning_brief_timezone)
-                except Exception:  # noqa: BLE001 — an invalid tz string must never crash the worker loop
-                    tz = ZoneInfo("UTC")
-                local_now = datetime.now(tz)
-                try:
-                    hour_str, minute_str = org.morning_brief_local_time.split(":")
-                    target = local_now.replace(hour=int(hour_str), minute=int(minute_str), second=0, microsecond=0)
-                except (ValueError, IndexError):
-                    continue
-                if local_now < target:
-                    continue
+
+        due: list[uuid.UUID] = []
+        for org in orgs:
+            try:
+                tz = ZoneInfo(org.morning_brief_timezone)
+            except Exception:  # noqa: BLE001 — an invalid tz string must never crash the worker loop
+                tz = ZoneInfo("UTC")
+            local_now = datetime.now(tz)
+            try:
+                hour_str, minute_str = org.morning_brief_local_time.split(":")
+                target = local_now.replace(hour=int(hour_str), minute=int(minute_str), second=0, microsecond=0)
+            except (ValueError, IndexError):
+                continue
+            if local_now < target:
+                continue
+            async with self._session_factory() as session:
+                await set_tenant_context(session, org.id)
                 existing = (
                     await session.execute(
                         select(MorningBrief).where(
@@ -630,8 +650,8 @@ class MorningBriefService:
                         )
                     )
                 ).scalar_one_or_none()
-                if existing is None:
-                    due.append(org.id)
+            if existing is None:
+                due.append(org.id)
 
         for tenant_id in due:
             try:

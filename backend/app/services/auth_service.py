@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token, create_refresh_token, hash_password, verify_password
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.organization import Organization
@@ -46,6 +47,20 @@ async def register_organization(
     )
     db.add(org)
     await db.flush()
+
+    # Phase 17B-4 (real RLS enforcement — see
+    # PHASE_17B4_REAL_RLS_IMPLEMENTATION_LOG.md §37): `users` has had real,
+    # enforcing RLS since `0053` (`WITH CHECK (tenant_id =
+    # current_tenant_id())` on INSERT). `org.id` is genuinely this
+    # brand-new tenant's own real id (this function just created it, on
+    # this same session, one line above) — safe to stamp immediately, the
+    # same "we just established this tenant's identity ourselves" trust
+    # basis `get_current_user`/`authenticate` below use for an
+    # already-existing tenant. Without this, the INSERT into `users` two
+    # lines down is silently rejected by RLS and new-tenant registration
+    # fails outright — caught by this phase's own Round 14 E2E validation,
+    # not by the (RLS-blind) existing test suite.
+    await set_tenant_context(db, org.id)
 
     user = User(
         tenant_id=org.id,
@@ -97,6 +112,17 @@ async def authenticate(
     if org is None:
         raise AuthError("Invalid organization, email, or password")
 
+    # Phase 17B-4 (real RLS enforcement — see
+    # PHASE_17B4_REAL_RLS_IMPLEMENTATION_LOG.md §37): `organization_slug`
+    # is caller-supplied, but `org.id` itself is not — it is whatever this
+    # exact query just resolved it to from the real `organizations` table
+    # (which has no RLS at all; it IS the tenant root), so stamping it here
+    # is safe. Without this, the `users` lookup two lines down is silently
+    # hidden by real RLS (no context = no visible rows) and login fails
+    # for every account, even fully valid ones — caught by this phase's own
+    # Round 14 E2E validation, not by the (RLS-blind) existing test suite.
+    await set_tenant_context(db, org.id)
+
     user = (
         await db.execute(
             select(User).where(User.tenant_id == org.id, User.email == email.lower())
@@ -123,6 +149,17 @@ async def refresh_access_token(db: AsyncSession, *, refresh_payload: dict) -> tu
     every failure mode — unknown user, deactivated user, or a token_version
     that no longer matches (already logged out / revoked elsewhere)."""
     import uuid as _uuid
+
+    # Phase 17B-4 (real RLS enforcement — see
+    # PHASE_17B4_REAL_RLS_IMPLEMENTATION_LOG.md §37): the caller
+    # (app/api/v1/auth.py's /refresh route) already ran this exact payload
+    # through `decode_token` (signature-verified) before calling this
+    # function, and `create_refresh_token` always embeds the real
+    # `tenant_id` — safe to trust and stamp here for the same reason
+    # `authenticate`/`get_current_user` do. Without this, the `users`
+    # lookup below is silently hidden by real RLS and refresh fails for
+    # every valid token.
+    await set_tenant_context(db, _uuid.UUID(refresh_payload["tenant_id"]))
 
     user = (await db.execute(select(User).where(User.id == _uuid.UUID(refresh_payload["sub"])))).scalar_one_or_none()
     if user is None or not user.is_active:

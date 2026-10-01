@@ -18,7 +18,7 @@ from app.api.tool_deps import get_tool_registry
 from app.models.audit_log import AuditLog
 from app.models.actor import ActorType
 from app.models.rbac import Permission, Role
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.services.mcp_service import McpCredentialError, McpCredentialService, McpExposureService
 from app.tools.registry import ToolRegistry
 
@@ -68,6 +68,7 @@ async def _write_admin_audit(
     current_user: CurrentUser, *, action: str, tool_name: str | None = None
 ) -> None:
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         session.add(
             AuditLog(
                 tenant_id=current_user.tenant_id,

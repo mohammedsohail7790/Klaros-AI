@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from app.core.config import get_settings
 from app.core.security import create_quote_view_token
 from app.invoice_delivery.factory import get_invoice_delivery_provider
+from app.db.session import set_tenant_context
 from app.models.quote import Quote
 from app.models.rbac import Permission
 from app.services.invoice_service import LineItemInput
@@ -205,6 +206,7 @@ class GetQuote(Tool):
 
     async def execute(self, input: GetQuoteInput, context: ExecutionContext) -> QuoteOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             quote = await session.get(Quote, input.quote_id)
         if quote is None or quote.tenant_id != context.tenant_id:
             raise ValueError("Quote not found")

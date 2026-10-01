@@ -11,6 +11,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.finance import (
@@ -61,6 +62,7 @@ class AdjustmentsService:
     ) -> CreditNote:
         total = sum((amount for _, amount in line_items), Decimal("0"))
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoice = await session.get(Invoice, invoice_id)
             if invoice is None or invoice.tenant_id != tenant_id:
                 raise InvoiceNotFoundError("Invoice not found")
@@ -108,6 +110,7 @@ class AdjustmentsService:
         from app.models.approval import ApprovalRequest, ApprovalStatus
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             note = await session.get(CreditNote, credit_note_id)
             if note is None or note.tenant_id != tenant_id:
                 raise AdjustmentNotFoundError("Credit note not found")
@@ -154,6 +157,7 @@ class AdjustmentsService:
         requested_by: uuid.UUID | None,
     ) -> WriteOffRequest:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             invoice = await session.get(Invoice, invoice_id)
             if invoice is None or invoice.tenant_id != tenant_id:
                 raise InvoiceNotFoundError("Invoice not found")
@@ -192,6 +196,7 @@ class AdjustmentsService:
         from app.models.approval import ApprovalRequest, ApprovalStatus
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             writeoff = await session.get(WriteOffRequest, writeoff_id)
             if writeoff is None or writeoff.tenant_id != tenant_id:
                 raise AdjustmentNotFoundError("Write-off request not found")

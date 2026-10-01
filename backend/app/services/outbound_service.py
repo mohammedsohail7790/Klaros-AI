@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import CommunicationProvider, MessageTemplate
+from app.db.session import set_tenant_context
 from app.models.marketing import (
     ActivityStatus,
     EnrollmentStatus,
@@ -50,6 +51,7 @@ class OutboundService:
 
     async def create_list(self, tenant_id: uuid.UUID, *, name: str, description: str | None) -> OutboundList:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = OutboundList(tenant_id=tenant_id, name=name, description=description)
             session.add(row)
             await session.commit()
@@ -66,6 +68,7 @@ class OutboundService:
         phone_norm = normalize_phone(phone)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             outbound_list = await session.get(OutboundList, list_id)
             if outbound_list is None or outbound_list.tenant_id != tenant_id:
                 raise ListNotFoundError("Outbound list not found")
@@ -103,6 +106,7 @@ class OutboundService:
 
     async def create_sequence(self, tenant_id: uuid.UUID, *, name: str, description: str | None) -> OutboundSequence:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = OutboundSequence(tenant_id=tenant_id, name=name, description=description)
             session.add(row)
             await session.commit()
@@ -114,6 +118,7 @@ class OutboundService:
         body: str | None, sort_order: int = 0,
     ) -> OutboundStep:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             sequence = await session.get(OutboundSequence, sequence_id)
             if sequence is None or sequence.tenant_id != tenant_id:
                 raise SequenceNotFoundError("Sequence not found")
@@ -129,6 +134,7 @@ class OutboundService:
     async def enroll_contact(self, tenant_id: uuid.UUID, sequence_id: uuid.UUID, contact_id: uuid.UUID) -> OutboundEnrollment:
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             sequence = await session.get(OutboundSequence, sequence_id)
             if sequence is None or sequence.tenant_id != tenant_id:
                 raise SequenceNotFoundError("Sequence not found")
@@ -181,6 +187,7 @@ class OutboundService:
         now = datetime.now(timezone.utc)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             due = (
                 await session.execute(
                     select(OutboundActivity).where(

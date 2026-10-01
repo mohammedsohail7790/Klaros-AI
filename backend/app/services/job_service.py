@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import Appointment
 from app.models.event import EventType
@@ -61,6 +62,7 @@ class JobService:
         )
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             if idempotency_key:
                 existing = (
                     await session.execute(
@@ -124,6 +126,7 @@ class JobService:
                     # session state rather than a genuinely fresh read of
                     # what actually got committed.
                     async with self._session_factory() as fresh_session:
+                        await set_tenant_context(fresh_session, tenant_id)
                         existing = (
                             await fresh_session.execute(
                                 select(Job).where(Job.tenant_id == tenant_id, Job.idempotency_key == idempotency_key)
@@ -149,6 +152,7 @@ class JobService:
         self, tenant_id: uuid.UUID, appointment_id: uuid.UUID
     ) -> tuple[Job, bool]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             appointment = await session.get(Appointment, appointment_id)
             if appointment is None or appointment.tenant_id != tenant_id:
                 raise JobNotFoundError("Appointment not found")

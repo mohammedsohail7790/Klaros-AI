@@ -58,6 +58,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.agent import Agent, AgentStatus, AgentTriggerSource, AgentVersion
 from app.models.audit_log import AuditLog
@@ -107,6 +108,7 @@ def register_agent_trigger_handlers(
 
     async def agent_event_trigger_dispatch(event: Event) -> None:
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             rows = (
                 await session.execute(
                     select(Agent, AgentVersion)
@@ -159,6 +161,7 @@ def register_agent_trigger_handlers(
 
 async def _audit_dispatch(session_factory, agent, execution_id, event) -> None:
     async with session_factory() as session:
+        await set_tenant_context(session, agent.tenant_id)
         session.add(
             AuditLog(
                 tenant_id=agent.tenant_id, actor_type=ActorType.SYSTEM, actor_id=None,
@@ -172,6 +175,7 @@ async def _audit_dispatch(session_factory, agent, execution_id, event) -> None:
 
 async def _audit_skip(session_factory, agent, action, *, reason: str) -> None:
     async with session_factory() as session:
+        await set_tenant_context(session, agent.tenant_id)
         session.add(
             AuditLog(
                 tenant_id=agent.tenant_id, actor_type=ActorType.SYSTEM, actor_id=None,

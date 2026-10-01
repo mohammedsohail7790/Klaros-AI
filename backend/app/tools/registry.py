@@ -16,6 +16,7 @@ import structlog
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.models.audit_log import AuditLog
@@ -248,6 +249,7 @@ class ToolRegistry:
         self, context: ExecutionContext, tool: Tool, validated_input
     ) -> uuid.UUID:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             request = ApprovalRequest(
                 tenant_id=context.tenant_id,
                 requested_by_type=context.actor_type,
@@ -302,6 +304,7 @@ class ToolRegistry:
             raise ToolPermissionError("Agent-actor tool call missing agent identity")
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             agent = await session.get(Agent, context.agent_id)
             if agent is None or agent.tenant_id != context.tenant_id:
                 raise ToolPermissionError("Unknown agent")
@@ -332,6 +335,7 @@ class ToolRegistry:
         from app.models.agent import Agent, AgentAutonomyTier
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             agent = await session.get(Agent, context.agent_id)
         if agent is None:
             raise ToolPermissionError("Unknown agent")
@@ -347,6 +351,7 @@ class ToolRegistry:
         from app.models.organization import Organization
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             return await session.get(Organization, tenant_id)
 
     async def _audit(
@@ -366,6 +371,7 @@ class ToolRegistry:
             summary = {**summary, "_error": error}
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             session.add(
                 AuditLog(
                     tenant_id=context.tenant_id,

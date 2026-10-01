@@ -93,10 +93,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, ValidationError
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.agent import (
     Agent,
@@ -354,6 +355,7 @@ class AgentReasoningService:
         # DuplicateExecutionRequestError instead of letting a raw
         # IntegrityError escape.
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = AgentExecution(
                 tenant_id=tenant_id,
                 agent_id=agent.id,
@@ -412,6 +414,7 @@ class AgentReasoningService:
         and continues the bounded loop (or halts, if the tool itself
         failed — a governed rejection/error is never silently retried)."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
             if execution is None or execution.tenant_id != tenant_id:
                 return
@@ -488,6 +491,7 @@ class AgentReasoningService:
         await self._reconcile_interrupted_step(tenant_id, execution_id)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
             agent = await session.get(Agent, execution.agent_id)
             version = await session.get(AgentVersion, execution.agent_version_id)
@@ -577,6 +581,7 @@ class AgentReasoningService:
             # Success — continue the loop with the new observation.
             step_count = next_step
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 execution = await session.get(AgentExecution, execution_id)
                 state = dict(execution.reasoning_state or {})
 
@@ -614,6 +619,7 @@ class AgentReasoningService:
         tool_name: str, arguments: dict, reasoning_summary: str, acting_role: str,
     ) -> dict:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
             execution.tool_name = tool_name
             execution.step_count = step_number
@@ -663,6 +669,7 @@ class AgentReasoningService:
                 tenant_id, execution_id, step_number, AgentExecutionStepStatus.APPROVAL_REQUIRED
             )
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 execution = await session.get(AgentExecution, execution_id)
                 execution.status = AgentExecutionStatus.WAITING_APPROVAL
                 execution.approval_request_id = exc.approval_request_id
@@ -705,6 +712,7 @@ class AgentReasoningService:
             output_summary=redact_input(result) if isinstance(result, dict) else None,
         )
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
             state = dict(execution.reasoning_state or {})
             history = list(state.get("history", []))
@@ -729,6 +737,15 @@ class AgentReasoningService:
         this method should paper over by silently reclaiming)."""
         now = datetime.now(timezone.utc)
         async with self._session_factory() as session:
+            # No tenant_id parameter on this method (a pure lease-renewal
+            # heartbeat keyed by execution_id + owner_id) — look up the
+            # owning tenant first so this same transaction's UPDATE below
+            # runs with tenant context set, per this phase's tenant-context
+            # propagation contract.
+            owner_tenant_id = await session.scalar(
+                select(AgentExecution.tenant_id).where(AgentExecution.id == execution_id)
+            )
+            await set_tenant_context(session, owner_tenant_id)
             await session.execute(
                 update(AgentExecution)
                 .where(
@@ -753,6 +770,7 @@ class AgentReasoningService:
         from sqlalchemy import select
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = (
                 await session.execute(
                     select(AgentExecutionStep)
@@ -775,6 +793,7 @@ class AgentReasoningService:
         input_summary, decision_summary, mark_pending: bool = False,
     ) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             session.add(
                 AgentExecutionStep(
                     tenant_id=tenant_id, execution_id=execution_id, step_number=step_number,
@@ -799,6 +818,7 @@ class AgentReasoningService:
         from sqlalchemy import select
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = (
                 await session.execute(
                     select(AgentExecutionStep).where(
@@ -822,6 +842,7 @@ class AgentReasoningService:
         error: str | None = None, final_response: str | None = None, step_count: int | None = None,
     ) -> AgentExecution:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
             execution.status = status
             execution.termination_reason = termination_reason
@@ -845,6 +866,7 @@ class AgentReasoningService:
         from sqlalchemy import select
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
             if execution is None or execution.tenant_id != tenant_id:
                 raise AgentReasoningError("Execution not found")

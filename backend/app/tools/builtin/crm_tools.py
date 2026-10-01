@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.crm import Customer, CustomerNote, CustomerStatus, Lead, LeadSource, LeadStatus
 from app.models.rbac import Permission
@@ -185,6 +186,7 @@ class GetLead(Tool):
 
     async def execute(self, input: GetLeadInput, context: ExecutionContext) -> LeadOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             lead = await session.get(Lead, input.lead_id)
             if lead is None or lead.tenant_id != context.tenant_id:
                 raise ValueError("Lead not found")
@@ -216,6 +218,7 @@ class UpdateLead(Tool):
                 raise ValueError(f"Invalid lead status: {input.status}") from None
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             lead = await session.get(Lead, input.lead_id)
             if lead is None or lead.tenant_id != context.tenant_id:
                 raise ValueError("Lead not found")
@@ -257,6 +260,7 @@ class SearchLeads(Tool):
         from sqlalchemy import func
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             query = select(Lead).where(Lead.tenant_id == context.tenant_id)
             count_query = select(func.count(Lead.id)).where(Lead.tenant_id == context.tenant_id)
 
@@ -395,6 +399,7 @@ class CreateCustomer(Tool):
 
     async def execute(self, input: CreateCustomerInput, context: ExecutionContext) -> CustomerOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             customer = Customer(
                 tenant_id=context.tenant_id,
                 name=input.name,
@@ -443,6 +448,7 @@ class BulkImportCustomers(Tool):
 
     async def execute(self, input: BulkImportCustomersInput, context: ExecutionContext) -> BulkImportCustomersOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             existing_emails = set(
                 (
                     await session.execute(
@@ -503,6 +509,7 @@ class GetCustomer(Tool):
 
     async def execute(self, input: GetCustomerInput, context: ExecutionContext) -> CustomerOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             customer = await session.get(Customer, input.customer_id)
             if customer is None or customer.tenant_id != context.tenant_id:
                 raise ValueError("Customer not found")
@@ -537,6 +544,7 @@ class UpdateCustomer(Tool):
                 raise ValueError(f"Invalid customer status: {input.status}") from None
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             customer = await session.get(Customer, input.customer_id)
             if customer is None or customer.tenant_id != context.tenant_id:
                 raise ValueError("Customer not found")
@@ -583,6 +591,7 @@ class SearchCustomers(Tool):
         from sqlalchemy import func
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             query = select(Customer).where(Customer.tenant_id == context.tenant_id)
             count_query = select(func.count(Customer.id)).where(Customer.tenant_id == context.tenant_id)
             if input.q:
@@ -631,6 +640,7 @@ class GetCustomerTimeline(Tool):
         from app.models.crm import Appointment
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             customer = await session.get(Customer, input.customer_id)
             if customer is None or customer.tenant_id != context.tenant_id:
                 raise ValueError("Customer not found")
@@ -722,6 +732,7 @@ class CreateNote(Tool):
 
     async def execute(self, input: CreateNoteInput, context: ExecutionContext) -> CreateNoteOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             customer = await session.get(Customer, input.customer_id)
             if customer is None or customer.tenant_id != context.tenant_id:
                 raise ValueError("Customer not found")
@@ -768,6 +779,7 @@ class GenerateCustomerSummary(Tool):
         from app.models.crm import Appointment, AppointmentStatus
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             customer = await session.get(Customer, input.customer_id)
             if customer is None or customer.tenant_id != context.tenant_id:
                 raise ValueError("Customer not found")

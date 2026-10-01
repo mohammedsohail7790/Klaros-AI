@@ -70,6 +70,7 @@ from pydantic import ValidationError
 
 from app.ai.execution_service import AIExecutionService, ToolRequest
 from app.core.config import get_settings
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.rbac import Role
 from app.models.voice import CallOutcome
@@ -269,6 +270,7 @@ class OpenAIRealtimeVoiceBridge:
         always scoped to `tenant_id`, so one tenant's caller can never
         resolve to another tenant's customer record."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             return await find_matching_customer(session, tenant_id=tenant_id, email=None, phone=caller_number)
 
     async def open(self, tenant_id: uuid.UUID, call_id: uuid.UUID) -> None:

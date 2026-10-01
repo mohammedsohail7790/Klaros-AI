@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.rbac import Permission
@@ -51,6 +52,7 @@ class RecordAction(Tool):
 
     async def execute(self, input: RecordActionInput, context: ExecutionContext) -> RecordActionOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             entry = AuditLog(
                 tenant_id=context.tenant_id,
                 actor_type=context.actor_type,
@@ -105,6 +107,7 @@ class ListAIActivity(Tool):
 
     async def execute(self, input: ListAIActivityInput, context: ExecutionContext) -> ListAIActivityOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             conditions = [AuditLog.actor_type == ActorType.AI] + [
                 AuditLog.tool.like(f"{prefix}%") for prefix in _AI_RELATED_TOOL_PREFIXES
             ] + [AuditLog.action.like("approval.%")]

@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import CommunicationProvider, MessageTemplate
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import Customer
 from app.models.event import EventType
@@ -55,6 +56,7 @@ class ReviewService:
 
     async def send_review_request(self, tenant_id: uuid.UUID, review_request_id: uuid.UUID, channel: str = "EMAIL") -> ReviewRequest:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             review = await session.get(ReviewRequest, review_request_id)
             if review is None or review.tenant_id != tenant_id:
                 raise ReviewRequestNotFoundError("Review request not found")
@@ -87,6 +89,7 @@ class ReviewService:
     ) -> CustomerFeedback:
         sentiment = _sentiment_for_rating(rating)
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             feedback = CustomerFeedback(
                 tenant_id=tenant_id, customer_id=customer_id, job_id=job_id, rating=rating, sentiment=sentiment,
                 comment=comment, source=source, received_at=datetime.now(timezone.utc),
@@ -156,6 +159,7 @@ class ReviewService:
         automated consent-collection flow this repository has no
         requirements for."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             feedback = await session.get(CustomerFeedback, feedback_id)
             if feedback is None or feedback.tenant_id != tenant_id:
                 raise FeedbackNotFoundError("Feedback not found")

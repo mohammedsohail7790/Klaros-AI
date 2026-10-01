@@ -7,6 +7,7 @@ import structlog
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.factory import get_communication_provider
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import Event, EventType
 from app.models.operations import Job
@@ -28,6 +29,7 @@ def register_operations_handlers(bus: EventBus, session_factory: async_sessionma
     async def handle_job_communication(event: Event) -> None:
         method_name = _EVENT_TO_NOTIFIER[EventType(event.event_type)]
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             job = await session.get(Job, event.entity_id)
         if job is None:
             return

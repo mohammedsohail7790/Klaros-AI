@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { ApiError, withRetry } from "@/lib/api";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { ApiError, revokeAgentToolPermission, withRetry } from "@/lib/api";
 
 describe("withRetry", () => {
   it("returns the result on first success without retrying", async () => {
@@ -49,5 +49,61 @@ describe("ApiError", () => {
     expect(err.status).toBe(422);
     expect(err.message).toBe("Validation failed");
     expect(err).toBeInstanceOf(Error);
+  });
+});
+
+describe("request() 204 No Content handling", () => {
+  // Regression (Bug B, Agent tool-permissions UI sync, Round 3): the
+  // shared `request()` helper used to call `res.json()` unconditionally
+  // on every 2xx response. A 204 No Content response (e.g. DELETE
+  // /agents/{id}/tool-permissions/{tool}, revokeAgentToolPermission,
+  // declared `request<void>`) has no body, so that `res.json()` call
+  // threw "Unexpected end of JSON input" even though the HTTP request
+  // itself succeeded. The caller's `await revokeAgentToolPermission(...)`
+  // then rejected, so frontend/app/agents/[id]/page.tsx's
+  // ToolPermissionsSection.toggle() landed in its `catch` block instead
+  // of its success path: `onChanged(...)` never ran (stale checkbox,
+  // still showing the tool as granted after a real, successful revoke)
+  // and a generic "Unable to update this tool's permission." error banner
+  // appeared despite nothing actually failing (spurious error) — both
+  // reproduced live against a real backend before this fix.
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it("resolves instead of throwing on a real 204 No Content response (empty body)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+      text: () => Promise.resolve(""),
+      json: () => Promise.reject(new Error("should never be called for an empty body")),
+    }) as unknown as typeof fetch;
+
+    await expect(revokeAgentToolPermission("test-token", "a1", "some_tool")).resolves.toBeUndefined();
+  });
+
+  it("still parses a normal JSON body on a 200 response", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(JSON.stringify({ ok: true })),
+    }) as unknown as typeof fetch;
+
+    await expect(revokeAgentToolPermission("test-token", "a1", "some_tool")).resolves.toEqual({ ok: true });
+  });
+
+  it("still surfaces a genuine backend error as an ApiError (the 204 fix only touches the success path)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      json: () => Promise.resolve({ detail: "Agent not found" }),
+    }) as unknown as typeof fetch;
+
+    await expect(revokeAgentToolPermission("test-token", "a1", "some_tool")).rejects.toMatchObject({
+      status: 404,
+      message: "Agent not found",
+    });
   });
 });

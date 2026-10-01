@@ -37,6 +37,29 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
 
     user_id = uuid.UUID(payload["sub"])
+    tenant_id = uuid.UUID(payload["tenant_id"])
+
+    # Phase 17B-4 (real RLS enforcement — see
+    # PHASE_17B4_REAL_RLS_IMPLEMENTATION_LOG.md §37 for the incident this
+    # fixes): this MUST run before the `select(User)` lookup below, not
+    # after it. `users` has had real, enforcing RLS since Phase 17B-4's
+    # `0053` migration (`tenant_id = current_tenant_id()`), and
+    # `current_tenant_id()` reads whatever `set_tenant_context` last
+    # stamped on THIS session — nothing, until this call runs. The
+    # `tenant_id` claim inside `payload` is safe to trust here already:
+    # `decode_token` above already verified the JWT's signature, so this is
+    # the same "trust it only after verification" pattern
+    # `marketplace_lead_webhook` uses for its own path `tenant_id` after
+    # HMAC verification, not a new special case. Every authenticated
+    # request in the application depends on this one function, so this
+    # ordering bug — introduced the moment `users` got real RLS, invisible
+    # before that because a permissive/audit-mode or absent policy never
+    # cared what tenant context (if any) a query ran under — silently
+    # broke `get_current_user` (and therefore almost the entire API) the
+    # instant `0053` shipped; caught by this phase's own Round 14 E2E
+    # validation pass, not by the (RLS-blind, see §1/§17b) existing test
+    # suite.
+    await set_tenant_context(db, tenant_id)
 
     # Real revocation (Phase 12 production hardening): a purely stateless
     # JWT can't be un-issued short of rotating the app-wide secret. This one
@@ -48,17 +71,6 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
     if payload.get("ver", 0) != user.token_version:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
-
-    tenant_id = uuid.UUID(payload["tenant_id"])
-
-    # Phase 0 (KLAROS_PHASE_0_IMPLEMENTATION_PLAN.md §0.2): this is the one
-    # place every authenticated request's tenant identity is established,
-    # regardless of whether an endpoint takes its DB session via `get_db`
-    # or `get_tenant_db` below — FastAPI caches this function's `db`
-    # dependency per-request, so stamping it here reaches the same session
-    # object the endpoint itself uses. See app.db.session.set_tenant_context
-    # for why this is `SET LOCAL` (transaction-scoped), not `SET`.
-    await set_tenant_context(db, tenant_id)
 
     return CurrentUser(
         id=user_id,

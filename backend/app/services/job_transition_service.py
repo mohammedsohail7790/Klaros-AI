@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.operations import (
@@ -74,6 +75,7 @@ class JobTransitionService:
         self, tenant_id: uuid.UUID, job_id: uuid.UUID, target: str, *, extra_fields: dict | None = None
     ) -> Job:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await self._get_job(session, tenant_id, job_id)
             validate_transition(job.status, target)
             job.status = target
@@ -100,6 +102,7 @@ class JobTransitionService:
         self, tenant_id: uuid.UUID, job_id: uuid.UUID, start: datetime, end: datetime
     ) -> Job:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await self._get_job(session, tenant_id, job_id)
             job.scheduled_start = start
             job.scheduled_end = end
@@ -123,6 +126,7 @@ class JobTransitionService:
         self, tenant_id: uuid.UUID, job_id: uuid.UUID, start: datetime, end: datetime
     ) -> Job:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await self._get_job(session, tenant_id, job_id)
             job.scheduled_start = start
             job.scheduled_end = end
@@ -141,6 +145,7 @@ class JobTransitionService:
 
     async def assign(self, tenant_id: uuid.UUID, job_id: uuid.UUID, worker_id: uuid.UUID) -> Job:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await self._get_job(session, tenant_id, job_id)
             worker = await session.get(Worker, worker_id)
             if worker is None or worker.tenant_id != tenant_id:
@@ -183,6 +188,7 @@ class JobTransitionService:
 
     async def unassign(self, tenant_id: uuid.UUID, job_id: uuid.UUID) -> Job:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await self._get_job(session, tenant_id, job_id)
             job.assigned_user_id = None
             await session.commit()
@@ -216,6 +222,7 @@ class JobTransitionService:
 
     async def block(self, tenant_id: uuid.UUID, job_id: uuid.UUID, reason: str) -> Job:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await self._get_job(session, tenant_id, job_id)
             validate_transition(job.status, JobStatus.BLOCKED)
             previous_status = job.status
@@ -249,6 +256,7 @@ class JobTransitionService:
         job = await self._apply_transition(tenant_id, job_id, target_status)
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             open_exceptions = (
                 await session.execute(
                     select(OperationsException).where(

@@ -14,6 +14,7 @@ import uuid
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.error_monitoring import capture_message
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.ai_invocation import AIInvocationLog
 from app.services.ai_provider import AICallOutcome
@@ -32,6 +33,7 @@ async def record_ai_invocation(
     output_metadata: dict | None = None,
 ) -> AIInvocationLog:
     async with session_factory() as session:
+        await set_tenant_context(session, tenant_id)
         row = AIInvocationLog(
             tenant_id=tenant_id,
             actor_type=actor_type.value if hasattr(actor_type, "value") else str(actor_type),

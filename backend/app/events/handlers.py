@@ -8,6 +8,7 @@ effect) works. Domain modules (Phase 3+) will add their own handlers here
 
 import structlog
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
@@ -19,6 +20,7 @@ logger = structlog.get_logger(__name__)
 def register_default_handlers(bus: EventBus) -> None:
     async def record_processed_audit_handler(event: Event) -> None:
         async with bus.session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             session.add(
                 AuditLog(
                     tenant_id=event.tenant_id,

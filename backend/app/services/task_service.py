@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.operations import Job, JobTask, TaskStatus
 
 
@@ -32,6 +33,7 @@ class TaskService:
         assigned_to: uuid.UUID | None = None,
     ) -> JobTask:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id:
                 raise JobNotFoundError("Job not found")
@@ -63,6 +65,7 @@ class TaskService:
         self, tenant_id: uuid.UUID, task_id: uuid.UUID, *, completed_by: uuid.UUID | None, skip: bool = False
     ) -> JobTask:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             task = await session.get(JobTask, task_id)
             if task is None or task.tenant_id != tenant_id:
                 raise TaskNotFoundError("Task not found")

@@ -131,7 +131,28 @@ async function request<T>(path: string, init?: RequestInit, _isRetry = false): P
     return (body.detail ?? body) as T;
   }
 
-  return res.json() as Promise<T>;
+  // Bug B regression (Agent tool-permissions UI sync, Round 3): a 204 No
+  // Content response (e.g. DELETE /agents/{id}/tool-permissions/{tool} —
+  // revokeAgentToolPermission, declared `request<void>`) has no body at
+  // all. Calling `res.json()` unconditionally here throws ("Unexpected end
+  // of JSON input") even though the request genuinely succeeded — the
+  // caller's `await` then rejects, landing in its `catch` block instead of
+  // its success path. In frontend/app/agents/[id]/page.tsx's
+  // ToolPermissionsSection this meant: the backend revoke/grant actually
+  // completed (confirmed via a real 204/201 over the wire), but
+  // `onChanged(...)` on the success path never ran (the throw happened
+  // inside this very `await`, before the caller could reach it) — so the
+  // checkbox stayed on its pre-mutation value (stale checkbox) and the
+  // generic catch set a "Unable to update this tool's permission." error
+  // banner despite nothing actually failing (spurious error). Reading the
+  // body as text first and only parsing non-empty bodies as JSON fixes
+  // this for every `void`/204 endpoint, not just this one — the root
+  // cause was in this shared helper, not in any one caller.
+  const text = await res.text();
+  if (!text) {
+    return undefined as T;
+  }
+  return JSON.parse(text) as T;
 }
 
 function authHeaders(token: string): HeadersInit {
@@ -3878,6 +3899,12 @@ export interface RenderedSection {
   component_type: string;
   props: Record<string, unknown>;
   data?: unknown;
+  // Editor-only field: present only on the authenticated preview endpoint
+  // (GET /websites/{id}/versions/{id}/preview), never on the public render
+  // path (getPublicWebsite) — see backend/app/api/v1/websites.py's
+  // preview_version(). Lets the Website Builder editor rehydrate a saved
+  // PROVIDER_DIRECTORY/PROCEDURE_LIST section's data source after reload.
+  data_source?: { provider_key: string; params?: Record<string, unknown> } | null;
 }
 
 export interface RenderedPage {
@@ -3993,10 +4020,19 @@ export interface PublicLeadFormInput {
 }
 
 export function submitPublicWebsiteLead(tenantId: string, body: PublicLeadFormInput) {
-  return request<{ received: boolean; lead_id: string | null }>(`/api/v1/public/leads/${tenantId}`, {
-    method: "POST",
-    body: JSON.stringify({ ...body, source: "WEB" }),
-  });
+  // patient_lead_id is non-null only when the submitting tenant has the
+  // medical_tourism vertical enabled (app/api/v1/public_leads.py) — null
+  // for every other tenant's generic submission. The public contact form
+  // itself doesn't need to branch on it today; it's exposed here so a
+  // future medical-tourism-aware public form (collecting procedure/
+  // destination fields) can read back which extension row was created.
+  return request<{ received: boolean; lead_id: string | null; patient_lead_id: string | null }>(
+    `/api/v1/public/leads/${tenantId}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ ...body, source: "WEB" }),
+    }
+  );
 }
 
 // --- Business Journey / Discovery / Blueprint / Recommendations (Phase 14
@@ -4601,4 +4637,318 @@ export function listAgentExecutionSteps(token: string, agentId: string, executio
   return request<AgentExecutionStep[]>(`/api/v1/agents/${agentId}/executions/${executionId}/steps`, {
     headers: authHeaders(token),
   });
+}
+
+// --- Medical Tourism (Klaros Medical Tourism completion task) --------------
+
+export interface MedicalTourismProvider {
+  id: string;
+  name: string;
+  practitioner_name: string | null;
+  country: string;
+  city: string | null;
+  address: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  description: string | null;
+  status: string;
+  created_at: string;
+}
+
+export function listMedicalTourismProviders(
+  token: string,
+  params: { country?: string; status?: string; limit?: number; offset?: number } = {}
+) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  });
+  return request<{ providers: MedicalTourismProvider[]; total: number; limit: number; offset: number }>(
+    `/api/v1/medical-tourism/providers?${qs.toString()}`,
+    { headers: authHeaders(token) }
+  );
+}
+
+export function getMedicalTourismProvider(token: string, providerId: string) {
+  return request<{ provider: MedicalTourismProvider }>(`/api/v1/medical-tourism/providers/${providerId}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function createMedicalTourismProvider(
+  token: string,
+  payload: {
+    name: string;
+    country: string;
+    practitioner_name?: string;
+    city?: string;
+    address?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    description?: string;
+  }
+) {
+  return request<{ provider: MedicalTourismProvider; deduplicated: boolean }>("/api/v1/medical-tourism/providers", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export interface MedicalTourismProviderCredential {
+  id: string;
+  provider_id: string;
+  credential_type: string;
+  issuing_authority: string | null;
+  credential_number: string | null;
+  status: string;
+  verified_at: string | null;
+}
+
+export function listProviderCredentials(token: string, providerId: string) {
+  return request<{ credentials: MedicalTourismProviderCredential[] }>(
+    `/api/v1/medical-tourism/providers/${providerId}/credentials`,
+    { headers: authHeaders(token) }
+  );
+}
+
+export function addProviderCredential(
+  token: string,
+  providerId: string,
+  payload: { credential_type: string; issuing_authority?: string; credential_number?: string; issued_date?: string; expiry_date?: string }
+) {
+  return request<{ credential: MedicalTourismProviderCredential }>(
+    `/api/v1/medical-tourism/providers/${providerId}/credentials`,
+    { method: "POST", headers: authHeaders(token), body: JSON.stringify(payload) }
+  );
+}
+
+export interface MedicalTourismProcedure {
+  id: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  typical_destination_countries: string | null;
+  status: string;
+  created_at: string;
+}
+
+export function listMedicalTourismProcedures(
+  token: string,
+  params: { category?: string; status?: string; limit?: number; offset?: number } = {}
+) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  });
+  return request<{ procedures: MedicalTourismProcedure[]; total: number; limit: number; offset: number }>(
+    `/api/v1/medical-tourism/procedures?${qs.toString()}`,
+    { headers: authHeaders(token) }
+  );
+}
+
+export function getMedicalTourismProcedure(token: string, procedureId: string) {
+  return request<{ procedure: MedicalTourismProcedure }>(`/api/v1/medical-tourism/procedures/${procedureId}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function createMedicalTourismProcedure(
+  token: string,
+  payload: { name: string; category?: string; description?: string; typical_destination_countries?: string }
+) {
+  return request<{ procedure: MedicalTourismProcedure; deduplicated: boolean }>(
+    "/api/v1/medical-tourism/procedures",
+    { method: "POST", headers: authHeaders(token), body: JSON.stringify(payload) }
+  );
+}
+
+export interface MedicalTourismOffering {
+  id: string;
+  provider_id: string;
+  procedure_id: string;
+  estimated_price: string | null;
+  currency: string | null;
+  status: string;
+}
+
+export function listMedicalTourismOfferings(
+  token: string,
+  params: { provider_id?: string; procedure_id?: string; status?: string; limit?: number; offset?: number } = {}
+) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  });
+  return request<{ offerings: MedicalTourismOffering[]; total: number; limit: number; offset: number }>(
+    `/api/v1/medical-tourism/offerings?${qs.toString()}`,
+    { headers: authHeaders(token) }
+  );
+}
+
+export function createMedicalTourismOffering(
+  token: string,
+  payload: { provider_id: string; procedure_id: string; estimated_price?: string; currency?: string }
+) {
+  return request<{ offering: MedicalTourismOffering; deduplicated: boolean }>("/api/v1/medical-tourism/offerings", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export interface MedicalTourismPatientLead {
+  id: string;
+  lead_id: string;
+  procedure_id: string | null;
+  preferred_destination_country: string | null;
+  medical_history_summary: string | null;
+  travel_start_date: string | null;
+  travel_end_date: string | null;
+  has_insurance: boolean | null;
+  insurance_notes: string | null;
+  created_at: string;
+}
+
+export function listPatientLeads(
+  token: string,
+  params: { procedure_id?: string; limit?: number; offset?: number } = {}
+) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  });
+  return request<{ patient_leads: MedicalTourismPatientLead[]; total: number; limit: number; offset: number }>(
+    `/api/v1/medical-tourism/patient-leads?${qs.toString()}`,
+    { headers: authHeaders(token) }
+  );
+}
+
+export function getPatientLead(token: string, patientLeadId: string) {
+  return request<{ patient_lead: MedicalTourismPatientLead }>(
+    `/api/v1/medical-tourism/patient-leads/${patientLeadId}`,
+    { headers: authHeaders(token) }
+  );
+}
+
+export function createPatientLead(
+  token: string,
+  payload: {
+    lead_id: string;
+    procedure_id?: string;
+    preferred_destination_country?: string;
+    medical_history_summary?: string;
+    travel_start_date?: string;
+    travel_end_date?: string;
+    has_insurance?: boolean;
+    insurance_notes?: string;
+  }
+) {
+  return request<{ patient_lead: MedicalTourismPatientLead }>("/api/v1/medical-tourism/patient-leads", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export interface MedicalTourismConsultation {
+  id: string;
+  appointment_id: string;
+  provider_id: string;
+  procedure_id: string | null;
+  status: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export function listConsultations(
+  token: string,
+  params: { provider_id?: string; status?: string; limit?: number; offset?: number } = {}
+) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  });
+  return request<{ consultations: MedicalTourismConsultation[]; total: number; limit: number; offset: number }>(
+    `/api/v1/medical-tourism/consultations?${qs.toString()}`,
+    { headers: authHeaders(token) }
+  );
+}
+
+export function getConsultation(token: string, consultationId: string) {
+  return request<{ consultation: MedicalTourismConsultation }>(
+    `/api/v1/medical-tourism/consultations/${consultationId}`,
+    { headers: authHeaders(token) }
+  );
+}
+
+export function createConsultation(
+  token: string,
+  payload: { appointment_id: string; provider_id: string; procedure_id?: string; notes?: string }
+) {
+  return request<{ consultation: MedicalTourismConsultation }>("/api/v1/medical-tourism/consultations", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateConsultation(token: string, consultationId: string, payload: { status?: string; notes?: string }) {
+  return request<{ consultation: MedicalTourismConsultation }>(
+    `/api/v1/medical-tourism/consultations/${consultationId}`,
+    { method: "PATCH", headers: authHeaders(token), body: JSON.stringify(payload) }
+  );
+}
+
+export interface MedicalTourismReferralCommission {
+  id: string;
+  referral_id: string;
+  provider_id: string | null;
+  basis: string;
+  commission_percentage: string | null;
+  flat_amount: string | null;
+  computed_amount: string | null;
+  currency: string;
+  status: string;
+  created_at: string;
+}
+
+export function listReferralCommissions(
+  token: string,
+  params: { provider_id?: string; status?: string; limit?: number; offset?: number } = {}
+) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  });
+  return request<{
+    referral_commissions: MedicalTourismReferralCommission[];
+    total: number;
+    limit: number;
+    offset: number;
+  }>(`/api/v1/medical-tourism/referral-commissions?${qs.toString()}`, { headers: authHeaders(token) });
+}
+
+export function createReferralCommission(
+  token: string,
+  payload: {
+    referral_id: string;
+    currency: string;
+    provider_id?: string;
+    basis?: string;
+    commission_percentage?: string;
+    flat_amount?: string;
+  }
+) {
+  return request<{ referral_commission: MedicalTourismReferralCommission }>(
+    "/api/v1/medical-tourism/referral-commissions",
+    { method: "POST", headers: authHeaders(token), body: JSON.stringify(payload) }
+  );
+}
+
+export function updateReferralCommissionStatus(token: string, commissionId: string, status: string) {
+  return request<{ referral_commission: MedicalTourismReferralCommission }>(
+    `/api/v1/medical-tourism/referral-commissions/${commissionId}/status`,
+    { method: "PATCH", headers: authHeaders(token), body: JSON.stringify({ status }) }
+  );
 }

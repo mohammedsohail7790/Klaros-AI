@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import DeadLetterEvent, Event, EventProcessingRecord
 from app.models.rbac import Permission
@@ -75,6 +76,7 @@ class GetEvent(Tool):
 
     async def execute(self, input: GetEventInput, context: ExecutionContext) -> GetEventOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             event = await session.get(Event, input.event_id)
             # Tenant isolation: an event belonging to another tenant is treated
             # as not found, never leaked via a different error shape.
@@ -124,6 +126,7 @@ class ListEvents(Tool):
 
     async def execute(self, input: ListEventsInput, context: ExecutionContext) -> ListEventsOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             query = select(Event).where(Event.tenant_id == context.tenant_id)
             if input.status:
                 query = query.where(Event.status == input.status)
@@ -182,6 +185,7 @@ class GetEventDetail(Tool):
 
     async def execute(self, input: GetEventDetailInput, context: ExecutionContext) -> GetEventDetailOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             event = await session.get(Event, input.event_id)
             if event is None or event.tenant_id != context.tenant_id:
                 raise ValueError("Event not found")
@@ -243,6 +247,7 @@ class ListDeadLetters(Tool):
 
     async def execute(self, input: ListDeadLettersInput, context: ExecutionContext) -> ListDeadLettersOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             query = select(DeadLetterEvent).where(DeadLetterEvent.tenant_id == context.tenant_id)
             if not input.include_replayed:
                 query = query.where(DeadLetterEvent.replayed.is_(False))
@@ -298,6 +303,7 @@ class ReplayDeadLetter(Tool):
         from datetime import datetime, timezone
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             dead_letter = await session.get(DeadLetterEvent, input.dead_letter_id)
             if dead_letter is None or dead_letter.tenant_id != context.tenant_id:
                 raise ValueError("Dead-lettered event not found")

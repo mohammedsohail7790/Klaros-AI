@@ -132,6 +132,16 @@ async def test_full_medical_tourism_public_website_e2e(client: AsyncClient) -> N
     home_page = next(p for p in preview_body["pages"] if p["slug"] == "home")
     assert any(s["component_type"] == "PROVIDER_DIRECTORY" for s in home_page["sections"])
 
+    # Regression (Bug A, Website Builder editor rehydration): the
+    # authenticated preview endpoint must echo each section's saved
+    # `data_source` back so frontend/components/website/SectionEditor.tsx
+    # can rehydrate the provider-key field after save/reload, instead of
+    # always showing blank. Auto-generation (above) binds this directory to
+    # a real provider_key, so it must come back non-null here.
+    preview_directory = next(s for s in home_page["sections"] if s["component_type"] == "PROVIDER_DIRECTORY")
+    assert preview_directory["data_source"] is not None
+    assert preview_directory["data_source"]["provider_key"] == "medical_tourism.provider_directory"
+
     # Attack: this same tenant's DRAFT must not be visible on the public
     # endpoint before it is ever published.
     pre_publish_public = await client.get(f"/api/v1/public/websites/{tenant_id}")
@@ -155,6 +165,14 @@ async def test_full_medical_tourism_public_website_e2e(client: AsyncClient) -> N
     directory = next(s for s in public_home["sections"] if s["component_type"] == "PROVIDER_DIRECTORY")
     assert directory["data"]["resolved"] is True
     assert directory["data"]["items"][0]["name"] == "Synthetic Test Hospital"
+
+    # Security boundary for the Bug A fix: the editor-only `data_source`
+    # overlay lives solely in the authenticated preview_version() handler
+    # (app/api/v1/websites.py) — the public, unauthenticated render path
+    # (app/api/v1/public_websites.py) calls the shared renderer directly and
+    # must never gain this key, even though it renders the exact same
+    # underlying section.
+    assert "data_source" not in directory
 
     # (14) procedure information renders.
     procedure_section = next(

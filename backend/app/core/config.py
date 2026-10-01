@@ -36,7 +36,45 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=None if _RUNNING_UNDER_PYTEST else ".env", extra="ignore")
 
     ENV: str = "development"
+    # The application's normal runtime connection. As of Phase 17B-1, this
+    # is intended to point at a RESTRICTED application role (NOSUPERUSER,
+    # NOBYPASSRLS, non-table-owning — see
+    # backend/scripts/db/provision_app_role.py) rather than the schema-
+    # owning bootstrap role, so that PostgreSQL RLS policies (currently
+    # audit-mode/permissive — see PHASE_17A_RLS_ENFORCEMENT_READINESS_AUDIT.md)
+    # have any real enforcement effect once a future phase makes them
+    # enforcing. The default below still matches the pre-Phase-17B-1
+    # bootstrap-role shape for backward compatibility with any environment
+    # that hasn't been cut over yet.
     DATABASE_URL: str = "postgresql+asyncpg://klaros:klaros@localhost:5432/klaros"
+    # The schema-owning / migration connection. Alembic (backend/alembic/
+    # env.py) and backend/scripts/db/provision_app_role.py use this URL,
+    # never DATABASE_URL, so that "run a migration" and "run the app" are
+    # explicitly different privilege levels rather than the application
+    # silently being able to fall back to owner/superuser access. When
+    # unset (the pre-Phase-17B-1 default), every owner/migration operation
+    # falls back to DATABASE_URL — i.e. today's existing single-role
+    # behavior, unchanged, for any environment that hasn't provisioned a
+    # separate restricted role yet.
+    DATABASE_MIGRATION_URL: str | None = None
+    # Phase 17B-4 (§37d/§39): the ONE narrow, read-only connection intended
+    # to point at the restricted `klaros_discovery` role (see
+    # backend/scripts/db/provision_discovery_role.py) — a role with
+    # column-level SELECT on exactly the handful of tables the platform's
+    # small set of legitimate cross-tenant discovery/resolution reads need
+    # (§10/§11c), and ZERO DML grants anywhere, ever. As of this setting's
+    # introduction, used by exactly one real call site:
+    # `McpCredentialService._resolve_tenant_id_via_discovery` (MCP
+    # credential authentication's token-hash-to-tenant resolution step,
+    # which — like login/webhook signature verification — must run BEFORE
+    # any tenant is known, so no ordinary tenant-scoped `klaros_app`
+    # session can perform it at all under real RLS). Unset by default: an
+    # environment that hasn't provisioned `klaros_discovery` yet (or
+    # doesn't use the MCP surface) doesn't need this configured, and the
+    # one call site that needs it fails closed (logs, returns "no
+    # credential found") rather than raising, exactly like every other
+    # unknown/malformed-token outcome in that same function.
+    DISCOVERY_DATABASE_URL: str | None = None
     REDIS_URL: str = "redis://localhost:6379/0"
     # "redis" (default, production) or "memory" (dev/test fallback when no Redis is
     # reachable — a real in-process transport, not a mock; see app/events/transport.py)

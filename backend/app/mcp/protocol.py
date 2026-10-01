@@ -49,6 +49,7 @@ from typing import Any
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.mcp_server import McpClientCredential
@@ -355,6 +356,11 @@ class McpProtocolHandler:
         self, auth: McpRequestAuth, *, action: str, tool_name: str | None, result: str, error: str | None = None
     ) -> None:
         async with self._session_factory() as session:
+            # auth.tenant_id is resolved ONLY from the authenticated
+            # credential's own DB row (McpRequestAuth's docstring) — never
+            # from anything in the client's JSON-RPC body — so it is safe
+            # to stamp as this transaction's tenant context here.
+            await set_tenant_context(session, auth.tenant_id)
             session.add(
                 AuditLog(
                     tenant_id=auth.tenant_id,

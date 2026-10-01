@@ -93,6 +93,14 @@ class DiscoveryExtractionResult(BaseModel):
     claims: list[ExtractedClaim] = Field(default_factory=list)
     follow_up_question: str | None = None
     follow_up_section_key: str | None = None
+    # Phase 16a: distinguishes "no follow-up THIS turn" (a connected
+    # provider genuinely has nothing left to ask, e.g. it judges all gaps
+    # answered — `follow_up_question=None`, `exhausted=False`) from "the
+    # deterministic, no-provider fallback has now asked everything in its
+    # short fixed sequence" (`exhausted=True`). Only ever set True by
+    # `_deterministic_fallback()`; a connected provider's adaptive path
+    # never sets it, so its own completion behavior is unchanged.
+    exhausted: bool = False
 
 
 @dataclass
@@ -115,31 +123,85 @@ def _build_prompt(discovery_input: str, gap_keys: list[str]) -> str:
     )
 
 
-def _deterministic_fallback(discovery_input: str, is_initial: bool) -> DiscoveryExtractionResult:
-    """KLAROS_BUSINESS_DISCOVERY_SPEC.md §6: "the free-text description is
-    stored as a single Fact claim against IDENTITY.description, and the
-    user is walked through a short fixed set of the most capability-
-    differentiating questions (business type, geography, revenue model)". A
-    fixed, non-vertical-specific, still-useful degrade — never a silent
-    failure."""
-    claims: list[ExtractedClaim] = []
-    if is_initial:
-        claims.append(
-            ExtractedClaim(
-                claim_type=ClaimType.FACT.value,
-                section_key=BlueprintSectionKey.IDENTITY.value,
-                key="identity.description",
-                value=discovery_input,
-                confidence=None,
-                provenance=ClaimProvenance.USER_STATED.value,
-            )
+# Phase 16a: the deterministic (no-provider) fallback's short, fixed,
+# vertical-agnostic question sequence — KLAROS_BUSINESS_DISCOVERY_SPEC.md
+# §6 ("the user is walked through a short fixed set of the most
+# capability-differentiating questions (business type, geography, revenue
+# model)"), extended to also close the REQUIRED_CAPABILITIES gap so the
+# fallback path can reach the same MINIMUM_BAR_SECTIONS (business_blueprint
+# .py) a connected provider targets. Indexed by `DiscoveryTurn.sequence` —
+# the turn whose `answer` is being processed this call — which is already
+# persisted state (`business_discovery_service.py`), so no new column or
+# table is needed to track fallback progress.
+#
+# Step i describes: the claim to extract from the CURRENT turn's answer
+# (answering the question asked at step i-1, or the initial free-text idea
+# for step 0), plus the next question to ask (None once exhausted). Every
+# claim below is Fact/USER_STATED — the answer is the user's own verbatim
+# words, exactly like the pre-existing IDENTITY claim, so no new claim
+# vocabulary is introduced.
+_FALLBACK_STEPS: tuple[dict[str, str | None], ...] = (
+    {
+        "claim_section_key": BlueprintSectionKey.IDENTITY.value,
+        "claim_key": "identity.description",
+        "next_question": "What type of business is this, and in which market/geography does it operate?",
+        "next_section_key": BlueprintSectionKey.INDUSTRY.value,
+    },
+    {
+        "claim_section_key": BlueprintSectionKey.INDUSTRY.value,
+        "claim_key": "industry.business_type_and_geography",
+        "next_question": "How does this business make money — what is its core revenue model (e.g. one-time sales, subscriptions, commission, service fees)?",
+        "next_section_key": BlueprintSectionKey.BUSINESS_MODEL.value,
+    },
+    {
+        "claim_section_key": BlueprintSectionKey.BUSINESS_MODEL.value,
+        "claim_key": "business_model.revenue_model",
+        "next_question": "What capabilities, tools, or systems will this business need to operate day to day (e.g. bookings, payments, inventory, communications)?",
+        "next_section_key": BlueprintSectionKey.REQUIRED_CAPABILITIES.value,
+    },
+    {
+        "claim_section_key": BlueprintSectionKey.REQUIRED_CAPABILITIES.value,
+        "claim_key": "required_capabilities.summary",
+        "next_question": None,
+        "next_section_key": None,
+    },
+)
+
+
+def _deterministic_fallback(discovery_input: str, turn_sequence: int) -> DiscoveryExtractionResult:
+    """KLAROS_BUSINESS_DISCOVERY_SPEC.md §6's fixed-question degrade, now a
+    genuinely bounded, multi-turn sequence (Phase 16a) instead of a single
+    question. `turn_sequence` is `DiscoveryTurn.sequence` for the turn
+    currently being processed (0 for the initial free-text description, 1+
+    for each subsequent answered question) — deterministic progress is
+    derived from this already-persisted value alone, never from new state.
+
+    Once `turn_sequence` runs past the fixed sequence (should not happen in
+    practice: the session is completed via `exhausted=True` before another
+    turn is submitted, and the caller's own `max_questions` hard cap is a
+    second, independent safety net), the fallback degrades to a harmless
+    no-op turn, exhausted, with nothing further to extract or ask."""
+    if turn_sequence < 0 or turn_sequence >= len(_FALLBACK_STEPS):
+        return DiscoveryExtractionResult(claims=[], follow_up_question=None, follow_up_section_key=None, exhausted=True)
+
+    step = _FALLBACK_STEPS[turn_sequence]
+    claims = [
+        ExtractedClaim(
+            claim_type=ClaimType.FACT.value,
+            section_key=step["claim_section_key"],
+            key=step["claim_key"],
+            value=discovery_input,
+            confidence=None,
+            provenance=ClaimProvenance.USER_STATED.value,
         )
-        return DiscoveryExtractionResult(
-            claims=claims,
-            follow_up_question="What type of business is this, and in which market/geography does it operate?",
-            follow_up_section_key=BlueprintSectionKey.INDUSTRY.value,
-        )
-    return DiscoveryExtractionResult(claims=[], follow_up_question=None, follow_up_section_key=None)
+    ]
+    next_question = step["next_question"]
+    return DiscoveryExtractionResult(
+        claims=claims,
+        follow_up_question=next_question,
+        follow_up_section_key=step["next_section_key"],
+        exhausted=next_question is None,
+    )
 
 
 class DiscoveryExtractionService:
@@ -155,12 +217,13 @@ class DiscoveryExtractionService:
         gap_keys: list[str],
         is_initial: bool,
         actor_id: uuid.UUID | None,
+        turn_sequence: int = 0,
         correlation_id: uuid.UUID | None = None,
     ) -> ExtractionOutcome:
         if not self._provider.is_connected:
             return ExtractionOutcome(
                 available=True,
-                result=_deterministic_fallback(discovery_input, is_initial),
+                result=_deterministic_fallback(discovery_input, turn_sequence),
                 deterministic_fallback=True,
             )
 

@@ -10,6 +10,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.calendar.base import DoubleBookingError
+from app.db.session import set_tenant_context
 from app.models.operations import Job, JobPriority
 from app.models.rbac import Permission
 from app.services.conversion_service import LeadConversionService
@@ -129,6 +130,7 @@ class GetJob(Tool):
 
     async def execute(self, input: GetJobInput, context: ExecutionContext) -> JobOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             job = await session.get(Job, input.job_id)
             if job is None or job.tenant_id != context.tenant_id:
                 raise ValueError("Job not found")
@@ -162,6 +164,7 @@ class UpdateJob(Tool):
                 raise ValueError(f"Invalid job priority: {input.priority}") from None
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             job = await session.get(Job, input.job_id)
             if job is None or job.tenant_id != context.tenant_id:
                 raise ValueError("Job not found")
@@ -202,6 +205,7 @@ class SearchJobs(Tool):
         from sqlalchemy import func
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             query = select(Job).where(Job.tenant_id == context.tenant_id)
             count_query = select(func.count(Job.id)).where(Job.tenant_id == context.tenant_id)
 
@@ -494,6 +498,7 @@ class GetJobTimeline(Tool):
         from app.models.audit_log import AuditLog
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             job = await session.get(Job, input.job_id)
             if job is None or job.tenant_id != context.tenant_id:
                 raise ValueError("Job not found")

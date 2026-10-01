@@ -18,6 +18,7 @@ from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.integrations.stripe_client import StripeAPIError, StripeClient
 from app.models.quote import Quote, QuoteStatus
 from app.services.integration_connection_service import IntegrationConnectionService
@@ -69,6 +70,7 @@ class QuoteDepositService:
 
     async def preview(self, tenant_id: uuid.UUID, quote_id: uuid.UUID) -> DepositPreview:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             quote = await session.get(Quote, quote_id)
         if quote is None or quote.tenant_id != tenant_id:
             raise QuoteNotFoundError("Quote not found")
@@ -91,6 +93,7 @@ class QuoteDepositService:
             )
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             quote = await session.get(Quote, quote_id)
             if quote is None or quote.tenant_id != tenant_id:
                 raise QuoteNotFoundError("Quote not found")

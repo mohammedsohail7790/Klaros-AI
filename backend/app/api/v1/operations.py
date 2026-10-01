@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, get_current_user
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.models.operations import ExceptionStatus, Job, JobStatus, OperationsException
 
 router = APIRouter(prefix="/operations", tags=["operations"])
@@ -32,6 +32,7 @@ async def get_operations_dashboard(current_user: CurrentUser = Depends(get_curre
     day_end = day_start + timedelta(days=1)
 
     async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
         jobs_today = (
             await session.execute(
                 select(func.count(Job.id)).where(

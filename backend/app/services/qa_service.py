@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.operations import (
@@ -72,6 +73,7 @@ class QAService:
 
     async def start_qa(self, tenant_id: uuid.UUID, job_id: uuid.UUID) -> JobQA:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await self._get_job(session, tenant_id, job_id)
             if job.status != JobStatus.QA_PENDING:
                 raise QANotReadyError(f"Job must be QA_PENDING to start QA (currently {job.status})")
@@ -125,6 +127,7 @@ class QAService:
 
     async def complete_qa(self, tenant_id: uuid.UUID, job_id: uuid.UUID, performed_by: uuid.UUID | None) -> JobQA:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await self._get_job(session, tenant_id, job_id)
             if job.status != JobStatus.QA_PENDING:
                 raise QANotReadyError(f"Job must be QA_PENDING to complete QA (currently {job.status})")
@@ -162,6 +165,7 @@ class QAService:
 
     async def fail_qa(self, tenant_id: uuid.UUID, job_id: uuid.UUID, reason: str) -> JobQA:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await self._get_job(session, tenant_id, job_id)
             qa = await self._get_or_create_qa(session, tenant_id, job_id)
             qa.status = QAStatus.FAILED

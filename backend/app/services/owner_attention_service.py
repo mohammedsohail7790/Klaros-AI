@@ -27,6 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.config import get_settings
+from app.db.session import set_tenant_context
 from app.models.ai_invocation import AIInvocationLog
 from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.models.automation import AutomationExecution, ExecutionStatus
@@ -146,6 +147,7 @@ class OwnerAttentionService:
         now = datetime.now(timezone.utc)
         items: list[AttentionItem] = []
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             # --- Qualified leads with no appointment booked -----------
             leads = (
                 await session.execute(

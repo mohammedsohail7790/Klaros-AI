@@ -24,7 +24,7 @@ from app.api.tool_deps import get_wired_event_bus
 from app.api.tool_deps_integrations import get_integration_connection_service
 from app.core.config import get_settings
 from app.core.rate_limit import rate_limit, tenant_and_ip_key
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.events.bus import EventBus
 from app.integrations.stripe_client import (
     StripeWebhookPayloadError,
@@ -195,6 +195,14 @@ async def stripe_webhook(
         logger.error("stripe_webhook_processing_failed", event_id=external_event_id, error=str(exc))
 
     async with async_session_maker() as session:
+        # Signature already verified above (this handler's entire trust
+        # boundary); tenant_id here is resolved from Stripe's PaymentIntent
+        # metadata, which Klaros itself set at PaymentIntent-creation time —
+        # never from an unauthenticated client claim. Safe to stamp as this
+        # transaction's tenant context once known (a no-op, per
+        # set_tenant_context's own contract, on the few event types/error
+        # paths where it's still None).
+        await set_tenant_context(session, tenant_id)
         row = await session.get(WebhookEvent, webhook_row.id)
         if row is not None:
             row.status = status_value
@@ -334,6 +342,7 @@ async def _handle_quote_deposit_succeeded(
     # the metadata could create an orphan Payment row scoped to the wrong
     # tenant even though it's never linked to that tenant's own quote.
     async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
         quote = await session.get(Quote, quote_id)
     if quote is None or quote.tenant_id != tenant_id:
         return tenant_id, f"quote {quote_id} does not belong to tenant {tenant_id}"
@@ -535,6 +544,10 @@ async def twilio_status_webhook(
             await session.execute(select(CommunicationLog).where(CommunicationLog.external_id == message_sid))
         ).scalar_one_or_none()
         tenant_id = log_row.tenant_id if log_row is not None else None
+        # Only knowable after this lookup (Twilio's status callback carries
+        # no tenant_id of its own) — stamp it now, before the mutations
+        # below in this same transaction.
+        await set_tenant_context(session, tenant_id)
         if log_row is not None:
             log_row.status = f"TWILIO_{message_status.upper()}"[:40]
 
@@ -627,6 +640,10 @@ async def twilio_inbound_sms_webhook(
     body = params.get("Body", "")
 
     async with async_session_maker() as session:
+        # tenant_id is the trusted URL path parameter here (see the module
+        # comment above this route: Twilio's HMAC signature is computed
+        # over this exact URL, so a tampered tenant_id fails verification).
+        await set_tenant_context(session, tenant_id)
         existing = (
             await session.execute(
                 select(WebhookEvent).where(
@@ -727,6 +744,8 @@ async def twilio_inbound_voice_webhook(
         return Response(content=stream_twiml, media_type="application/xml")
 
     async with async_session_maker() as session:
+        # Same trusted-URL-path-parameter reasoning as inbound-sms above.
+        await set_tenant_context(session, tenant_id)
         existing = (
             await session.execute(
                 select(WebhookEvent).where(

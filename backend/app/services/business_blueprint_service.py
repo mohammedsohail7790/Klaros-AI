@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.business_blueprint import (
@@ -72,6 +73,7 @@ class BusinessBlueprintService:
         DRAFT (if still forming) or ACTIVE (if a new DiscoverySession is
         proposing further claims against an already-live blueprint)."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             existing = (
                 await session.execute(
                     select(BusinessBlueprint).where(
@@ -104,6 +106,7 @@ class BusinessBlueprintService:
 
     async def get_active(self, tenant_id: uuid.UUID) -> BusinessBlueprint | None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             return (
                 await session.execute(
                     select(BusinessBlueprint).where(
@@ -115,6 +118,7 @@ class BusinessBlueprintService:
 
     async def get_version(self, tenant_id: uuid.UUID, version: int) -> BusinessBlueprint:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             blueprint = (
                 await session.execute(
                     select(BusinessBlueprint).where(
@@ -128,6 +132,7 @@ class BusinessBlueprintService:
 
     async def get_by_id(self, tenant_id: uuid.UUID, blueprint_id: uuid.UUID) -> BusinessBlueprint:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             blueprint = await session.get(BusinessBlueprint, blueprint_id)
             if blueprint is None or blueprint.tenant_id != tenant_id:
                 raise BlueprintNotFoundError(f"Blueprint {blueprint_id} not found")
@@ -135,6 +140,7 @@ class BusinessBlueprintService:
 
     async def list_sections(self, tenant_id: uuid.UUID, blueprint_id: uuid.UUID) -> list[BlueprintSection]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(BlueprintSection).where(
@@ -148,6 +154,7 @@ class BusinessBlueprintService:
         self, tenant_id: uuid.UUID, blueprint_id: uuid.UUID, *, status: str | None = None
     ) -> list[BlueprintClaim]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             stmt = select(BlueprintClaim).where(
                 BlueprintClaim.tenant_id == tenant_id, BlueprintClaim.blueprint_id == blueprint_id
             )
@@ -173,6 +180,7 @@ class BusinessBlueprintService:
         evidence_ref: str | None,
     ) -> BlueprintClaim:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             claim = BlueprintClaim(
                 tenant_id=tenant_id,
                 blueprint_id=blueprint_id,
@@ -208,6 +216,7 @@ class BusinessBlueprintService:
         self, tenant_id: uuid.UUID, claim_id: uuid.UUID, *, confirmed_by: uuid.UUID | None
     ) -> BlueprintClaim:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             claim = await session.get(BlueprintClaim, claim_id)
             if claim is None or claim.tenant_id != tenant_id:
                 raise ClaimNotFoundError(f"Claim {claim_id} not found")
@@ -307,6 +316,7 @@ class BusinessBlueprintService:
         self, tenant_id: uuid.UUID, claim_id: uuid.UUID, *, rejected_by: uuid.UUID | None, reason: str | None
     ) -> BlueprintClaim:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             claim = await session.get(BlueprintClaim, claim_id)
             if claim is None or claim.tenant_id != tenant_id:
                 raise ClaimNotFoundError(f"Claim {claim_id} not found")
@@ -346,6 +356,7 @@ class BusinessBlueprintService:
 
         if blueprint.status == BlueprintStatus.DRAFT:
             async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
                 section = (
                     await session.execute(
                         select(BlueprintSection).where(
@@ -366,6 +377,7 @@ class BusinessBlueprintService:
 
         # ACTIVE: clone to a new version (module docstring's versioning model).
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             old_sections = (
                 await session.execute(
                     select(BlueprintSection).where(
@@ -446,6 +458,7 @@ class BusinessBlueprintService:
             )
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             row = await session.get(BusinessBlueprint, blueprint_id)
             row.status = BlueprintStatus.ACTIVE
             row.confirmed_at = datetime.now(timezone.utc)

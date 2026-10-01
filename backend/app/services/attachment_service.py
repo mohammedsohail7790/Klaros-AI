@@ -12,6 +12,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.operations import AttachmentKind, Job, JobAttachment, TranscriptionStatus
 from app.storage.base import ObjectStorageProvider
 
@@ -45,6 +46,7 @@ class AttachmentService:
         duration_seconds: int | None = None,
     ) -> JobAttachment:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             await self._get_job(session, tenant_id, job_id)
 
             stored = await self._storage.put(tenant_id, filename, content, content_type)

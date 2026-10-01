@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import MessageTemplate
 from app.communications.factory import get_communication_provider
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import Customer
 from app.models.event import Event, EventType
@@ -49,6 +50,7 @@ def register_finance_handlers(bus: EventBus, session_factory: async_sessionmaker
 
     async def notify_invoice_sent(event: Event) -> None:
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             invoice = await session.get(Invoice, event.entity_id)
             if invoice is None:
                 return
@@ -107,6 +109,7 @@ def register_finance_handlers(bus: EventBus, session_factory: async_sessionmaker
             return
         payment_id = uuid.UUID(payment_id_raw)
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             payment = await session.get(Payment, payment_id)
         if payment is None or payment.quote_id is not None or payment.provider != "stripe":
             return

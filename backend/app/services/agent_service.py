@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.agent import (
     Agent,
@@ -138,6 +139,7 @@ class AgentService:
         source_recommendation_id: uuid.UUID | None = None,
     ) -> Agent:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             agent = Agent(
                 tenant_id=tenant_id,
                 name=name,
@@ -165,6 +167,7 @@ class AgentService:
 
     async def get_agent(self, tenant_id: uuid.UUID, agent_id: uuid.UUID) -> Agent:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             agent = await session.get(Agent, agent_id)
             if agent is None or agent.tenant_id != tenant_id:
                 raise AgentNotFoundError("Agent not found")
@@ -172,6 +175,7 @@ class AgentService:
 
     async def list_agents(self, tenant_id: uuid.UUID, *, status: str | None = None) -> list[Agent]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             stmt = select(Agent).where(Agent.tenant_id == tenant_id)
             if status:
                 stmt = stmt.where(Agent.status == status)
@@ -189,6 +193,7 @@ class AgentService:
         updated_by: uuid.UUID | None,
     ) -> Agent:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             agent = await session.get(Agent, agent_id)
             if agent is None or agent.tenant_id != tenant_id:
                 raise AgentNotFoundError("Agent not found")
@@ -217,6 +222,7 @@ class AgentService:
         self, tenant_id: uuid.UUID, agent_id: uuid.UUID, *, to_status: str, actor_id: uuid.UUID | None
     ) -> Agent:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             agent = await session.get(Agent, agent_id)
             if agent is None or agent.tenant_id != tenant_id:
                 raise AgentNotFoundError("Agent not found")
@@ -266,6 +272,7 @@ class AgentService:
             raise UnknownToolError(f"Unknown tool: {tool_name}") from exc
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             agent = await session.get(Agent, agent_id)
             if agent is None or agent.tenant_id != tenant_id:
                 raise AgentNotFoundError("Agent not found")
@@ -302,6 +309,7 @@ class AgentService:
         self, tenant_id: uuid.UUID, agent_id: uuid.UUID, tool_name: str, *, actor_id: uuid.UUID | None
     ) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             agent = await session.get(Agent, agent_id)
             if agent is None or agent.tenant_id != tenant_id:
                 raise AgentNotFoundError("Agent not found")
@@ -327,6 +335,7 @@ class AgentService:
 
     async def list_tool_permissions(self, tenant_id: uuid.UUID, agent_id: uuid.UUID) -> list[AgentToolPermission]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(AgentToolPermission).where(
@@ -361,6 +370,7 @@ class AgentService:
         made before publish)."""
         _validate_triggers(triggers or {})
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             agent = await session.get(Agent, agent_id)
             if agent is None or agent.tenant_id != tenant_id:
                 raise AgentNotFoundError("Agent not found")
@@ -412,6 +422,7 @@ class AgentService:
         `current_version_id`. Never mutates an already-PUBLISHED/
         DEPRECATED version's executable columns — Version Immutability."""
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             agent = await session.get(Agent, agent_id)
             if agent is None or agent.tenant_id != tenant_id:
                 raise AgentNotFoundError("Agent not found")
@@ -455,6 +466,7 @@ class AgentService:
 
     async def get_version(self, tenant_id: uuid.UUID, agent_id: uuid.UUID, version_id: uuid.UUID) -> AgentVersion:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             version = await session.get(AgentVersion, version_id)
             if version is None or version.tenant_id != tenant_id or version.agent_id != agent_id:
                 raise AgentVersionNotFoundError("Agent version not found")
@@ -462,6 +474,7 @@ class AgentService:
 
     async def list_versions(self, tenant_id: uuid.UUID, agent_id: uuid.UUID) -> list[AgentVersion]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(AgentVersion)
@@ -477,6 +490,7 @@ class AgentService:
         self, tenant_id: uuid.UUID, agent_id: uuid.UUID, *, limit: int = 50
     ) -> list[AgentExecution]:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             rows = (
                 await session.execute(
                     select(AgentExecution)

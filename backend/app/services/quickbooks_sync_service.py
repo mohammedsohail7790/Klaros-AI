@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.integrations.credential_store import decrypt_credential
 from app.integrations.quickbooks_client import QuickBooksAPIError, QuickBooksClient, QuickBooksErrorType
 from app.models.crm import Customer
@@ -75,6 +76,7 @@ class QuickBooksSyncService:
         # and this session's own Google Calendar fix — one session held
         # open across the whole operation, including the external call.
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             if session.bind is not None and session.bind.dialect.name == "postgresql":
                 lock_key = f"quickbooks-sync-invoice:{tenant_id}:{invoice_id}"
                 await session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key))"), {"key": lock_key})

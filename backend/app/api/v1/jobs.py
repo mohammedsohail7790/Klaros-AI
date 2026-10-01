@@ -12,7 +12,7 @@ from sqlalchemy import select
 
 from app.api.deps import CurrentUser, get_current_user
 from app.api.tool_deps import execution_context, get_tool_registry, raise_http_for_tool_error
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.models.operations import Job, JobAttachment, JobMaterial, JobTask
 from app.storage.factory import get_object_storage
 from app.tools.errors import ToolError
@@ -159,6 +159,7 @@ async def _owned_job_or_404(job_id: uuid.UUID, current_user: CurrentUser) -> Non
     from fastapi import HTTPException, status
 
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         job = await session.get(Job, job_id)
         if job is None or job.tenant_id != current_user.tenant_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
@@ -173,6 +174,7 @@ async def list_job_tasks(
     directly rather than through a tool."""
     await _owned_job_or_404(job_id, current_user)
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         rows = (
             await session.execute(
                 select(JobTask)
@@ -202,6 +204,7 @@ async def list_job_materials(
 ) -> dict[str, Any]:
     await _owned_job_or_404(job_id, current_user)
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         rows = (
             await session.execute(
                 select(JobMaterial).where(
@@ -230,6 +233,7 @@ async def list_job_attachments(
 ) -> dict[str, Any]:
     await _owned_job_or_404(job_id, current_user)
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         rows = (
             await session.execute(
                 select(JobAttachment).where(
@@ -268,6 +272,7 @@ async def download_job_attachment(
     this path either."""
     await _owned_job_or_404(job_id, current_user)
     async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
         attachment = await session.get(JobAttachment, attachment_id)
     if (
         attachment is None

@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, get_db
 from app.core.config import get_settings
-from app.db.session import async_session_maker
+from app.db.session import async_session_maker, set_tenant_context
 from app.integrations.stripe_client import StripeWebhookPayloadError, StripeWebhookSignatureError, verify_webhook_signature
 from app.integrations.stripe_schemas import StripeCheckoutSessionPayload, StripeSubscriptionPayload, StripeWebhookEnvelope
 from app.models.integration import WebhookEvent, WebhookProcessingStatus
@@ -139,6 +139,12 @@ async def billing_webhook(
     external_event_id = envelope.id
     event_type = envelope.type
 
+    # Phase 17B-2R classification: tenant identity is not yet knowable
+    # here — it is only resolved below, from the verified webhook
+    # payload's own metadata, after signature verification (same
+    # "resolve-then-stamp" reasoning as app/api/v1/webhooks.py). This
+    # session only creates/updates the WebhookEvent row itself (nullable
+    # tenant_id until resolved), so genuinely no tenant context to set yet.
     async with async_session_maker() as session:
         existing = (
             await session.execute(
@@ -204,6 +210,11 @@ async def billing_webhook(
         logger.error("billing_webhook_processing_failed", event_id=external_event_id, error=str(exc))
 
     async with async_session_maker() as session:
+        # tenant_id is resolved above from the verified payload (may still
+        # be None for event types that carry no tenant metadata, e.g.
+        # customer.subscription.updated/.deleted) — set_tenant_context is
+        # a safe no-op on None, never a fabricated value.
+        await set_tenant_context(session, tenant_id)
         row = await session.get(WebhookEvent, webhook_row.id)
         if row is not None:
             row.status = status_value

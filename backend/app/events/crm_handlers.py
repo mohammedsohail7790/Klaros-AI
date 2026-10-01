@@ -17,6 +17,7 @@ import uuid
 import structlog
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import Appointment
 from app.models.event import Event, EventType
@@ -38,6 +39,7 @@ def register_crm_handlers(bus: EventBus, session_factory: async_sessionmaker) ->
 
     async def notify_on_appointment_created(event: Event) -> None:
         async with session_factory() as session:
+            await set_tenant_context(session, event.tenant_id)
             appointment = await session.get(Appointment, event.entity_id)
             if appointment is None:
                 return

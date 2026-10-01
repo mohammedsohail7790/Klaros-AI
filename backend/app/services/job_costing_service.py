@@ -11,6 +11,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.event import EventType
 from app.models.operations import ExceptionType, Job, JobMaterial
 from app.models.finance import JobCost
@@ -42,6 +43,7 @@ class JobCostingService:
     ) -> JobCost:
         total_cost = (quantity * unit_cost).quantize(Decimal("0.01"))
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id:
                 raise JobNotFoundError("Job not found")
@@ -70,6 +72,7 @@ class JobCostingService:
         actual_unit_cost but no corresponding cost row yet (source='material_sync')."""
         created = 0
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             materials = (
                 await session.execute(
                     select(JobMaterial).where(
@@ -120,6 +123,7 @@ class JobCostingService:
 
     async def recalculate_job_actuals(self, tenant_id: uuid.UUID, job_id: uuid.UUID) -> Job:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id:
                 raise JobNotFoundError("Job not found")

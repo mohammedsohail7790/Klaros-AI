@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.models.operations import Worker, WorkerStatus
 from app.models.rbac import Permission
 from app.tools.base import ExecutionContext, Tool
@@ -59,6 +60,7 @@ class CreateWorker(Tool):
 
     async def execute(self, input: CreateWorkerInput, context: ExecutionContext) -> WorkerOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             worker = Worker(
                 tenant_id=context.tenant_id,
                 name=input.name,
@@ -95,6 +97,7 @@ class ListWorkers(Tool):
 
     async def execute(self, input: ListWorkersInput, context: ExecutionContext) -> ListWorkersOutput:
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             query = select(Worker).where(Worker.tenant_id == context.tenant_id)
             if input.active_only:
                 query = query.where(Worker.active.is_(True))
@@ -124,6 +127,7 @@ class UpdateWorkerStatus(Tool):
             raise ValueError(f"Invalid worker status: {input.status}") from None
 
         async with self._session_factory() as session:
+            await set_tenant_context(session, context.tenant_id)
             worker = await session.get(Worker, input.worker_id)
             if worker is None or worker.tenant_id != context.tenant_id:
                 raise ValueError("Worker not found")

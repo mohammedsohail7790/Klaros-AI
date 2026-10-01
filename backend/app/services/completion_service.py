@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.event import EventType
 from app.models.operations import (
@@ -50,6 +51,7 @@ class CompletionService:
 
     async def generate_completion_packet(self, tenant_id: uuid.UUID, job_id: uuid.UUID) -> CompletionPacket:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id:
                 raise JobNotFoundError("Job not found")
@@ -114,6 +116,7 @@ class CompletionService:
 
     async def close_job(self, tenant_id: uuid.UUID, job_id: uuid.UUID) -> Job:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             job = await session.get(Job, job_id)
             if job is None or job.tenant_id != tenant_id:
                 raise JobNotFoundError("Job not found")

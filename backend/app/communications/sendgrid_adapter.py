@@ -15,6 +15,7 @@ import structlog
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import CommunicationProvider, MessageTemplate
+from app.db.session import set_tenant_context
 from app.models.communication import CommunicationLog
 
 logger = structlog.get_logger(__name__)
@@ -87,6 +88,7 @@ class SendGridEmailAdapter(CommunicationProvider):
 
     async def _log(self, tenant_id, *, channel, template, recipient, subject, body, status, external_id=None) -> None:
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             session.add(
                 CommunicationLog(
                     tenant_id=tenant_id,

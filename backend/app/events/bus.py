@@ -25,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.session import set_tenant_context
 from app.events.transport import EventTransport
 from app.models.event import DeadLetterEvent, Event, EventProcessingRecord, EventStatus, ProcessingStatus
 
@@ -95,6 +96,7 @@ class EventBus:
         correlation_id = correlation_id or uuid.uuid4()
 
         async with self.session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             if idempotency_key:
                 existing = (
                     await session.execute(
@@ -192,6 +194,14 @@ class EventBus:
             if event is None:
                 logger.warning("event_not_found_for_processing", event_id=str(event_id))
                 return ProcessingStatus.FAILED
+
+            # Every event belongs to exactly one tenant (see module
+            # docstring) — stamp this transaction's tenant context now that
+            # the event row (fetched by PK, no tenant filter needed) has
+            # told us which tenant, before any further tenant-owned table
+            # access below (EventProcessingRecord, DeadLetterEvent) or the
+            # handler's own DB work.
+            await set_tenant_context(session, event.tenant_id)
 
             record = (
                 await session.execute(
@@ -310,6 +320,7 @@ class EventBus:
             event = await session.get(Event, event_id)
             if event is None:
                 raise ValueError(f"Unknown event_id: {event_id}")
+            await set_tenant_context(session, event.tenant_id)
 
             record = (
                 await session.execute(
@@ -354,6 +365,15 @@ class EventBus:
         genuinely duplicated transport delivery, so this never causes a
         handler to run twice.
         """
+        # Phase 17B-2 note: this pass is a genuine, intentional multi-tenant
+        # scan (any tenant's stuck PUBLISHED event, across the whole
+        # table) — it is not a per-event tenant operation like _handle_one/
+        # publish/replay above, so it deliberately does NOT call
+        # set_tenant_context here. `events`/`event_processing_records` have
+        # no RLS policy today (Phase 17A §4), so this is a documented,
+        # harmless no-op for now; a real "system/global" DB identity for
+        # operations exactly like this one is Phase 17B-3's explicit job,
+        # not invented here.
         cutoff = datetime.now(timezone.utc).timestamp() - grace_seconds
         cutoff_dt = datetime.fromtimestamp(cutoff, tz=timezone.utc)
         subscribed_types = self.subscribed_event_types()

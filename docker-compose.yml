@@ -5,9 +5,22 @@ services:
     image: ankane/pgvector:v0.5.1
     restart: unless-stopped
     environment:
+      # POSTGRES_USER remains the cluster's bootstrap/initdb role — always
+      # a Postgres superuser by Postgres's own design, so it stays the
+      # OWNER/migration role (see DATABASE_MIGRATION_URL below), never the
+      # application's normal runtime connection as of Phase 17B-1.
       POSTGRES_USER: ${POSTGRES_USER:-klaros}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-klaros}
       POSTGRES_DB: ${POSTGRES_DB:-klaros}
+      # Phase 17B-1: the restricted runtime application role — LOGIN,
+      # NOSUPERUSER, NOBYPASSRLS, never a table owner (see
+      # backend/scripts/db/provision_app_role.py and
+      # backend/scripts/db/docker-initdb/01-create-app-role.sh, which this
+      # service's docker-entrypoint-initdb.d mount below runs once, only
+      # against a brand-new postgres_data volume). `backend`/`worker`/
+      # `event-worker` below connect as this role for normal traffic.
+      APP_DB_USER: ${APP_DB_USER:-klaros_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-klaros_app}
     # Bound to loopback only — never intended to be reachable from outside
     # this host. Still reachable at localhost:5432 for local dev tooling
     # (psql, a GUI client) on the same machine; a real production
@@ -18,6 +31,15 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Phase 17B-1: runs ONLY the first time this volume is initialized
+      # (Postgres's own /docker-entrypoint-initdb.d convention) — creates
+      # the restricted APP_DB_USER role. An already-existing local
+      # postgres_data volume from before this phase will NOT get this
+      # automatically; run
+      # `docker compose exec backend python -m scripts.db.provision_app_role`
+      # once (with DATABASE_MIGRATION_URL/APP_DB_USER/APP_DB_PASSWORD set)
+      # to provision it into an existing dev database instead.
+      - ./backend/scripts/db/docker-initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-klaros}"]
       interval: 5s
@@ -74,7 +96,8 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-klaros}:${POSTGRES_PASSWORD:-klaros}@postgres:5432/${POSTGRES_DB:-klaros}
+      - DATABASE_URL=postgresql+asyncpg://${APP_DB_USER:-klaros_app}:${APP_DB_PASSWORD:-klaros_app}@postgres:5432/${POSTGRES_DB:-klaros}
+      - DATABASE_MIGRATION_URL=postgresql+asyncpg://${POSTGRES_USER:-klaros}:${POSTGRES_PASSWORD:-klaros}@postgres:5432/${POSTGRES_DB:-klaros}
       - REDIS_URL=redis://redis:6379/0
       - EVENT_TRANSPORT=redis
       - RATE_LIMIT_BACKEND=redis
@@ -97,7 +120,8 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-klaros}:${POSTGRES_PASSWORD:-klaros}@postgres:5432/${POSTGRES_DB:-klaros}
+      - DATABASE_URL=postgresql+asyncpg://${APP_DB_USER:-klaros_app}:${APP_DB_PASSWORD:-klaros_app}@postgres:5432/${POSTGRES_DB:-klaros}
+      - DATABASE_MIGRATION_URL=postgresql+asyncpg://${POSTGRES_USER:-klaros}:${POSTGRES_PASSWORD:-klaros}@postgres:5432/${POSTGRES_DB:-klaros}
       - REDIS_URL=redis://redis:6379/0
       - EVENT_TRANSPORT=redis
       - TEMPORAL_HOST=temporal:7233
@@ -124,7 +148,8 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-klaros}:${POSTGRES_PASSWORD:-klaros}@postgres:5432/${POSTGRES_DB:-klaros}
+      - DATABASE_URL=postgresql+asyncpg://${APP_DB_USER:-klaros_app}:${APP_DB_PASSWORD:-klaros_app}@postgres:5432/${POSTGRES_DB:-klaros}
+      - DATABASE_MIGRATION_URL=postgresql+asyncpg://${POSTGRES_USER:-klaros}:${POSTGRES_PASSWORD:-klaros}@postgres:5432/${POSTGRES_DB:-klaros}
       - REDIS_URL=redis://redis:6379/0
       - EVENT_TRANSPORT=redis
       - TEMPORAL_HOST=temporal:7233
