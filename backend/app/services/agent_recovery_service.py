@@ -133,7 +133,7 @@ import structlog
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.db.session import set_tenant_context
+from app.db.session import discovery_session_maker, set_tenant_context
 from app.models.actor import ActorType
 from app.models.agent import (
     AgentExecution,
@@ -204,29 +204,74 @@ class AgentRecoveryService:
         now_utc = now_utc or datetime.now(timezone.utc)
         candidates = await self._find_stale_candidates(tenant_id, limit, now_utc)
         claimed: list[uuid.UUID] = []
-        for execution_id in candidates:
-            won = await self._claim(execution_id, now_utc)
+        for candidate_tenant_id, execution_id in candidates:
+            won = await self._claim(candidate_tenant_id, execution_id, now_utc)
             if not won:
                 continue
-            await self._recover_one(execution_id)
+            await self._recover_one(candidate_tenant_id, execution_id)
             claimed.append(execution_id)
         return claimed
 
     async def _find_stale_candidates(
         self, tenant_id: uuid.UUID | None, limit: int, now_utc: datetime
-    ) -> list[uuid.UUID]:
-        async with self._session_factory() as session:
-            # Same shape as AgentTriggerService.check_and_dispatch_scheduled:
-            # tenant_id is optional here — None means this worker's own
-            # sweep-all-tenants tick (a genuine, intentional multi-tenant
-            # scan, flagged for Phase 17B-3's system/global context design
-            # rather than faked here); a real tenant_id is an ordinary
-            # per-tenant operation this phase's contract covers.
+    ) -> list[tuple[uuid.UUID, uuid.UUID]]:
+        # Real-RLS-enforcement fix (found via live staging validation,
+        # round 8 of the staging-readiness task — same bug class as
+        # team_service.py's invite-accept fix and
+        # agent_execution_service.py's execution-lifecycle fix): the
+        # `tenant_id is None` branch below is this worker's real,
+        # actually-wired sweep-all-tenants tick (`sweep_once` is called
+        # with no arguments from both app/main.py's background task and
+        # app/events/worker.py's periodic jobs — never dead code). It
+        # queries `self._session_factory()`, which is the ordinary
+        # restricted `klaros_app` role connection — genuinely tenant-
+        # scoped by RLS. With no `set_tenant_context` call possible (there
+        # is no single tenant_id to stamp for a cross-tenant scan), every
+        # row was invisible under real RLS enforcement: this method always
+        # returned an empty list, meaning the entire crash-recovery safety
+        # net never found anything to recover in a real RLS-enforcing
+        # environment. Confirmed directly against real Postgres: a bare
+        # `SELECT id, tenant_id FROM agent_executions` as `klaros_app` with
+        # no context set returns zero rows.
+        #
+        # Fix: when this is genuinely a cross-tenant sweep (`tenant_id is
+        # None`), read through the narrow, read-only `klaros_discovery`
+        # role instead — which has exactly this `agent_executions.
+        # discovery_select` policy (`USING (true)`, SELECT-only) for
+        # exactly this purpose (same role, same precedent pattern already
+        # used by `McpCredentialService._resolve_tenant_id_via_discovery`
+        # — see that method's docstring for why a SEPARATE connection/role
+        # is used rather than ever widening `klaros_app`'s own policy).
+        # `discovery_select` is read-only, so every subsequent write
+        # (`_claim`/`_recover_one`/`_halt`/`_audit`) still goes through the
+        # normal restricted-role session with that row's own real
+        # `tenant_id` stamped via `set_tenant_context` BEFORE the lookup —
+        # this method now returns `(tenant_id, execution_id)` pairs so
+        # every downstream call already has a real, known tenant_id and
+        # never has to rediscover it via a context-less, RLS-gated query
+        # (the exact root cause of this whole bug class). When a real
+        # `tenant_id` is already given (the ordinary per-tenant call
+        # shape), behavior is unchanged other than also returning it
+        # paired with each id.
+        if tenant_id is None and discovery_session_maker is None:
+            # Fails closed exactly like McpCredentialService's own
+            # documented fallback: no discovery role configured in this
+            # environment means the cross-tenant sweep finds nothing,
+            # which is the same (pre-existing, already-acceptable) outcome
+            # as before this fix — never silently promoted to a dangerous
+            # unscoped query against the restricted role.
+            return []
+
+        session_factory = (
+            discovery_session_maker if tenant_id is None and discovery_session_maker is not None
+            else self._session_factory
+        )
+        async with session_factory() as session:
             if tenant_id is not None:
                 await set_tenant_context(session, tenant_id)
             pending_orphan_cutoff = now_utc - PENDING_ORPHAN_THRESHOLD
             query = (
-                select(AgentExecution.id)
+                select(AgentExecution.tenant_id, AgentExecution.id)
                 .where(
                     or_(
                         # Stale RUNNING — Phase 6's original candidate set.
@@ -252,9 +297,9 @@ class AgentRecoveryService:
             )
             if tenant_id is not None:
                 query = query.where(AgentExecution.tenant_id == tenant_id)
-            return list((await session.execute(query)).scalars().all())
+            return [(row[0], row[1]) for row in (await session.execute(query)).all()]
 
-    async def _claim(self, execution_id: uuid.UUID, now_utc: datetime) -> bool:
+    async def _claim(self, tenant_id: uuid.UUID, execution_id: uuid.UUID, now_utc: datetime) -> bool:
         """The one atomic operation this whole module exists for — see
         module docstring. A single conditional UPDATE, checked via
         rowcount; two concurrent callers racing on the same execution_id
@@ -263,17 +308,21 @@ class AgentRecoveryService:
         both cases the row transitions to RUNNING with a freshly claimed
         lease, so the rest of the recovery path (`_recover_one` ->
         `resume_recovered`) is identical regardless of which branch
-        matched."""
+        matched.
+
+        Real-RLS-enforcement fix (see `_find_stale_candidates`'s docstring
+        above): this used to look up the owning tenant itself via
+        `session.scalar(select(AgentExecution.tenant_id).where(...))` on
+        the restricted `klaros_app` session with no context set yet —
+        under real RLS that SELECT is just as invisible as any other
+        (confirmed directly against real Postgres), so `owner_tenant_id`
+        was always `None` and the UPDATE below always matched zero rows.
+        `tenant_id` is now a real, already-known parameter (threaded from
+        `_find_stale_candidates`'s discovery-role read), so it's stamped
+        directly — no self-lookup needed."""
         pending_orphan_cutoff = now_utc - PENDING_ORPHAN_THRESHOLD
         async with self._session_factory() as session:
-            # No tenant_id parameter on this method (a pure claim-by-
-            # execution_id conditional UPDATE) — look up the owning tenant
-            # first so this transaction's UPDATE below runs with tenant
-            # context set.
-            owner_tenant_id = await session.scalar(
-                select(AgentExecution.tenant_id).where(AgentExecution.id == execution_id)
-            )
-            await set_tenant_context(session, owner_tenant_id)
+            await set_tenant_context(session, tenant_id)
             result = await session.execute(
                 update(AgentExecution)
                 .where(
@@ -304,14 +353,19 @@ class AgentRecoveryService:
             await session.commit()
             won = result.rowcount == 1
         if won:
-            await self._audit(execution_id, "agent.execution.recovery.detected")
+            await self._audit(tenant_id, execution_id, "agent.execution.recovery.detected")
         return won
 
-    async def _recover_one(self, execution_id: uuid.UUID) -> None:
+    async def _recover_one(self, tenant_id: uuid.UUID, execution_id: uuid.UUID) -> None:
+        # Real-RLS-enforcement fix (see `_find_stale_candidates`'s
+        # docstring above): this used to call `session.get` before
+        # `set_tenant_context`, deriving the context to stamp from the row
+        # it had just (always unsuccessfully, under real RLS) fetched.
+        # `tenant_id` is now a real parameter passed in from `_claim`'s own
+        # (already-fixed) caller.
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
-            await set_tenant_context(session, execution.tenant_id if execution else None)
-            tenant_id = execution.tenant_id
             mode = execution.mode
             attempt_count = execution.recovery_attempt_count
 
@@ -320,10 +374,12 @@ class AgentRecoveryService:
                 tenant_id, execution_id, AgentExecutionTerminationReason.RECOVERY_ATTEMPTS_EXHAUSTED,
                 error=f"Execution exceeded {MAX_RECOVERY_ATTEMPTS} recovery attempts — halted, never retried again.",
             )
-            await self._audit(execution_id, "agent.execution.recovery.failed", reason="recovery_attempts_exhausted")
+            await self._audit(
+                tenant_id, execution_id, "agent.execution.recovery.failed", reason="recovery_attempts_exhausted"
+            )
             return
 
-        await self._audit(execution_id, "agent.execution.recovery.claimed")
+        await self._audit(tenant_id, execution_id, "agent.execution.recovery.claimed")
         try:
             if mode == AgentExecutionMode.SINGLE_ACTION:
                 # Phase 7: SINGLE_ACTION now has the exact same durable
@@ -333,7 +389,7 @@ class AgentRecoveryService:
                 await self._exec.resume_recovered(tenant_id, execution_id)
             else:
                 await self._reasoning.resume_recovered(tenant_id, execution_id)
-            await self._audit(execution_id, "agent.execution.recovery.resumed")
+            await self._audit(tenant_id, execution_id, "agent.execution.recovery.resumed")
         except Exception as exc:  # noqa: BLE001 — one bad recovery must never crash the sweep or the worker tick
             logger.error("agent_recovery_resume_failed", execution_id=str(execution_id), error=str(exc))
             # Defensive fallback (should be unreachable in practice — see
@@ -347,7 +403,7 @@ class AgentRecoveryService:
                     tenant_id, execution_id, AgentExecutionTerminationReason.RECOVERY_UNSAFE_SINGLE_ACTION,
                     error=f"SINGLE_ACTION recovery raised before reaching a terminal state: {exc}"[:2000],
                 )
-            await self._audit(execution_id, "agent.execution.recovery.failed", reason=str(exc)[:500])
+            await self._audit(tenant_id, execution_id, "agent.execution.recovery.failed", reason=str(exc)[:500])
 
     async def _halt(self, tenant_id, execution_id, termination_reason, *, error: str) -> None:
         async with self._session_factory() as session:
@@ -359,12 +415,20 @@ class AgentRecoveryService:
             execution.completed_at = datetime.now(timezone.utc)
             await session.commit()
 
-    async def _audit(self, execution_id: uuid.UUID, action: str, *, reason: str | None = None) -> None:
+    async def _audit(
+        self, tenant_id: uuid.UUID, execution_id: uuid.UUID, action: str, *, reason: str | None = None
+    ) -> None:
+        # Real-RLS-enforcement fix (see `_find_stale_candidates`'s
+        # docstring above): this used to call `session.get` before
+        # `set_tenant_context` and silently no-op when it returned `None`
+        # — meaning this audit log was never actually written in a real
+        # enforcing environment, with no error surfaced anywhere. All
+        # callers now already have `tenant_id` in scope.
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
             if execution is None:
                 return
-            await set_tenant_context(session, execution.tenant_id)
             session.add(
                 AuditLog(
                     tenant_id=execution.tenant_id,

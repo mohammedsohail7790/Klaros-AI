@@ -143,9 +143,23 @@ _TABLE_COLUMN_GRANTS: dict[str, tuple[str, ...]] = {
         "morning_brief_timezone",
     ),
     # AgentRecoveryService._find_stale_candidates (backend/app/services/
-    # agent_recovery_service.py) — already the narrowest of the 5 paths in
-    # real application code today: only `id` is ever selected.
-    "agent_executions": ("id",),
+    # agent_recovery_service.py). Round 8 of the staging-readiness task's
+    # real-RLS-enforcement fix (see that method's own docstring) now also
+    # selects `tenant_id` — the whole point of the fix is to read each
+    # stale candidate's real owning tenant here, via this narrow read-only
+    # role, so every downstream write (`_claim`/`_recover_one`/`_halt`/
+    # `_audit`) can stamp real tenant context up front instead of trying
+    # to rediscover it later via a context-less, RLS-gated query on the
+    # restricted `klaros_app` role (confirmed directly against real
+    # Postgres: that query always returns zero rows with no context set —
+    # the exact bug this fix closes). `status`/`lease_expires_at`/
+    # `created_at` are also listed because PostgreSQL's column-level GRANT
+    # SELECT requires every column the query references ANYWHERE —
+    # including its WHERE clause, not just the selected columns — to be
+    # explicitly granted (confirmed directly: granting only `id`/
+    # `tenant_id` still raised `InsufficientPrivilegeError` until these
+    # three were added too).
+    "agent_executions": ("id", "tenant_id", "status", "lease_expires_at", "created_at"),
     # Round 15 (§37d/§39): a 6th, structurally different legitimate
     # cross-tenant read — MCP credential authentication
     # (McpCredentialService.authenticate,
