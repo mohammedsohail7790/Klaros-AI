@@ -209,6 +209,26 @@ class TeamService:
         except TokenError as exc:
             raise InvalidInviteError("This invite link is invalid or has expired") from exc
 
+        # Real-RLS-enforcement fix (found via live staging validation,
+        # round 4 of the staging-readiness task): `team_invites` carries a
+        # real enforcing `tenant_select` policy (`tenant_id =
+        # current_tenant_id()`). The JWT's `tenant_id` claim is already
+        # cryptographically verified by `decode_invite_token` above (it's
+        # signed with JWT_SECRET, same trust level as any other token this
+        # codebase accepts), so it's safe to stamp it as the tenant context
+        # BEFORE the lookup — without this, `session.get()` below runs with
+        # no tenant context at all and RLS fails it closed unconditionally
+        # (current_tenant_id() is NULL, which can never equal any real
+        # tenant_id), so every accept/preview call failed with "invalid or
+        # expired" regardless of whether the invite was genuinely valid.
+        # The existing cross-checks just below (tenant_id/email match
+        # against the fetched row) are kept unchanged as defense in depth.
+        try:
+            claimed_tenant_id = uuid.UUID(payload["tenant_id"])
+        except (KeyError, ValueError, TypeError) as exc:
+            raise InvalidInviteError("This invite link is invalid or has expired") from exc
+        await set_tenant_context(session, claimed_tenant_id)
+
         invite = await session.get(TeamInvite, uuid.UUID(payload["invite_id"]))
         if invite is None or str(invite.tenant_id) != payload["tenant_id"] or invite.email != payload["email"]:
             raise InvalidInviteError("This invite link is invalid or has expired")
