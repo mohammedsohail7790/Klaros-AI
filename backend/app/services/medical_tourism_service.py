@@ -938,3 +938,7 @@ async def _provide_website_procedure_list(tenant_id: uuid.UUID, params: dict) ->
 
 register_website_data_provider("medical_tourism.provider_directory", _provide_website_provider_directory)
 register_website_data_provider("medical_tourism.procedure_catalog", _provide_website_procedure_list)
+
+# Operational layer (provider matching, lead operating context, console metrics) — registers
+# this module's operations provider on import.
+from app.services import medical_tourism_operations as _medical_tourism_operations  # noqa: E402,F401

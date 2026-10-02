@@ -23,23 +23,41 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { MessageCircleQuestion } from "lucide-react";
+import { Check, MessageCircleQuestion } from "lucide-react";
 import {
   ApiError,
   BusinessJourney,
   DiscoverySession,
+  DiscoveryTurn,
   answerDiscoveryQuestion,
   completeDiscoveryJourneyStep,
+  finishDiscoverySession,
   getCurrentBusinessJourney,
   getDiscoverySession,
 } from "@/lib/api";
 import { getJourneyDestination, isJourneyAtStage } from "@/lib/businessJourneyController";
+import { StageTracker } from "@/components/business/StageTracker";
+import type { BuilderStage } from "@/lib/api";
+
+// Discovery runs before the backend has a Blueprint to derive the full tracker
+// from, so the early part of the journey is a fixed, static strip.
+const DISCOVERY_STAGES: BuilderStage[] = [
+  { key: "idea", label: "Idea", state: "done", route: "/business" },
+  { key: "discovery", label: "Discovery", state: "current", route: "/business/discovery" },
+  { key: "blueprint", label: "Blueprint", state: "todo", route: "/business/blueprint" },
+  { key: "requirements", label: "Requirements", state: "todo", route: "/business/requirements" },
+  { key: "recommendations", label: "Recommendations", state: "todo", route: "/business/recommendations" },
+  { key: "map", label: "Business Map", state: "todo", route: "/business/map" },
+  { key: "website", label: "Website", state: "todo", route: "/website" },
+  { key: "launch", label: "Launch", state: "todo", route: "/business/home" },
+];
 
 export default function DiscoveryPage() {
   const { token, user } = useAuth();
   const router = useRouter();
   const [journey, setJourney] = useState<BusinessJourney | null | undefined>(undefined);
   const [session, setSession] = useState<DiscoverySession | null>(null);
+  const [turns, setTurns] = useState<DiscoveryTurn[]>([]);
   const [question, setQuestion] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +82,9 @@ export default function DiscoveryPage() {
       }
       setJourney(j);
       if (j.discovery_session_id) {
-        const { session: s, turns } = await getDiscoverySession(token, j.discovery_session_id);
+        const { session: s, turns: t } = await getDiscoverySession(token, j.discovery_session_id);
         setSession(s);
+        setTurns(t);
         if (s.status === "COMPLETED") {
           // The Discovery session already reached COMPLETED server-side —
           // this happens on a refresh/direct navigation after the final
@@ -89,7 +108,7 @@ export default function DiscoveryPage() {
         // (see BusinessDiscoveryService._process_turn/submit_answer). The
         // most recent turn (turns are returned in ascending sequence order)
         // is therefore always the source of truth for "what to ask next."
-        const latestTurn = turns[turns.length - 1];
+        const latestTurn = t[t.length - 1];
         setQuestion(s.status === "ACTIVE" ? latestTurn?.question ?? null : null);
       }
     } catch (err) {
@@ -121,8 +140,9 @@ export default function DiscoveryPage() {
         setQuestion(result.next_question);
         // Reconcile the session's own counters from the server rather than
         // incrementing local state.
-        const { session: s } = await getDiscoverySession(token, journey.discovery_session_id);
+        const { session: s, turns: t } = await getDiscoverySession(token, journey.discovery_session_id);
         setSession(s);
+        setTurns(t);
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -132,6 +152,23 @@ export default function DiscoveryPage() {
       } else {
         setError(err instanceof ApiError ? err.message : "Unable to submit your answer. Please try again.");
       }
+    } finally {
+      setBusy(false);
+      submitting.current = false;
+    }
+  }
+
+  async function handleFinishEarly() {
+    if (!token || !journey?.discovery_session_id || submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      await finishDiscoverySession(token, journey.discovery_session_id);
+      setQuestion(null);
+      await advanceToBlueprint();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "We couldn't finish just now. Please try again.");
     } finally {
       setBusy(false);
       submitting.current = false;
@@ -176,53 +213,124 @@ export default function DiscoveryPage() {
     );
   }
 
+  // Everything the user has already told us, oldest first: the opening idea
+  // plus each answered question. Read-only here — anything that needs
+  // correcting can be edited on the Blueprint screen next, before it's final.
+  // A turn stores the answer to the PREVIOUS turn's question (the turn's own
+  // `question` is the next one asked), so each answer is paired with the
+  // question on the turn before it. Turn 0 is the opening idea, shown above.
+  const answered = turns
+    .map((t, i) => ({ id: t.id, question: i > 0 ? turns[i - 1].question : null, answer: t.answer }))
+    .filter((_, i) => i > 0)
+    .filter((t) => t.answer && t.answer.trim());
+  const asked = session?.questions_asked ?? 0;
+  const max = session?.max_questions ?? 0;
+
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-2xl px-6 py-10">
+      <div className="mx-auto max-w-2xl px-6 py-8">
+        <StageTracker stages={DISCOVERY_STAGES} activeKey="discovery" />
         <PageHeader
           icon={MessageCircleQuestion}
-          title="Discovery"
-          description="Answer a few questions so Klaros can build your business profile."
+          title="Tell us about your business"
+          description="A few quick questions so Klaros understands what you're building. Plain answers are fine."
         />
 
-        {error && (
-          <div className="mb-4">
-            <Alert variant="danger">{error}</Alert>
+        {session?.business_idea && (
+          <div className="mb-4 rounded-lg border border-border bg-surface-muted px-4 py-3 text-sm">
+            <p className="klaros-label mb-0.5">Your idea</p>
+            <p className="text-foreground">{session.business_idea}</p>
           </div>
         )}
 
-        <div className="klaros-card space-y-4 p-6">
+        {error && (
+          <div className="mb-4">
+            <Alert variant="danger" action={<Button size="sm" variant="secondary" onClick={() => load()}>Try again</Button>}>{error}</Alert>
+          </div>
+        )}
+
+        <div className="klaros-card space-y-4 p-5 sm:p-6">
           {advancing ? (
             <p className="text-sm text-muted" aria-live="polite">
-              Discovery complete — building your Business Blueprint...
+              That's everything we need — pulling your business together…
             </p>
           ) : question ? (
             <>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground" aria-live="polite">
-                Building your business profile{session ? ` — ${session.questions_asked} question${session.questions_asked === 1 ? "" : "s"} answered so far` : ""}
-              </p>
-              <p className="text-base font-medium text-foreground">{question}</p>
+              {max > 0 && (
+                <div aria-live="polite">
+                  <p className="text-xs text-muted-foreground">
+                    Question {Math.min(asked + 1, max)} — at most {max} in total
+                  </p>
+                  <div
+                    className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-muted"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={max}
+                    aria-valuenow={asked}
+                    aria-label="Discovery progress"
+                  >
+                    <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${Math.min(100, (asked / max) * 100)}%` }} />
+                  </div>
+                </div>
+              )}
+              <label htmlFor="discovery-answer" className="block text-base font-medium text-foreground">{question}</label>
               <textarea
-                className="klaros-input min-h-[100px]"
+                id="discovery-answer"
+                className="klaros-input min-h-[110px]"
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
-                placeholder="Your answer..."
+                placeholder="Type your answer…"
                 disabled={busy}
-                aria-label="Your answer"
               />
-              <Button onClick={handleSubmitAnswer} disabled={busy || !answer.trim()}>
-                {busy ? "Saving..." : "Continue"}
+              <Button onClick={handleSubmitAnswer} disabled={busy || !answer.trim()} className="w-full sm:w-auto">
+                {busy ? "Saving…" : "Continue"}
               </Button>
               <p className="text-xs text-muted-foreground">
-                Your progress is saved automatically — you can leave and come back any time.
+                Your progress is saved — you can leave and come back any time. You'll be able to review and correct everything before it's final.
               </p>
             </>
           ) : (
-            <p className="text-sm text-muted" aria-live="polite">
-              Loading your next question...
-            </p>
+            <div className="space-y-3" aria-live="polite">
+              <p className="text-sm text-muted">
+                {answered.length > 0
+                  ? "We don't have another question ready. If you've told us enough, you can move on and fill in or correct anything on the next screen."
+                  : "Getting your next question ready…"}
+              </p>
+              {answered.length > 0 && (
+                <Button onClick={handleFinishEarly} disabled={busy}>
+                  {busy ? "Working…" : "That's enough — build my Blueprint"}
+                </Button>
+              )}
+            </div>
+          )}
+          {question && !advancing && answered.length > 0 && (
+            <button
+              type="button"
+              onClick={handleFinishEarly}
+              disabled={busy}
+              className="text-sm text-muted underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+            >
+              That's enough — build my Blueprint
+            </button>
           )}
         </div>
+
+        {answered.length > 0 && (
+          <section className="mt-8" aria-labelledby="answers-so-far">
+            <h2 id="answers-so-far" className="klaros-label mb-3">What you've told us so far</h2>
+            <ol className="space-y-3">
+              {answered.map((t) => (
+                <li key={t.id} className="flex gap-3 text-sm">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                  <div className="min-w-0">
+                    {t.question && <p className="text-muted-foreground">{t.question}</p>}
+                    <p className="text-foreground">{t.answer}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
       </div>
     </AppShell>
   );

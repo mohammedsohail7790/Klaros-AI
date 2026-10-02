@@ -23,8 +23,8 @@ const hankenGrotesk = Hanken_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Klaros AI",
-  description: "The AI operating system for the one-person company.",
+  title: "Klaros AI — Build and operate your business with AI",
+  description: "Describe what you want to build. Klaros works out what your business needs, then helps you build and operate it.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

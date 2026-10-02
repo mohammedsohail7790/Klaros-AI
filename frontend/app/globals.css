@@ -19,15 +19,21 @@
   --color-border-strong: 216 211 196;
   --color-foreground: 28 26 22;
   --color-muted: 107 101 88;
-  --color-muted-foreground: 148 141 124;
+  --color-muted-foreground: 118 111 96; /* 4.7:1 on the page background (was 3.1:1) */
   --color-accent: 199 162 90;
-  --color-accent-hover: 140 111 62;
-  --color-accent-foreground: 255 255 255;
+  --color-accent-hover: 122 96 50; /* text-safe on accent-soft: 4.9:1 (was 3.9:1) */
+  --color-accent-foreground: 28 26 22; /* dark text on gold: 7.2:1 (white was 2.4:1) */
   --color-accent-soft: 238 234 226;
   --color-accent-2: 43 58 99;
   --color-success: 47 107 79;
-  --color-warning: 165 105 12;
+  --color-warning: 140 88 8;
   --color-danger: 173 59 44;
+}
+
+/* Keyboard users always get a visible focus indicator; pointer users do not. */
+:where(a, button, summary, [role="button"], input, textarea, select):focus-visible {
+  outline: 2px solid rgb(var(--color-accent-hover));
+  outline-offset: 2px;
 }
 
 body {
@@ -151,7 +157,7 @@ body::before {
      same "hover adds a colored glow" language as the Halla AI family's
      own primary buttons, not just a flat color swap. */
   .klaros-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-card transition-all duration-200 ease-out hover:-translate-y-px hover:bg-accent-hover hover:shadow-glow active:translate-y-0 active:shadow-card disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-card transition-all duration-200 ease-out hover:-translate-y-px hover:brightness-95 hover:shadow-glow active:translate-y-0 active:shadow-card disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
   }
 
   .klaros-btn-secondary {

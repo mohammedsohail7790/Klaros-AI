@@ -114,6 +114,27 @@ def _first_list_of_strings(data: dict, keys: tuple[str, ...]) -> list[str]:
     return []
 
 
+def _first_any_string(data: dict) -> str | None:
+    for v in data.values():
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+        if isinstance(v, list) and v and all(isinstance(x, str) for x in v):
+            return " ".join(x.strip() for x in v if x.strip()) or None
+    return None
+
+
+def _sentence(text: str | None) -> str | None:
+    """Capitalise a short stated phrase into a sentence ("a medical tourism
+    company" -> "A medical tourism company."). Never invents content."""
+    if not text:
+        return None
+    t = text.strip()
+    if not t:
+        return None
+    t = t[0].upper() + t[1:]
+    return t if t[-1] in ".!?" else t + "."
+
+
 def _safe_or_default(value: str | None, default: str) -> tuple[str, str]:
     """Returns (text, provenance). Falls back to a SYSTEM_DEFAULT if the
     candidate value is missing or fails the same content-safety validation
@@ -163,6 +184,24 @@ class WebsiteGenerationService:
         sections = await self._blueprints.list_sections(tenant_id, blueprint.id)
         by_key = {s.section_key: (s.data or {}) for s in sections}
 
+        # What the user said during Discovery lives in confirmed claims; section `data`
+        # is only filled when someone edits a section by hand. Use claims as the
+        # fallback so a confirmed Blueprint actually shapes the site.
+        claim_rows: dict[str, list[tuple[str, str]]] = {}
+        for claim in await self._blueprints.list_claims(tenant_id, blueprint.id, status="CONFIRMED"):
+            if isinstance(claim.value, str) and claim.value.strip():
+                claim_rows.setdefault(claim.section_key, []).append(
+                    (claim.key.rsplit(".", 1)[-1].lower(), claim.value.strip())
+                )
+
+        def _claim(section: BlueprintSectionKey, *, fields: tuple[str, ...] | None = None) -> str | None:
+            """First confirmed string claim for a section — restricted to specific
+            field names where the section mixes unrelated facts (IDENTITY)."""
+            for field_name, text in claim_rows.get(section.value, []):
+                if fields is None or field_name in fields:
+                    return text
+            return None
+
         identity = by_key.get(BlueprintSectionKey.IDENTITY.value, {})
         products = by_key.get(BlueprintSectionKey.PRODUCTS_SERVICES.value, {})
         customers = by_key.get(BlueprintSectionKey.CUSTOMERS.value, {})
@@ -170,18 +209,24 @@ class WebsiteGenerationService:
 
         provenance: dict[str, str] = {}
 
+        # The Blueprint rarely carries a trading name, but the owner gave their
+        # company name at sign-up — a real, user-stated fact — so prefer it over a
+        # generic placeholder.
+        org_name = await self._organization_name(tenant_id)
         business_name, prov = _safe_or_default(
-            _first_string(identity, ("business_name", "name", "company_name")), "Our Business"
+            _first_string(identity, ("business_name", "name", "company_name")) or org_name, "Our Business"
         )
         provenance["business_name"] = prov
 
         description, prov = _safe_or_default(
-            _first_string(identity, ("description", "tagline", "summary")), _DEFAULT_DESCRIPTION
+            _first_string(identity, ("description", "tagline", "summary")) or _sentence(_claim(BlueprintSectionKey.IDENTITY, fields=("description", "summary", "overview", "tagline"))),
+            _DEFAULT_DESCRIPTION
         )
         provenance["description"] = prov
 
         target_customer, prov = _safe_or_default(
-            _first_string(customers, ("target_customer", "description", "summary")),
+            _first_string(customers, ("target_customer", "description", "summary"))
+            or _sentence(_claim(BlueprintSectionKey.CUSTOMERS)),
             "Everyone who needs what we offer.",
         )
         provenance["target_customer"] = prov
@@ -194,12 +239,16 @@ class WebsiteGenerationService:
         )
 
         service_names = _first_list_of_strings(products, ("services", "products", "offerings"))
+        if not service_names and _claim(BlueprintSectionKey.PRODUCTS_SERVICES):
+            service_names = [_claim(BlueprintSectionKey.PRODUCTS_SERVICES)[:200]]  # type: ignore[index]
         provenance["services"] = "USER_STATED" if service_names else "SYSTEM_DEFAULT"
-        if not service_names:
-            service_names = ["Our services"]
 
         hero_headline = business_name
-        hero_subheadline = description
+        # No stated description -> no subheadline, rather than a generic claim nobody made.
+        hero_subheadline = description if provenance["description"] != "SYSTEM_DEFAULT" else None
+        # (SEO metadata still needs *some* text; the business name is the honest one.)
+        if provenance["description"] == "SYSTEM_DEFAULT":
+            description = business_name
         ai_used = False
         if ai_provider is not None and ai_provider.is_connected:
             ai_headline, ai_subheadline = await self._try_ai_hero_copy(
@@ -228,18 +277,27 @@ class WebsiteGenerationService:
                     cta_url="mailto:" + contact_email if contact_email else None,
                 ).model_dump(exclude_none=False),
             ),
-            SectionSpec(
-                component_type=ComponentType.FEATURE_GRID,
-                props=FeatureGridProps(
-                    title="What we offer",
-                    items=[{"title": name[:200], "icon_key": "check"} for name in service_names],
-                ).model_dump(),
-            ),
-            SectionSpec(
-                component_type=ComponentType.TEXT,
-                props=TextProps(heading="Who we serve", body=target_customer).model_dump(),
-            ),
         ]
+        # A section is only generated when the Blueprint actually supplied its content —
+        # a published site must never show "Our services" / "Everyone who needs what we
+        # offer" filler just to look complete.
+        if service_names:
+            home_sections.append(
+                SectionSpec(
+                    component_type=ComponentType.FEATURE_GRID,
+                    props=FeatureGridProps(
+                        title="What we offer",
+                        items=[{"title": name[:200], "icon_key": "check"} for name in service_names],
+                    ).model_dump(),
+                )
+            )
+        if provenance.get("target_customer") != "SYSTEM_DEFAULT":
+            home_sections.append(
+                SectionSpec(
+                    component_type=ComponentType.TEXT,
+                    props=TextProps(heading="Who we serve", body=target_customer).model_dump(),
+                )
+            )
 
         for provider_key, section_type in data_source_by_capability:
             props_model = (
@@ -303,12 +361,92 @@ class WebsiteGenerationService:
             ],
         )
 
+        # Requirement-driven pages: a dedicated page for every vertical data
+        # source the business actually has (never a fixed page list), and a
+        # "How it works" page when the Blueprint describes the customer
+        # journey. Each is generated only from data present in this tenant.
+        footer = SectionSpec(
+            component_type=ComponentType.FOOTER,
+            props=FooterProps(
+                business_name=business_name,
+                contact_email=contact_email or None,
+                contact_phone=contact_phone or None,
+            ).model_dump(),
+        )
+        extra_pages: list[PageSpec] = []
+        nav_items: list[dict[str, str]] = [{"label": "Home", "page_slug": "home"}]
+        used_slugs = {"home", "contact"}
+        for provider_key, section_type in data_source_by_capability:
+            is_directory = section_type == ComponentType.PROVIDER_DIRECTORY
+            slug, title = ("providers", "Our partners") if is_directory else ("services", "What we offer")
+            if slug in used_slugs:
+                continue
+            used_slugs.add(slug)
+            props_model = (
+                ProviderDirectoryProps(title=title) if is_directory else ProcedureListProps(title=title)
+            )
+            extra_pages.append(
+                PageSpec(
+                    slug=slug,
+                    title=title,
+                    seo=SeoMetadata(title=f"{title} — {business_name}"[:200], description=description[:4000]),
+                    sections=[
+                        SectionSpec(
+                            component_type=section_type,
+                            props=props_model.model_dump(),
+                            data_source=DataSourceRef(provider_key=provider_key, params={"limit": 50}),
+                        ),
+                        SectionSpec(
+                            component_type=ComponentType.CTA,
+                            props=CtaProps(
+                                heading="Ready to get started?",
+                                button_text="Get in touch",
+                                button_url=("mailto:" + contact_email) if contact_email else "tel:0000000000",
+                            ).model_dump(),
+                        ),
+                        footer,
+                    ],
+                )
+            )
+            nav_items.append({"label": title, "page_slug": slug})
+
+        journey_text = _first_any_string(by_key.get(BlueprintSectionKey.CUSTOMER_JOURNEY.value, {}))
+        if journey_text and "how-it-works" not in used_slugs:
+            safe_text, journey_prov = _safe_or_default(journey_text, "")
+            if safe_text:
+                provenance["how_it_works"] = journey_prov
+                extra_pages.append(
+                    PageSpec(
+                        slug="how-it-works",
+                        title="How it works",
+                        seo=SeoMetadata(title=f"How it works — {business_name}"[:200], description=description[:4000]),
+                        sections=[
+                            SectionSpec(
+                                component_type=ComponentType.TEXT,
+                                props=TextProps(heading="How it works", body=safe_text).model_dump(),
+                            ),
+                            footer,
+                        ],
+                    )
+                )
+                nav_items.append({"label": "How it works", "page_slug": "how-it-works"})
+        nav_items.append({"label": "Contact", "page_slug": "contact"})
+
         spec = WebsiteSpecification(
-            navigation={"items": [{"label": "Home", "page_slug": "home"}, {"label": "Contact", "page_slug": "contact"}]},
+            navigation={"items": nav_items},
             seo_defaults={"title": business_name[:200], "description": description[:4000]},
-            pages=[home_page, contact_page],
+            pages=[home_page, *extra_pages, contact_page],
         )
         return GenerationResult(specification=spec, provenance=provenance, ai_used=ai_used)
+
+    async def _organization_name(self, tenant_id: uuid.UUID) -> str | None:
+        from app.db.session import set_tenant_context
+        from app.models.organization import Organization
+
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            org = (await session.execute(select(Organization).where(Organization.id == tenant_id))).scalar_one_or_none()
+            return org.name if org is not None else None
 
     async def _resolve_vertical_data_sources(
         self, tenant_id: uuid.UUID

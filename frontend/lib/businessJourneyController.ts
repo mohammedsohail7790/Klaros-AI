@@ -18,7 +18,9 @@ export type JourneyRoute =
   | "/business"
   | "/business/discovery"
   | "/business/blueprint"
-  | "/business/recommendations";
+  | "/business/requirements"
+  | "/business/recommendations"
+  | "/business/home";
 
 /** Where a user with a journey in this status should be looking. */
 export function getJourneyDestination(status: BusinessJourneyStatus): JourneyRoute {
@@ -26,11 +28,16 @@ export function getJourneyDestination(status: BusinessJourneyStatus): JourneyRou
     case "DISCOVERY_ACTIVE":
       return "/business/discovery";
     case "BLUEPRINT_REVIEW":
-    case "BLUEPRINT_ACTIVE":
       return "/business/blueprint";
+    case "BLUEPRINT_ACTIVE":
+      // A confirmed Blueprint continues into Requirements, where the user
+      // generates recommendations; the Blueprint page itself stays
+      // reachable (it renders in both statuses).
+      return "/business/requirements";
     case "RECOMMENDATIONS_READY":
       return "/business/recommendations";
     case "COMPLETED":
+      return "/business/home";
     case "ABANDONED":
       return "/business";
     default:
@@ -51,7 +58,7 @@ export function getJourneyStageLabel(status: BusinessJourneyStatus): string {
     case "RECOMMENDATIONS_READY":
       return "Recommendations ready";
     case "COMPLETED":
-      return "Business foundation complete";
+      return "Business set up";
     case "ABANDONED":
       return "Journey abandoned";
     default:

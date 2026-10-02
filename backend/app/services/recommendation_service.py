@@ -111,6 +111,7 @@ from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.business_blueprint import (
     BlueprintClaim,
+    BlueprintSection,
     BlueprintSectionKey,
     BlueprintStatus,
     BusinessBlueprint,
@@ -125,6 +126,7 @@ from app.models.recommendation import (
     RecommendationType,
 )
 from app.models.vertical_extension import VerticalExtension
+from app.services.capability_vocabulary import canonical_key, split_capability_text
 from app.services.tool_catalog_service import ToolCatalogEntry, list_tool_catalog
 from app.services.vertical_extension_service import VerticalExtensionService
 from app.tools.registry import ToolRegistry
@@ -206,10 +208,65 @@ def _capability_keys_from_claim(claim: BlueprintClaim) -> list[str]:
     if isinstance(value, list):
         return [v.strip().lower() for v in value if isinstance(v, str) and v.strip()]
     if isinstance(value, str):
-        return [value.strip().lower()] if value.strip() else []
+        # A free-text statement ("bookings, payments and inventory") is
+        # split into individual capabilities and canonicalised through the
+        # shared vocabulary (unknown phrases fall back to a stable
+        # snake_case key); a single phrase is never fragmented. Structured
+        # list / key-shaped claims keep their exact keys.
+        keys: list[str] = []
+        for item in split_capability_text(value) if value.strip() else []:
+            key = canonical_key(item)
+            if key and key not in keys:
+                keys.append(key)
+        return keys
     if value is True and isinstance(claim.key, str) and claim.key.strip():
+        # A key that names several capabilities at once ("inventory and pricing") is
+        # split; a single key (incl. snake_case) is kept exactly as stated.
+        parts = split_capability_text(claim.key)
+        if len(parts) > 1:
+            keys = []
+            for part in parts:
+                k = canonical_key(part)
+                if k and k not in keys:
+                    keys.append(k)
+            return keys
         return [claim.key.strip().lower()]
     return []
+
+
+_SECTION_CAPABILITY_FIELDS = ("capabilities", "required_capabilities", "capability_list")
+
+
+def _capability_keys_from_section_data(data: dict | None) -> list[str]:
+    """Capabilities the business lists directly in its (human-editable)
+    REQUIRED_CAPABILITIES section payload — the correction path on the
+    Blueprint review screen. Only the explicitly capability-named fields are
+    read (never arbitrary section values), as a list of strings or a
+    free-text string, with the same normalisation as free-text claims."""
+    if not isinstance(data, dict):
+        return []
+    keys: list[str] = []
+    for field_name in _SECTION_CAPABILITY_FIELDS:
+        value = data.get(field_name)
+        items: list[str] = []
+        if isinstance(value, list):
+            items = [v.strip() for v in value if isinstance(v, str) and v.strip()]
+        elif isinstance(value, str) and value.strip():
+            items = split_capability_text(value)
+        for item in items:
+            key = canonical_key(item)
+            if key and key not in keys:
+                keys.append(key)
+    return keys
+
+
+def _provider_serves(provider_tags: list, capability_key: str) -> bool:
+    """A provider serves a capability when it is tagged with that exact key
+    or with a tag the shared vocabulary canonicalises to it (so a free-text
+    requirement like "payments" matches a provider tagged
+    `payment_processing`)."""
+    wanted = {capability_key, canonical_key(capability_key)}
+    return any(isinstance(t, str) and (t in wanted or canonical_key(t) in wanted) for t in provider_tags)
 
 
 class RecommendationService:
@@ -291,7 +348,7 @@ class RecommendationService:
                 }
             )
 
-            matching_providers = [p for p in providers if req.capability_key in (p.capabilities or [])]
+            matching_providers = [p for p in providers if _provider_serves(p.capabilities or [], req.capability_key)]
             matching_provider_keys = [p.provider_key for p in matching_providers]
             for provider in matching_providers:
                 alternatives = [k for k in matching_provider_keys if k != provider.provider_key]
@@ -410,6 +467,15 @@ class RecommendationService:
             await session.refresh(run)
             return run
 
+    async def collect_capability_requirements(
+        self, tenant_id: uuid.UUID, blueprint: BusinessBlueprint
+    ) -> tuple[list[_CapabilityRequirement], list[str]]:
+        """Public, read-only view of the exact requirement set the engine
+        would act on for `blueprint` (confirmed REQUIRED_CAPABILITIES claims
+        plus enabled verticals' registry capabilities). The Business Builder's
+        Requirements stage derives from this so there is one source of truth."""
+        return await self._collect_capability_requirements(tenant_id, blueprint)
+
     async def _collect_capability_requirements(
         self, tenant_id: uuid.UUID, blueprint: BusinessBlueprint
     ) -> tuple[list[_CapabilityRequirement], list[str]]:
@@ -459,6 +525,44 @@ class RecommendationService:
                         source=existing.source,
                         source_vertical_key=existing.source_vertical_key,
                     )
+
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            section = (
+                await session.execute(
+                    select(BlueprintSection).where(
+                        BlueprintSection.tenant_id == tenant_id,
+                        BlueprintSection.blueprint_id == blueprint.id,
+                        BlueprintSection.section_key == BlueprintSectionKey.REQUIRED_CAPABILITIES.value,
+                    )
+                )
+            ).scalar_one_or_none()
+        for key in _capability_keys_from_section_data(section.data if section is not None else None):
+            evidence = {"kind": "blueprint_section", "section_key": BlueprintSectionKey.REQUIRED_CAPABILITIES.value}
+            existing = merged.get(key)
+            if existing is None:
+                merged[key] = _CapabilityRequirement(
+                    capability_key=key,
+                    required=True,
+                    why=(
+                        "The business's own Business Blueprint lists this capability under "
+                        "REQUIRED_CAPABILITIES."
+                    ),
+                    based_on=[evidence],
+                    confidence=0.95,
+                    source=RecommendationSource.BASELINE_RULE,
+                    source_vertical_key=None,
+                )
+            else:
+                merged[key] = _CapabilityRequirement(
+                    capability_key=key,
+                    required=True,
+                    why=existing.why,
+                    based_on=existing.based_on + [evidence],
+                    confidence=max(existing.confidence, 0.95),
+                    source=existing.source,
+                    source_vertical_key=existing.source_vertical_key,
+                )
 
         # Registry-lookup plugin mechanism (never a hardcoded vertical
         # branch): every VerticalExtension the org has enabled contributes

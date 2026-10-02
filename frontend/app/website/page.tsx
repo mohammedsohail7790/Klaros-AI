@@ -40,6 +40,7 @@ import {
   unpublishWebsite,
   updateWebsiteTheme,
 } from "@/lib/api";
+import { BuilderContextBar } from "@/components/business/BuilderContextBar";
 import { COMPONENT_TYPES, SectionPropsForm, defaultDataSourceFor, defaultPropsFor } from "@/components/website/SectionEditor";
 
 export default function WebsitePage() {
@@ -97,7 +98,12 @@ export default function WebsitePage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="px-4 py-8 sm:px-8">
+        <BuilderContextBar
+          token={token}
+          activeKey="website"
+          note="Built from your Business Blueprint: it only includes pages your business actually needs, and nothing goes live until you publish."
+        />
         <header className="mb-6 flex items-center justify-between">
           <h1 className="font-display text-2xl text-foreground">Website</h1>
           {website && (
@@ -113,7 +119,7 @@ export default function WebsitePage() {
 
         {!website ? (
           <EmptyState
-            title="No website yet — generate a draft from your active Business Blueprint to get started."
+            title="No website yet. Klaros will draft one from your confirmed Business Blueprint — you can review and edit it before anything is published."
             action={
               <Button onClick={handleGenerate} disabled={busy}>
                 {busy ? "Generating..." : "Generate website"}

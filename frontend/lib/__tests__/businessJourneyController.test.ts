@@ -6,9 +6,9 @@ describe("businessJourneyController — the single frontend status->route mappin
   it.each([
     ["DISCOVERY_ACTIVE", "/business/discovery"],
     ["BLUEPRINT_REVIEW", "/business/blueprint"],
-    ["BLUEPRINT_ACTIVE", "/business/blueprint"],
+    ["BLUEPRINT_ACTIVE", "/business/requirements"],
     ["RECOMMENDATIONS_READY", "/business/recommendations"],
-    ["COMPLETED", "/business"],
+    ["COMPLETED", "/business/home"],
     ["ABANDONED", "/business"],
   ] as [BusinessJourneyStatus, string][])("routes %s to %s", (status, route) => {
     expect(getJourneyDestination(status)).toBe(route);

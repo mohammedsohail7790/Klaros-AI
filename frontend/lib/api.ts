@@ -4182,6 +4182,14 @@ export function answerDiscoveryQuestion(token: string, sessionId: string, answer
   });
 }
 
+/** The user's explicit "that's enough" — ends Discovery early (idempotent). */
+export function finishDiscoverySession(token: string, sessionId: string) {
+  return request<{ session: DiscoverySession }>(`/api/v1/business-discovery/sessions/${sessionId}/finish`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
 export function getDiscoverySession(token: string, sessionId: string) {
   return request<{ session: DiscoverySession; turns: DiscoveryTurn[] }>(
     `/api/v1/business-discovery/sessions/${sessionId}`,
@@ -4951,4 +4959,310 @@ export function updateReferralCommissionStatus(token: string, commissionId: stri
     `/api/v1/medical-tourism/referral-commissions/${commissionId}/status`,
     { method: "PATCH", headers: authHeaders(token), body: JSON.stringify({ status }) }
   );
+}
+
+// --- Business Builder (requirements / business map / next actions) ---
+// Read-only views derived server-side from the tenant's Business Blueprint
+// (app/api/v1/business_builder.py). Nothing here is computed in the
+// browser: the map, the requirement states and the "connected" claims all
+// come from the backend, which is the only place that knows what is
+// actually connected.
+
+/** The shared status vocabulary. Never display anything softer than this. */
+export type ReadinessState =
+  | "READY"
+  | "CONFIGURATION_REQUIRED"
+  | "CONNECTED"
+  | "NOT_CONNECTED"
+  | "PLANNED"
+  | "NOT_READY"
+  | "AVAILABLE" // a real adapter exists; not connected yet
+  | "INTEGRATION_REQUIRED"; // no adapter exists, so there is nothing to connect
+
+export interface BuilderProviderView {
+  provider_key: string;
+  display_name: string;
+  implementation_status: string;
+  state: ReadinessState;
+  adapter_required: boolean;
+}
+
+export interface BuilderRequirementEvidence {
+  kind: "blueprint_claim" | "vertical_extension";
+  claim_id?: string | null;
+  section_key?: string | null;
+  statement?: string | null;
+  vertical_key?: string | null;
+}
+
+export interface BuilderRequirement {
+  key: string;
+  label: string;
+  group: string;
+  description: string;
+  required: boolean;
+  why: string;
+  technical_why: string;
+  source: "blueprint" | "industry_module";
+  confidence: number;
+  evidence: BuilderRequirementEvidence[];
+  klaros_support: "NATIVE" | "INTEGRATION" | "PLANNED";
+  native_route: string | null;
+  readiness: ReadinessState;
+  readiness_detail: string;
+  workforce_addressable: boolean;
+  providers: BuilderProviderView[];
+  next_step: { text: string; route: string | null };
+  recommendation_id: string | null;
+  recommendation_ids: string[];
+  recommendation_status: string | null;
+}
+
+export interface BusinessMapNode {
+  id: string;
+  kind: "actor" | "core" | "capability" | "system" | "workforce" | "outcome";
+  label: string;
+  sublabel: string | null;
+  lane: number;
+  state: ReadinessState | null;
+  why: string | null;
+  route: string | null;
+  planned: boolean;
+  required?: boolean;
+}
+
+export interface BusinessMapEdge {
+  source: string;
+  target: string;
+  kind: string;
+}
+
+export interface BusinessMap {
+  nodes: BusinessMapNode[];
+  edges: BusinessMapEdge[];
+  lanes: string[];
+}
+
+export interface BuilderNextAction {
+  id: string;
+  title: string;
+  detail: string;
+  state: ReadinessState;
+  route: string | null;
+  kind: "link" | "enable_vertical";
+  vertical_key?: string;
+}
+
+export interface BuilderStage {
+  key: string;
+  label: string;
+  state: "done" | "current" | "todo";
+  route: string;
+}
+
+export interface WorkforceStatus {
+  provider: string;
+  status: "NOT_CONNECTED" | "CONFIGURATION_REQUIRED" | "CONNECTED" | "ERROR";
+  adapter_implemented: boolean;
+  message: string;
+  agent_id: string | null;
+  capabilities: { key: string; label: string; description: string }[];
+}
+
+export interface BuilderOverview {
+  journey: BusinessJourney | null;
+  blueprint: { id: string; version: number; status: string } | null;
+  business: {
+    name: string | null;
+    summary: string | null;
+    industry: string | null;
+    business_model: string | null;
+    customers: string | null;
+  };
+  requirements: BuilderRequirement[];
+  business_map: BusinessMap;
+  next_actions: BuilderNextAction[];
+  launch: {
+    items: {
+      key: string;
+      label: string;
+      status: ReadinessState;
+      detail: string;
+      required: boolean;
+      route: string | null;
+      done: boolean;
+    }[];
+    ready: boolean;
+    verdict: "READY" | "NOT_READY";
+    blocking: string[];
+    launched: boolean;
+  };
+  progress: { key: string; label: string; status: ReadinessState; detail: string; route: string | null }[];
+  stages: BuilderStage[];
+  website: { exists: boolean; published: boolean; has_draft: boolean; pages: string[] };
+  workforce: WorkforceStatus;
+  operations: {
+    lead_count: number;
+    modules: { key: string; label: string; count: number; route: string | null }[];
+  };
+  modules: { key: string; name: string; status: string; enabled: boolean; has_domain_module: boolean }[];
+}
+
+export function getBuilderOverview(token: string) {
+  return request<BuilderOverview>("/api/v1/business-builder/overview", { headers: authHeaders(token) });
+}
+
+export function getWorkforceStatus(token: string) {
+  return request<WorkforceStatus>("/api/v1/business-builder/workforce", { headers: authHeaders(token) });
+}
+
+export function enableIndustryModule(token: string, key: string) {
+  return request<{ key: string; name: string; enabled: boolean }>(
+    `/api/v1/business-builder/modules/${encodeURIComponent(key)}/enable`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+}
+
+// --- Business operations (operating console, workflows, lead operations) ---
+// Read models computed server-side from real records (backend business_operations_service.py,
+// medical_tourism_operations.py). Nothing here is derived or simulated in the browser.
+
+export interface OpsLeadRow {
+  id: string;
+  name: string;
+  source: string;
+  status?: string;
+  created_at: string;
+}
+
+export interface OpsMetric {
+  key: string;
+  label: string;
+  value?: number;
+  count?: number;
+  route?: string | null;
+}
+
+export interface OpsWorkflow {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string;
+  trigger: string | null;
+  trigger_event: string | null;
+  actions: string[];
+  published: boolean;
+  runs: number;
+  failed_runs: number;
+  last_run: { status: string; at: string } | null;
+}
+
+export interface OpsPipelineStage {
+  key: string;
+  label: string;
+  kind: "SYSTEM" | "AUTOMATED" | "ASSISTED" | "MANUAL";
+  state: ReadinessState;
+  detail: string;
+  route?: string | null;
+}
+
+export interface OpsAgent {
+  id: string;
+  name: string;
+  purpose: string;
+  status: string;
+  autonomy_tier: string;
+  tools: string[];
+  executions: number;
+  last_execution: { status: string; at: string } | null;
+}
+
+export interface OpsIntegration {
+  provider_key: string;
+  name: string;
+  category: string;
+  purpose: string | null;
+  capabilities: string[];
+  state: ReadinessState;
+  implementation: string;
+  last_error: string | null;
+}
+
+export interface BusinessOperations {
+  leads: {
+    total: number;
+    new_7d: number;
+    by_status: Record<string, number>;
+    by_source: Record<string, number>;
+    qualified: number;
+    website_enquiries: number;
+    waiting: OpsLeadRow[];
+    recent: OpsLeadRow[];
+  };
+  customers: number;
+  workflows: OpsWorkflow[];
+  lead_pipeline: OpsPipelineStage[];
+  agents: OpsAgent[];
+  activity: { at: string; kind: string; text: string; route?: string | null }[];
+  integrations: OpsIntegration[];
+  integration_groups: string[];
+  attention: { id: string; text: string; route: string; count: number }[];
+  module: {
+    metrics: OpsMetric[];
+    data: OpsMetric[];
+    breakdowns: { key: string; label: string; items: { label: string; value: number }[] }[];
+  };
+  starter_workflow_exists: boolean;
+}
+
+export function getBusinessOperations(token: string) {
+  return request<BusinessOperations>("/api/v1/business-builder/operations", { headers: authHeaders(token) });
+}
+
+export function createStarterWorkflow(token: string) {
+  return request<{ id: string; name: string; status: string; created: boolean }>("/api/v1/business-builder/workflows/starter", {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export interface ProviderMatch {
+  provider_id: string;
+  name: string;
+  location: string;
+  score: number;
+  fit: "STRONG" | "PARTIAL";
+  reasons: string[];
+  offerings: string[];
+}
+
+export interface LeadOperations {
+  patient: {
+    treatment: string | null;
+    destination_country: string | null;
+    medical_history_summary: string | null;
+    travel_start: string | null;
+    travel_end: string | null;
+    has_insurance: boolean | null;
+    insurance_notes: string | null;
+  };
+  matching: {
+    basis: { procedures: string[]; procedure_source: string | null; destination_country: string | null; criteria: string[] };
+    matches: ProviderMatch[];
+    none_reason: string | null;
+  };
+  consultations: { id: string; provider: string; status: string; notes: string | null; created_at: string }[];
+  timeline: { at: string; kind: string; text: string }[];
+  next_action: { text: string; route: string | null; state: ReadinessState };
+}
+
+/** A lead's operating context. Returns null (not an error) for a lead that has no
+ * industry-specific details — the panel simply isn't shown. */
+export async function getLeadOperations(token: string, leadId: string): Promise<LeadOperations | null> {
+  try {
+    return await request<LeadOperations>(`/api/v1/medical-tourism/leads/${leadId}/operations`, { headers: authHeaders(token) });
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 403)) return null;
+    throw err;
+  }
 }

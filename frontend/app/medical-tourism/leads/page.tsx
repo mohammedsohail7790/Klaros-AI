@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Users } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
@@ -24,6 +25,7 @@ export default function MedicalTourismPatientLeadsPage() {
   const { token, user, loading: authLoading } = useAuth();
   const [patientLeads, setPatientLeads] = useState<MedicalTourismPatientLead[]>([]);
   const [total, setTotal] = useState(0);
+  const [leadNames, setLeadNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -36,6 +38,13 @@ export default function MedicalTourismPatientLeadsPage() {
       const result = await listPatientLeads(token, { limit: 50 });
       setPatientLeads(result.patient_leads);
       setTotal(result.total);
+      // Names come from the CRM leads these extend; the page still works (and never shows a raw id) without them.
+      try {
+        const crm = await searchLeads(token, { limit: 100 });
+        setLeadNames(Object.fromEntries(crm.leads.map((l) => [l.id, l.name])));
+      } catch {
+        setLeadNames({});
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load patient leads.");
     } finally {
@@ -85,7 +94,7 @@ export default function MedicalTourismPatientLeadsPage() {
             <table className="klaros-table">
               <thead className="bg-surface text-muted">
                 <tr>
-                  <th className="px-4 py-2">Lead ID</th>
+                  <th className="px-4 py-2">Patient</th>
                   <th className="px-4 py-2">Destination</th>
                   <th className="px-4 py-2">Travel window</th>
                   <th className="px-4 py-2">Insurance</th>
@@ -95,7 +104,11 @@ export default function MedicalTourismPatientLeadsPage() {
               <tbody>
                 {patientLeads.map((pl) => (
                   <tr key={pl.id} className="border-t border-border hover:bg-surface">
-                    <td className="px-4 py-2 font-mono text-xs text-foreground">{pl.lead_id}</td>
+                    <td className="px-4 py-2 text-foreground">
+                      <Link href={`/leads/${pl.lead_id}`} className="font-medium underline-offset-2 hover:underline">
+                        {leadNames[pl.lead_id] ?? "Patient enquiry"}
+                      </Link>
+                    </td>
                     <td className="px-4 py-2 text-muted">{pl.preferred_destination_country || "—"}</td>
                     <td className="px-4 py-2 text-muted">
                       {pl.travel_start_date ? new Date(pl.travel_start_date).toLocaleDateString() : "—"}

@@ -20,6 +20,11 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [total, setTotal] = useState(0);
   const [status, setStatus] = useState("ALL");
+  // Deep links from the operating console ("/leads?status=NEW"). Read once on the client.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("status");
+    if (wanted && STATUS_TABS.includes(wanted)) setStatus(wanted);
+  }, []);
   const [q, setQ] = useState("");
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);

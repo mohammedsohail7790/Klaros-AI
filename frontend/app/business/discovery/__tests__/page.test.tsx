@@ -12,6 +12,7 @@ const getCurrentBusinessJourneyMock = vi.fn();
 const getDiscoverySessionMock = vi.fn();
 const answerDiscoveryQuestionMock = vi.fn();
 const completeDiscoveryJourneyStepMock = vi.fn();
+const finishDiscoverySessionMock = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   ApiError: class ApiError extends Error {
@@ -25,6 +26,7 @@ vi.mock("@/lib/api", () => ({
   getDiscoverySession: (...args: unknown[]) => getDiscoverySessionMock(...args),
   answerDiscoveryQuestion: (...args: unknown[]) => answerDiscoveryQuestionMock(...args),
   completeDiscoveryJourneyStep: (...args: unknown[]) => completeDiscoveryJourneyStepMock(...args),
+  finishDiscoverySession: (...args: unknown[]) => finishDiscoverySessionMock(...args),
   listNotifications: vi.fn().mockResolvedValue({ notifications: [] }),
   getUnreadNotificationCount: vi.fn().mockResolvedValue({ count: 0 }),
   markNotificationRead: vi.fn(),
@@ -66,6 +68,7 @@ describe("Discovery page", () => {
     getDiscoverySessionMock.mockReset();
     answerDiscoveryQuestionMock.mockReset();
     completeDiscoveryJourneyStepMock.mockReset();
+    finishDiscoverySessionMock.mockReset();
     pushMock.mockReset();
     replaceMock.mockReset();
   });
@@ -99,7 +102,7 @@ describe("Discovery page", () => {
     });
 
     render(<DiscoveryPage />);
-    const textarea = await screen.findByLabelText("Your answer");
+    const textarea = await screen.findByPlaceholderText("Type your answer…");
     fireEvent.change(textarea, { target: { value: "Young professionals" } });
     fireEvent.click(screen.getByText("Continue"));
 
@@ -126,7 +129,7 @@ describe("Discovery page", () => {
     completeDiscoveryJourneyStepMock.mockResolvedValue(journey("BLUEPRINT_REVIEW"));
 
     render(<DiscoveryPage />);
-    const textarea = await screen.findByLabelText("Your answer");
+    const textarea = await screen.findByPlaceholderText("Type your answer…");
     fireEvent.change(textarea, { target: { value: "Final answer" } });
     fireEvent.click(screen.getByText("Continue"));
 
@@ -190,10 +193,59 @@ describe("Discovery page", () => {
     answerDiscoveryQuestionMock.mockRejectedValue(new ApiError(500, "Internal server error"));
 
     render(<DiscoveryPage />);
-    const textarea = await screen.findByLabelText("Your answer");
+    const textarea = await screen.findByPlaceholderText("Type your answer…");
     fireEvent.change(textarea, { target: { value: "Young professionals" } });
     fireEvent.click(screen.getByText("Continue"));
 
     expect(await screen.findByText("Internal server error")).toBeInTheDocument();
+  });
+
+  it("lets the user end Discovery early and advances through the named journey action", async () => {
+    getCurrentBusinessJourneyMock.mockResolvedValue(journey("DISCOVERY_ACTIVE"));
+    getDiscoverySessionMock.mockResolvedValue({
+      session: { id: "d1", blueprint_id: null, status: "ACTIVE", business_idea: "A bakery", questions_asked: 2, max_questions: 8, created_at: "x", updated_at: "x" },
+      turns: [
+        { id: "t0", sequence: 0, kind: "INITIAL_DESCRIPTION", question: "What do you sell?", answer: "A bakery", extraction_error: null, created_at: "x" },
+        { id: "t1", sequence: 1, kind: "QUESTION_ANSWER", question: "Who are your customers?", answer: "Bread, mostly", extraction_error: null, created_at: "x" },
+      ],
+    });
+    finishDiscoverySessionMock.mockResolvedValue({});
+    completeDiscoveryJourneyStepMock.mockResolvedValue(journey("BLUEPRINT_REVIEW"));
+    render(<DiscoveryPage />);
+    fireEvent.click(await screen.findByText("That's enough — build my Blueprint"));
+    await waitFor(() => expect(finishDiscoverySessionMock).toHaveBeenCalledWith("test-token", "d1"));
+    await waitFor(() => expect(completeDiscoveryJourneyStepMock).toHaveBeenCalledWith("test-token", "j1"));
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/business/blueprint"));
+  });
+
+  it("never strands the user: an ACTIVE session with no pending question offers a way forward", async () => {
+    getCurrentBusinessJourneyMock.mockResolvedValue(journey("DISCOVERY_ACTIVE"));
+    getDiscoverySessionMock.mockResolvedValue({
+      session: { id: "d1", blueprint_id: null, status: "ACTIVE", business_idea: "A bakery", questions_asked: 2, max_questions: 8, created_at: "x", updated_at: "x" },
+      turns: [
+        { id: "t0", sequence: 0, kind: "INITIAL_DESCRIPTION", question: "What do you sell?", answer: "A bakery", extraction_error: null, created_at: "x" },
+        { id: "t1", sequence: 1, kind: "QUESTION_ANSWER", question: null, answer: "Bread, mostly", extraction_error: null, created_at: "x" },
+      ],
+    });
+    render(<DiscoveryPage />);
+    expect(await screen.findByText(/We don't have another question ready/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "That's enough — build my Blueprint" })).toBeInTheDocument();
+  });
+
+  it("shows what has been said so far, pairing each answer with the question it answered", async () => {
+    getCurrentBusinessJourneyMock.mockResolvedValue(journey("DISCOVERY_ACTIVE"));
+    getDiscoverySessionMock.mockResolvedValue({
+      session: { id: "d1", blueprint_id: null, status: "ACTIVE", business_idea: "A bakery", questions_asked: 2, max_questions: 8, created_at: "x", updated_at: "x" },
+      turns: [
+        { id: "t0", sequence: 0, kind: "INITIAL_DESCRIPTION", question: "What do you sell?", answer: "A bakery", extraction_error: null, created_at: "x" },
+        { id: "t1", sequence: 1, kind: "QUESTION_ANSWER", question: "Who are your customers?", answer: "Bread, mostly", extraction_error: null, created_at: "x" },
+      ],
+    });
+    render(<DiscoveryPage />);
+    expect(await screen.findByText("Who are your customers?")).toBeInTheDocument();
+    // The answer "Bread, mostly" answered "What do you sell?" (the PREVIOUS turn's question).
+    const answerEl = screen.getByText("Bread, mostly");
+    expect(answerEl.parentElement).toHaveTextContent("What do you sell?");
+    expect(screen.getByText(/Question 3 — at most 8/)).toBeInTheDocument();
   });
 });

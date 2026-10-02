@@ -30,7 +30,7 @@ export default function LoginPage() {
       const tokens = await login(organizationSlug, email, password);
       sessionStorage.setItem("klaros_access_token", tokens.access_token);
       sessionStorage.setItem("klaros_refresh_token", tokens.refresh_token);
-      router.push("/dashboard");
+      router.push("/business");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -64,7 +64,7 @@ export default function LoginPage() {
 
         <div className="max-w-sm">
           <p className="font-display text-3xl leading-snug text-white">
-            The AI operating system for the one-person company.
+            Build and operate your business with AI.
           </p>
           <ul className="mt-8 space-y-4">
             {TRUST_POINTS.map((point) => (
@@ -94,7 +94,7 @@ export default function LoginPage() {
                   required
                   value={organizationSlug}
                   onChange={(e) => setOrganizationSlug(e.target.value)}
-                  placeholder="demo-hvac-company"
+                  placeholder="your-company-slug"
                 />
               </Field>
 
@@ -116,7 +116,7 @@ export default function LoginPage() {
                 />
               </Field>
 
-              {error && <p className="text-sm text-danger">{error}</p>}
+              {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Signing in..." : "Sign in"}
@@ -126,7 +126,7 @@ export default function LoginPage() {
           <p className="mt-6 text-center text-sm text-muted">
             New to Klaros AI?{" "}
             <Link href="/register" className="font-medium text-accent hover:text-accent-hover">
-              Create your company
+              Create your account
             </Link>
           </p>
         </div>

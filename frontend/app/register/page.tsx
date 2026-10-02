@@ -9,9 +9,9 @@ import { Field, Input } from "@/components/ui/Input";
 import GradientBackdrop from "@/components/GradientBackdrop";
 
 const STEPS = [
-  { label: "Create your company", done: true },
-  { label: "Set up your first job", done: false },
-  { label: "Invite your team (optional)", done: false },
+  { label: "Create your account", done: true },
+  { label: "Tell Klaros what you're building", done: false },
+  { label: "Review your Blueprint and build", done: false },
 ];
 
 export default function RegisterPage() {
@@ -31,7 +31,7 @@ export default function RegisterPage() {
       const result = await register(organizationName, fullName, email, password);
       sessionStorage.setItem("klaros_access_token", result.tokens.access_token);
       sessionStorage.setItem("klaros_refresh_token", result.tokens.refresh_token);
-      router.push("/onboarding");
+      router.push("/business");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -91,8 +91,8 @@ export default function RegisterPage() {
             Klaros AI
           </Link>
           <div className="klaros-glass rounded-2xl p-7 shadow-xl shadow-black/5">
-            <h1 className="font-display text-2xl text-foreground">Create your company</h1>
-            <p className="mt-1 text-sm text-muted">Set up your Klaros AI workspace in a couple of minutes.</p>
+            <h1 className="font-display text-2xl text-foreground">Create your account</h1>
+            <p className="mt-1 text-sm text-muted">Next, you'll tell Klaros what you're building.</p>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <Field label="Company name">
@@ -100,7 +100,7 @@ export default function RegisterPage() {
                   required
                   value={organizationName}
                   onChange={(e) => setOrganizationName(e.target.value)}
-                  placeholder="Demo HVAC Company"
+                  placeholder="Acme Co"
                 />
               </Field>
 
@@ -127,10 +127,10 @@ export default function RegisterPage() {
                 />
               </Field>
 
-              {error && <p className="text-sm text-danger">{error}</p>}
+              {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
               <Button type="submit" disabled={loading} className="w-full">
-                {loading ? "Creating..." : "Create company"}
+                {loading ? "Creating..." : "Create account"}
               </Button>
             </form>
           </div>

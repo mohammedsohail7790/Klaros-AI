@@ -12,6 +12,7 @@ from app.api.v1 import (
     billing,
     business_blueprint,
     business_discovery,
+    business_builder,
     business_journey,
     cash,
     company_memory,
@@ -92,6 +93,7 @@ api_router.include_router(business_discovery.router)
 api_router.include_router(business_blueprint.router)
 api_router.include_router(recommendations.router)
 api_router.include_router(business_journey.router)
+api_router.include_router(business_builder.router)
 api_router.include_router(agents.router)
 api_router.include_router(quickbooks_oauth.router)
 api_router.include_router(google_calendar_oauth.router)

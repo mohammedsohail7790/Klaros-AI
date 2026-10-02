@@ -22,6 +22,7 @@ from app.api.tool_deps import execution_context, get_tool_registry, raise_http_f
 from app.db.session import async_session_maker
 from app.models.medical_tourism import ReferralCommissionBasis
 from app.models.rbac import Permission, role_has_permission
+from app.services import medical_tourism_operations
 from app.services.medical_tourism_service import InvalidRelationshipError, MedicalTourismService, NotFoundError
 from app.tools.errors import ToolError
 from app.tools.registry import ToolRegistry
@@ -368,6 +369,33 @@ async def list_patient_leads(
         "limit": limit,
         "offset": offset,
     }
+
+
+@router.get("/leads/{lead_id}/operations")
+async def get_lead_operations(
+    lead_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """The operating context of a patient lead: patient details, provider matches (with the
+    reasons for each), consultations, a timeline built from real records, and the next
+    action. 404 when the lead is not a patient lead (or not in this tenant)."""
+    _require_read(current_user)
+    result = await medical_tourism_operations.lead_operations(current_user.tenant_id, lead_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="This lead has no patient details")
+    return result
+
+
+@router.get("/leads/{lead_id}/provider-matches")
+async def get_lead_provider_matches(
+    lead_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    _require_read(current_user)
+    result = await medical_tourism_operations.match_providers(current_user.tenant_id, lead_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="This lead has no patient details")
+    return result
 
 
 @router.get("/patient-leads/{patient_lead_id}")

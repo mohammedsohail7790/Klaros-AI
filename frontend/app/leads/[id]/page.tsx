@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { LeadOperationsPanel } from "@/components/business/LeadOperationsPanel";
 import { useParams, useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
@@ -189,6 +190,7 @@ export default function LeadDetailPage() {
         ) : (
           <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="lg:col-span-2 space-y-6">
+              <LeadOperationsPanel token={token} leadId={id} refreshKey={lead.status} />
               <div className="rounded-lg border border-border bg-surface p-6">
                 <div className="flex items-start justify-between">
                   <div>

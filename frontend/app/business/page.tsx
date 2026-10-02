@@ -1,19 +1,14 @@
 "use client";
 
 /**
- * Phase 14: the Business Journey entry point / resume point.
+ * Business Builder entry — "What are you building?"
  *
- * This page is the smallest possible controller: it loads the tenant's
- * current BusinessJourney (Phase 13's `GET /business-journey`, the
- * frontend's source of truth), and either
- *   - shows "Build your business" if there is none yet,
- *   - redirects to the authoritative stage route for an active journey
- *     (never re-deriving that mapping itself — see
- *     lib/businessJourneyController.ts), or
- *   - shows a completion / abandoned summary for a terminal journey.
- *
- * It never infers journey state independently and never mutates status
- * itself except via the named `startBusinessJourney` action.
+ * Loads the tenant's current BusinessJourney (the frontend's source of
+ * truth) and either resumes an active one at its authoritative stage
+ * (never re-deriving that mapping — see lib/businessJourneyController.ts),
+ * sends a finished one to the operating home, or — if there is none —
+ * asks the one question the whole product starts from. The example ideas
+ * are only shortcuts that fill the text box; they carry no logic.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -21,13 +16,17 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Sparkles } from "lucide-react";
-import { ApiError, BusinessJourney, getCurrentBusinessJourney, startBusinessJourney } from "@/lib/api";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { ApiError, BusinessJourney, getCurrentBusinessJourney, listBusinessJourneys, startBusinessJourney } from "@/lib/api";
 import { getJourneyDestination } from "@/lib/businessJourneyController";
+
+const EXAMPLES = [
+  "I want to build a medical tourism company connecting international patients with hospitals in India.",
+  "I want to start a dropshipping business using a supplier catalog.",
+  "I want to build an online consulting business.",
+];
 
 export default function BusinessJourneyEntryPage() {
   const { token, user } = useAuth();
@@ -41,19 +40,24 @@ export default function BusinessJourneyEntryPage() {
     if (!token) return;
     setError(null);
     try {
-      const j = await getCurrentBusinessJourney(token);
-      setJourney(j);
-      // Active (non-terminal) journeys never render this page's content —
-      // resume them at their authoritative stage immediately.
-      if (j && j.status !== "COMPLETED" && j.status !== "ABANDONED") {
-        router.replace(getJourneyDestination(j.status));
+      let found = await getCurrentBusinessJourney(token);
+      if (!found) {
+        // "Current" excludes finished journeys: a business that is already set up goes to its
+        // operating home, not back to a blank "What are you building?" form.
+        const latest = (await listBusinessJourneys(token))?.[0];
+        if (latest?.status === "COMPLETED") found = latest;
       }
+      // An abandoned journey is over: the visitor starts a fresh one here
+      // (redirecting it to "/business" would just loop back to this page).
+      const j = found && found.status !== "ABANDONED" ? found : null;
+      setJourney(j);
+      if (j) router.replace(getJourneyDestination(j.status));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         router.push("/login");
         return;
       }
-      setError(err instanceof ApiError ? err.message : "Unable to load your business journey.");
+      setError(err instanceof ApiError ? err.message : "We couldn't check your business just now. Please try again.");
       setJourney(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -63,115 +67,99 @@ export default function BusinessJourneyEntryPage() {
     load();
   }, [load]);
 
+  // An idea typed on the marketing site travels here through sign-up.
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem("klaros_pending_idea");
+      if (pending) {
+        setBusinessIdea((cur) => cur || pending);
+        sessionStorage.removeItem("klaros_pending_idea");
+      }
+    } catch {
+      // storage unavailable — nothing to carry over
+    }
+  }, []);
+
   async function handleStart() {
     if (!token || busy || !businessIdea.trim()) return;
     setBusy(true);
     setError(null);
     try {
       const j = await startBusinessJourney(token, businessIdea.trim());
-      setJourney(j);
       router.replace(getJourneyDestination(j.status));
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
-        setError("You don't have permission to start a business journey.");
-      } else if (err instanceof ApiError && err.status === 422) {
-        setError(err.message);
+        setError("You don't have permission to start a business. Ask an owner or admin to do this.");
       } else {
-        setError(err instanceof ApiError ? err.message : "Unable to start your business journey. Please try again.");
+        setError(err instanceof ApiError ? err.message : "We couldn't start your business just now. Please try again.");
       }
-    } finally {
       setBusy(false);
     }
   }
 
-  if (journey === undefined) {
-    return (
-      <AppShell user={user}>
-        <div className="px-8 py-8">
-          <Skeleton />
-        </div>
-      </AppShell>
-    );
-  }
-
-  // Terminal states render inline here rather than redirecting away.
-  if (journey && journey.status === "COMPLETED") {
+  // Resuming/redirecting: show a skeleton rather than flashing the form.
+  if (journey === undefined || journey) {
     return (
       <AppShell user={user}>
         <div className="mx-auto max-w-2xl px-6 py-12">
-          <PageHeader icon={Sparkles} title="Your Klaros business foundation is ready" description="Discovery, your Business Blueprint, and recommendations are complete." />
-          <Alert variant="success" className="mb-6">
-            Completed foundation: Discovery, Business Blueprint confirmation, and recommendation review are done for
-            this business.
-          </Alert>
-          <p className="mb-4 text-sm text-muted">
-            Future operating setup — connecting integrations, creating agents, publishing a website — is handled
-            elsewhere in Klaros as you're ready for it; nothing was created automatically as part of this process.
-          </p>
-          <Button variant="secondary" onClick={() => router.push("/dashboard")}>
-            Go to dashboard
-          </Button>
+          <Skeleton rows={3} />
         </div>
       </AppShell>
     );
   }
 
-  if (journey && journey.status === "ABANDONED") {
-    return (
-      <AppShell user={user}>
-        <div className="mx-auto max-w-2xl px-6 py-12">
-          <PageHeader icon={Sparkles} title="Build your business with Klaros" description="Your previous business journey was abandoned. Start a new one below." />
-          <StartForm
-            businessIdea={businessIdea}
-            setBusinessIdea={setBusinessIdea}
-            onStart={handleStart}
-            busy={busy}
-            error={error}
-          />
-        </div>
-      </AppShell>
-    );
-  }
-
-  // No journey yet.
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-2xl px-6 py-12">
-        <PageHeader icon={Sparkles} title="Build your business with Klaros" description="Tell us your business idea. Klaros will guide you through Discovery, a Business Blueprint, and tailored recommendations." />
-        <StartForm businessIdea={businessIdea} setBusinessIdea={setBusinessIdea} onStart={handleStart} busy={busy} error={error} />
+      <div className="mx-auto max-w-2xl px-6 py-10 sm:py-16">
+        <div className="mb-8 text-center">
+          <span className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent-soft text-accent">
+            <Sparkles className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+          </span>
+          <h1 className="font-display text-3xl text-foreground sm:text-4xl">What are you building?</h1>
+          <p className="mx-auto mt-3 max-w-md text-sm text-muted sm:text-base">
+            Describe your business in your own words. Klaros will ask a few questions, work out what the business needs, and help you
+            build it.
+          </p>
+        </div>
+
+        <div className="klaros-card space-y-4 p-5 sm:p-6">
+          {error && <Alert variant="danger">{error}</Alert>}
+          <label htmlFor="business-idea" className="klaros-label">
+            Your business idea
+          </label>
+          <textarea
+            id="business-idea"
+            className="klaros-input min-h-[140px]"
+            value={businessIdea}
+            onChange={(e) => setBusinessIdea(e.target.value)}
+            placeholder="Tell us what you want to build, who it's for, and how it makes money."
+            disabled={busy}
+            maxLength={4000}
+          />
+          <Button onClick={handleStart} disabled={busy || !businessIdea.trim()} className="w-full gap-2 sm:w-auto">
+            {busy ? "Starting…" : "Start building"}
+            {!busy && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+          </Button>
+        </div>
+
+        <div className="mt-6">
+          <p className="klaros-label mb-2">Need a nudge? Try one of these</p>
+          <ul className="flex flex-col gap-2">
+            {EXAMPLES.map((ex) => (
+              <li key={ex}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setBusinessIdea(ex)}
+                  className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-left text-sm text-muted transition-colors hover:border-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  {ex}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </AppShell>
-  );
-}
-
-function StartForm({
-  businessIdea,
-  setBusinessIdea,
-  onStart,
-  busy,
-  error,
-}: {
-  businessIdea: string;
-  setBusinessIdea: (v: string) => void;
-  onStart: () => void;
-  busy: boolean;
-  error: string | null;
-}) {
-  return (
-    <div className="klaros-card space-y-4 p-6">
-      {error && <Alert variant="danger">{error}</Alert>}
-      <Field label="What's your business idea?">
-        <textarea
-          className="klaros-input min-h-[120px]"
-          value={businessIdea}
-          onChange={(e) => setBusinessIdea(e.target.value)}
-          placeholder="e.g. A subscription meal-prep service for busy professionals in Austin, TX"
-          disabled={busy}
-        />
-      </Field>
-      <Button onClick={onStart} disabled={busy || !businessIdea.trim()}>
-        {busy ? "Starting..." : "Start Discovery"}
-      </Button>
-    </div>
   );
 }

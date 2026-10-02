@@ -43,6 +43,10 @@ import {
   Stethoscope,
   CalendarCheck,
   HandCoins,
+  Home,
+  Headset,
+  Database,
+  BarChart3,
 } from "lucide-react";
 import { UserResponse, logout as logoutRequest } from "@/lib/api";
 import NotificationBell from "./NotificationBell";
@@ -51,9 +55,14 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
   {
     label: "Overview",
     items: [
+      { href: "/business/home", label: "Business Home", icon: Home },
+      { href: "/business", label: "Build My Business", icon: Sparkles },
+      { href: "/business/workflows", label: "Workflows", icon: Workflow },
+      { href: "/business/data", label: "Data", icon: Database },
+      { href: "/business/analytics", label: "Analytics", icon: BarChart3 },
+      { href: "/business/integrations", label: "Integration Center", icon: Plug },
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/morning-brief", label: "Morning Brief", icon: Sunrise },
-      { href: "/business", label: "Build Your Business", icon: Sparkles },
     ],
   },
   {
@@ -118,6 +127,7 @@ const NAV_SECTIONS: { label: string; items: { href: string; label: string; icon:
   {
     label: "AI & Automation",
     items: [
+      { href: "/workforce", label: "AI Workforce", icon: Headset },
       { href: "/agents", label: "Agents", icon: Bot },
       { href: "/events", label: "Events", icon: Radio },
       { href: "/automations", label: "Automations", icon: Workflow },
@@ -290,6 +300,7 @@ export default function AppShell({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Find a page..."
+              aria-label="Find a page"
               className="w-full rounded-lg border border-border-strong bg-surface py-1.5 pl-8 pr-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none"
             />
           </div>
