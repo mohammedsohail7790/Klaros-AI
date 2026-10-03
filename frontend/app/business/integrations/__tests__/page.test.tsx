@@ -48,9 +48,11 @@ describe("Integration Center", () => {
     expect(within(ads).queryByRole("link")).not.toBeInTheDocument();
     const halla = screen.getByRole("heading", { name: "Halla AI" }).closest("li")!;
     expect(halla).toHaveTextContent("Integration required");
-    expect(halla).toHaveTextContent(/separate platform and no connection exists yet/);
-    expect(within(halla).queryByRole("link")).not.toBeInTheDocument();
-    expect(halla).not.toHaveTextContent(/^Connected$/);
+    expect(halla).toHaveTextContent(/Needs the integration to be built/);
+    expect(halla).toHaveTextContent("Not possible yet"); // never "Connected"
+    // the only action is to review the (Klaros-side) setup — there is nothing to connect or sign in to
+    expect(within(halla).getByRole("link", { name: /Review setup/ })).toHaveAttribute("href", "/workforce");
+    expect(within(halla).queryByRole("link", { name: /connect|sign in|manage/i })).not.toBeInTheDocument();
   });
 
   it("marks what the business's own requirements need, from the Requirements model", async () => {
@@ -65,18 +67,44 @@ describe("Integration Center", () => {
   it("shows an empty group as 'Nothing available yet' (Planned), not as a fake integration", async () => {
     getOps.mockResolvedValue(opsFixture());
     render(<Page />);
-    const sec = (await screen.findByRole("heading", { name: "CRM & operations" })).closest("section")!;
+    const sec = (await screen.findByRole("heading", { name: "CRM" })).closest("section")!;
     expect(sec).toHaveTextContent("Nothing available yet");
+    const comms = (await screen.findByRole("heading", { name: "Communication" })).closest("section")!;
+    expect(comms).toHaveTextContent(/No email or messaging provider is catalogued yet/);
+    expect(within(comms).getByRole("link", { name: "AI workforce" })).toHaveAttribute("href", "/workforce");
   });
 
   it("surfaces a connection error and a load failure", async () => {
     getOps.mockResolvedValue(opsFixture({ integrations: [{ provider_key: "stripe", name: "Stripe", category: "Payments", purpose: null, capabilities: [], state: "CONFIGURATION_REQUIRED", implementation: "REAL", last_error: "Invalid API key" }] }));
     const { unmount } = render(<Page />);
-    expect(await screen.findByText("Last error: Invalid API key")).toBeInTheDocument();
+    expect(await screen.findByText("The connection needs attention: Invalid API key")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Fix connection Stripe" })).toBeInTheDocument();
     unmount();
     getOps.mockImplementation(async () => { throw new Error("down"); });
     render(<Page />);
     expect(await screen.findByText(/couldn't load your operations/)).toBeInTheDocument();
+  });
+});
+
+
+describe("Integration Center — purpose, connection, requirement, action on every card", () => {
+  it("says what each integration is for, its connection, what it needs and the one action", async () => {
+    getOps.mockResolvedValue(opsFixture());
+    render(<Page />);
+    const stripe = (await screen.findByRole("heading", { name: "Stripe" })).closest("li")!;
+    expect(stripe).toHaveTextContent("Payments.");
+    expect(stripe).toHaveTextContent("Not connected");
+    expect(stripe).toHaveTextContent("Needs your account");
+    const cal = screen.getByRole("heading", { name: "Google Calendar" }).closest("li")!;
+    expect(cal).toHaveTextContent("Nothing to configure.");
+    expect(within(cal).getByRole("link", { name: "Manage Google Calendar" })).toBeInTheDocument();
+  });
+
+  it("uses the product's category names", async () => {
+    getOps.mockResolvedValue(opsFixture({ integration_groups: ["CRM & operations", "Communication", "Calendar", "Payments", "Accounting", "Marketing", "Ecommerce", "Analytics", "AI Workforce"] }));
+    render(<Page />);
+    await screen.findByRole("heading", { level: 1, name: "Integrations" });
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(headings).toEqual(["CRM", "Communication", "Calendar", "Payments", "Finance", "Marketing", "Ecommerce", "Analytics", "AI Workforce"]);
   });
 });

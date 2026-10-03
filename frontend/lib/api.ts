@@ -5062,7 +5062,8 @@ export interface BuilderStage {
 
 export interface WorkforceStatus {
   provider: string;
-  status: "NOT_CONNECTED" | "CONFIGURATION_REQUIRED" | "CONNECTED" | "ERROR";
+  status: "NOT_CONNECTED" | "CONNECTING" | "CONFIGURATION_REQUIRED" | "NEEDS_ATTENTION" | "CONNECTED" | "ERROR";
+  mode?: "none" | "development" | "live";
   adapter_implemented: boolean;
   message: string;
   agent_id: string | null;
@@ -5213,14 +5214,169 @@ export interface BusinessOperations {
     breakdowns: { key: string; label: string; items: { label: string; value: number }[] }[];
   };
   starter_workflow_exists: boolean;
+  escalation_workflow_exists?: boolean;
+  ai: { events: Record<string, number>; interactions: number; qualified: number; escalated: number; needs_person: number };
 }
 
 export function getBusinessOperations(token: string) {
   return request<BusinessOperations>("/api/v1/business-builder/operations", { headers: authHeaders(token) });
 }
 
-export function createStarterWorkflow(token: string) {
-  return request<{ id: string; name: string; status: string; created: boolean }>("/api/v1/business-builder/workflows/starter", {
+export interface WorkflowDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string;
+  trigger: string | null;
+  trigger_event: string | null;
+  steps: { action: string }[];
+  published: boolean;
+  totals: { runs: number; completed: number; failed: number };
+  runs: { id: string; status: string; at: string; error: string | null; steps: { index: number; action: string; status: string; error: string | null }[] }[];
+}
+
+export function getWorkflowDetail(token: string, id: string) {
+  return request<WorkflowDetail>(`/api/v1/business-builder/workflows/${id}`, { headers: authHeaders(token) });
+}
+
+// --- AI workforce (Klaros side of the Halla boundary) and the lead board ---
+
+export type InteractionState =
+  | "NOT_CONNECTED"
+  | "CONFIGURATION_REQUIRED"
+  | "WAITING_FOR_HALLA"
+  | "IN_PROGRESS"
+  | "QUALIFICATION_PENDING"
+  | "QUALIFIED"
+  | "ESCALATED"
+  | "APPOINTMENT_REQUESTED"
+  | "APPOINTMENT_CONFIRMED";
+
+export interface WorkforceSetup {
+  status: { provider: string; status: string; adapter_implemented: boolean; mode: "none" | "development" | "live"; message: string; agent_id: string | null };
+  /** Present only when the real Halla adapter is enabled. Never contains a credential. */
+  halla?: HallaConnectionInfo;
+  channels: string[];
+  members: { key: string; name: string; purpose: string; status: "ACTIVE" | "NOT_CONFIGURED" | "AVAILABLE_THROUGH_HALLA"; status_label: string; capabilities: string[] }[];
+  steps: { key: string; label: string; state: "DONE" | "READY" | "BLOCKED"; detail: string }[];
+  context: {
+    business_name: string | null;
+    industry: string | null;
+    summary: string | null;
+    customers: string | null;
+    services: string[];
+    markets: string[];
+    qualification_fields: string[];
+    escalation_triggers: string[];
+    booking_rules: string[];
+  };
+  dev_simulator: boolean;
+}
+
+export interface HallaConnectionInfo {
+  halla_tenant_id: string | null;
+  has_credential: boolean;
+  has_signing_secret: boolean;
+  last_verified_at: string | null;
+  last_error: string | null;
+  webhook_url: string | null;
+}
+
+export interface HallaStatusResult {
+  status: string;
+  mode: string;
+  message: string;
+  adapter_implemented: boolean;
+  halla?: HallaConnectionInfo;
+}
+
+const HALLA = "/api/v1/business-builder/workforce/halla";
+
+/** The credential is sent once, over TLS, to the Klaros backend — which encrypts it at once and never returns it. */
+export function connectHalla(token: string, body: { halla_tenant_id: string; api_key: string; signing_secret: string }) {
+  return request<HallaStatusResult>(`${HALLA}/connection`, { method: "PUT", headers: authHeaders(token), body: JSON.stringify(body) });
+}
+
+export function disconnectHalla(token: string) {
+  return request<HallaStatusResult>(`${HALLA}/connection`, { method: "DELETE", headers: authHeaders(token) });
+}
+
+export function checkHallaHealth(token: string) {
+  return request<HallaStatusResult>(`${HALLA}/health`, { method: "POST", headers: authHeaders(token) });
+}
+
+export function configureHalla(token: string) {
+  return request<{ sent: Record<string, number | boolean> }>(`${HALLA}/configure`, { method: "POST", headers: authHeaders(token) });
+}
+
+export interface HallaAgent {
+  id: string;
+  name: string;
+  role: string | null;
+  status: string | null;
+  available: boolean | null;
+}
+
+export function listHallaAgents(token: string) {
+  return request<{ agents: HallaAgent[] }>(`${HALLA}/agents`, { headers: authHeaders(token) });
+}
+
+export function syncLeadToHalla(token: string, leadId: string) {
+  return request<{ synced: boolean; created: boolean }>(`/api/v1/business-builder/leads/${leadId}/halla/sync`, { method: "POST", headers: authHeaders(token) });
+}
+
+export function askHallaToCall(token: string, leadId: string, body: { reason?: string; opening_context?: string } = {}) {
+  return request<{ requested: boolean; call_id: string | null }>(`/api/v1/business-builder/leads/${leadId}/halla/call`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function getWorkforceSetup(token: string) {
+  return request<WorkforceSetup>("/api/v1/business-builder/workforce/setup", { headers: authHeaders(token) });
+}
+
+export interface LeadInteraction {
+  state: InteractionState;
+  label: string;
+  workforce: { status: string; mode: string; adapter_implemented: boolean; message: string };
+  events: { type: string; text: string; at: string; channel: string | null; summary: string | null; simulated: boolean }[];
+  summary: string | null;
+  next_action: { text: string; route: string } | null;
+}
+
+export function getLeadInteraction(token: string, leadId: string) {
+  return request<LeadInteraction>(`/api/v1/business-builder/leads/${leadId}/interaction`, { headers: authHeaders(token) });
+}
+
+export interface LeadBoardRow {
+  id: string;
+  name: string;
+  status: string;
+  source: string;
+  created_at: string;
+  priority: string;
+  assigned_to: string | null;
+  country: string | null;
+  service: string | null;
+  next_action: { text: string; route: string } | null;
+  ai_state: InteractionState;
+  ai_label: string;
+}
+
+export function getLeadBoard(token: string, params: { status?: string; source?: string; q?: string; limit?: number; offset?: number } = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  });
+  return request<{ leads: LeadBoardRow[]; total: number; limit: number; offset: number }>(`/api/v1/business-builder/leads?${qs.toString()}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function createStarterWorkflow(token: string, kind: "new_lead" | "escalation" = "new_lead") {
+  return request<{ id: string; name: string; status: string; created: boolean }>(`/api/v1/business-builder/workflows/starter?kind=${kind}`, {
     method: "POST",
     headers: authHeaders(token),
   });

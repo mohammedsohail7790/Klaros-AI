@@ -42,6 +42,7 @@ from app.api.v1 import (
     mcp,
     medical_tourism,
     mcp_admin,
+    halla_webhooks,
     marketplace_webhooks,
     morning_brief,
     notifications,
@@ -148,6 +149,7 @@ api_router.include_router(notifications.router)
 api_router.include_router(knowledge.router)
 api_router.include_router(webhooks.router)
 api_router.include_router(marketplace_webhooks.router)
+api_router.include_router(halla_webhooks.router)
 api_router.include_router(voice.router)
 api_router.include_router(voice_stream.router)
 api_router.include_router(mcp.router)

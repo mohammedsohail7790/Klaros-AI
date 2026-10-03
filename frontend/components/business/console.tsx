@@ -5,6 +5,7 @@ import { ArrowDown, CircleDot, Cog, Hand, Sparkles, Zap } from "lucide-react";
 import type { BusinessOperations, OpsPipelineStage, OpsWorkflow } from "@/lib/api";
 import { LEAD_STATUS_ORDER, actionLabel, leadStatusLabel, sourceLabel, triggerLabel, when } from "@/lib/opsLabels";
 import { StatusPill } from "./StatusPill";
+import { WorkflowDetailToggle } from "./WorkflowDetail";
 
 export function ConsoleSection({ id, title, hint, children, action }: { id: string; title: string; hint?: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
@@ -86,28 +87,42 @@ export function LeadPipeline({ stages }: { stages: OpsPipelineStage[] }) {
   );
 }
 
-export function WorkflowList({ workflows }: { workflows: OpsWorkflow[] }) {
+function nextStep(w: OpsWorkflow): string {
+  if (w.status !== "ENABLED") return "Enable it to start.";
+  if (w.last_run?.status === "FAILED") return "Check why the last run failed.";
+  return `Waits for its trigger — ${triggerLabel(w.trigger_event)}.`;
+}
+
+export function WorkflowList({ workflows, token = null }: { workflows: OpsWorkflow[]; token?: string | null }) {
   if (workflows.length === 0) return <p className="text-sm text-muted">No workflows yet.</p>;
   return (
     <ul className="space-y-3" aria-label="Workflows">
-      {workflows.map((w) => (
-        <li key={w.id} className="klaros-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-foreground">{w.name}</p>
-            <StatusPill state={w.status === "ENABLED" ? "READY" : "CONFIGURATION_REQUIRED"} />
-          </div>
-          {w.description && <p className="mt-0.5 text-xs text-muted">{w.description}</p>}
-          <ol className="mt-3 flex flex-wrap items-center gap-2 text-xs" aria-label={`Steps of ${w.name}`}>
-            <li className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-accent-hover"><CircleDot className="h-3 w-3" aria-hidden="true" />{triggerLabel(w.trigger_event)}</li>
-            {w.actions.map((a, i) => (
-              <li key={a + i} className="inline-flex items-center gap-2"><span aria-hidden="true" className="text-muted-foreground">→</span><span className="rounded-full border border-border px-2.5 py-1 text-foreground">{actionLabel(a)}</span></li>
-            ))}
-          </ol>
-          <p className="mt-3 text-xs text-muted">
-            {w.status !== "ENABLED" ? "Not running — enable it to start." : w.runs === 0 ? "Hasn't run yet — it runs the next time its trigger happens." : `Ran ${w.runs} time${w.runs === 1 ? "" : "s"}${w.failed_runs ? `, ${w.failed_runs} failed` : ""}${w.last_run ? ` · last run ${when(w.last_run.at)} (${w.last_run.status.toLowerCase()})` : ""}.`}
-          </p>
-        </li>
-      ))}
+      {workflows.map((w) => {
+        const failing = w.last_run?.status === "FAILED";
+        return (
+          <li key={w.id} className="klaros-card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-foreground">{w.name}</p>
+              <div className="flex items-center gap-2">
+                {failing && <span className="inline-flex items-center rounded-full border border-danger/25 bg-danger/[0.06] px-2 py-0.5 text-[11px] font-medium text-danger">Last run failed</span>}
+                <StatusPill state={w.status === "ENABLED" ? "READY" : "CONFIGURATION_REQUIRED"} />
+              </div>
+            </div>
+            {w.description && <p className="mt-0.5 text-xs text-muted">{w.description}</p>}
+            <ol className="mt-3 flex flex-wrap items-center gap-2 text-xs" aria-label={`Steps of ${w.name}`}>
+              <li className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-accent-hover"><CircleDot className="h-3 w-3" aria-hidden="true" />{triggerLabel(w.trigger_event)}</li>
+              {w.actions.map((a, i) => (
+                <li key={a + i} className="inline-flex items-center gap-2"><span aria-hidden="true" className="text-muted-foreground">→</span><span className="rounded-full border border-border px-2.5 py-1 text-foreground">{actionLabel(a)}</span></li>
+              ))}
+            </ol>
+            <p className="mt-3 text-xs text-muted">
+              {w.status !== "ENABLED" ? "Not running — enable it to start." : w.runs === 0 ? "Hasn't run yet — it runs the next time its trigger happens." : `Ran ${w.runs} time${w.runs === 1 ? "" : "s"}${w.failed_runs ? `, ${w.failed_runs} failed` : ""}${w.last_run ? ` · last run ${when(w.last_run.at)} (${w.last_run.status.toLowerCase()})` : ""}.`}
+            </p>
+            <p className="mt-1 text-xs text-foreground"><span className="text-muted">Next:</span> {nextStep(w)}</p>
+            {token && <WorkflowDetailToggle token={token} id={w.id} name={w.name} />}
+          </li>
+        );
+      })}
     </ul>
   );
 }

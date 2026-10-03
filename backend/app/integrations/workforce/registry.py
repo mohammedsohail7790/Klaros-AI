@@ -13,16 +13,11 @@ from uuid import UUID
 
 from app.integrations.workforce.contract import (
     WorkforceAgentSpec,
+    WorkforceNotConnectedError,
     WorkforceIntegration,
     WorkforceStatus,
     WorkforceStatusReport,
 )
-
-
-class WorkforceNotConnectedError(Exception):
-    """Raised by mutating operations on the pending adapter — Klaros will
-    not pretend to configure or deploy anything on an external platform it
-    has no adapter for."""
 
 
 class PendingWorkforceIntegration(WorkforceIntegration):
@@ -58,8 +53,53 @@ class PendingWorkforceIntegration(WorkforceIntegration):
         raise WorkforceNotConnectedError(self._MESSAGE)
 
 
-_integration: WorkforceIntegration = PendingWorkforceIntegration()
+_pending: WorkforceIntegration = PendingWorkforceIntegration()
+_dev: WorkforceIntegration | None = None
 
 
 def get_workforce_integration() -> WorkforceIntegration:
-    return _integration
+    """Pending by default. `WORKFORCE_ADAPTER=dev` swaps in the development simulator —
+    still never CONNECTED. A real Halla adapter would be selected here."""
+    global _dev
+    from app.core.config import get_settings
+
+    if get_settings().WORKFORCE_ADAPTER == "halla":
+        return _halla()
+    if _dev_selected():
+        if _dev is None:
+            from app.integrations.workforce.dev_adapter import DevWorkforceIntegration
+
+            _dev = DevWorkforceIntegration()
+        return _dev
+    return _pending
+
+
+_halla_instance: WorkforceIntegration | None = None
+
+
+def _halla() -> WorkforceIntegration:
+    global _halla_instance
+    if _halla_instance is None:
+        from app.api.tool_deps_integrations import get_integration_connection_service
+        from app.integrations.workforce.halla_adapter import HallaWorkforceIntegration
+
+        _halla_instance = HallaWorkforceIntegration(get_integration_connection_service())
+    return _halla_instance
+
+
+def halla_enabled() -> bool:
+    from app.core.config import get_settings
+
+    return get_settings().WORKFORCE_ADAPTER == "halla"
+
+
+def _dev_selected() -> bool:
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    # The simulator can never be switched on in production, whatever the setting says.
+    return settings.WORKFORCE_ADAPTER == "dev" and settings.ENV.lower() not in ("production", "prod")
+
+
+def dev_simulator_enabled() -> bool:
+    return _dev_selected()

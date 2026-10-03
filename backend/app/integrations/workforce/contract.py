@@ -27,9 +27,28 @@ from typing import Any
 from uuid import UUID
 
 
+class WorkforceNotConnectedError(Exception):
+    """Raised by an operation that needs a live workforce connection when there is none. Klaros never
+    pretends to configure, sync or call anything on an external platform it is not connected to."""
+
+
+class WorkforceUnavailableError(Exception):
+    """The workforce platform could not be reached or answered with an error. `retryable` says whether
+    trying again later can help (network/5xx/429) or not (a 4xx that will not change)."""
+
+    def __init__(self, message: str, *, status_code: int | None = None, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.retryable = retryable
+
+
 class WorkforceStatus(StrEnum):
+    # NOT_CONNECTED == "not configured": no connection (or no credential) exists for this tenant.
     NOT_CONNECTED = "NOT_CONNECTED"
+    CONNECTING = "CONNECTING"
+    # Needs setup, or the connection works but disagrees with what Klaros expects (e.g. tenant mismatch).
     CONFIGURATION_REQUIRED = "CONFIGURATION_REQUIRED"
+    NEEDS_ATTENTION = "NEEDS_ATTENTION"
     CONNECTED = "CONNECTED"
     ERROR = "ERROR"
 
@@ -79,6 +98,31 @@ class WorkforceStatusReport:
     capabilities: tuple[WorkforceCapability, ...] = WORKFORCE_CAPABILITIES
     agent_id: str | None = None
     checked_at: str | None = None
+    # "none" (nothing wired), "development" (a local simulator — NOT a live connection),
+    # "live" (a real adapter against the external platform).
+    mode: str = "none"
+
+
+@dataclass(frozen=True)
+class WorkforceAgent:
+    """One AI agent of the workforce platform, as Klaros shows it. Klaros does not manage agents."""
+
+    id: str
+    name: str
+    role: str | None = None
+    status: str | None = None
+    available: bool | None = None
+
+
+@dataclass(frozen=True)
+class LeadSyncResult:
+    external_id: str
+    created: bool
+
+
+@dataclass(frozen=True)
+class OutboundCallResult:
+    call_id: str | None
 
 
 class WorkforceIntegration(ABC):
@@ -104,3 +148,23 @@ class WorkforceIntegration(ABC):
 
     @abstractmethod
     async def health_check(self, tenant_id: UUID) -> WorkforceStatusReport: ...
+
+    # --- Operations a LIVE adapter implements. The defaults refuse honestly, so the pending adapter and the
+    # development simulator can never appear to do any of this. ---
+
+    async def get_workforce(self, tenant_id: UUID) -> dict[str, Any]:
+        raise WorkforceNotConnectedError("No AI workforce is connected.")
+
+    async def configure_workforce(self, tenant_id: UUID, config: dict[str, Any]) -> dict[str, Any]:
+        raise WorkforceNotConnectedError("No AI workforce is connected.")
+
+    async def list_agents(self, tenant_id: UUID) -> list[WorkforceAgent]:
+        raise WorkforceNotConnectedError("No AI workforce is connected.")
+
+    async def sync_lead(self, tenant_id: UUID, lead: dict[str, Any], *, external_id: str | None) -> LeadSyncResult:
+        raise WorkforceNotConnectedError("No AI workforce is connected.")
+
+    async def initiate_outbound_call(
+        self, tenant_id: UUID, *, klaros_lead_id: UUID, to_number: str, reason: str, opening_context: str | None
+    ) -> OutboundCallResult:
+        raise WorkforceNotConnectedError("No AI workforce is connected.")

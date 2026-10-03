@@ -15,6 +15,8 @@ const ACTIONS: Record<string, string> = {
 
 const TRIGGERS: Record<string, string> = {
   "lead.created": "A new lead arrives",
+  "halla.lead.escalated": "The AI workforce hands a lead to a person",
+  "halla.lead.qualified": "The AI workforce qualifies a lead",
   "quote.expired": "A quote expires",
   "exception.created": "An exception is raised",
   "invoice.overdue": "An invoice becomes overdue",

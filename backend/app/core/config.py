@@ -197,6 +197,30 @@ class Settings(BaseSettings):
     # unverified address, so this must be a real, verified sender.
     SENDGRID_FROM_EMAIL: str | None = None
     OPENAI_API_KEY: str | None = None
+    # Which AI-workforce adapter this deployment wires in. "pending" (default) reports
+    # honestly that no workforce is connected. "dev" enables the development simulator
+    # (never reports CONNECTED; lets Halla-shaped events be simulated in dev/test only).
+    WORKFORCE_ADAPTER: str = "pending"
+    # --- Halla (real AI-workforce platform, a SEPARATE service). Used when WORKFORCE_ADAPTER=halla.
+    # The base URL is deployment configuration, never tenant input: it must be https in production.
+    HALLA_API_BASE_URL: str | None = None
+    # Name of the HTTP header that carries the tenant-scoped Halla API credential. Deliberately has no
+    # default: the header is defined by Halla's contract, and Klaros will not guess it.
+    HALLA_API_KEY_HEADER: str | None = None
+    # Optional prefix for the header value, e.g. "Bearer". Empty = send the key as-is.
+    HALLA_API_KEY_SCHEME: str | None = None
+    # Comma-separated hosts the base URL may point at. Defaults to the base URL's own host.
+    HALLA_ALLOWED_HOSTS: str | None = None
+    HALLA_REQUEST_TIMEOUT_SECONDS: float = 8.0
+    # Health is allowed longer than a normal request: a hosted gateway that has been idle can take well over 10s to answer
+    # its first request (measured live: 12s, then 0.6s, then 3s). Too tight a limit makes a healthy Halla flap to ERROR.
+    HALLA_HEALTH_TIMEOUT_SECONDS: float = 20.0
+    HALLA_MAX_RETRIES: int = 2
+    # A stored CONNECTED state older than this is re-proven with a live health request.
+    HALLA_STATUS_TTL_SECONDS: int = 300
+    HALLA_WEBHOOK_TOLERANCE_SECONDS: int = 300
+    # Public base URL of THIS Klaros API, used only to show the tenant the webhook URL to register in Halla.
+    KLAROS_PUBLIC_API_URL: str | None = None
     ANTHROPIC_API_KEY: str | None = None
     # "auto" (default) picks a real provider only if its key is set, preferring
     # anthropic > openai > groq > deepseek > nvidia > google, else falls back

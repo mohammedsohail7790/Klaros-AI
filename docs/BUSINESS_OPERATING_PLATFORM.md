@@ -122,3 +122,48 @@ state.
 - Only the Medical Tourism module registers an operations provider today.
 - The starter workflow is the only workflow template.
 - Ask Klaros (natural-language operating questions) is deferred.
+
+## 16. V2 — command center, lead workspace and the Halla loop
+
+**Lifecycle** (Business Builder → Operating Platform): idea → Discovery → Blueprint → Requirements →
+Recommendations → Business Map → Website → AI workforce → Launch → Operate. The authoritative position is
+`BusinessJourney.status`; Launch Readiness (`overview.launch`) stays the single source of readiness.
+
+- **Shell.** Nine primary destinations (Home, Build, Business, AI Workforce, Website, Integrations, Data,
+  Automation, Analytics), a "Work" group (Leads, Customers, Calendar, Dashboard, Morning Brief) and "All modules"
+  for everything else. Pages can pass `crumbs` and `actions`. No route changed.
+- **Business Home** (`components/business/CommandCenter.tsx`, `homeModel.ts`): overview, business health, action
+  center, quick actions, architecture chain, leads to move forward, recent activity (including recorded AI events),
+  launch readiness with a controlled **Launch Business** (publishes the existing website draft through the existing
+  API after confirmation — nothing else).
+- **Business Map**: each node shows a real figure where one exists (lead counts, website state, workforce
+  conversations, an industry module's records matched by route).
+- **Leads**: `GET /business-builder/leads` returns status, priority, assignee, country, service, next action and AI
+  state for a whole page in one batched call (industry modules contribute through
+  `register_lead_context_provider`). Lead detail adds contact, business context, **AI interaction**, next action and a
+  merged timeline.
+- **Workflows**: each shows trigger, steps, run counts, failure state and what happens next; "View details" loads
+  the real runs step by step (`GET /business-builder/workflows/{id}`). Still the existing automation engine.
+- **Integrations**: nine categories; each card states purpose, connection, what it still needs and the one action.
+- **Data / Analytics**: real counts only; AI figures say "Not measured" until something is recorded.
+- **Lead next action** (`lead_next_action`): a person needed → the module's hint → the generic rule for the status.
+
+**Medical Tourism end to end**: public enquiry → patient lead → (Halla events, simulated in dev) → qualification →
+provider matching (explainable) → human review → consultation → referral → follow-up, visible on Home, Leads, Map,
+Workflows and Analytics.
+
+**Dropshipping cross-vertical proof**: the same pipeline derives storefront, supplier connection, catalog, inventory,
+pricing, orders, fulfilment, payments, marketing, communication and finance, and draws a Supplier on the Map, with no
+industry module and no medical code. Capability extraction by the AI can under-report; the Blueprint editor is the
+correction path (observed once: the industry section had to be filled by hand).
+
+**New known limitations**: the Website Builder's section editor shows raw JSON (pre-existing); response time and
+persisted provider matches are not measured; Communication has no catalogued provider; the dev simulator exists only
+for development.
+
+## 17. The real Halla integration
+
+See `AI_WORKFORCE_INTEGRATION_BOUNDARY.md` ("Real Halla integration"). With `WORKFORCE_ADAPTER=halla` the AI-workforce
+screens show the tenant's real connection (connect, health, send business context, agents), lead detail can send a lead to
+Halla and ask it to call, signed Halla events update leads and run the tenant's workflows, and Launch Readiness, the Business
+Map and Business Home report exactly what the backend's real health request returned.

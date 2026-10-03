@@ -29,14 +29,16 @@ export default function WorkflowsPage() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [created, setCreated] = useState(false);
+  const [createdName, setCreatedName] = useState("New lead alert");
 
-  async function addStarter() {
+  async function addStarter(kind: "new_lead" | "escalation" = "new_lead") {
     if (!token || busy) return;
     setBusy(true);
     setActionError(null);
     try {
-      const r = await createStarterWorkflow(token);
+      const r = await (kind === "escalation" ? createStarterWorkflow(token, "escalation") : createStarterWorkflow(token));
       setCreated(r.created);
+      setCreatedName(r.name);
       await reload();
     } catch (err) {
       setActionError(
@@ -58,7 +60,7 @@ export default function WorkflowsPage() {
         {(error || actionError) && (
           <div className="mb-4"><Alert variant="danger" action={error ? <Button size="sm" variant="secondary" onClick={() => reload()}>Try again</Button> : undefined}>{actionError ?? error}</Alert></div>
         )}
-        {created && <div className="mb-4"><Alert variant="success">The “New lead alert” workflow is created and running.</Alert></div>}
+        {created && <div className="mb-4"><Alert variant="success">The “{createdName}” workflow is created and running.</Alert></div>}
         {!ops && !error && <Skeleton rows={5} />}
         {ops && (
           <>
@@ -71,9 +73,10 @@ export default function WorkflowsPage() {
               title="Your workflows"
               hint="Automations that run on their own when something happens."
               action={
-                !ops.starter_workflow_exists ? (
-                  <Button size="sm" onClick={addStarter} disabled={busy}>{busy ? "Creating…" : "Add “New lead alert”"}</Button>
-                ) : undefined
+                <div className="flex flex-wrap gap-2">
+                  {!ops.starter_workflow_exists && <Button size="sm" onClick={() => addStarter()} disabled={busy}>{busy ? "Creating…" : "Add “New lead alert”"}</Button>}
+                  {ops.escalation_workflow_exists === false && <Button size="sm" variant="secondary" onClick={() => addStarter("escalation")} disabled={busy}>Add “Escalated lead alert”</Button>}
+                </div>
               }
             >
               {ops.workflows.length === 0 && (
@@ -81,7 +84,7 @@ export default function WorkflowsPage() {
                   You have no workflows yet. The starter workflow notifies your team the moment a lead arrives — it uses the existing automation engine and runs for real.
                 </p>
               )}
-              <WorkflowList workflows={ops.workflows} />
+              <WorkflowList workflows={ops.workflows} token={token} />
               <p className="mt-4 text-sm text-muted">
                 Need something more specific? Build it in the <Link href="/automations" className="underline underline-offset-2">full workflow builder</Link>. Each step runs through Klaros's normal permission checks and audit trail.
               </p>

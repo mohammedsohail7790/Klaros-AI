@@ -125,6 +125,15 @@ class EventType(StrEnum):
     APPROVAL_EXECUTION_COMPLETED = "approval.execution.completed"
     APPROVAL_EXECUTION_FAILED = "approval.execution.failed"
 
+    # AI workforce (Halla) events, published by Klaros after a verified webhook is accepted.
+    HALLA_INTERACTION_STARTED = "halla.interaction.started"
+    HALLA_INTERACTION_COMPLETED = "halla.interaction.completed"
+    HALLA_LEAD_QUALIFIED = "halla.lead.qualified"
+    HALLA_LEAD_ESCALATED = "halla.lead.escalated"
+    HALLA_APPOINTMENT_CONFIRMED = "halla.appointment.confirmed"
+    HALLA_APPOINTMENT_RESCHEDULED = "halla.appointment.rescheduled"
+    HALLA_APPOINTMENT_CANCELLED = "halla.appointment.cancelled"
+
     INTEGRATION_FAILED = "integration.failed"
     # Phase 12C
     INTEGRATION_CONNECTED = "integration.connected"

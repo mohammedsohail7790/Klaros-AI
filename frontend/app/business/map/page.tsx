@@ -25,11 +25,14 @@ import { StatusPill } from "@/components/business/StatusPill";
 import { WebsiteActions } from "@/components/business/WebsiteActions";
 import { BusinessMap } from "@/components/business/BusinessMap";
 import { useBuilderOverview } from "@/components/business/useBuilderOverview";
+import { useOperations } from "@/components/business/useOperations";
+import { buildMapMetrics } from "@/components/business/homeModel";
 
 export default function BusinessMapPage() {
   const { token, user } = useAuth();
   const router = useRouter();
   const { overview, error: loadError, reload } = useBuilderOverview(token);
+  const { ops } = useOperations(token);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -110,7 +113,7 @@ export default function BusinessMapPage() {
         {overview.business_map.nodes.length === 0 ? (
           <EmptyState title="There's nothing to map yet — confirm your Blueprint and its required capabilities first." />
         ) : (
-          <BusinessMap map={overview.business_map} />
+          <BusinessMap map={overview.business_map} metrics={buildMapMetrics(overview, ops)} />
         )}
 
         <section className="mt-10" aria-labelledby="next-actions">

@@ -33,3 +33,33 @@ def register_operations_provider(vertical_key: str, fn: OperationsProvider) -> N
 
 def get_operations_provider(vertical_key: str) -> OperationsProvider | None:
     return _REGISTRY.get(vertical_key)
+
+
+# --- per-lead context + workforce context --------------------------------------------
+# Two more optional hooks a module can register under the same vertical key:
+#
+#   lead context:      fn(tenant_id, lead_ids) -> {lead_id: {"country"?, "service"?, "next_action"?}}
+#                      one batched call for a whole page of leads (never one call per lead).
+#   workforce context: fn(tenant_id) -> {"services","markets","qualification_fields",
+#                      "escalation_triggers","booking_rules"}  (any subset, all lists of text)
+LeadContextProvider = Callable[[uuid.UUID, list[uuid.UUID]], Awaitable[dict[uuid.UUID, dict[str, Any]]]]
+WorkforceContextProvider = Callable[[uuid.UUID], Awaitable[dict[str, Any]]]
+
+_LEAD_CONTEXT: dict[str, LeadContextProvider] = {}
+_WORKFORCE_CONTEXT: dict[str, WorkforceContextProvider] = {}
+
+
+def register_lead_context_provider(vertical_key: str, fn: LeadContextProvider) -> None:
+    _LEAD_CONTEXT[vertical_key] = fn
+
+
+def get_lead_context_provider(vertical_key: str) -> LeadContextProvider | None:
+    return _LEAD_CONTEXT.get(vertical_key)
+
+
+def register_workforce_context_provider(vertical_key: str, fn: WorkforceContextProvider) -> None:
+    _WORKFORCE_CONTEXT[vertical_key] = fn
+
+
+def get_workforce_context_provider(vertical_key: str) -> WorkforceContextProvider | None:
+    return _WORKFORCE_CONTEXT.get(vertical_key)

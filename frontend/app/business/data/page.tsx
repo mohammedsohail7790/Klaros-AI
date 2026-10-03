@@ -17,12 +17,15 @@ import { useOperations } from "@/components/business/useOperations";
 import { ConsoleSection } from "@/components/business/console";
 import { StatusPill } from "@/components/business/StatusPill";
 
-function Row({ label, count, route }: { label: string; count: number; route?: string | null }) {
+function Row({ label, count, route, text, hint }: { label: string; count?: number; route?: string | null; text?: string; hint?: string }) {
   const inner = (
     <>
-      <span className="text-sm text-foreground">{label}</span>
-      <span className="flex items-center gap-3">
-        <span className="font-display text-2xl text-foreground">{count}</span>
+      <span className="min-w-0">
+        <span className="block text-sm text-foreground">{label}</span>
+        {hint && <span className="block text-xs text-muted">{hint}</span>}
+      </span>
+      <span className="flex shrink-0 items-center gap-3">
+        <span className={text ? "text-sm font-medium text-foreground" : "font-display text-2xl text-foreground"}>{text ?? count}</span>
         {count === 0 && <span className="text-xs text-muted-foreground">nothing yet</span>}
       </span>
     </>
@@ -38,6 +41,7 @@ export default function DataCenterPage() {
   const { token, user } = useAuth();
   const { ops, error, reload } = useOperations(token);
   const { overview } = useBuilderOverview(token);
+  const runs = ops?.workflows.reduce((n, w) => n + w.runs, 0) ?? 0;
   const notConfigured = (overview?.requirements ?? []).filter((r) => r.klaros_support === "PLANNED" && r.required);
 
   return (
@@ -50,8 +54,10 @@ export default function DataCenterPage() {
           <>
             <ConsoleSection id="core" title="Customers & leads">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Row label="Leads" count={ops.leads.total} route="/leads" />
-                <Row label="Customers" count={ops.customers} route="/customers" />
+                <Row label="Leads" hint="Everyone who has enquired" count={ops.leads.total} route="/leads" />
+                <Row label="Website enquiries" hint="Leads that came from your website form" count={ops.leads.website_enquiries} route="/leads?source=WEB" />
+                <Row label="Customers" hint="People you have worked with" count={ops.customers} route="/customers" />
+                <Row label="AI conversations" hint={ops.ai.interactions === 0 ? "None recorded — no AI workforce is reporting yet" : "Conversations your AI workforce reported"} count={ops.ai.interactions} route="/workforce" />
               </div>
             </ConsoleSection>
 
@@ -62,6 +68,20 @@ export default function DataCenterPage() {
                 </div>
               </ConsoleSection>
             )}
+
+            <ConsoleSection id="definition" title="Your business definition" hint="What Klaros built your business from.">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Row label="Blueprint" hint="Your confirmed business plan" text={overview?.blueprint ? `Version ${overview.blueprint.version}` : "Not confirmed"} route="/business/blueprint" />
+                <Row label="Requirements" hint="What your business needs to run" count={overview?.requirements.length ?? 0} route="/business/requirements" />
+              </div>
+            </ConsoleSection>
+
+            <ConsoleSection id="automation" title="Automation">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Row label="Workflows" hint="Automations that run on their own" count={ops.workflows.length} route="/business/workflows" />
+                <Row label="Workflow runs" hint="Every time a workflow ran" count={runs} route="/business/workflows" />
+              </div>
+            </ConsoleSection>
 
             {notConfigured.length > 0 && (
               <ConsoleSection id="missing" title="Not configured" hint="Your business needs these, but Klaros has no data model for them yet — so there is nothing to show.">

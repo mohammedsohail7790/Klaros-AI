@@ -9,20 +9,32 @@ status Klaros reports until such an adapter is actually wired in.
 
 from app.integrations.workforce.contract import (
     WORKFORCE_CAPABILITIES,
+    LeadSyncResult,
+    OutboundCallResult,
+    WorkforceAgent,
     WorkforceAgentSpec,
     WorkforceCapability,
     WorkforceIntegration,
+    WorkforceNotConnectedError,
     WorkforceStatus,
     WorkforceStatusReport,
+    WorkforceUnavailableError,
 )
-from app.integrations.workforce.registry import get_workforce_integration
+from app.integrations.workforce.registry import dev_simulator_enabled, get_workforce_integration, halla_enabled
 
 __all__ = [
+    "LeadSyncResult",
+    "OutboundCallResult",
     "WORKFORCE_CAPABILITIES",
+    "WorkforceAgent",
+    "WorkforceNotConnectedError",
+    "WorkforceUnavailableError",
     "WorkforceAgentSpec",
     "WorkforceCapability",
     "WorkforceIntegration",
     "WorkforceStatus",
     "WorkforceStatusReport",
+    "dev_simulator_enabled",
     "get_workforce_integration",
+    "halla_enabled",
 ]

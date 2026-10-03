@@ -34,7 +34,11 @@ from app.models.medical_tourism import (
     ProviderStatus,
     ReferralCommission,
 )
-from app.services.operations_providers import register_operations_provider
+from app.services.operations_providers import (
+    register_lead_context_provider,
+    register_operations_provider,
+    register_workforce_context_provider,
+)
 
 _STOP = {"the", "and", "for", "with", "from", "need", "want", "would", "like", "please", "about", "have", "some", "that", "this", "your", "interested"}
 
@@ -257,6 +261,26 @@ async def _operations(tenant_id: uuid.UUID) -> dict[str, Any]:
                 select(Consultation.status, func.count()).where(Consultation.tenant_id == tenant_id).group_by(Consultation.status)
             )
         ).all()
+        top_procedures = (
+            await session.execute(
+                select(Procedure.name, func.count())
+                .select_from(PatientLead)
+                .join(Procedure, Procedure.id == PatientLead.procedure_id)
+                .where(PatientLead.tenant_id == tenant_id)
+                .group_by(Procedure.name)
+                .order_by(func.count().desc(), Procedure.name)
+                .limit(6)
+            )
+        ).all()
+        top_destinations = (
+            await session.execute(
+                select(PatientLead.preferred_destination_country, func.count())
+                .where(PatientLead.tenant_id == tenant_id, PatientLead.preferred_destination_country.is_not(None))
+                .group_by(PatientLead.preferred_destination_country)
+                .order_by(func.count().desc(), PatientLead.preferred_destination_country)
+                .limit(6)
+            )
+        ).all()
         by_country = Counter(
             c for (c,) in (await session.execute(select(Provider.country).where(Provider.tenant_id == tenant_id, Provider.status == ProviderStatus.ACTIVE))).all()
         )
@@ -283,10 +307,17 @@ async def _operations(tenant_id: uuid.UUID) -> dict[str, Any]:
                 .limit(4)
             )
         ).all()
+    attention = []
+    awaiting = max(0, patients - patients_with_consult)
+    if awaiting:
+        attention.append({"id": "mt-awaiting-consultation", "text": f"{awaiting} patient enquir{'ies have' if awaiting != 1 else 'y has'} no consultation yet", "route": "/medical-tourism/leads", "count": awaiting})
+    if patients and not (providers and offerings):
+        attention.append({"id": "mt-no-providers", "text": "Patient enquiries can't be matched until providers and what they offer are added", "route": "/medical-tourism/providers", "count": 1})
     activity = [{"at": p.created_at, "kind": "data", "text": f"Provider added: {p.name}", "route": "/medical-tourism/providers"} for p in recent_providers]
     activity += [{"at": c.created_at, "kind": "consultation", "text": f"Consultation {c.status.lower()} with {n}", "route": "/medical-tourism/consultations"} for c, n in recent_consults]
     return {
         "activity": activity,
+        "attention": attention,
         "metrics": [
             {"key": "patient_leads", "label": "Patient enquiries", "value": patients, "route": "/medical-tourism/leads"},
             {"key": "consultations", "label": "Consultations", "value": consultations, "route": "/medical-tourism/consultations"},
@@ -303,6 +334,8 @@ async def _operations(tenant_id: uuid.UUID) -> dict[str, Any]:
         ],
         "breakdowns": [
             {"key": "providers_by_country", "label": "Providers by country", "items": [{"label": c, "value": n} for c, n in by_country.most_common(8)]},
+            {"key": "top_procedures", "label": "Most requested treatments", "items": [{"label": n, "value": c} for n, c in top_procedures]},
+            {"key": "top_destinations", "label": "Preferred destinations", "items": [{"label": n, "value": c} for n, c in top_destinations]},
             {"key": "consultations_by_status", "label": "Consultations by status", "items": [{"label": s.replace("_", " ").title(), "value": n} for s, n in consult_rows]},
         ],
         "lead_stages": [
@@ -313,15 +346,87 @@ async def _operations(tenant_id: uuid.UUID) -> dict[str, Any]:
                 "route": "/medical-tourism/providers",
             },
             {
-                "key": "consultation", "label": "Consultation", "kind": "MANUAL", "state": "READY",
+                "key": "human_review", "label": "Human review", "kind": "MANUAL", "state": "READY",
+                "detail": "Your team reviews the suggested matches before anything is sent to a patient or provider.", "route": "/leads",
+            },
+            {
+                "key": "consultation", "label": "Consultation booking", "kind": "MANUAL", "state": "READY",
                 "detail": "Your team schedules consultations — nothing is booked automatically.", "route": "/medical-tourism/consultations",
             },
             {
                 "key": "referral", "label": "Referral & commission", "kind": "MANUAL", "state": "READY",
                 "detail": "Your team records referrals and commissions.", "route": "/medical-tourism/referrals",
             },
+            {
+                "key": "follow_up", "label": "Follow-up", "kind": "MANUAL", "state": "READY",
+                "detail": "Your team follows up with the patient after the consultation.", "route": "/leads",
+            },
         ],
     }
 
 
+async def _lead_context(tenant_id: uuid.UUID, lead_ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str, Any]]:
+    """Per-lead country / treatment / next action for a whole page of leads — one batched
+    set of queries, whatever the page size."""
+    if not lead_ids:
+        return {}
+    async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
+        rows = (
+            await session.execute(
+                select(PatientLead, Procedure.name, Lead.status)
+                .join(Lead, Lead.id == PatientLead.lead_id)
+                .outerjoin(Procedure, Procedure.id == PatientLead.procedure_id)
+                .where(PatientLead.tenant_id == tenant_id, PatientLead.lead_id.in_(lead_ids))
+            )
+        ).all()
+        with_consult = set(
+            (
+                await session.execute(
+                    select(Appointment.lead_id)
+                    .select_from(Consultation)
+                    .join(Appointment, Appointment.id == Consultation.appointment_id)
+                    .where(Consultation.tenant_id == tenant_id, Appointment.lead_id.in_(lead_ids))
+                )
+            ).scalars()
+        )
+    out: dict[uuid.UUID, dict[str, Any]] = {}
+    for pl, procedure_name, status in rows:
+        if status in ("LOST", "UNQUALIFIED"):
+            nxt = None
+        elif status == "NEW":
+            nxt = {"text": "Contact the patient", "route": f"/leads/{pl.lead_id}"}
+        elif pl.lead_id in with_consult:
+            nxt = {"text": "Follow the consultation", "route": f"/leads/{pl.lead_id}"}
+        else:
+            nxt = {"text": "Review provider matches", "route": f"/leads/{pl.lead_id}"}
+        out[pl.lead_id] = {"country": pl.preferred_destination_country, "service": procedure_name, "next_action": nxt}
+    return out
+
+
+async def _workforce_context(tenant_id: uuid.UUID) -> dict[str, Any]:
+    """What this module tells the AI workforce about the business: what it offers, where,
+    what to ask, and when to hand over to a person. Business configuration — not clinical logic."""
+    async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
+        services = (
+            await session.execute(
+                select(Procedure.name).where(Procedure.tenant_id == tenant_id, Procedure.status == ProcedureStatus.ACTIVE).order_by(Procedure.name).limit(25)
+            )
+        ).scalars().all()
+        markets = (
+            await session.execute(
+                select(Provider.country).where(Provider.tenant_id == tenant_id, Provider.status == ProviderStatus.ACTIVE).distinct().order_by(Provider.country)
+            )
+        ).scalars().all()
+    return {
+        "services": list(services),
+        "markets": list(markets),
+        "qualification_fields": ["Treatment of interest", "Budget", "Travel timeline", "Preferred destination", "Medical history (only what the patient chooses to share)"],
+        "escalation_triggers": ["Complex medical questions", "High-value lead"],
+    }
+
+
 register_operations_provider("medical_tourism", _operations)
+register_lead_context_provider("medical_tourism", _lead_context)
+register_workforce_context_provider("medical_tourism", _workforce_context)

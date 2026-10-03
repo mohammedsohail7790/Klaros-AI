@@ -54,12 +54,38 @@ describe("Analytics", () => {
   it("says plainly what it does not measure", async () => {
     getOps.mockResolvedValue(opsFixture());
     render(<Page />);
-    expect(await screen.findByText(/Revenue, orders and website traffic are not measured/)).toBeInTheDocument();
+    expect(await screen.findByText(/Not measured: revenue, orders, website traffic and response time/)).toBeInTheDocument();
   });
 
   it("shows a load error with a retry", async () => {
     getOps.mockImplementation(async () => { throw new Error("down"); });
     render(<Page />);
     expect(await screen.findByText(/couldn't load your operations/)).toBeInTheDocument();
+  });
+});
+
+
+describe("Analytics — AI workforce", () => {
+  it("says it is not measured when nothing was recorded", async () => {
+    getOps.mockResolvedValue(opsFixture());
+    render(<Page />);
+    expect(await screen.findByText(/Not measured — no AI conversations have been recorded/)).toBeInTheDocument();
+  });
+
+  it("shows recorded AI figures only from real counts", async () => {
+    getOps.mockResolvedValue(opsFixture({ ai: { events: {}, interactions: 5, qualified: 3, escalated: 1, needs_person: 1 } }));
+    render(<Page />);
+    const sec = (await screen.findByRole("heading", { name: "AI workforce" })).closest("section")!;
+    expect(within(sec).getByText("Conversations").nextSibling).toHaveTextContent("5");
+    expect(within(sec).getByText("Qualified by AI").nextSibling).toHaveTextContent("3");
+    expect(within(sec).getByText("Escalated to a person").nextSibling).toHaveTextContent("1");
+  });
+
+  it("shows industry breakdowns such as top treatments and destinations", async () => {
+    getOps.mockResolvedValue(opsFixture({ module: { metrics: [], data: [], breakdowns: [{ key: "top_procedures", label: "Most requested treatments", items: [{ label: "Hair transplant", value: 3 }] }, { key: "top_destinations", label: "Preferred destinations", items: [{ label: "TR", value: 2 }] }] } }));
+    render(<Page />);
+    expect(await screen.findByText("Most requested treatments")).toBeInTheDocument();
+    expect(screen.getByText("Hair transplant")).toBeInTheDocument();
+    expect(screen.getByText("Preferred destinations")).toBeInTheDocument();
   });
 });

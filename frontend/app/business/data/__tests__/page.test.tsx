@@ -35,8 +35,8 @@ describe("Data", () => {
     getOps.mockResolvedValue(opsFixture());
     render(<Page />);
     expect(await screen.findByRole("heading", { level: 1, name: "Data" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Leads\s*4/ })).toHaveAttribute("href", "/leads");
-    expect(screen.getByRole("link", { name: /Customers\s*1/ })).toHaveAttribute("href", "/customers");
+    expect(screen.getByRole("link", { name: /^Leads.*4/ })).toHaveAttribute("href", "/leads");
+    expect(screen.getByRole("link", { name: /^Customers.*1/ })).toHaveAttribute("href", "/customers");
     expect(screen.getByRole("link", { name: /Providers\s*2/ })).toHaveAttribute("href", "/medical-tourism/providers");
     expect(screen.getByRole("link", { name: /Procedures\s*0\s*nothing yet/ })).toBeInTheDocument(); // honest zero
   });
@@ -54,12 +54,39 @@ describe("Data", () => {
   it("an empty business shows zeros, not invented data", async () => {
     getOps.mockResolvedValue(opsFixture({ leads: emptyLeads, customers: 0, module: { metrics: [], data: [], breakdowns: [] } }));
     render(<Page />);
-    expect(await screen.findByRole("link", { name: /Leads\s*0\s*nothing yet/ })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /^Leads.*0\s*nothing yet/ })).toBeInTheDocument();
   });
 
   it("shows a load error with a retry", async () => {
     getOps.mockImplementation(async () => { throw new Error("down"); });
     render(<Page />);
     expect(await screen.findByText(/couldn't load your operations/)).toBeInTheDocument();
+  });
+});
+
+
+describe("Data — business definition, automation and AI conversations", () => {
+  it("shows the blueprint, requirements, workflows, website enquiries and AI conversations from real data", async () => {
+    getOps.mockResolvedValue(opsFixture({ ai: { events: {}, interactions: 3, qualified: 1, escalated: 1, needs_person: 1 } }));
+    getOverview.mockResolvedValue({ journey: { id: "j", status: "COMPLETED" }, blueprint: { id: "b", version: 2, status: "ACTIVE" }, requirements: [{ key: "a", label: "A", klaros_support: "NATIVE", required: true }, { key: "b", label: "B", klaros_support: "NATIVE", required: true }], stages: [], next_actions: [] });
+    render(<Page />);
+    expect(await screen.findByRole("link", { name: /^Blueprint.*Version 2/ })).toHaveAttribute("href", "/business/blueprint");
+    await waitFor(() => expect(screen.getByRole("link", { name: /^Requirements.*2/ })).toHaveAttribute("href", "/business/requirements"));
+    expect(screen.getByRole("link", { name: /^AI conversations.*3/ })).toHaveAttribute("href", "/workforce");
+    expect(screen.getByRole("link", { name: /^Website enquiries.*3/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Workflows.*1/ })).toHaveAttribute("href", "/business/workflows");
+  });
+
+  it("says AI conversations are none — not zero-as-success — when no workforce reports", async () => {
+    getOps.mockResolvedValue(opsFixture());
+    render(<Page />);
+    expect(await screen.findByText(/None recorded — no AI workforce is reporting yet/)).toBeInTheDocument();
+  });
+
+  it("says Blueprint is not confirmed when there is none", async () => {
+    getOps.mockResolvedValue(opsFixture());
+    getOverview.mockResolvedValue({ journey: null, blueprint: null, requirements: [], stages: [], next_actions: [] });
+    render(<Page />);
+    expect(await screen.findByRole("link", { name: /^Blueprint.*Not confirmed/ })).toBeInTheDocument();
   });
 });

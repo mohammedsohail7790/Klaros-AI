@@ -14,7 +14,7 @@ import { cn } from "@/lib/cn";
  */
 export function StageTracker({ stages, activeKey }: { stages: BuilderStage[]; activeKey?: string }) {
   return (
-    <nav aria-label="Business journey" className="mb-6 -mx-6 overflow-x-auto px-6 pb-1">
+    <nav aria-label="Business journey" className="relative mb-6 -mx-4 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6">
       <ol className="flex min-w-max items-center gap-1 text-xs">
         {stages.map((s, i) => {
           const isActive = activeKey ? s.key === activeKey : s.state === "current";

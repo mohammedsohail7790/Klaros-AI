@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { LeadOperationsPanel } from "@/components/business/LeadOperationsPanel";
+import { GenericNextAction, LeadAiInteraction } from "@/components/business/LeadAiInteraction";
+import { leadStatusLabel, sourceLabel, titleCase, when } from "@/lib/opsLabels";
 import { useParams, useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
@@ -12,6 +14,8 @@ import {
   ApiError,
   Campaign,
   LeadAttribution,
+  LeadInteraction,
+  LeadOperations,
   Worker,
   aiQualifyLeadAdvisory,
   attributeLead,
@@ -58,6 +62,8 @@ export default function LeadDetailPage() {
   const [attrModel, setAttrModel] = useState("SOURCE_ONLY");
   const [attrSaving, setAttrSaving] = useState(false);
   const [attrError, setAttrError] = useState<string | null>(null);
+  const [interaction, setInteraction] = useState<LeadInteraction | null>(null);
+  const [ops, setOps] = useState<LeadOperations | null | undefined>(undefined);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -170,67 +176,97 @@ export default function LeadDetailPage() {
   }
 
   return (
-    <AppShell user={user}>
-      <div className="px-8 py-8">
-        <Link href="/leads" className="text-sm text-muted hover:underline">
-          ← Back to leads
-        </Link>
-
+    <AppShell user={user} crumbs={lead ? [{ label: "Leads", href: "/leads" }, { label: lead.name }] : [{ label: "Leads", href: "/leads" }]}>
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="mt-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div role="alert" className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
             </button>
           </div>
         ) : !lead ? (
-          <p className="mt-4 text-sm text-muted">Lead not found.</p>
+          <p className="text-sm text-muted">Lead not found.</p>
         ) : (
-          <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="lg:col-span-2 space-y-6">
-              <LeadOperationsPanel token={token} leadId={id} refreshKey={lead.status} />
-              <div className="rounded-lg border border-border bg-surface p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h1 className="font-display text-2xl text-foreground">{lead.name}</h1>
-                    <p className="text-sm text-muted">
-                      {lead.source} · {lead.email ?? "no email"} · {lead.phone ?? "no phone"}
+              {/* HEADER + CONTACT + BUSINESS CONTEXT */}
+              <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h1 className="font-display text-2xl text-foreground sm:text-3xl">{lead.name}</h1>
+                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+                      <span>{sourceLabel(lead.source)}</span>
+                      <span>Priority: <span className="text-foreground">{titleCase(lead.urgency.toLowerCase())}</span></span>
+                      <span>Received {when(lead.created_at)}</span>
+                      {lead.assigned_user_id && <span>Assigned to a team member</span>}
                     </p>
                   </div>
-                  <select
-                    value={lead.status}
-                    onChange={(e) => handleStatusChange(e.target.value)}
-                    className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
-                  >
-                    {STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="text-sm">
+                    <span className="sr-only">Status</span>
+                    <select
+                      value={lead.status}
+                      onChange={(e) => handleStatusChange(e.target.value)}
+                      className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                    >
+                      {STATUS_OPTIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {leadStatusLabel(s)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
 
-                <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                <div className="mt-5 grid gap-6 sm:grid-cols-2">
                   <div>
-                    <dt className="text-muted">Service requested</dt>
-                    <dd>{lead.service_requested ?? "—"}</dd>
+                    <h2 className="klaros-label mb-2">Contact</h2>
+                    <dl className="space-y-1.5 text-sm">
+                      <div><dt className="sr-only">Phone</dt><dd>{lead.phone ? <a href={`tel:${lead.phone}`} className="text-foreground hover:underline">{lead.phone}</a> : <span className="text-muted">No phone</span>}</dd></div>
+                      <div><dt className="sr-only">Email</dt><dd className="break-all">{lead.email ? <a href={`mailto:${lead.email}`} className="text-foreground hover:underline">{lead.email}</a> : <span className="text-muted">No email</span>}</dd></div>
+                      <div><dt className="sr-only">Location</dt><dd className="text-foreground">{lead.location ?? <span className="text-muted">No location</span>}</dd></div>
+                    </dl>
                   </div>
                   <div>
-                    <dt className="text-muted">Location</dt>
-                    <dd>{lead.location ?? "—"}</dd>
+                    <h2 className="klaros-label mb-2">Business context</h2>
+                    <dl className="space-y-1.5 text-sm">
+                      <div className="flex gap-2"><dt className="text-muted">Requested</dt><dd className="text-foreground">{lead.service_requested ?? "—"}</dd></div>
+                      <div className="flex gap-2"><dt className="text-muted">Budget</dt><dd className="text-foreground">{lead.estimated_value != null ? `$${lead.estimated_value.toLocaleString()}` : "Not given"}</dd></div>
+                    </dl>
                   </div>
-                  <div>
-                    <dt className="text-muted">Urgency</dt>
-                    <dd>{lead.urgency}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted">Estimated value</dt>
-                    <dd>{lead.estimated_value != null ? `$${lead.estimated_value.toLocaleString()}` : "—"}</dd>
-                  </div>
-                </dl>
+                </div>
               </div>
+
+              {/* AI INTERACTION */}
+              <LeadAiInteraction token={token} leadId={id} refreshKey={lead.status} onLoaded={setInteraction} />
+
+              {/* NEXT ACTION + TIMELINE for leads without industry details */}
+              {ops === null && interaction && (
+                <>
+                  <GenericNextAction action={interaction.next_action} />
+                  <section aria-labelledby="lead-tl-h" className="rounded-lg border border-border bg-surface p-5 sm:p-6">
+                    <h2 id="lead-tl-h" className="font-display text-xl text-foreground">Timeline</h2>
+                    <ol className="mt-3 space-y-2 border-l border-border pl-4" aria-label="Lead timeline">
+                      {[{ at: lead.created_at, text: `Lead received from ${sourceLabel(lead.source).toLowerCase()}` }, ...interaction.events.map((e) => ({ at: e.at, text: e.text }))]
+                        .sort((a, b) => a.at.localeCompare(b.at))
+                        .map((t, i) => (
+                          <li key={i} className="text-sm"><span className="text-foreground">{t.text}</span> <span className="text-xs text-muted-foreground">· {when(t.at)}</span></li>
+                        ))}
+                    </ol>
+                  </section>
+                </>
+              )}
+
+              {/* INDUSTRY CONTEXT: enquiry, provider matching, next action, timeline */}
+              <LeadOperationsPanel
+                token={token}
+                leadId={id}
+                refreshKey={lead.status}
+                onLoaded={setOps}
+                extraTimeline={interaction?.events.map((e) => ({ at: e.at, kind: "ai", text: e.text }))}
+              />
 
               {lead.customer_id && (
                 <div className="rounded-lg border border-border bg-surface p-4 text-sm">

@@ -484,7 +484,7 @@ def derive_business_map(inp: BuilderInputs, requirements: list[dict[str, Any]]) 
             CONNECTED
             if inp.workforce.status.value == CONNECTED
             else CONFIGURATION_REQUIRED
-            if inp.workforce.status.value == CONFIGURATION_REQUIRED
+            if inp.workforce.status.value in ("CONFIGURATION_REQUIRED", "NEEDS_ATTENTION", "ERROR")
             else NOT_CONNECTED
             if inp.workforce.adapter_implemented
             else INTEGRATION_REQUIRED
@@ -822,6 +822,7 @@ def workforce_view(report: WorkforceStatusReport) -> dict[str, Any]:
         "adapter_implemented": report.adapter_implemented,
         "message": report.message,
         "agent_id": report.agent_id,
+        "mode": report.mode,
         "capabilities": [{"key": c.key, "label": c.label, "description": c.description} for c in report.capabilities],
     }
 

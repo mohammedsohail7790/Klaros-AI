@@ -40,7 +40,7 @@ export default function AnalyticsPage() {
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <Stat label="Total leads" value={ops.leads.total} />
                 <Stat label="New in the last 7 days" value={ops.leads.new_7d} />
-                <Stat label="Qualified or beyond" value={ops.leads.qualified} hint="Qualified, booked or converted" />
+                <Stat label="Qualified or beyond" value={ops.leads.qualified} hint={ops.leads.total > 0 ? `${Math.round((ops.leads.qualified / ops.leads.total) * 100)}% of all leads` : "Qualified, booked or converted"} />
                 <Stat label="Converted" value={converted} hint={ops.leads.total > 0 ? `${Math.round((converted / ops.leads.total) * 100)}% of all leads` : "No leads yet"} />
               </div>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -49,7 +49,20 @@ export default function AnalyticsPage() {
               </div>
             </ConsoleSection>
 
-            {ops.module.metrics.length > 0 && (
+            <ConsoleSection id="ai" title="AI workforce">
+              {ops.ai.interactions === 0 && ops.ai.qualified === 0 && ops.ai.escalated === 0 ? (
+                <p className="klaros-card p-4 text-sm text-muted">Not measured — no AI conversations have been recorded. Figures appear here once an AI workforce is connected and reports back.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <Stat label="Conversations" value={ops.ai.interactions} />
+                  <Stat label="Qualified by AI" value={ops.ai.qualified} />
+                  <Stat label="Escalated to a person" value={ops.ai.escalated} />
+                  <Stat label="Need a person now" value={ops.ai.needs_person} />
+                </div>
+              )}
+            </ConsoleSection>
+
+            {(ops.module.metrics.length > 0 || ops.module.breakdowns.some((b) => b.items.length > 0)) && (
               <ConsoleSection id="industry" title="Your industry">
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                   {ops.module.metrics.map((m) => <Stat key={m.key} label={m.label} value={m.value ?? 0} />)}
@@ -69,7 +82,7 @@ export default function AnalyticsPage() {
               </ConsoleSection>
             )}
 
-            <p className="text-xs text-muted">Revenue, orders and website traffic are not measured here — Klaros does not record them yet.</p>
+            <p className="text-xs text-muted">Not measured: revenue, orders, website traffic and response time — Klaros does not record them yet.</p>
           </>
         )}
       </div>

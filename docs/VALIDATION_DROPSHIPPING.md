@@ -38,3 +38,12 @@ planned capability is PLANNED (never READY/CONNECTED), and that nothing is CONNE
 
 Supplier API integration · Shopify · inventory synchronisation · order management · fulfilment ·
 payments flow for orders · Inventory Source.
+
+## V2 re-run (live PostgreSQL, real AI provider)
+
+"I want to start a dropshipping business using supplier X." plus one answer produced 11 capability claims →
+requirements storefront, supplier_integration, product_catalog, inventory, pricing, order_management, fulfillment,
+payments (Stripe), accounting (QuickBooks/Xero), marketing, communication; the Business Map has a Supplier actor and
+the AI-workforce node ("Integration required"); the operations console shows no industry contribution. A one-sentence
+idea alone did not complete Discovery, and once the industry section had to be filled in the Blueprint editor — see
+"AI question quality" in BUSINESS_BUILDER.md. No Inventory Source work was done.

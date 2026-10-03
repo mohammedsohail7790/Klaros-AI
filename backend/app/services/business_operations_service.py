@@ -24,8 +24,10 @@ from app.db.session import set_tenant_context
 from app.integrations.workforce import get_workforce_integration
 from app.models.agent import Agent, AgentExecution, AgentToolPermission
 from app.models.audit_log import AuditLog
-from app.models.automation import Automation, AutomationExecution, AutomationStatus, AutomationVersion
+from app.models.automation import Automation, AutomationExecution, AutomationExecutionStep, AutomationStatus, AutomationVersion
 from app.models.crm import Customer, Lead
+from app.models.event import Event
+from app.integrations.workforce.events import EVENT_TEXT, HALLA_EVENT_TYPES
 from app.models.integration import ConnectionStatus, IntegrationConnection
 from app.models.integration_catalog import IntegrationProviderCatalog, ProviderImplementationStatus
 from app.models.vertical_extension import VerticalExtension
@@ -37,15 +39,17 @@ from app.services.vertical_extension_service import VerticalExtensionService
 
 QUALIFIED_STATUSES = ("QUALIFIED", "BOOKED", "CONVERTED")
 STARTER_WORKFLOW_NAME = "New lead alert"
+ESCALATION_WORKFLOW_NAME = "Escalated lead alert"
 
 # Integration groups shown in the Integration Center, matched on a provider's own
 # capability tags (reference data) — never on a provider or business name.
 _GROUPS: list[tuple[str, set[str]]] = [
+    # Field-service tools first: "job scheduling" must not be mistaken for a calendar.
+    ("CRM & operations", {"field_service_management", "job_scheduling", "dispatch"}),
     ("Payments", {"payment_processing", "billing"}),
     ("Accounting", {"accounting", "invoicing", "bookkeeping"}),
     ("Calendar", {"appointment_scheduling", "scheduling", "calendar_sync"}),
     ("Marketing", {"marketing", "advertising", "lead_generation", "local_listing", "reviews"}),
-    ("CRM & operations", {"field_service_management", "job_scheduling", "dispatch"}),
 ]
 GROUP_ORDER = ["CRM & operations", "Communication", "Calendar", "Payments", "Accounting", "Marketing", "Ecommerce", "Analytics", "AI Workforce"]
 
@@ -95,6 +99,18 @@ class BusinessOperationsService:
             recent_leads = (
                 await session.execute(select(Lead).where(Lead.tenant_id == tenant_id).order_by(Lead.created_at.desc()).limit(6))
             ).scalars().all()
+            needs_person = int((await session.execute(select(func.count()).select_from(Lead).where(Lead.tenant_id == tenant_id, Lead.qualification_status == "REQUIRES_HUMAN", Lead.status.notin_(("LOST", "UNQUALIFIED", "CONVERTED"))))).scalar_one())
+            halla_rows = (await session.execute(select(Event.event_type, func.count()).where(Event.tenant_id == tenant_id, Event.event_type.in_(HALLA_EVENT_TYPES)).group_by(Event.event_type))).all()
+            halla_events = {t: n for t, n in halla_rows}
+            halla_recent = (
+                await session.execute(
+                    select(Event, Lead.name)
+                    .join(Lead, Lead.id == Event.entity_id)
+                    .where(Event.tenant_id == tenant_id, Event.event_type.in_(HALLA_EVENT_TYPES), Event.entity_type == "lead")
+                    .order_by(Event.created_at.desc())
+                    .limit(6)
+                )
+            ).all()
             customers = int((await session.execute(select(func.count()).select_from(Customer).where(Customer.tenant_id == tenant_id))).scalar_one())
 
             automations = (await session.execute(select(Automation).where(Automation.tenant_id == tenant_id).order_by(Automation.created_at))).scalars().all()
@@ -144,7 +160,7 @@ class BusinessOperationsService:
         catalog = await self._catalog()
 
         # --- module contributions (only the tenant's enabled industry modules) ---
-        module: dict[str, list] = {"metrics": [], "data": [], "breakdowns": [], "lead_stages": [], "activity": []}
+        module: dict[str, list] = {"metrics": [], "data": [], "breakdowns": [], "lead_stages": [], "activity": [], "attention": []}
         for key in await self._enabled_vertical_keys(tenant_id):
             fn = get_operations_provider(key)
             if fn is None:
@@ -229,6 +245,9 @@ class BusinessOperationsService:
         for au in audits:
             activity.append({"at": au.created_at, "kind": "action", "text": _AUDIT_LABEL[au.tool] + ("" if au.result == "success" else " (failed)"),
                              "route": f"/leads/{au.entity_id}" if au.entity_id and au.tool.startswith("crm.") else None})
+        for ev, lead_name in halla_recent:
+            sim = " (simulated)" if (ev.payload or {}).get("simulated") else ""
+            activity.append({"at": ev.created_at, "kind": "ai", "text": f"{EVENT_TEXT.get(ev.event_type, ev.event_type)}: {lead_name}{sim}", "route": f"/leads/{ev.entity_id}"})
         for c in conns.values():
             if c.status == ConnectionStatus.CONNECTED and c.last_verified_at:
                 activity.append({"at": c.last_verified_at, "kind": "integration", "text": f"Integration connected: {c.provider}", "route": "/settings/integrations"})
@@ -258,8 +277,8 @@ class BusinessOperationsService:
                 "provider_key": wf.provider, "name": "Halla AI", "category": "AI Workforce",
                 "purpose": "Voice, calls, qualification, booking and support — the AI workforce that talks to your customers.",
                 "capabilities": [c.label.lower() for c in wf.capabilities],
-                "state": "CONNECTED" if wf.status.value == "CONNECTED" else ("INTEGRATION_REQUIRED" if not wf.adapter_implemented else "AVAILABLE"),
-                "implementation": "EXTERNAL", "last_error": None,
+                "state": "CONNECTED" if wf.status.value == "CONNECTED" else ("INTEGRATION_REQUIRED" if not wf.adapter_implemented else ("CONFIGURATION_REQUIRED" if wf.status.value in ("ERROR", "NEEDS_ATTENTION", "CONFIGURATION_REQUIRED") else "AVAILABLE")),
+                "implementation": "EXTERNAL", "last_error": wf.message if wf.status.value in ("ERROR", "NEEDS_ATTENTION") else None,
             }
         )
 
@@ -271,6 +290,10 @@ class BusinessOperationsService:
         failed = sum(w["failed_runs"] for w in workflows)
         if failed:
             attention.append({"id": "failed-runs", "text": f"{failed} workflow run{'s' if failed != 1 else ''} failed", "route": "/business/workflows", "count": failed})
+
+        if needs_person:
+            attention.append({"id": "needs-person", "text": f"{needs_person} lead{'s' if needs_person != 1 else ''} need{'' if needs_person != 1 else 's'} a person to take over", "route": "/leads", "count": needs_person})
+        attention.extend(module["attention"])
 
         total = sum(by_status.values())
         return {
@@ -289,8 +312,57 @@ class BusinessOperationsService:
             "integrations": integrations,
             "integration_groups": GROUP_ORDER,
             "attention": attention,
+            "ai": {"events": halla_events, "interactions": halla_events.get("halla.interaction.started", 0), "qualified": halla_events.get("halla.lead.qualified", 0), "escalated": halla_events.get("halla.lead.escalated", 0), "needs_person": needs_person},
             "module": {"metrics": module["metrics"], "data": module["data"], "breakdowns": module["breakdowns"]},
             "starter_workflow_exists": any(w["name"] == STARTER_WORKFLOW_NAME for w in workflows),
+            "escalation_workflow_exists": any(w["name"] == ESCALATION_WORKFLOW_NAME for w in workflows),
+        }
+
+    async def workflow_detail(self, tenant_id: uuid.UUID, automation_id: uuid.UUID) -> dict[str, Any] | None:
+        """One workflow with its real recent runs and the per-step outcome of each."""
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            a = (await session.execute(select(Automation).where(Automation.id == automation_id, Automation.tenant_id == tenant_id))).scalar_one_or_none()
+            if a is None:
+                return None
+            v = (
+                (await session.execute(select(AutomationVersion).where(AutomationVersion.id == a.published_version_id, AutomationVersion.tenant_id == tenant_id))).scalar_one_or_none()
+                if a.published_version_id
+                else None
+            )
+            runs = (
+                await session.execute(
+                    select(AutomationExecution).where(AutomationExecution.tenant_id == tenant_id, AutomationExecution.automation_id == a.id).order_by(AutomationExecution.created_at.desc()).limit(15)
+                )
+            ).scalars().all()
+            steps_by_run: dict[uuid.UUID, list[AutomationExecutionStep]] = {}
+            if runs:
+                for st in (
+                    await session.execute(
+                        select(AutomationExecutionStep).where(AutomationExecutionStep.tenant_id == tenant_id, AutomationExecutionStep.execution_id.in_([r.id for r in runs])).order_by(AutomationExecutionStep.step_index)
+                    )
+                ).scalars():
+                    steps_by_run.setdefault(st.execution_id, []).append(st)
+            totals = dict(
+                (
+                    await session.execute(
+                        select(AutomationExecution.status, func.count()).where(AutomationExecution.tenant_id == tenant_id, AutomationExecution.automation_id == a.id).group_by(AutomationExecution.status)
+                    )
+                ).all()
+            )
+        return {
+            "id": str(a.id), "name": a.name, "description": a.description, "status": a.status,
+            "trigger": v.trigger_type if v else None, "trigger_event": (v.trigger_config or {}).get("event_type") if v else None,
+            "steps": [{"action": st.get("action", "")} for st in (v.steps if v else []) if isinstance(st, dict)],
+            "published": v is not None,
+            "totals": {"runs": sum(totals.values()), "completed": totals.get("COMPLETED", 0), "failed": totals.get("FAILED", 0)},
+            "runs": [
+                {
+                    "id": str(r.id), "status": r.status, "at": r.created_at.isoformat(), "error": r.error,
+                    "steps": [{"index": st.step_index, "action": st.action, "status": st.status, "error": st.error} for st in steps_by_run.get(r.id, [])],
+                }
+                for r in runs
+            ],
         }
 
     # ----------------------------------------------------------------- helpers

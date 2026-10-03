@@ -15,7 +15,23 @@ const yesNo = (v: boolean | null) => (v === null ? null : v ? "Yes" : "No");
  * and the next step. Suggestions only — nothing is sent, booked or contacted from here. For a
  * lead without industry details the backend answers "none" and this renders nothing.
  */
-export function LeadOperationsPanel({ token, leadId, refreshKey }: { token: string | null; leadId: string; refreshKey?: unknown }) {
+export type TimelineEntry = { at: string; kind: string; text: string };
+
+export function LeadOperationsPanel({
+  token,
+  leadId,
+  refreshKey,
+  extraTimeline,
+  onLoaded,
+}: {
+  token: string | null;
+  leadId: string;
+  refreshKey?: unknown;
+  /** Other real events for this lead (e.g. the AI workforce's), merged into the timeline by time. */
+  extraTimeline?: TimelineEntry[];
+  /** Tells the page whether this lead has industry details, so it can avoid duplicating them. */
+  onLoaded?: (ops: LeadOperations | null) => void;
+}) {
   const [ops, setOps] = useState<LeadOperations | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +42,10 @@ export function LeadOperationsPanel({ token, leadId, refreshKey }: { token: stri
     (async () => {
       try {
         const o = await getLeadOperations(token, leadId);
-        if (!cancelled) setOps(o);
+        if (!cancelled) {
+          setOps(o);
+          onLoaded?.(o);
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof ApiError ? err.message : "We couldn't load this lead's operating details.");
       }
@@ -34,6 +53,7 @@ export function LeadOperationsPanel({ token, leadId, refreshKey }: { token: stri
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, leadId, refreshKey]);
 
   if (error) return <div role="alert" className="rounded-lg border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>;
@@ -107,7 +127,7 @@ export function LeadOperationsPanel({ token, leadId, refreshKey }: { token: stri
 
       <h3 className="mt-6 text-sm font-semibold text-foreground">Timeline</h3>
       <ol className="mt-2 space-y-2 border-l border-border pl-4" aria-label="Lead timeline">
-        {ops.timeline.map((t, i) => (
+        {[...ops.timeline, ...(extraTimeline ?? [])].sort((a, b) => a.at.localeCompare(b.at)).map((t, i) => (
           <li key={i} className="text-sm">
             <span className="text-foreground">{t.text}</span> <span className="text-xs text-muted-foreground">· {when(t.at)}</span>
           </li>

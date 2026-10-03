@@ -42,6 +42,7 @@ class IntegrationConnectionService:
     def __init__(self, session_factory: async_sessionmaker, notification_service=None) -> None:
         self._session_factory = session_factory
         self._verifiers: dict[str, VerifierFn] = {}
+        self._verifier_timeouts: dict[str, float] = {}
         # Optional (production observability phase) — reuses the existing
         # NotificationService, never a second notification mechanism.
         # None in every existing test/call site that doesn't pass one, so
@@ -50,13 +51,15 @@ class IntegrationConnectionService:
         # a real instance.
         self._notifications = notification_service
 
-    def register_verifier(self, provider: str, verifier: VerifierFn) -> None:
+    def register_verifier(self, provider: str, verifier: VerifierFn, *, timeout: float | None = None) -> None:
         """A real, provider-specific async function: takes the decrypted
         credential dict, makes a real read-only API call, returns
         (ok, detail). Never fabricate a True here — an unimplemented
         provider should not register a verifier at all (verify() then
         reports ERROR, "no verifier registered", honestly)."""
         self._verifiers[provider] = verifier
+        if timeout is not None:
+            self._verifier_timeouts[provider] = timeout  # a provider whose real API is legitimately slower than the default
 
     async def get_connection(self, tenant_id: uuid.UUID, provider: str) -> IntegrationConnection | None:
         async with self._session_factory() as session:
@@ -169,9 +172,10 @@ class IntegrationConnectionService:
                     # a stalled provider has no timeout by default —
                     # without this, one hung provider call would hang this
                     # request indefinitely rather than reporting ERROR.
-                    ok, detail = await asyncio.wait_for(verifier(credential_data), timeout=self.VERIFY_TIMEOUT_SECONDS)
+                    limit = self._verifier_timeouts.get(provider, self.VERIFY_TIMEOUT_SECONDS)
+                    ok, detail = await asyncio.wait_for(verifier(credential_data), timeout=limit)
                 except TimeoutError:
-                    ok, detail = False, f"Verification timed out after {self.VERIFY_TIMEOUT_SECONDS}s"
+                    ok, detail = False, f"Verification timed out after {limit}s"
                 except Exception as exc:  # noqa: BLE001 — a verifier failure is a real ERROR state, not a crash
                     ok, detail = False, f"Verification raised: {exc}"
             latency_ms = int((time.monotonic() - started) * 1000)

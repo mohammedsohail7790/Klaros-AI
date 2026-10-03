@@ -27,6 +27,7 @@ from functools import lru_cache
 
 from app.core.config import get_settings
 from app.db.session import async_session_maker
+from app.integrations.workforce.halla_adapter import halla_verifier
 from app.integrations.google_calendar_client import GoogleCalendarAPIError, GoogleCalendarClient
 from app.integrations.quickbooks_client import QuickBooksAPIError, QuickBooksClient
 from app.integrations.stripe_client import StripeClient
@@ -97,6 +98,8 @@ def get_integration_connection_service() -> IntegrationConnectionService:
     service.register_verifier("stripe", _stripe_verifier)
     service.register_verifier("quickbooks", _quickbooks_verifier)
     service.register_verifier("google_calendar", _google_calendar_verifier)
+    # The outer limit sits just above the verifier's own HTTP timeout, so a slow Halla yields the verifier's clear message.
+    service.register_verifier("halla", halla_verifier, timeout=get_settings().HALLA_HEALTH_TIMEOUT_SECONDS + 2)
     return service
 
 

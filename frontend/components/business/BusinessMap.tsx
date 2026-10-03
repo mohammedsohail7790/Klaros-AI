@@ -26,7 +26,7 @@ type Line = { key: string; d: string; source: string; target: string; kind: stri
  * screens the same information is shown as an explicit "connects to" list
  * on each card (so the map never depends on a diagram that doesn't fit).
  */
-export function BusinessMap({ map }: { map: BusinessMapData }) {
+export function BusinessMap({ map, metrics = {} }: { map: BusinessMapData; metrics?: Record<string, string> }) {
   const [selected, setSelected] = useState<string | null>("core:klaros");
   const [lines, setLines] = useState<Line[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -159,6 +159,7 @@ export function BusinessMap({ map }: { map: BusinessMapData }) {
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-medium leading-snug text-foreground">{n.label}</span>
                             {n.sublabel && <span className="mt-0.5 block text-xs text-muted">{n.sublabel}</span>}
+                            {metrics[n.id] && <span className="mt-1 block text-xs font-medium text-foreground">{metrics[n.id]}</span>}
                             {n.state && n.kind !== "core" && n.kind !== "outcome" && n.kind !== "actor" && (
                               <StatusPill state={n.state} className="mt-1.5" />
                             )}
@@ -194,6 +195,7 @@ export function BusinessMap({ map }: { map: BusinessMapData }) {
                 <h3 className="text-base font-semibold text-foreground">{sel.label}</h3>
                 {sel.state && <StatusPill state={sel.state} />}
               </div>
+              {metrics[sel.id] && <p className="mt-1 text-sm font-medium text-foreground">{metrics[sel.id]}</p>}
               {sel.why && <p className="mt-1 text-sm text-muted">{sel.why}</p>}
               <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                 <div>

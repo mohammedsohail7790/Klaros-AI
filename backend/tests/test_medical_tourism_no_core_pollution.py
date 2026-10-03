@@ -27,6 +27,10 @@ _EXPECTED_LEAD_COLUMNS = {
     "campaign_id", "service_requested", "description", "location", "urgency", "estimated_value",
     "status", "lead_score", "score_version", "score_reason", "qualification_status",
     "assigned_user_id", "idempotency_key",
+    # Migration 0064 — the GENERIC external-system link (the AI workforce platform's lead id), mirroring the same two
+    # columns Customer and Appointment already carry. It is not Medical-Tourism-specific: this guard is about
+    # vertical fields never being added to a core table, and nothing here names or serves a vertical.
+    "external_provider", "external_id",
 }
 _EXPECTED_APPOINTMENT_COLUMNS = {
     "id", "created_at", "updated_at", "tenant_id",

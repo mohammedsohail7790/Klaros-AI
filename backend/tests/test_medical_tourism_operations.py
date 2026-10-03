@@ -8,6 +8,7 @@ import pytest
 
 pytestmark = pytest.mark.asyncio
 
+from tests.test_business_builder_api import _seed_registry  # noqa: E402
 from tests.test_business_journey_api import _register, _tech_token  # noqa: E402
 
 
@@ -138,3 +139,45 @@ async def test_operations_and_matching_are_tenant_scoped_and_authenticated(clien
     assert (await client.get(f"/api/v1/medical-tourism/leads/{lead_id}/operations", headers=_h(b))).status_code == 404
     assert (await client.get(f"/api/v1/medical-tourism/leads/{lead_id}/provider-matches", headers=_h(b))).status_code == 404
     assert (await client.get(f"/api/v1/medical-tourism/leads/{lead_id}/operations")).status_code == 401
+
+
+async def test_lead_board_and_workforce_context_use_the_module_without_naming_it(client) -> None:
+    token = await _register(client, "Board MT", "boardmt@example.com")
+    ids = await _seed(client, token)
+    tid = await _tenant(client, token)
+    lead_id = await _patient_lead(client, token, tid, procedure_id=uuid.UUID(ids["rhino"]["id"]), preferred_destination_country="IN")
+    plain = (await client.post("/api/v1/leads", json={"name": "Plain Lead", "source": "WEB", "email": "plain@example.com"}, headers=_h(token))).json()
+    # the module only contributes once it is enabled for the tenant
+    await _seed_registry()
+    r = await client.post("/api/v1/business-builder/modules/medical_tourism/enable", headers=_h(token))
+    assert r.status_code == 200, r.text
+    board = (await client.get("/api/v1/business-builder/leads", headers=_h(token))).json()
+    row = next(r for r in board["leads"] if r["id"] == lead_id)
+    assert row["country"] == "IN" and row["service"] == "Rhinoplasty"
+    assert row["next_action"]["text"] == "Contact the patient"  # NEW lead
+    other = next(r for r in board["leads"] if r["id"] == (plain.get("lead") or plain)["id"])
+    assert other["country"] is None and other["next_action"]["text"] == "Make first contact"
+
+    setup = (await client.get("/api/v1/business-builder/workforce/setup", headers=_h(token))).json()
+    ctx = setup["context"]
+    assert "Rhinoplasty" in ctx["services"] and "Cardiac bypass" in ctx["services"]
+    assert set(ctx["markets"]) == {"IN", "TR"}
+    assert "Complex medical questions" in ctx["escalation_triggers"] and "A complaint" in ctx["escalation_triggers"]
+    assert "Budget" in ctx["qualification_fields"]
+
+
+async def test_analytics_breakdowns_count_real_enquiries(client) -> None:
+    token = await _register(client, "Analytics MT", "analyticsmt@example.com")
+    ids = await _seed(client, token)
+    tid = await _tenant(client, token)
+    for _ in range(2):
+        await _patient_lead(client, token, tid, procedure_id=uuid.UUID(ids["rhino"]["id"]), preferred_destination_country="IN")
+    await _patient_lead(client, token, tid, procedure_id=uuid.UUID(ids["cardiac"]["id"]), preferred_destination_country="TR")
+    await _seed_registry()
+    r = await client.post("/api/v1/business-builder/modules/medical_tourism/enable", headers=_h(token))
+    assert r.status_code == 200, r.text
+    ops = (await client.get("/api/v1/business-builder/operations", headers=_h(token))).json()
+    br = {b["key"]: b["items"] for b in ops["module"]["breakdowns"]}
+    assert br["top_procedures"][0] == {"label": "Rhinoplasty", "value": 2}
+    assert br["top_destinations"][0] == {"label": "IN", "value": 2}
+    assert any(a["id"] == "mt-awaiting-consultation" and a["count"] == 3 for a in ops["attention"])
