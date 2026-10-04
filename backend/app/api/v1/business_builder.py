@@ -44,6 +44,7 @@ from app.services.halla_integration_service import (
     HallaNotEnabledError,
     InvalidHallaCredentialError,
     LeadNotCallableError,
+    LeadNotSyncableError,
 )
 from app.services.halla_integration_service import LeadNotFoundError as HallaLeadNotFoundError
 from app.services.automation_service import AutomationNotPublishedError, AutomationService, AutomationValidationError
@@ -151,12 +152,12 @@ def _halla_error(exc: Exception) -> HTTPException:
         return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
     if isinstance(exc, (HallaLeadNotFoundError,)):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
-    if isinstance(exc, LeadNotCallableError):
+    if isinstance(exc, (LeadNotCallableError, LeadNotSyncableError)):
         return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
     raise exc
 
 
-_HALLA_ERRORS = (HallaNotEnabledError, WorkforceNotConnectedError, WorkforceUnavailableError, InvalidHallaCredentialError, HallaLeadNotFoundError, LeadNotCallableError)
+_HALLA_ERRORS = (HallaNotEnabledError, WorkforceNotConnectedError, WorkforceUnavailableError, InvalidHallaCredentialError, HallaLeadNotFoundError, LeadNotCallableError, LeadNotSyncableError)
 
 
 @router.put("/workforce/halla/connection")

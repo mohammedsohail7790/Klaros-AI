@@ -52,6 +52,14 @@ class LeadNotCallableError(Exception):
     pass
 
 
+class LeadNotSyncableError(Exception):
+    """The lead cannot be created in Halla as it stands (Halla requires a phone number of 3-32 characters)."""
+
+
+# Halla's contract for POST /api/v1/leads: `phoneNumber` is required, 3-32 characters.
+HALLA_PHONE_MIN, HALLA_PHONE_MAX = 3, 32
+
+
 def build_halla_workforce_config(pack: dict[str, Any]) -> dict[str, Any]:
     """Klaros' business context -> the body of PUT /integrations/klaros/workforce.
 
@@ -172,6 +180,19 @@ class HallaIntegrationService:
                 "service": lead.service_requested, "source": lead.source, "notes": (lead.description or "")[:1000] or None,
             }
             existing = lead.external_id if lead.external_provider == PROVIDER else None
+        if existing is None:
+            # Creating the lead in Halla needs a valid phone. Checked here so Halla is never called with a payload it
+            # will refuse, and so the caller gets a clear 4xx instead of Halla's 400 surfacing as a generic 502.
+            # The number is never truncated or altered (only surrounding whitespace is ignored).
+            phone = (payload.get("phone") or "").strip()
+            if not phone:
+                raise LeadNotSyncableError("This lead has no phone number, which Halla requires. Add one before sending it to Halla.")
+            if not (HALLA_PHONE_MIN <= len(phone) <= HALLA_PHONE_MAX):
+                raise LeadNotSyncableError(
+                    f"Halla requires a phone number of {HALLA_PHONE_MIN}-{HALLA_PHONE_MAX} characters; this one has {len(phone)}. "
+                    "Correct it before sending it to Halla."
+                )
+            payload["phone"] = phone
         result = await adapter.sync_lead(tenant_id, payload, external_id=existing)
         if existing is None:
             async with self._session_factory() as session:

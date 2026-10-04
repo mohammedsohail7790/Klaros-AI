@@ -501,6 +501,99 @@ async def test_workforce_get_put_and_agents(client, halla) -> None:
     assert (await client.post(f"{BASE}/workforce/halla/configure", headers=_h(token))).status_code == 502
 
 
+async def test_sync_refuses_a_lead_halla_would_reject_before_any_http_request(client, halla) -> None:
+    """A: no phone. B: phone shorter than 3. C: phone longer than 32. In every case Halla is never contacted, the answer is
+    a clear 422 (not Halla's 400 turned into a 502), nothing is linked, and the phone is never truncated."""
+    token = await _register(client, "Guard Co", "guardco@example.com")
+    await _connect(client, token)
+    before = len(halla.requests)  # the connect health request is the only traffic so far
+    from app.db.session import async_session_maker
+    from app.models.crm import Lead
+
+    cases = {
+        "no phone": (None, "no phone number"),
+        "too short": ("12", "3-32 characters"),
+        "too long": ("+" + "1" * 32, "3-32 characters"),  # 33 characters
+    }
+    for label, (phone, fragment) in cases.items():
+        lead_id = await _lead(client, token, name=f"Guard {label}", phone=phone)
+        r = await client.post(f"{BASE}/leads/{lead_id}/halla/sync", headers=_h(token))
+        assert r.status_code == 422, (label, r.status_code, r.text)
+        assert fragment in r.json()["detail"], (label, r.json())
+        async with async_session_maker() as db:
+            row = await db.get(Lead, uuid.UUID(lead_id))
+        assert row.external_id is None
+        if phone:
+            assert row.phone == phone  # never truncated or altered
+    assert len(halla.requests) == before, "Halla must not be called when validation fails"
+    assert halla.sent("POST", "/api/v1/leads") == []
+
+
+async def test_sync_accepts_the_phone_length_boundaries_and_sends_the_required_fields(client, halla) -> None:
+    """D: valid phone -> phoneNumber and source present, klarosLeadId camelCase at the top level, no top-level klaros_lead_id."""
+    for i, phone in enumerate(("123", "+" + "2" * 31)):  # exactly 3 and exactly 32 characters
+        token = await _register(client, f"Edge Co {i}", f"edgeco{i}@example.com")  # own tenant: the fake returns one Halla id
+        await _connect(client, token)
+        lead_id = await _lead(client, token, name=f"Edge {len(phone)}", phone=phone)
+        assert (await client.post(f"{BASE}/leads/{lead_id}/halla/sync", headers=_h(token))).status_code == 200
+    posts = [json.loads(r.content) for r in halla.sent("POST", "/api/v1/leads")]
+    assert [len(b["phoneNumber"]) for b in posts] == [3, 32]
+    for b in posts:
+        assert b["source"] == "WEB" and b["klarosLeadId"]
+        assert "klaros_lead_id" not in b  # snake_case is rejected by Halla at the top level
+        assert set(b) <= {"klarosLeadId", "name", "phoneNumber", "email", "source", "notes", "metadata"}  # Halla rejects any other top-level key
+
+
+async def test_service_travels_inside_metadata_never_as_a_top_level_field(client, halla) -> None:
+    """Halla rejects unknown top-level fields. `service` must be metadata.service on create AND on update, and every other
+    mapping is unchanged: phone->phoneNumber, source, email, name, description->notes, id->klarosLeadId (camelCase)."""
+    token = await _register(client, "Meta Co", "metaco@example.com")
+    await _connect(client, token)
+    r = await client.post(
+        "/api/v1/leads",
+        json={"name": "Mapped Lead", "source": "WEB", "phone": "+12025550101", "email": "mapped@example.com",
+              "service_requested": "Dental implants", "description": "Wants a quote."},
+        headers=_h(token),
+    )
+    assert r.status_code == 201, r.text
+    lead_id = (r.json().get("lead") or r.json())["id"]
+    assert (await client.post(f"{BASE}/leads/{lead_id}/halla/sync", headers=_h(token))).status_code == 200
+    sent = json.loads(halla.sent("POST", "/api/v1/leads")[0].content)
+    assert "service" not in sent  # 1
+    assert sent["metadata"] == {"klaros_lead_id": lead_id, "service": "Dental implants"}  # 2, 7
+    assert sent["klarosLeadId"] == lead_id and "klaros_lead_id" not in sent  # 3
+    assert sent["phoneNumber"] == "+12025550101"  # 4
+    assert sent["source"] == "WEB"  # 5
+    assert (sent["email"], sent["name"], sent["notes"]) == ("mapped@example.com", "Mapped Lead", "Wants a quote.")  # 6
+    assert set(sent) == {"klarosLeadId", "name", "phoneNumber", "email", "source", "notes", "metadata"}
+    # 11: the update (PUT) keeps working and obeys the same shape
+    assert (await client.post(f"{BASE}/leads/{lead_id}/halla/sync", headers=_h(token))).json() == {"synced": True, "created": False}
+    put = json.loads(halla.sent("PUT", "/api/v1/leads/halla-lead-1")[0].content)
+    assert "service" not in put and put["metadata"]["service"] == "Dental implants" and put["klarosLeadId"] == lead_id
+    assert len(halla.sent("POST", "/api/v1/leads")) == 1  # still one Halla lead
+
+
+async def test_a_lead_with_no_service_sends_metadata_without_a_service_key(client, halla) -> None:
+    token = await _register(client, "NoSvc Co", "nosvcco@example.com")
+    await _connect(client, token)
+    lead_id = await _lead(client, token, name="No Service")
+    assert (await client.post(f"{BASE}/leads/{lead_id}/halla/sync", headers=_h(token))).status_code == 200
+    sent = json.loads(halla.sent("POST", "/api/v1/leads")[0].content)
+    assert sent["metadata"] == {"klaros_lead_id": lead_id} and "service" not in sent
+
+
+async def test_an_empty_source_still_falls_back_to_klaros(client, halla) -> None:
+    """E: the existing fallback is unchanged."""
+    from app.integrations.workforce.registry import get_workforce_integration
+
+    token, tid = await _connected(client, "Fallback Co", "fallbackco@example.com")
+    lead = await _lead(client, token)
+    await get_workforce_integration().sync_lead(
+        tid, {"id": lead, "name": "Fallback", "phone": "+15550001111", "source": ""}, external_id=None
+    )
+    assert json.loads(halla.sent("POST", "/api/v1/leads")[-1].content)["source"] == "klaros"
+
+
 async def test_lead_sync_carries_klaros_lead_id_and_stores_the_halla_id_without_replacing_ours(client, halla) -> None:
     token = await _register(client, "Sync Co", "syncco@example.com")
     await _connect(client, token)
@@ -528,7 +621,7 @@ async def test_lead_sync_carries_klaros_lead_id_and_stores_the_halla_id_without_
     assert len(halla.sent("POST", "/api/v1/leads")) == 1
     # failures are visible and change nothing
     halla.overrides[("POST", "/api/v1/leads")] = httpx.Response(503)
-    other = await _lead(client, token, name="No Sync")
+    other = await _lead(client, token, name="No Sync", phone="+971500000077")
     assert (await client.post(f"{BASE}/leads/{other}/halla/sync", headers=_h(token))).status_code == 502
     async with async_session_maker() as s:
         assert (await s.get(Lead, uuid.UUID(other))).external_id is None

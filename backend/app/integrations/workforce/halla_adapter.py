@@ -191,11 +191,12 @@ class HallaWorkforceIntegration(WorkforceIntegration):
             "name": lead.get("name"),
             "phoneNumber": lead.get("phone"),
             "email": lead.get("email"),
-            "service": lead.get("service"),
             "source": lead.get("source") or "klaros",
             "notes": lead.get("notes"),
-            "metadata": {"klaros_lead_id": lead["id"]},
+            # Halla rejects unknown top-level fields, so the service the lead asked for travels inside `metadata`.
+            "metadata": {"klaros_lead_id": lead["id"], "service": lead.get("service")},
         }
+        body["metadata"] = {k: v for k, v in body["metadata"].items() if v not in (None, "")}
         body = {k: v for k, v in body.items() if v not in (None, "")}
         if external_id:
             doc = await client.update_lead(external_id, body)
