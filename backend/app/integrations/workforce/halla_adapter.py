@@ -100,6 +100,7 @@ class HallaWorkforceIntegration(WorkforceIntegration):
             kwargs["sleep"] = self._sleep
         return HallaClient(
             endpoint, cred["api_key"],
+            tenant_id=cred.get("halla_tenant_id"),
             timeout=timeout if timeout is not None else s.HALLA_REQUEST_TIMEOUT_SECONDS,
             max_retries=retries if retries is not None else s.HALLA_MAX_RETRIES,
             **kwargs,
@@ -245,12 +246,13 @@ async def halla_verifier(credential: dict) -> tuple[bool, str]:
         return False, "the Halla signing secret is missing, so Halla's events cannot be verified"
     s = get_settings()
     try:
-        client = HallaClient(endpoint_from_settings(s), api_key, timeout=s.HALLA_HEALTH_TIMEOUT_SECONDS, max_retries=0)
+        client = HallaClient(endpoint_from_settings(s), api_key, tenant_id=mapped, timeout=s.HALLA_HEALTH_TIMEOUT_SECONDS, max_retries=0)
         doc = await client.health()
     except HallaConfigError:
         return False, "Halla is not configured on this Klaros deployment"
     except WorkforceUnavailableError as exc:
-        return False, str(exc)
+        wait = f" — try again in {exc.retry_after}s" if getattr(exc, "retry_after", None) is not None else ""
+        return False, f"{exc}{wait}"
     inner = _unwrap(doc)
     # Halla's health answers {authenticated, tenantExists, status}. A 2xx alone is not enough: the key must actually have
     # authenticated, the tenant must exist, and Halla must call itself healthy. Only what is stated is checked.

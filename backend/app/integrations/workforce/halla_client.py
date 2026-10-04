@@ -84,11 +84,13 @@ class HallaClient:
         *,
         timeout: float = 8.0,
         max_retries: int = 2,
+        tenant_id: str | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
         sleep=asyncio.sleep,
     ) -> None:
         self._endpoint = endpoint
         self._api_key = api_key
+        self._tenant_id = (tenant_id or "").strip() or None
         self._timeout = timeout
         self._max_retries = max(0, max_retries)
         self._transport = transport
@@ -121,7 +123,12 @@ class HallaClient:
 
     def _headers(self) -> dict[str, str]:
         value = f"{self._endpoint.credential_scheme} {self._api_key}" if self._endpoint.credential_scheme else self._api_key
-        return {self._endpoint.credential_header: value, "Accept": "application/json", "User-Agent": "klaros-halla-client"}
+        headers = {self._endpoint.credential_header: value, "Accept": "application/json", "User-Agent": "klaros-halla-client"}
+        if self._tenant_id:
+            # Halla's rate limiter runs before it authenticates, and only reads this header to tell tenants apart.
+            # Without it every Klaros request is counted in the small shared per-IP bucket.
+            headers["x-tenant-id"] = self._tenant_id
+        return headers
 
     async def _request(self, method: str, path: str, *, operation: str, json: dict[str, Any] | None = None) -> dict[str, Any]:
         url = f"{self._endpoint.base_url}{API_PREFIX}{path}"
@@ -144,8 +151,9 @@ class HallaClient:
                 last = WorkforceUnavailableError("Halla did not answer in time", retryable=True)
             except httpx.RequestError:
                 last = WorkforceUnavailableError("Halla could not be reached", retryable=True)
-            self._log(operation, status if status is not None else last.status_code, started, attempt, ok=False)
-            if not last.retryable or attempt == attempts - 1:
+            self._log(operation, status if status is not None else last.status_code, started, attempt, ok=False,
+                      retry_after=getattr(last, "retry_after", None))
+            if not last.retryable or last.status_code == 429 or attempt == attempts - 1:
                 raise last
             await self._sleep(min(2.0, 0.25 * (2**attempt)))
         raise last or WorkforceUnavailableError("Halla request failed")  # pragma: no cover
@@ -162,7 +170,10 @@ class HallaClient:
         if code == 409:
             raise WorkforceUnavailableError("Halla reported a conflict", status_code=code)
         if code == 429:
-            raise WorkforceUnavailableError("Halla is rate limiting Klaros", status_code=code, retryable=True)
+            raise WorkforceUnavailableError(
+                "Halla is rate limiting Klaros", status_code=code, retryable=True,
+                retry_after=_retry_after_seconds(response.headers.get("retry-after")),
+            )
         if code >= 500:
             raise WorkforceUnavailableError("Halla had an internal error", status_code=code, retryable=True)
         if code >= 400:
@@ -180,9 +191,19 @@ class HallaClient:
         return data
 
     @staticmethod
-    def _log(operation: str, status: int | None, started: float, attempt: int, *, ok: bool) -> None:
-        # Operation, status and latency only — never the credential, a body or a header.
-        logger.info("halla_request", operation=operation, status_code=status, ok=ok, attempt=attempt + 1, latency_ms=int((time.monotonic() - started) * 1000))
+    def _log(operation: str, status: int | None, started: float, attempt: int, *, ok: bool, retry_after: int | None = None) -> None:
+        # Operation, status, latency and Retry-After only — never the credential, a body or a header value.
+        logger.info("halla_request", operation=operation, status_code=status, ok=ok, attempt=attempt + 1,
+                    latency_ms=int((time.monotonic() - started) * 1000), retry_after=retry_after)
+
+
+def _retry_after_seconds(value: str | None) -> int | None:
+    """Seconds from a `Retry-After` header (delta-seconds form only); None when absent or unusable."""
+    try:
+        seconds = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return seconds if 0 <= seconds <= 3600 else None
 
 
 def _segment(value: str) -> str:

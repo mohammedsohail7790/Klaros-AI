@@ -209,6 +209,39 @@ async def test_client_retries_only_idempotent_requests_and_only_retryable_failur
     assert "secret body" not in str(e.value) and API_KEY not in str(e.value)
 
 
+async def test_client_sends_the_halla_tenant_header_so_the_limiter_can_tell_tenants_apart() -> None:
+    seen = {}
+
+    def handler(req):
+        seen["tenant"] = req.headers.get("x-tenant-id")
+        return httpx.Response(200, json={})
+
+    await _client(handler, tenant_id="f90e10ca-e975-4bf6-bc8d-97d7318cd9da").health()
+    assert seen["tenant"] == "f90e10ca-e975-4bf6-bc8d-97d7318cd9da"
+    await _client(handler).health()  # no tenant id known -> no header at all
+    assert seen["tenant"] is None
+
+
+async def test_client_never_retries_a_429_inside_the_request_and_reports_retry_after() -> None:
+    calls = {"n": 0}
+
+    def limited(req):
+        calls["n"] += 1
+        return httpx.Response(429, headers={"Retry-After": "42"}, text="Too many requests")
+
+    with pytest.raises(WorkforceUnavailableError) as e:
+        await _client(limited, max_retries=2).health()
+    assert calls["n"] == 1  # a GET is normally retried; a 429 must not burn more of the window
+    assert e.value.status_code == 429 and e.value.retryable and e.value.retry_after == 42
+    assert "Too many" not in str(e.value)  # never the response body
+
+    for bad in ("soon", "-5", "99999", ""):
+        calls["n"] = 0
+        with pytest.raises(WorkforceUnavailableError) as e2:
+            await _client(lambda r, b=bad: httpx.Response(429, headers={"Retry-After": b}), max_retries=2).health()
+        assert e2.value.retry_after is None
+
+
 @pytest.mark.parametrize("status,retryable", [(401, False), (403, False), (404, False), (409, False), (429, True), (500, True), (502, True)])
 async def test_client_maps_every_error_status(status, retryable) -> None:
     with pytest.raises(WorkforceUnavailableError) as e:

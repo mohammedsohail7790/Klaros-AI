@@ -36,10 +36,13 @@ class WorkforceUnavailableError(Exception):
     """The workforce platform could not be reached or answered with an error. `retryable` says whether
     trying again later can help (network/5xx/429) or not (a 4xx that will not change)."""
 
-    def __init__(self, message: str, *, status_code: int | None = None, retryable: bool = False) -> None:
+    def __init__(
+        self, message: str, *, status_code: int | None = None, retryable: bool = False, retry_after: int | None = None
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.retryable = retryable
+        self.retry_after = retry_after  # seconds Halla asked us to wait (429), when it said so
 
 
 class WorkforceStatus(StrEnum):
