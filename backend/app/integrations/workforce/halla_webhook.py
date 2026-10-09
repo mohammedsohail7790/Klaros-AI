@@ -209,6 +209,34 @@ def safety_texts(data: dict[str, Any]) -> list[str]:
     return out
 
 
+CONSENT_METHODS = ("verbal_call", "web_form", "sms_reply")
+CONSENT_SCOPES = ("contact", "data_processing")
+
+
+def consent_evidence(data: dict[str, Any]) -> dict[str, Any] | None:
+    """Explicit consent evidence from Halla, or None. Never inferred: absent, malformed, partial, string-typed ("true"), future-dated,
+    unknown-method or withdrawn consent all return None. Only category-level facts are kept (no wording text, no transcript)."""
+    c = data.get("consent")
+    if not isinstance(c, dict) or c.get("granted") is not True:
+        return None
+    scope = c.get("scope")
+    scope = [scope] if isinstance(scope, str) else scope
+    if not isinstance(scope, list) or "contact" not in scope or any(x not in CONSENT_SCOPES for x in scope):
+        return None
+    method, version = c.get("method"), _text(c.get("wording_version"), 32)
+    if method not in CONSENT_METHODS or not version:
+        return None
+    try:
+        at = datetime.fromisoformat(str(c.get("recorded_at")).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if at.tzinfo is None:
+        return None
+    if at > datetime.now(timezone.utc):
+        return None
+    return {"scope": sorted(scope), "method": method, "wording_version": version, "recorded_at": at.isoformat()}
+
+
 def _truthy(value: Any) -> bool:
     if value is None:
         return False

@@ -241,6 +241,11 @@ class HallaEventProcessor:
         hid, facts = hw.halla_lead_id(data), hw.lead_facts(data)
         if not hid or not facts.name or not (facts.phone or facts.email):
             return None
+        profile = await pilot_safety.profile_in_session(session, tenant_id)
+        if profile is not None and profile.requires_consent_evidence and hw.consent_evidence(data) is None:
+            # Halla did not establish consent: Klaros stores no personal data from this event (nothing is invented or assumed).
+            logger.warning("halla_lead_refused_no_consent_evidence", halla_lead_id=hid, profile=profile.key)
+            return None
         lead, _ = await LeadService(self._session_factory, bus).create_lead(
             tenant_id,
             CreateLeadInput(name=facts.name, source="VOICE", phone=facts.phone, email=facts.email, source_detail="halla",

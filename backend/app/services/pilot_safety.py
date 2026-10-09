@@ -99,12 +99,13 @@ class SafetyProfile:
     booking_rules: list[str]
     qualification_fields: list[str]
     human_flags: tuple[str, ...] = ()  # ordinary-question flags that this profile still hands to a person (the category is named below)
+    requires_consent_evidence: bool = False  # a lead Halla creates for this tenant is only stored when the event carries valid consent evidence
 
 
 _FLAG_CATEGORY = {"order_status_question": "ORDER_STATUS_REQUEST"}
 
 PROFILES: dict[str, SafetyProfile] = {
-    MEDICAL_TOURISM: SafetyProfile(MEDICAL_TOURISM, medical_tourism_safety.classify_many, MEDICAL_ESCALATION_TRIGGERS, MEDICAL_BOOKING_RULES, MEDICAL_QUALIFICATION_FIELDS),
+    MEDICAL_TOURISM: SafetyProfile(MEDICAL_TOURISM, medical_tourism_safety.classify_many, MEDICAL_ESCALATION_TRIGGERS, MEDICAL_BOOKING_RULES, MEDICAL_QUALIFICATION_FIELDS, requires_consent_evidence=True),
     DROPSHIPPING: SafetyProfile(DROPSHIPPING, dropshipping_safety.classify_many, DROPSHIPPING_ESCALATION_TRIGGERS, DROPSHIPPING_BOOKING_RULES, DROPSHIPPING_QUALIFICATION_FIELDS, ('order_status_question',)),
 }
 

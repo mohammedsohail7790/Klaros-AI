@@ -69,19 +69,47 @@ def test_hallas_signature_is_rejected_for_a_wrong_secret_a_tampered_body_and_a_s
         hw.verify_signature(f["body"].encode(), TS, f["signature"], SECRET, tolerance_seconds=300, now=datetime.fromtimestamp(int(TS) + 301, tz=timezone.utc))
 
 
-async def test_lead_created_from_halla_creates_one_lead_in_the_mapped_tenant_and_replay_adds_none(client, halla) -> None:  # noqa: F811
+CONSENT = {"granted": True, "scope": ["contact"], "method": "verbal_call", "wording_version": "mt-consent-v1", "recorded_at": "2026-10-01T09:00:00Z"}
+
+
+async def _named(client, token, name):
+    r = (await client.get("/api/v1/leads", headers=_h(token))).json()
+    items = r if isinstance(r, list) else next((v for v in r.values() if isinstance(v, list)), [])
+    return [x for x in items if isinstance(x, dict) and x.get("name") == name]
+
+
+async def test_lead_created_with_consent_evidence_creates_one_lead_in_the_mapped_tenant_and_replay_adds_none(client, halla) -> None:  # noqa: F811
     token, tid = await _mt(client, "MT Contract A", "mtcontracta@example.com")
-    raw = _raw("lead.created")
+    raw = _raw("lead.created", consent=CONSENT)
     r = await _deliver(client, tid, raw, secret=SECRET)
-    assert r.status_code == 200 and r.json() == {"status": "ok"}
-    leads = (await client.get("/api/v1/leads", headers=_h(token))).json()
-    items = leads.get("items") or leads.get("leads") or leads
-    mine = [x for x in items if x.get("name") == "Synthetic Patient"]
-    assert len(mine) == 1 and mine[0]["source_detail"] == "halla" if "source_detail" in mine[0] else len(mine) == 1
+    assert r.status_code == 200
+    assert len(await _named(client, token, "Synthetic Patient")) == 1
     assert (await _deliver(client, tid, raw, secret=SECRET)).json() == {"status": "duplicate_ignored"}
-    items2 = (await client.get("/api/v1/leads", headers=_h(token))).json()
-    items2 = items2.get("items") or items2.get("leads") or items2
-    assert len([x for x in items2 if x.get("name") == "Synthetic Patient"]) == 1  # retry created no duplicate
+    # a retry under a NEW event id for the same Halla lead still creates no second lead (idempotent on the Halla lead id)
+    await _deliver(client, tid, _raw("lead.created", consent=CONSENT), secret=SECRET)
+    assert len(await _named(client, token, "Synthetic Patient")) == 1
+
+
+async def test_lead_created_without_consent_evidence_stores_no_personal_data(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "MT Contract A2", "mtcontracta2@example.com")
+    r = await _deliver(client, tid, _raw("lead.created"), secret=SECRET)  # the REAL Halla shape today: no consent field
+    assert r.status_code == 200
+    assert await _named(client, token, "Synthetic Patient") == []
+
+
+@pytest.mark.parametrize(
+    "consent",
+    [None, {}, "true", True, {**CONSENT, "granted": "true"}, {**CONSENT, "granted": False}, {**CONSENT, "scope": []}, {**CONSENT, "scope": ["marketing"]},
+     {**CONSENT, "scope": ["data_processing"]}, {**CONSENT, "method": "assumed"}, {**CONSENT, "wording_version": ""}, {**CONSENT, "recorded_at": "not-a-date"},
+     {**CONSENT, "recorded_at": "2026-10-01T09:00:00"}, {**CONSENT, "recorded_at": "2999-01-01T00:00:00Z"}],
+)
+def test_consent_evidence_is_never_inferred(consent) -> None:
+    assert hw.consent_evidence({"consent": consent} if consent is not None else {}) is None
+
+
+def test_valid_consent_evidence_keeps_only_category_facts() -> None:
+    ev = hw.consent_evidence({"consent": {**CONSENT, "wording_text": "I agree to ZXQ-secret-text", "transcript": "ZXQ"}})
+    assert ev == {"scope": ["contact"], "method": "verbal_call", "wording_version": "mt-consent-v1", "recorded_at": "2026-10-01T09:00:00+00:00"}
 
 
 async def test_cross_tenant_unknown_tenant_and_forged_deliveries_persist_nothing(client, halla) -> None:  # noqa: F811
