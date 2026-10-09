@@ -119,7 +119,8 @@ class HallaEventProcessor:
             # Tenant safety profile (Medical Tourism / Dropshipping): if the conversation's own text needs a person, Halla's "qualified" is not
             # applied and no qualified-lead workflow is triggered; the lead goes to a human with the CATEGORY only (never the text).
             profile = await pilot_safety.profile_in_session(session, tenant_id)
-            safety = pilot_safety.assess(profile, summary, outcome) if profile is not None and (summary or outcome) else None
+            texts = hw.safety_texts(data)
+            safety = pilot_safety.assess(profile, *texts) if profile is not None and texts else None
             flagged = bool(safety and safety.requires_human)
             if flagged:
                 logger.warning("halla_safety_escalation", event_id=env.id, event_type=env.type, profile=profile.key, category=safety.category)
@@ -147,7 +148,7 @@ class HallaEventProcessor:
                     events.append((EventType.HALLA_LEAD_QUALIFIED, {**base, "qualification": q or "qualified"}))
                     apply_qualification(lead, q or "qualified")
             elif env.type == "lead.escalated":
-                events.append((EventType.HALLA_LEAD_ESCALATED, base))
+                events.append((EventType.HALLA_LEAD_ESCALATED, {**base, "category": safety.category, "safety": True} if flagged else base))
                 apply_qualification(lead, "needs_human_review")
             elif env.type in ("appointment.confirmed", "appointment.rescheduled", "appointment.cancelled"):
                 booked = await self._mirror_appointment(session, tenant_id, lead, env.type, data)

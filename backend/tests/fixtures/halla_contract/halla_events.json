@@ -1,0 +1,38 @@
+{
+  "secret": "whsec-contract-fixture-0123456789abcdef",
+  "halla_tenant_id": "00000000-0000-4000-8000-00000000a11a",
+  "timestamp": "1791500000",
+  "signer": "apps/gateway/src/security/webhook-signing.ts signWebhookPayload",
+  "events": {
+    "lead.created": {
+      "id": "evt-fixture-lead-created",
+      "body": "{\"id\":\"evt-fixture-lead-created\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\"}}",
+      "signature": "sha256=b0eefa1f6770b75b43422cb9ae52594654a4d5ea2280cb987455e197ba005ec8"
+    },
+    "lead.updated": {
+      "id": "evt-fixture-lead-updated",
+      "body": "{\"id\":\"evt-fixture-lead-updated\",\"type\":\"lead.updated\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\"}}",
+      "signature": "sha256=057ff695b820d5ab21f4be54361c74c1f23e0303d54c93c5e67734031e923775"
+    },
+    "lead.qualified": {
+      "id": "evt-fixture-lead-qualified",
+      "body": "{\"id\":\"evt-fixture-lead-qualified\",\"type\":\"lead.qualified\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"callId\":\"CA-fixture-1\",\"status\":\"qualified\",\"qualification\":\"qualified\",\"fields\":{\"treatment\":\"knee consultation\"},\"missingFields\":[\"preferred_dates\"],\"reason\":\"Interested in a planned knee consultation; agreed to be contacted by email.\",\"confidence\":0.82}}",
+      "signature": "sha256=fb4002bb8110928a536ecf7e0378de1e08e88b6427551f59a8299628fe11e358"
+    },
+    "lead.escalated": {
+      "id": "evt-fixture-lead-escalated",
+      "body": "{\"id\":\"evt-fixture-lead-escalated\",\"type\":\"lead.escalated\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"callId\":\"CA-fixture-2\",\"leadId\":\"halla-lead-9001\",\"target\":\"human-coordinator\",\"reason\":\"Caller asked whether the surgery will definitely work.\"}}",
+      "signature": "sha256=6a2ec120e3e41913a62920ea997c87620d1151f2b079caf1e22d922003a161a6"
+    },
+    "call.completed": {
+      "id": "evt-fixture-call-completed",
+      "body": "{\"id\":\"evt-fixture-call-completed\",\"type\":\"call.completed\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"callId\":\"CA-fixture-1\",\"durationMs\":91000,\"qualificationStatus\":\"qualified\",\"escalation\":{\"escalated\":false}}}",
+      "signature": "sha256=31e0470b33bf0168907f42d2ad053bf056acc7c60a39bd9b2b19b55ab8babb30"
+    },
+    "appointment.confirmed": {
+      "id": "evt-fixture-appt-confirmed",
+      "body": "{\"id\":\"evt-fixture-appt-confirmed\",\"type\":\"appointment.confirmed\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"appointmentId\":\"halla-appt-77\",\"scheduledTime\":\"2026-11-20T10:00:00.000Z\",\"leadId\":\"halla-lead-9001\"}}",
+      "signature": "sha256=18dad752abf7064354b05856af47808a11025935f82f376204911ce8943017a6"
+    }
+  }
+}

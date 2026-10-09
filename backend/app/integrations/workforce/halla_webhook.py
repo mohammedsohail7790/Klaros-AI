@@ -193,6 +193,22 @@ def outcome_of(data: dict[str, Any]) -> str | None:
     return _text(_pick(data, "outcome", "call_outcome", "callOutcome"), 60)
 
 
+def safety_texts(data: dict[str, Any]) -> list[str]:
+    """Every free-text field a Halla event can carry that the tenant's safety profile should read: the call summary and outcome, and the
+    `reason` Halla attaches to `lead.qualified` / `lead.escalated` (and to an embedded `escalation` object). Halla's real emitter sends
+    `reason` but no `summary`, so reading only the summary would leave the safety check blind on real traffic. Strings only, bounded."""
+    out: list[str] = []
+    for value in (summary_of(data), outcome_of(data), _text(_pick(data, "reason", "qualification_reason"), 2000)):
+        if value:
+            out.append(value)
+    esc = data.get("escalation")
+    if isinstance(esc, dict):
+        inner = _text(_pick(esc, "reason", "summary"), 2000)
+        if inner:
+            out.append(inner)
+    return out
+
+
 def _truthy(value: Any) -> bool:
     if value is None:
         return False
