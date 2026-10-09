@@ -1,0 +1,41 @@
+# Klaros–Halla PILOT service (isolated from klaros-backend and klaros-staging).
+# Branch release/pilot-prod, auto-deploy OFF. Secrets are never in this file: JWT_SECRET and INTEGRATION_CREDENTIAL_ENCRYPTION_KEY are generated
+# by Render at creation (never shown), DATABASE_URL is entered by the owner in the dashboard (sync: false).
+# See docs/KLAROS_HALLA_PRODUCTION_RUNBOOK.md.
+services:
+  - type: web
+    name: klaros-halla-pilot
+    runtime: docker
+    region: oregon
+    plan: free
+    branch: release/pilot-prod
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python -m scripts.start
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: KLAROS_PILOT_DB_NAME
+        value: klaros_halla_pilot
+      - key: KLAROS_FORBIDDEN_DB_NAMES
+        value: neondb,klaros_staging_db
+      - key: KLAROS_FORBIDDEN_DB_HOSTS
+        value: ep-super-dust-aye0qn76.c-5.us-east-2.aws.neon.tech,ep-super-dust-aye0qn76-pooler.c-5.us-east-2.aws.neon.tech,dpg-db3ntsl9fdbs73ej23t0-a
+      - key: JWT_SECRET
+        generateValue: true
+      - key: INTEGRATION_CREDENTIAL_ENCRYPTION_KEY
+        generateValue: true
+      - key: EVENT_TRANSPORT
+        value: memory
+      - key: RATE_LIMIT_BACKEND
+        value: memory
+      - key: WORKFORCE_ADAPTER
+        value: halla
+      - key: HALLA_API_BASE_URL
+        value: https://halla-ai-gateway.onrender.com
+      - key: HALLA_ALLOWED_HOSTS
+        value: halla-ai-gateway.onrender.com
