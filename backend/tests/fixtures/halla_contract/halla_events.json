@@ -1,4 +1,103 @@
 {
+  "consent_events": {
+    "granted_all": {
+      "id": "evt-fixture-consent-granted_all",
+      "body": "{\"id\":\"evt-fixture-consent-granted_all\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[\"contact\",\"store_personal_data\",\"store_medical_information\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=74e44dfa15d2227bf3d39ed0ff92eb3d6d365e0cff6bc34ab23a7e5fd7e86507",
+      "halla_sanitizer_accepts": true
+    },
+    "granted_personal_only": {
+      "id": "evt-fixture-consent-granted_personal_only",
+      "body": "{\"id\":\"evt-fixture-consent-granted_personal_only\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[\"store_personal_data\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=61a40018e7c3852d9de6f8c2376d7815a202cc4d3240ad9087f8db3820535952",
+      "halla_sanitizer_accepts": true
+    },
+    "granted_contact_only": {
+      "id": "evt-fixture-consent-granted_contact_only",
+      "body": "{\"id\":\"evt-fixture-consent-granted_contact_only\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[\"contact\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=c5e541e7dad08c6b63163f63fbe3097fcad10980b05d95e96f82b99e889d5c72",
+      "halla_sanitizer_accepts": true
+    },
+    "granted_personal_and_contact": {
+      "id": "evt-fixture-consent-granted_personal_and_contact",
+      "body": "{\"id\":\"evt-fixture-consent-granted_personal_and_contact\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[\"contact\",\"store_personal_data\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=a5c98ef4289386c8255ec55210110c2c8ec7b78c80c04f326bb7de915aa88f60",
+      "halla_sanitizer_accepts": true
+    },
+    "declined_or_withdrawn_personal": {
+      "id": "evt-fixture-consent-declined_or_withdrawn_personal",
+      "body": "{\"id\":\"evt-fixture-consent-declined_or_withdrawn_personal\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":false,\"scope\":[\"store_personal_data\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=369475158aa26158910a385f83ec784bd8d6c8f5cb50d2f84c3ef16770956ef6",
+      "halla_sanitizer_accepts": true
+    },
+    "declined_all": {
+      "id": "evt-fixture-consent-declined_all",
+      "body": "{\"id\":\"evt-fixture-consent-declined_all\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":false,\"scope\":[\"contact\",\"store_personal_data\",\"store_medical_information\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=34811de739a6fb36ed7e7e41f96791a59b69d66506542dd01c66003018ead041",
+      "halla_sanitizer_accepts": true
+    },
+    "later_withdrawal_of_contact": {
+      "id": "evt-fixture-consent-later_withdrawal_of_contact",
+      "body": "{\"id\":\"evt-fixture-consent-later_withdrawal_of_contact\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[\"store_personal_data\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T12:00:00.000Z\"}}}",
+      "signature": "sha256=0350da765e92528e07981915bda2e7f891dbbcd65d9cc07a4a08298680a1344d",
+      "halla_sanitizer_accepts": true
+    },
+    "stale_grant_all": {
+      "id": "evt-fixture-consent-stale_grant_all",
+      "body": "{\"id\":\"evt-fixture-consent-stale_grant_all\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[\"contact\",\"store_personal_data\",\"store_medical_information\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T08:00:00.000Z\"}}}",
+      "signature": "sha256=f38e7899b7340290d423402dd40ea3077251500d5156bb21be0073fafa20bb98",
+      "halla_sanitizer_accepts": true
+    },
+    "bad_unknown_scope": {
+      "id": "evt-fixture-consent-bad_unknown_scope",
+      "body": "{\"id\":\"evt-fixture-consent-bad_unknown_scope\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[\"diagnosis\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=2c8d8681aa2ef357f099d8e3f48e45e32d3adc4398ba084e8ccf7e8884473ff9",
+      "halla_sanitizer_accepts": false
+    },
+    "bad_empty_scope": {
+      "id": "evt-fixture-consent-bad_empty_scope",
+      "body": "{\"id\":\"evt-fixture-consent-bad_empty_scope\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=38cc01ad06cee0c16974542b8c844b8b59b928b0457c7cafc83b3165e54a494a",
+      "halla_sanitizer_accepts": false
+    },
+    "bad_scope_not_array": {
+      "id": "evt-fixture-consent-bad_scope_not_array",
+      "body": "{\"id\":\"evt-fixture-consent-bad_scope_not_array\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":\"store_personal_data\",\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=8de9a486a24974cf097e4a94e1bb14c771559745a26b96face86ad1dc401952d",
+      "halla_sanitizer_accepts": false
+    },
+    "bad_granted_string": {
+      "id": "evt-fixture-consent-bad_granted_string",
+      "body": "{\"id\":\"evt-fixture-consent-bad_granted_string\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":\"true\",\"scope\":[\"store_personal_data\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=f098dc1700629db166a1efdedf06f05f44f6f540d1b62e93f91343429df46a37",
+      "halla_sanitizer_accepts": false
+    },
+    "bad_method": {
+      "id": "evt-fixture-consent-bad_method",
+      "body": "{\"id\":\"evt-fixture-consent-bad_method\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[\"store_personal_data\"],\"method\":\"press_1\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=4ce2da3bf642f65d4da8124c3f79298c4ecb8a41e187cd1eb51fd6034162b904",
+      "halla_sanitizer_accepts": false
+    },
+    "bad_wording": {
+      "id": "evt-fixture-consent-bad_wording",
+      "body": "{\"id\":\"evt-fixture-consent-bad_wording\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[\"store_personal_data\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"has spaces!\",\"recorded_at\":\"2026-10-09T10:00:02.000Z\"}}}",
+      "signature": "sha256=1790aacfdc21235ed4c7f6d7e3efff666de4175d0e6c55a62acb58020098180e",
+      "halla_sanitizer_accepts": false
+    },
+    "bad_time": {
+      "id": "evt-fixture-consent-bad_time",
+      "body": "{\"id\":\"evt-fixture-consent-bad_time\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[\"store_personal_data\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"yesterday\"}}}",
+      "signature": "sha256=401f7038e85641655a0866e65293f0c5514b6cd2b12f6fdfbb4862f0ac365158",
+      "halla_sanitizer_accepts": false
+    },
+    "bad_future_time": {
+      "id": "evt-fixture-consent-bad_future_time",
+      "body": "{\"id\":\"evt-fixture-consent-bad_future_time\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"callId\":\"CA-fixture-1\",\"consent\":{\"granted\":true,\"scope\":[\"store_personal_data\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2999-01-01T00:00:00.000Z\"}}}",
+      "signature": "sha256=60bf48e79ce4fb8de57565853fcfaa8192e03056f8efb1fa7cfe8063be9147d3",
+      "halla_sanitizer_accepts": false
+    }
+  },
+  "patch_sha256": "9e4653dca6353586cb897bda17c2991731f7c1f93f782e114e14d19dec313142",
   "secret": "whsec-contract-fixture-0123456789abcdef",
   "halla_tenant_id": "00000000-0000-4000-8000-00000000a11a",
   "timestamp": "1791500000",

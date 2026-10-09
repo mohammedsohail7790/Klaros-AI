@@ -17,8 +17,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 MAX_BODY_BYTES = 256 * 1024
@@ -209,32 +210,45 @@ def safety_texts(data: dict[str, Any]) -> list[str]:
     return out
 
 
-CONSENT_METHODS = ("verbal_call", "web_form", "sms_reply")
-CONSENT_SCOPES = ("contact", "data_processing")
+CONSENT_SCOPES = ("contact", "store_personal_data", "store_medical_information")
+CONSENT_METHODS = ("voice_ai_verbal",)
+_WORDING_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$")
+_FUTURE_SKEW = timedelta(minutes=5)  # Halla's own tolerance (consent-evidence.ts toIso)
 
 
-def consent_evidence(data: dict[str, Any]) -> dict[str, Any] | None:
-    """Explicit consent evidence from Halla, or None. Never inferred: absent, malformed, partial, string-typed ("true"), future-dated,
-    unknown-method or withdrawn consent all return None. Only category-level facts are kept (no wording text, no transcript)."""
-    c = data.get("consent")
-    if not isinstance(c, dict) or c.get("granted") is not True:
+@dataclass(frozen=True)
+class ConsentEvidence:
+    """Halla's `data.consent` (HALLA_KLAROS_INTEGRATION_CONTRACT 3.1), validated. No wording text, transcript or medical content exists in it.
+
+    `granted=True`: `scopes` are the scopes currently agreed to. `granted=False`: `scopes` are scopes the caller declined OR withdrew --
+    Halla does not distinguish the two in this contract version and Klaros does not either. A scope that is not listed is NOT granted."""
+
+    granted: bool
+    scopes: tuple[str, ...]
+    method: str
+    wording_version: str
+    recorded_at: datetime
+
+
+def consent_evidence(data: dict[str, Any]) -> ConsentEvidence | None:
+    """The consent evidence on a lead event, or None. Fail closed: a missing key, wrong type, empty/unknown scope, unknown method, bad
+    wording label, unparseable / zone-less / future timestamp are all "no evidence". Nothing is inferred or repaired."""
+    c = data.get("consent") if isinstance(data, dict) else None
+    if not isinstance(c, dict) or not isinstance(c.get("granted"), bool):
         return None
     scope = c.get("scope")
-    scope = [scope] if isinstance(scope, str) else scope
-    if not isinstance(scope, list) or "contact" not in scope or any(x not in CONSENT_SCOPES for x in scope):
+    if not isinstance(scope, list) or not scope or len(scope) > len(CONSENT_SCOPES) or not all(isinstance(x, str) and x in CONSENT_SCOPES for x in scope):
         return None
-    method, version = c.get("method"), _text(c.get("wording_version"), 32)
-    if method not in CONSENT_METHODS or not version:
+    method, wording, raw_at = c.get("method"), c.get("wording_version"), c.get("recorded_at")
+    if method not in CONSENT_METHODS or not isinstance(wording, str) or not _WORDING_RE.match(wording) or not isinstance(raw_at, str):
         return None
     try:
-        at = datetime.fromisoformat(str(c.get("recorded_at")).replace("Z", "+00:00"))
+        at = datetime.fromisoformat(raw_at.strip().replace("Z", "+00:00"))
     except ValueError:
         return None
-    if at.tzinfo is None:
+    if at.tzinfo is None or at > datetime.now(timezone.utc) + _FUTURE_SKEW:
         return None
-    if at > datetime.now(timezone.utc):
-        return None
-    return {"scope": sorted(scope), "method": method, "wording_version": version, "recorded_at": at.isoformat()}
+    return ConsentEvidence(c["granted"], tuple(sorted(set(scope), key=CONSENT_SCOPES.index)), method, wording, at.astimezone(timezone.utc))
 
 
 def _truthy(value: Any) -> bool:

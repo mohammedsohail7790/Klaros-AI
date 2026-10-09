@@ -103,6 +103,7 @@ from app.models.knowledge import KnowledgeChunk, KnowledgeFile
 from app.models.voice import CallSession, VoiceReceptionistSettings
 from app.models.automation import Automation, AutomationExecution, AutomationExecutionStep, AutomationVersion
 from app.models.integration import IntegrationConnection, WebhookEvent
+from app.models.halla_consent import HallaConsentEvidence
 from app.models.ai_invocation import AIInvocationLog
 from app.models.quote import Quote, QuoteLineItem
 from app.models.contract import Contract, ContractStatus

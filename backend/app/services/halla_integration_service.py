@@ -212,6 +212,14 @@ class HallaIntegrationService:
             await set_tenant_context(session, tenant_id)
             lead = await self._lead(session, tenant_id, lead_id)
             phone = (lead.phone or "").strip()
+            if phone:
+                from app.services import halla_consent, pilot_safety
+
+                profile = await pilot_safety.profile_in_session(session, tenant_id)
+                if profile is not None and profile.requires_consent_evidence:
+                    state = await halla_consent.state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+                    if not state.allows(halla_consent.CONTACT):
+                        raise LeadNotCallableError("Contact consent has not been established for this lead.")
         if not phone:
             raise LeadNotCallableError("This lead has no phone number to call.")
         result = await adapter.initiate_outbound_call(

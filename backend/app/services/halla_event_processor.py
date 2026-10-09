@@ -31,7 +31,7 @@ from app.events.bus import EventBus
 from app.integrations.workforce import halla_webhook as hw
 from app.models.crm import Appointment, AppointmentStatus, Customer, CustomerStatus, Lead, LeadStatus, QualificationStatus
 from app.models.event import Event, EventType
-from app.services import pilot_safety
+from app.services import halla_consent, pilot_safety
 from app.services.customer_matching import find_matching_customer, normalize_email, normalize_phone
 
 logger = structlog.get_logger(__name__)
@@ -104,13 +104,20 @@ class HallaEventProcessor:
         data = env.data
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)
+            profile = await pilot_safety.profile_in_session(session, tenant_id)
+            gated = profile is not None and profile.requires_consent_evidence  # Medical Tourism: consent evidence decides what may be stored
             lead = await self._resolve_lead(session, tenant_id, data)
-            if lead is None and env.type == "lead.created":
-                lead = await self._create_lead_from_halla(tenant_id, data, bus, session)
+            if gated and env.type in ("lead.created", "lead.updated"):
+                await self._record_consent(session, tenant_id, env, data, lead)
+            if lead is None and (env.type == "lead.created" or (gated and env.type == "lead.updated")):
+                lead = await self._create_lead_from_halla(tenant_id, data, bus, session, profile)
+                if lead is not None and gated:
+                    await halla_consent.link_lead(session, tenant_id, hw.halla_lead_id(data), lead.id)
             if lead is None:
                 # Nothing in Klaros to attach this to. Klaros never creates a lead from a bare phone number.
                 logger.info("halla_event_unresolved", event_type=env.type, event_id=env.id)
-                return {"handled": False, "note": "no matching Klaros lead"}
+                await session.commit()  # keeps any consent evidence recorded above (it holds no personal data)
+                return {"handled": False, "note": "consent not established" if gated and env.type in ("lead.created", "lead.updated") else "no matching Klaros lead"}
 
             await self._link(session, tenant_id, lead, data)
             events: list[tuple[EventType, dict[str, Any]]] = []
@@ -118,7 +125,6 @@ class HallaEventProcessor:
             summary, outcome, call = hw.summary_of(data), hw.outcome_of(data), hw.call_id(data)
             # Tenant safety profile (Medical Tourism / Dropshipping): if the conversation's own text needs a person, Halla's "qualified" is not
             # applied and no qualified-lead workflow is triggered; the lead goes to a human with the CATEGORY only (never the text).
-            profile = await pilot_safety.profile_in_session(session, tenant_id)
             texts = hw.safety_texts(data)
             safety = pilot_safety.assess(profile, *texts) if profile is not None and texts else None
             flagged = bool(safety and safety.requires_human)
@@ -233,23 +239,41 @@ class HallaEventProcessor:
         if taken is None:
             lead.external_provider, lead.external_id = PROVIDER, hid
 
-    async def _create_lead_from_halla(self, tenant_id: uuid.UUID, data: dict[str, Any], bus: EventBus, session) -> Lead | None:
+    async def _record_consent(self, session, tenant_id: uuid.UUID, env: hw.HallaEnvelope, data: dict[str, Any], lead: Lead | None) -> None:
+        if "consent" not in data:
+            return  # no evidence on this event; whatever is stored stays as it was (never inferred, never cleared)
+        evidence = hw.consent_evidence(data)
+        if evidence is None:
+            logger.warning("halla_consent_evidence_invalid", event_id=env.id, event_type=env.type)  # the malformed value is never logged
+            return
+        await halla_consent.record(
+            session, tenant_id, event_id=env.id, event_type=env.type, halla_lead_id=hw.halla_lead_id(data), lead_id=lead.id if lead is not None else None, evidence=evidence
+        )
+        await session.commit()  # evidence is durable before any lead is written
+        await set_tenant_context(session, tenant_id)
+
+    async def _create_lead_from_halla(self, tenant_id: uuid.UUID, data: dict[str, Any], bus: EventBus, session, profile=None) -> Lead | None:
         """`lead.created` with no Klaros id: Klaros' existing lead intake policy — idempotent on the Halla lead id,
-        never merged or duplicated on a phone number alone."""
+        never merged or duplicated on a phone number alone. For a profile that requires consent evidence the lead is stored only while the
+        newest evidence grants `store_personal_data`; the treatment is kept only if it also grants `store_medical_information`."""
         from app.services.lead_service import CreateLeadInput, LeadService
 
         hid, facts = hw.halla_lead_id(data), hw.lead_facts(data)
         if not hid or not facts.name or not (facts.phone or facts.email):
             return None
-        profile = await pilot_safety.profile_in_session(session, tenant_id)
-        if profile is not None and profile.requires_consent_evidence and hw.consent_evidence(data) is None:
-            # Halla did not establish consent: Klaros stores no personal data from this event (nothing is invented or assumed).
-            logger.warning("halla_lead_refused_no_consent_evidence", halla_lead_id=hid, profile=profile.key)
-            return None
+        service = facts.service
+        if profile is not None and profile.requires_consent_evidence:
+            state = await halla_consent.state_for(session, tenant_id, halla_lead_id=hid)
+            if not state.allows(halla_consent.STORE_PERSONAL):
+                # Halla did not establish consent to keep personal data (or it was declined / withdrawn / superseded): nothing is stored.
+                logger.warning("halla_lead_refused_no_consent_evidence", halla_lead_id=hid, profile=profile.key, has_evidence=state.has_evidence)
+                return None
+            if not state.allows(halla_consent.STORE_MEDICAL):
+                service = None
         lead, _ = await LeadService(self._session_factory, bus).create_lead(
             tenant_id,
             CreateLeadInput(name=facts.name, source="VOICE", phone=facts.phone, email=facts.email, source_detail="halla",
-                            service_requested=facts.service, idempotency_key=f"halla-lead-{hid}"),
+                            service_requested=service, idempotency_key=f"halla-lead-{hid}"),
         )
         return await session.get(Lead, lead.id)
 

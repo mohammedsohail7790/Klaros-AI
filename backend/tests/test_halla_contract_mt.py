@@ -69,7 +69,29 @@ def test_hallas_signature_is_rejected_for_a_wrong_secret_a_tampered_body_and_a_s
         hw.verify_signature(f["body"].encode(), TS, f["signature"], SECRET, tolerance_seconds=300, now=datetime.fromtimestamp(int(TS) + 301, tz=timezone.utc))
 
 
-CONSENT = {"granted": True, "scope": ["contact"], "method": "verbal_call", "wording_version": "mt-consent-v1", "recorded_at": "2026-10-01T09:00:00Z"}
+# ============================================================================== consent evidence (Halla patch 10bce7ad, HALLA_KLAROS_INTEGRATION_CONTRACT 3.1)
+CE = FIX["consent_events"]
+GRANTED = ["granted_all", "granted_personal_only", "granted_contact_only", "granted_personal_and_contact", "declined_or_withdrawn_personal", "declined_all",
+           "later_withdrawal_of_contact", "stale_grant_all"]
+MALFORMED = sorted(k for k in CE if k.startswith("bad_"))
+
+
+def _consent_raw(name: str, *, event_id: str | None = None, etype: str = "lead.created") -> bytes:
+    env = json.loads(CE[name]["body"])
+    env["id"] = event_id or f"{CE[name]['id']}-{time.time_ns()}"
+    env["type"] = etype
+    return json.dumps(env).encode()
+
+
+async def _evidence(tid):
+    from sqlalchemy import select
+
+    from app.db.session import async_session_maker, set_tenant_context
+    from app.models.halla_consent import HallaConsentEvidence
+
+    async with async_session_maker() as s:
+        await set_tenant_context(s, tid)
+        return list((await s.execute(select(HallaConsentEvidence).where(HallaConsentEvidence.tenant_id == tid).order_by(HallaConsentEvidence.recorded_at))).scalars())
 
 
 async def _named(client, token, name):
@@ -78,38 +100,161 @@ async def _named(client, token, name):
     return [x for x in items if isinstance(x, dict) and x.get("name") == name]
 
 
-async def test_lead_created_with_consent_evidence_creates_one_lead_in_the_mapped_tenant_and_replay_adds_none(client, halla) -> None:  # noqa: F811
-    token, tid = await _mt(client, "MT Contract A", "mtcontracta@example.com")
-    raw = _raw("lead.created", consent=CONSENT)
-    r = await _deliver(client, tid, raw, secret=SECRET)
-    assert r.status_code == 200
-    assert len(await _named(client, token, "Synthetic Patient")) == 1
-    assert (await _deliver(client, tid, raw, secret=SECRET)).json() == {"status": "duplicate_ignored"}
-    # a retry under a NEW event id for the same Halla lead still creates no second lead (idempotent on the Halla lead id)
-    await _deliver(client, tid, _raw("lead.created", consent=CONSENT), secret=SECRET)
-    assert len(await _named(client, token, "Synthetic Patient")) == 1
+async def _state(tid, halla_lead="halla-lead-9001"):
+    from app.db.session import async_session_maker, set_tenant_context
+    from app.services import halla_consent
+
+    async with async_session_maker() as s:
+        await set_tenant_context(s, tid)
+        return await halla_consent.state_for(s, tid, halla_lead_id=halla_lead)
 
 
-async def test_lead_created_without_consent_evidence_stores_no_personal_data(client, halla) -> None:  # noqa: F811
-    token, tid = await _mt(client, "MT Contract A2", "mtcontracta2@example.com")
-    r = await _deliver(client, tid, _raw("lead.created"), secret=SECRET)  # the REAL Halla shape today: no consent field
-    assert r.status_code == 200
+@pytest.mark.parametrize("name", sorted(CE))
+def test_consent_fixtures_are_signed_by_hallas_signer_and_klaros_agrees_with_hallas_own_validator(name) -> None:
+    f = CE[name]
+    now = datetime.fromtimestamp(int(TS), tz=timezone.utc)
+    hw.verify_signature(f["body"].encode(), TS, f["signature"], SECRET, tolerance_seconds=300, now=now)
+    assert f["signature"] == "sha256=" + hw.sign(SECRET, TS, f["body"].encode())
+    # Halla's sanitizeConsentEvidence (from the patch) accepts exactly what Klaros accepts -- no contract drift in either direction
+    assert (hw.consent_evidence(json.loads(f["body"])["data"]) is not None) == f["halla_sanitizer_accepts"]
+
+
+def test_consent_evidence_parses_the_exact_halla_shape_and_nothing_else() -> None:
+    ev = hw.consent_evidence(json.loads(CE["granted_personal_and_contact"]["body"])["data"])
+    assert ev.granted is True and ev.scopes == ("contact", "store_personal_data") and ev.method == "voice_ai_verbal"
+    assert ev.wording_version == "owner-label-v1" and ev.recorded_at.isoformat() == "2026-10-09T10:00:02+00:00"
+    dec = hw.consent_evidence(json.loads(CE["declined_or_withdrawn_personal"]["body"])["data"])
+    assert dec.granted is False and dec.scopes == ("store_personal_data",)  # declined and withdrawn are the same shape; Klaros does not tell them apart
+    assert hw.consent_evidence({}) is None and hw.consent_evidence({"consent": None}) is None and hw.consent_evidence({"consent": True}) is None
+
+
+@pytest.mark.parametrize("name", MALFORMED)
+async def test_malformed_consent_is_ignored_stores_nothing_and_creates_no_lead(client, halla, name) -> None:  # noqa: F811
+    token, tid = await _mt(client, f"MT Mal {name}", f"mtmal{name.replace('_', '')}@example.com")
+    assert (await _deliver(client, tid, _consent_raw(name), secret=SECRET)).status_code == 200
+    assert await _named(client, token, "Synthetic Patient") == [] and await _evidence(tid) == []
+
+
+async def test_missing_consent_creates_no_lead_and_is_never_inferred(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "MT Missing", "mtmissing@example.com")
+    r = await _deliver(client, tid, _raw("lead.created"), secret=SECRET)  # a call + an AI interaction happened, but no consent object
+    assert r.status_code == 200 and await _named(client, token, "Synthetic Patient") == [] and await _evidence(tid) == []
+
+
+@pytest.mark.parametrize("name", ["granted_all", "granted_personal_only", "granted_personal_and_contact", "later_withdrawal_of_contact"])
+async def test_a_grant_of_store_personal_data_creates_exactly_one_lead_and_replay_adds_nothing(client, halla, name) -> None:  # noqa: F811
+    token, tid = await _mt(client, f"MT Grant {name}", f"mtgrant{name.replace('_', '')}@example.com")
+    raw = _consent_raw(name, event_id=f"evt-{name}-1")
+    assert (await _deliver(client, tid, raw, secret=SECRET)).json() == {"status": "ok"}
+    assert len(await _named(client, token, "Synthetic Patient")) == 1 and len(await _evidence(tid)) == 1
+    assert (await _deliver(client, tid, raw, secret=SECRET)).json() == {"status": "duplicate_ignored"}  # the same delivery again
+    await _deliver(client, tid, _consent_raw(name, event_id=f"evt-{name}-retry"), secret=SECRET)  # a retry under a new event id
+    assert len(await _named(client, token, "Synthetic Patient")) == 1 and len(await _evidence(tid)) == 2  # still one lead; both evidence records kept
+    ev = (await _evidence(tid))[0]
+    assert "Synthetic" not in str(vars(ev)) and "+1555" not in str(vars(ev))  # the history holds no name or phone
+
+
+@pytest.mark.parametrize("name", ["granted_contact_only", "declined_or_withdrawn_personal", "declined_all"])
+async def test_consent_without_store_personal_data_stores_no_lead_but_keeps_the_decision(client, halla, name) -> None:  # noqa: F811
+    token, tid = await _mt(client, f"MT NoPD {name}", f"mtnopd{name.replace('_', '')}@example.com")
+    assert (await _deliver(client, tid, _consent_raw(name), secret=SECRET)).status_code == 200
+    assert await _named(client, token, "Synthetic Patient") == []  # contact consent is not consent to store personal data
+    assert len(await _evidence(tid)) == 1 and (await _state(tid)).allows("store_personal_data") is False
+
+
+async def test_scopes_are_independent(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "MT Scopes", "mtscopes@example.com")
+    await _deliver(client, tid, _consent_raw("granted_personal_only"), secret=SECRET)
+    st = await _state(tid)
+    assert st.allows("store_personal_data") and not st.allows("contact") and not st.allows("store_medical_information")
+
+
+async def test_a_later_event_that_omits_a_scope_withdraws_it_and_stale_evidence_cannot_restore_it(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "MT Withdraw", "mtwithdraw@example.com")
+    await _deliver(client, tid, _consent_raw("granted_all"), secret=SECRET)  # 10:00:02: everything granted
+    assert (await _state(tid)).granted == {"contact", "store_personal_data", "store_medical_information"}
+    await _deliver(client, tid, _consent_raw("later_withdrawal_of_contact", etype="lead.updated"), secret=SECRET)  # 12:00: only personal data listed
+    assert (await _state(tid)).granted == {"store_personal_data"}  # contact and medical are no longer granted
+    await _deliver(client, tid, _consent_raw("stale_grant_all", etype="lead.updated"), secret=SECRET)  # 08:00 delivered late: older than what we hold
+    assert (await _state(tid)).granted == {"store_personal_data"}
+    await _deliver(client, tid, _consent_raw("declined_all", etype="lead.updated"), secret=SECRET)  # 10:00:02 is also older than 12:00
+    assert (await _state(tid)).granted == {"store_personal_data"}
+    assert len(await _evidence(tid)) == 4  # nothing is erased: the history keeps every decision
+
+
+async def test_a_decline_then_a_newer_re_grant_stores_the_lead_only_after_the_re_grant(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "MT Regrant", "mtregrant@example.com")
+    await _deliver(client, tid, _consent_raw("declined_or_withdrawn_personal"), secret=SECRET)
     assert await _named(client, token, "Synthetic Patient") == []
+    await _deliver(client, tid, _consent_raw("later_withdrawal_of_contact", etype="lead.updated"), secret=SECRET)  # newer decision grants personal data
+    assert len(await _named(client, token, "Synthetic Patient")) == 1
+    rows = await _evidence(tid)
+    assert len(rows) == 2 and all(r.lead_id is not None for r in rows)  # the earlier decline is linked to the lead once it exists, and kept
 
 
-@pytest.mark.parametrize(
-    "consent",
-    [None, {}, "true", True, {**CONSENT, "granted": "true"}, {**CONSENT, "granted": False}, {**CONSENT, "scope": []}, {**CONSENT, "scope": ["marketing"]},
-     {**CONSENT, "scope": ["data_processing"]}, {**CONSENT, "method": "assumed"}, {**CONSENT, "wording_version": ""}, {**CONSENT, "recorded_at": "not-a-date"},
-     {**CONSENT, "recorded_at": "2026-10-01T09:00:00"}, {**CONSENT, "recorded_at": "2999-01-01T00:00:00Z"}],
-)
-def test_consent_evidence_is_never_inferred(consent) -> None:
-    assert hw.consent_evidence({"consent": consent} if consent is not None else {}) is None
+def test_state_derivation_newest_wins_ties_are_restrictive_and_nothing_means_nothing() -> None:
+    from types import SimpleNamespace as R
+
+    from app.services.halla_consent import derive_state
+
+    t = datetime(2026, 10, 9, 10, tzinfo=timezone.utc)
+    later = datetime(2026, 10, 9, 11, tzinfo=timezone.utc)
+    assert derive_state([]).granted == frozenset() and derive_state([]).has_evidence is False
+    grant, decline = R(granted=True, scopes=["contact", "store_personal_data"], recorded_at=t), R(granted=False, scopes=["contact"], recorded_at=t)
+    assert derive_state([grant]).granted == {"contact", "store_personal_data"}
+    assert derive_state([grant, decline]).granted == frozenset()  # same instant: the restrictive reading wins
+    assert derive_state([grant, R(granted=False, scopes=["contact"], recorded_at=later)]).granted == frozenset()  # newer decline beats older grant
+    assert derive_state([R(granted=True, scopes=["store_personal_data"], recorded_at=later), grant]).granted == {"store_personal_data"}  # older grant cannot widen
+    assert derive_state([R(granted=True, scopes=["contact"], recorded_at=t.replace(tzinfo=None))]).granted == {"contact"}  # SQLite returns naive datetimes
 
 
-def test_valid_consent_evidence_keeps_only_category_facts() -> None:
-    ev = hw.consent_evidence({"consent": {**CONSENT, "wording_text": "I agree to ZXQ-secret-text", "transcript": "ZXQ"}})
-    assert ev == {"scope": ["contact"], "method": "verbal_call", "wording_version": "mt-consent-v1", "recorded_at": "2026-10-01T09:00:00+00:00"}
+async def test_consent_for_one_tenant_never_grants_another_tenant(client, halla) -> None:  # noqa: F811
+    token_a, tid_a = await _mt(client, "MT Iso A", "mtisoa@example.com")
+    token_b, tid_b = await _mt(client, "MT Iso B", "mtisob@example.com")
+    await _deliver(client, tid_a, _consent_raw("granted_personal_only"), secret=SECRET)
+    assert len(await _named(client, token_a, "Synthetic Patient")) == 1
+    await _deliver(client, tid_b, _raw("lead.created"), secret=SECRET)  # same Halla lead id, no consent evidence in tenant B
+    assert await _named(client, token_b, "Synthetic Patient") == [] and await _evidence(tid_b) == []
+    assert (await _state(tid_b)).allows("store_personal_data") is False
+
+
+@pytest.mark.parametrize("bad", ["secret", "tenant", "stale_ts"])
+async def test_consent_events_with_a_bad_signature_wrong_tenant_or_stale_timestamp_store_nothing(client, halla, bad) -> None:  # noqa: F811
+    token, tid = await _mt(client, f"MT Forge {bad}", f"mtforge{bad.replace('_', '')}@example.com")
+    raw = _consent_raw("granted_all")
+    if bad == "secret":
+        r = await _deliver(client, tid, raw, secret="whsec-wrong")
+    elif bad == "stale_ts":
+        r = await _deliver(client, tid, raw, secret=SECRET, ts=str(int(time.time()) - 3600))
+    else:
+        env = json.loads(raw)
+        env["tenant_id"] = "halla-tenant-someone-else"
+        r = await _deliver(client, tid, json.dumps(env).encode(), secret=SECRET)
+    assert r.status_code in (400, 401, 403)
+    assert await _named(client, token, "Synthetic Patient") == [] and await _evidence(tid) == []
+
+
+async def test_outbound_calls_need_contact_consent_for_medical_tourism_only(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "MT Call", "mtcall@example.com")
+    BASE = "/api/v1/business-builder"
+    await _deliver(client, tid, _consent_raw("granted_personal_only", event_id="evt-call-1"), secret=SECRET)
+    lead = (await _named(client, token, "Synthetic Patient"))[0]["id"]
+    assert (await client.post(f"{BASE}/leads/{lead}/halla/call", headers=_h(token))).status_code == 422  # personal-data consent is not contact consent
+    assert not halla.sent("POST", "/calls/outbound")
+    await _deliver(client, tid, _consent_raw("granted_personal_and_contact", event_id="evt-call-2", etype="lead.updated"), secret=SECRET)
+    # same recorded_at as the first (10:00:02): the restrictive reading wins, so contact is still not granted
+    assert (await client.post(f"{BASE}/leads/{lead}/halla/call", headers=_h(token))).status_code == 422
+    assert not halla.sent("POST", "/calls/outbound")
+
+
+async def test_a_tenant_without_the_medical_tourism_profile_is_unchanged_by_consent_fields(client, halla) -> None:  # noqa: F811
+    from tests.test_halla_integration import HALLA_TENANT, SECRET as PLAIN_SECRET, _body, _connected
+
+    token, tid = await _connected(client, "Plain Co", "plainco@example.com")
+    data = {"leadId": "halla-lead-plain", "phone": "+15550100777", "name": "Plain Person", "consent": json.loads(CE["declined_all"]["body"])["data"]["consent"]}
+    r = await _deliver(client, tid, _body("lead.created", tenant=HALLA_TENANT, data=data), secret=PLAIN_SECRET)
+    assert r.status_code == 200 and len(await _named(client, token, "Plain Person")) == 1  # generic behaviour: the lead is stored as before
+    assert await _evidence(tid) == []  # and no consent history is kept for a tenant that did not opt in
 
 
 async def test_cross_tenant_unknown_tenant_and_forged_deliveries_persist_nothing(client, halla) -> None:  # noqa: F811
@@ -160,3 +305,22 @@ async def test_an_unsupported_halla_event_is_rejected_not_silently_accepted(clie
     env.update(type="appointment.requested", id="evt-unsupported-1")
     r = await _deliver(client, tid, json.dumps(env).encode(), secret=SECRET)
     assert r.status_code in (400, 422)
+
+
+async def test_contact_consent_allows_the_call_until_a_newer_event_omits_it(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "MT Call2", "mtcall2@example.com")
+    BASE = "/api/v1/business-builder"
+
+    def at(name, when, eid):
+        env = json.loads(_consent_raw(name, event_id=eid, etype="lead.updated"))
+        env["data"]["consent"]["recorded_at"] = when
+        return json.dumps(env).encode()
+
+    await _deliver(client, tid, _consent_raw("granted_personal_only", event_id="evt-c2-1"), secret=SECRET)
+    lead = (await _named(client, token, "Synthetic Patient"))[0]["id"]
+    await _deliver(client, tid, at("granted_personal_and_contact", "2026-10-09T13:00:00.000Z", "evt-c2-2"), secret=SECRET)  # newer: contact granted
+    assert (await client.post(f"{BASE}/leads/{lead}/halla/call", headers=_h(token))).status_code == 200
+    assert len(halla.sent("POST", "/calls/outbound")) == 1
+    await _deliver(client, tid, at("granted_personal_only", "2026-10-09T14:00:00.000Z", "evt-c2-3"), secret=SECRET)  # newer still: contact no longer listed
+    assert (await client.post(f"{BASE}/leads/{lead}/halla/call", headers=_h(token))).status_code == 422
+    assert len(halla.sent("POST", "/calls/outbound")) == 1
