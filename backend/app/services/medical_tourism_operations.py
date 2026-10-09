@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import re
 import uuid
+
+from app.services import pilot_safety as _pilot_safety
 from collections import Counter
 from typing import Any
 
@@ -423,7 +425,7 @@ async def _workforce_context(tenant_id: uuid.UUID) -> dict[str, Any]:
         "services": list(services),
         "markets": list(markets),
         "qualification_fields": ["Treatment of interest", "Budget", "Travel timeline", "Preferred destination", "Medical history (only what the patient chooses to share)"],
-        "escalation_triggers": ["Complex medical questions", "High-value lead"],
+        "escalation_triggers": ["Complex medical questions", "High-value lead", *_pilot_safety.MEDICAL_ESCALATION_TRIGGERS],
     }
 
 

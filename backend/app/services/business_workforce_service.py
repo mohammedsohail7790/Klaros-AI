@@ -90,6 +90,14 @@ class BusinessWorkforceService:
                 contributions.append(await fn(tenant_id))
             except Exception:  # noqa: BLE001 - one module's failure must not blank the page
                 continue
+        try:  # the tenant's safety profile contributes its escalation triggers and rules whether or not an industry module is enabled
+            from app.services import pilot_safety
+
+            profile = await pilot_safety.profile_for_tenant(self._session_factory, tenant_id)
+            if profile is not None:
+                contributions.append(pilot_safety.workforce_context(profile.key))
+        except Exception:  # noqa: BLE001
+            pass
         return build_context_pack(business, contributions)
 
     # ---------------------------------------------------------------- setup view

@@ -99,7 +99,7 @@ class HallaIntegrationService:
 
     # --------------------------------------------------------------- connection
 
-    async def connect(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None, *, halla_tenant_id: str, api_key: str, signing_secret: str) -> WorkforceStatusReport:
+    async def connect(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None, *, halla_tenant_id: str, api_key: str, signing_secret: str, verify: bool = True) -> WorkforceStatusReport:
         adapter = self._adapter()
         halla_tenant_id, api_key, signing_secret = (halla_tenant_id or "").strip(), (api_key or "").strip(), (signing_secret or "").strip()
         if not _TENANT_ID_RE.match(halla_tenant_id):
@@ -111,7 +111,7 @@ class HallaIntegrationService:
         await self._connections.connect(
             tenant_id, PROVIDER,
             {"api_key": api_key, "signing_secret": signing_secret, "halla_tenant_id": halla_tenant_id},
-            created_by=user_id, external_account_id=halla_tenant_id,
+            created_by=user_id, external_account_id=halla_tenant_id, verify=verify,
         )
         logger.info("halla_connection_saved", tenant_id=str(tenant_id), operation="connect")
         return await adapter.get_status(tenant_id)

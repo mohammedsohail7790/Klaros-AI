@@ -92,12 +92,17 @@ class IntegrationConnectionService:
         created_by: uuid.UUID | None,
         external_account_id: str | None = None,
         scopes: str | None = None,
+        verify: bool = True,
     ) -> IntegrationConnection:
         """Stores the credential (encrypted) and immediately attempts a
         real verification — a connection is never left claiming CONNECTED
         without a real call having actually succeeded. If no verifier is
         registered for this provider, status is ERROR with an honest
-        "not implemented" detail, never CONNECTED."""
+        "not implemented" detail, never CONNECTED.
+
+        `verify=False` (operator tooling only) stores the credential and
+        makes NO external call: the status becomes UNVERIFIED — usable,
+        honestly labelled, and promotable to CONNECTED by a later verify()."""
         encrypted = encrypt_credential(credential_data)
 
         async with self._session_factory() as session:
@@ -134,7 +139,16 @@ class IntegrationConnectionService:
             await session.refresh(connection)
             connection_id = connection.id
 
-        logger.info("integration_connection_created", provider=provider, tenant_id=str(tenant_id), operation="connect")
+        logger.info("integration_connection_created", provider=provider, tenant_id=str(tenant_id), operation="connect", verify=verify)
+        if not verify:
+            async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
+                connection = await session.get(IntegrationConnection, connection_id)
+                connection.status = ConnectionStatus.UNVERIFIED
+                connection.last_error = "Saved without verification; run a health check to verify."
+                await session.commit()
+                await session.refresh(connection)
+                return connection
         return await self.verify(tenant_id, provider, connection_id=connection_id)
 
     async def verify(

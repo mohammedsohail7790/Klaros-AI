@@ -56,6 +56,9 @@ class ConnectionStatus(StrEnum):
     CONNECTED = "CONNECTED"
     ERROR = "ERROR"
     DISCONNECTED = "DISCONNECTED"
+    # Credential stored, but NO successful verification call has been made (the operator chose to skip it, or it has not run yet).
+    # Deliberately never reported as CONNECTED. Inbound signed webhooks and outbound calls still work (only DISCONNECTED blocks them).
+    UNVERIFIED = "UNVERIFIED"
 
 
 class IntegrationConnection(TenantScopedMixin, Base):

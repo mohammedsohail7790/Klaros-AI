@@ -31,6 +31,7 @@ from app.events.bus import EventBus
 from app.integrations.workforce import halla_webhook as hw
 from app.models.crm import Appointment, AppointmentStatus, Customer, CustomerStatus, Lead, LeadStatus, QualificationStatus
 from app.models.event import Event, EventType
+from app.services import pilot_safety
 from app.services.customer_matching import find_matching_customer, normalize_email, normalize_phone
 
 logger = structlog.get_logger(__name__)
@@ -53,14 +54,19 @@ _CLOSED = (LeadStatus.BOOKED, LeadStatus.CONVERTED, LeadStatus.LOST)
 
 
 def apply_qualification(lead: Lead, qualification: str | None) -> bool:
-    """Map one of Halla's four states onto the lead's existing status model. Returns True if it changed.
+    """Record one of Halla's four qualification states on the lead. Returns True if anything changed.
 
-    `unknown` (or nothing) never changes anything, and a lead that has already moved on (booked,
-    converted, lost) or that a person already qualified is never pulled backwards by a machine."""
+    Two separate things, deliberately not coupled:
+      * `lead.qualification_status` is a RECORD of what Halla reported. It is recorded for every lead, including one that has
+        already moved on (booked, converted, lost) — Halla's events can arrive in any order, and an `appointment.confirmed`
+        that lands before its `lead.qualified` must not leave the qualification stuck at PENDING.
+      * `lead.status` is the pipeline position. A machine only ever moves it FORWARD out of NEW/CONTACTED; it is never
+        pulled back from QUALIFIED/BOOKED/CONVERTED/LOST.
+    `unknown` (or nothing) never changes anything, and a lead already known to be qualified is never marked not-qualified by
+    a machine (a late or stale `not_qualified` cannot undo a qualification, or a booking that followed it)."""
     if qualification in (None, "unknown"):
         return False
-    if lead.status in _CLOSED:
-        return False
+    closed = lead.status in _CLOSED
     changed = False
     if qualification == "qualified":
         if lead.qualification_status != QualificationStatus.QUALIFIED:
@@ -68,7 +74,7 @@ def apply_qualification(lead: Lead, qualification: str | None) -> bool:
         if lead.status in _OPEN:
             lead.status, changed = LeadStatus.QUALIFIED, True
     elif qualification == "not_qualified":
-        if lead.status == LeadStatus.QUALIFIED:
+        if lead.status == LeadStatus.QUALIFIED or (closed and lead.qualification_status == QualificationStatus.QUALIFIED):
             return False
         if lead.qualification_status != QualificationStatus.UNQUALIFIED:
             lead.qualification_status, changed = QualificationStatus.UNQUALIFIED, True
@@ -110,9 +116,17 @@ class HallaEventProcessor:
             events: list[tuple[EventType, dict[str, Any]]] = []
             q = hw.qualification(data)
             summary, outcome, call = hw.summary_of(data), hw.outcome_of(data), hw.call_id(data)
+            # Tenant safety profile (Medical Tourism / Dropshipping): if the conversation's own text needs a person, Halla's "qualified" is not
+            # applied and no qualified-lead workflow is triggered; the lead goes to a human with the CATEGORY only (never the text).
+            profile = await pilot_safety.profile_in_session(session, tenant_id)
+            safety = pilot_safety.assess(profile, summary, outcome) if profile is not None and (summary or outcome) else None
+            flagged = bool(safety and safety.requires_human)
+            if flagged:
+                logger.warning("halla_safety_escalation", event_id=env.id, event_type=env.type, profile=profile.key, category=safety.category)
+                q = None
             stale = env.type in ("call.completed", "lead.qualified") and await self._qualification_is_stale(session, tenant_id, lead.id, env)
             base = {"halla_event_id": env.id, "occurred_at": env.timestamp, "interaction_id": call, "channel": "voice" if env.type.startswith("call.") else None,
-                    "summary": summary, "outcome": outcome, "simulated": False}
+                    "summary": None if flagged else summary, "outcome": None if flagged else outcome, "simulated": False}  # sensitive text is not stored
 
             if env.type in ("call.started",):
                 events.append((EventType.HALLA_INTERACTION_STARTED, base))
@@ -124,7 +138,9 @@ class HallaEventProcessor:
                     apply_qualification(lead, "needs_human_review")
                     events.append((EventType.HALLA_LEAD_ESCALATED, {**base, "escalated_from": "call.completed"}))
             elif env.type == "lead.qualified":
-                if stale:
+                if flagged:
+                    pass  # handed to a person below; a qualified-lead event/workflow must not fire for it
+                elif stale:
                     # Delivered late: Halla already told us a newer qualification outcome. Never let a stale event win.
                     logger.info("halla_stale_qualification_ignored", event_id=env.id)
                 else:
@@ -137,6 +153,9 @@ class HallaEventProcessor:
                 booked = await self._mirror_appointment(session, tenant_id, lead, env.type, data)
                 events.append((_TYPE_TO_INTERNAL[env.type], {**base, "appointment_mirrored": booked}))
             # lead.created / lead.updated: only the link above (Klaros stays the source of truth).
+            if flagged and env.type != "lead.escalated":
+                apply_qualification(lead, "needs_human_review")
+                events.append((EventType.HALLA_LEAD_ESCALATED, {**base, "summary": None, "outcome": None, "category": safety.category, "safety": True, "escalated_from": env.type}))
 
             lead_id = lead.id
             await session.commit()

@@ -122,6 +122,8 @@ class HallaWorkforceIntegration(WorkforceIntegration):
             return self._report(WorkforceStatus.NOT_CONNECTED, "Halla is not connected for this business yet.")
         if conn.status == ConnectionStatus.CONNECTING:
             return self._report(WorkforceStatus.CONNECTING, "Connecting to Halla…")
+        if conn.status == ConnectionStatus.UNVERIFIED:
+            return self._report(WorkforceStatus.NEEDS_ATTENTION, "Halla credentials are saved but have not been verified yet. Signed events are accepted; run a health check to confirm the connection.")
         if conn.status == ConnectionStatus.CONNECTED:
             fresh = conn.last_verified_at is not None and (datetime.now(timezone.utc) - _aware(conn.last_verified_at)).total_seconds() <= s.HALLA_STATUS_TTL_SECONDS
             return self._report(WorkforceStatus.CONNECTED, "Connected to Halla.") if fresh else await self.health_check(tenant_id)
