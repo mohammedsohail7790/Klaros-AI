@@ -152,6 +152,12 @@ class LeadService:
                         await session.commit()
                 raise
 
+        # Medical Tourism: screen the intake text BEFORE the created event goes out, so the automatic qualification it triggers sees the lead
+        # already handed to a person (no-op for every other tenant; never raises).
+        from app.services.mt_intake_safety import screen_lead
+
+        await screen_lead(self._session_factory, tenant_id, lead.id, data.description, data.service_requested, source="lead_create", bus=self._bus)
+
         await self._bus.publish(
             tenant_id=tenant_id,
             event_type=EventType.LEAD_CREATED,

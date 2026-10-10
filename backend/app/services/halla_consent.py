@@ -63,6 +63,17 @@ async def record(session, tenant_id: uuid.UUID, *, event_id: str, event_type: st
     exists = (await session.execute(select(HallaConsentEvidence.id).where(HallaConsentEvidence.tenant_id == tenant_id, HallaConsentEvidence.halla_event_id == event_id))).first()
     if exists is not None:
         return False
+    if source == "halla" and halla_lead_id:
+        # The SAME decision re-published under a new event id (Halla's outbox re-sends the freshly derived evidence on every consent change and every
+        # lead event) is not a new decision: identical lead, scopes, grant flag, method, wording label and decision time => a no-op. A genuinely
+        # different or newer decision always differs in at least one of those, and operator / web-form evidence (unique ids, own clock) is never merged.
+        same = (await session.execute(select(HallaConsentEvidence).where(
+            HallaConsentEvidence.tenant_id == tenant_id, HallaConsentEvidence.halla_lead_id == halla_lead_id, HallaConsentEvidence.source == "halla",
+            HallaConsentEvidence.granted == evidence.granted, HallaConsentEvidence.method == evidence.method, HallaConsentEvidence.wording_version == evidence.wording_version,
+            HallaConsentEvidence.recorded_at == evidence.recorded_at,
+        ))).scalars().all()
+        if any(sorted(r.scopes) == sorted(evidence.scopes) for r in same):
+            return False
     session.add(
         HallaConsentEvidence(
             tenant_id=tenant_id, halla_event_id=event_id[:255], event_type=event_type[:32], source=source, actor_user_id=actor_user_id, halla_lead_id=halla_lead_id, lead_id=lead_id, granted=evidence.granted,

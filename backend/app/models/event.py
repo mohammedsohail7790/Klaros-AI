@@ -28,6 +28,7 @@ class EventType(StrEnum):
     LEAD_BOOKED = "lead.booked"
     LEAD_LOST = "lead.lost"
     LEAD_CONVERTED = "lead.converted"
+    LEAD_SAFETY_ESCALATED = "lead.safety_escalated"  # a Medical Tourism safety category needs a person; payload carries the CATEGORY only
 
     QUOTE_CREATED = "quote.created"
     QUOTE_SENT = "quote.sent"

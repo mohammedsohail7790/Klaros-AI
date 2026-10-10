@@ -164,9 +164,13 @@ class HallaEventProcessor:
                 elif stale:
                     # Delivered late: Halla already told us a newer qualification outcome. Never let a stale event win.
                     logger.info("halla_stale_qualification_ignored", event_id=env.id)
+                elif q in (None, "unknown"):
+                    # The contract requires a `qualification`. A lead.qualified without a usable one says nothing about the lead: it is NEVER
+                    # defaulted to "qualified" (Klaros does not invent a state Halla did not supply) and no qualified-lead workflow fires.
+                    logger.warning("halla_lead_qualified_without_qualification", event_id=env.id)
                 else:
-                    events.append((EventType.HALLA_LEAD_QUALIFIED, {**base, "qualification": q or "qualified"}))
-                    apply_qualification(lead, q or "qualified")
+                    events.append((EventType.HALLA_LEAD_QUALIFIED, {**base, "qualification": q}))
+                    apply_qualification(lead, q)
             elif env.type == "lead.escalated":
                 events.append((EventType.HALLA_LEAD_ESCALATED, {**base, "category": safety.category, "safety": True} if flagged else base))
                 apply_qualification(lead, "needs_human_review")

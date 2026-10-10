@@ -219,6 +219,9 @@ class Settings(BaseSettings):
     # A stored CONNECTED state older than this is re-proven with a live health request.
     HALLA_STATUS_TTL_SECONDS: int = 300
     HALLA_WEBHOOK_TOLERANCE_SECONDS: int = 300
+    # How long a RECEIVED (in-flight) Halla event is owned by the worker that claimed it. After this a crashed worker's event may be reclaimed by a
+    # redelivery; before it, a concurrent delivery of the same event is a duplicate and does nothing.
+    HALLA_WEBHOOK_LEASE_SECONDS: int = 120
     # Public base URL of THIS Klaros API, used only to show the tenant the webhook URL to register in Halla.
     KLAROS_PUBLIC_API_URL: str | None = None
     ANTHROPIC_API_KEY: str | None = None

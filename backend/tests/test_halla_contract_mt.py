@@ -149,7 +149,7 @@ async def test_a_grant_of_store_personal_data_creates_exactly_one_lead_and_repla
     assert len(await _named(client, token, "Synthetic Patient")) == 1 and len(await _evidence(tid)) == 1
     assert (await _deliver(client, tid, raw, secret=SECRET)).json() == {"status": "duplicate_ignored"}  # the same delivery again
     await _deliver(client, tid, _consent_raw(name, event_id=f"evt-{name}-retry"), secret=SECRET)  # a retry under a new event id
-    assert len(await _named(client, token, "Synthetic Patient")) == 1 and len(await _evidence(tid)) == 2  # still one lead; both evidence records kept
+    assert len(await _named(client, token, "Synthetic Patient")) == 1 and len(await _evidence(tid)) == 1  # still one lead; the SAME decision re-sent under a new event id is a no-op (no second record)
     ev = (await _evidence(tid))[0]
     assert "Synthetic" not in str(vars(ev)) and "+1555" not in str(vars(ev))  # the history holds no name or phone
 
@@ -408,9 +408,9 @@ async def test_lifecycle_through_the_receiver_withdrawal_freezes_the_lead_regran
     for i in (7, 8, 9):
         await _deliver(client, tid, _life_raw(i), secret=SECRET)
     v10 = (await client.get(f"{BASE}/leads/{lead}/halla/consent", headers=_h(token))).json()
-    assert v10["granted_scopes"] == [] and v10["history_count"] == 11  # ten decisions plus the late replay, all retained and await call_status() == 422
+    assert v10["granted_scopes"] == [] and v10["history_count"] == 10  # ten distinct decisions retained; the late replay of an already-recorded decision is a no-op and await call_status() == 422
     rows = await _evidence(tid)
-    assert len(rows) == 11 and all("Synthetic" not in str(vars(r)) and "+1555" not in str(vars(r)) for r in rows)  # full history kept, no personal data in it
+    assert len(rows) == 10 and all("Synthetic" not in str(vars(r)) and "+1555" not in str(vars(r)) for r in rows)  # full history kept, no personal data in it
 
 
 async def test_erasure_is_refused_while_consent_is_granted_and_for_other_tenants(client, halla) -> None:  # noqa: F811

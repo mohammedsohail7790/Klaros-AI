@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.session import set_tenant_context
 from app.models.actor import ActorType
-from app.models.crm import Customer, CustomerNote, CustomerStatus, Lead, LeadSource, LeadStatus
+from app.models.crm import Customer, CustomerNote, CustomerStatus, Lead, LeadSource, LeadStatus, QualificationStatus
 from app.models.rbac import Permission
 from app.services import consent_gate
 from app.services.customer_matching import normalize_email, normalize_phone
@@ -235,6 +235,9 @@ class UpdateLead(Tool):
             if lead is None or lead.tenant_id != context.tenant_id:
                 raise ValueError("Lead not found")
             if input.status is not None:
+                if input.status == LeadStatus.QUALIFIED and lead.qualification_status == QualificationStatus.REQUIRES_HUMAN and context.actor_type != ActorType.USER:
+                    # Handed to a person (safety category / needs human review): only a signed-in person may mark it qualified.
+                    raise ValueError("This lead requires human review before it can be marked qualified")
                 lead.status = input.status
             if input.assigned_user_id is not None:
                 lead.assigned_user_id = input.assigned_user_id
@@ -248,7 +251,12 @@ class UpdateLead(Tool):
                 lead.description = input.description
             await session.commit()
             await session.refresh(lead)
-            return LeadOutput(lead=_lead_to_dict(lead))
+            out = LeadOutput(lead=_lead_to_dict(lead))
+        if input.description:
+            from app.services.mt_intake_safety import screen_lead
+
+            await screen_lead(self._session_factory, context.tenant_id, input.lead_id, input.description, source="lead_update")
+        return out
 
 
 class SearchLeadsInput(BaseModel):
@@ -322,7 +330,7 @@ class QualifyLead(Tool):
         self._qualification_service = qualification_service
 
     async def execute(self, input: QualifyLeadInput, context: ExecutionContext) -> QualifyLeadOutput:
-        outcome = await self._qualification_service.qualify(context.tenant_id, input.lead_id)
+        outcome = await self._qualification_service.qualify(context.tenant_id, input.lead_id, by_person=context.actor_type == ActorType.USER)
         return QualifyLeadOutput(**outcome.__dict__)
 
 
@@ -805,7 +813,11 @@ class CreateNote(Tool):
             session.add(note)
             await session.commit()
             await session.refresh(note)
-            return CreateNoteOutput(note_id=str(note.id))
+            note_id = str(note.id)
+        from app.services.mt_intake_safety import screen_customer
+
+        await screen_customer(self._session_factory, context.tenant_id, input.customer_id, input.body, source="customer_note")
+        return CreateNoteOutput(note_id=note_id)
 
 
 class GenerateCustomerSummaryInput(BaseModel):

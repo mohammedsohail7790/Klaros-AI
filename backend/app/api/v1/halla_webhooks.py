@@ -18,11 +18,12 @@ before it verifies. The pipeline is:
 """
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.api.tool_deps import get_wired_event_bus
@@ -98,14 +99,29 @@ async def halla_webhook(
         existing = (
             await session.execute(select(WebhookEvent).where(WebhookEvent.provider == PROVIDER, WebhookEvent.external_event_id == external_event_id))
         ).scalar_one_or_none()
-        if existing is not None and existing.status != WebhookProcessingStatus.FAILED:
-            logger.info("halla_webhook_duplicate_ignored", event_id=env.id, event_type=env.type)
-            return {"status": "duplicate_ignored"}
         if existing is not None:
-            existing.status = WebhookProcessingStatus.RECEIVED
-            existing.error_detail = None
-            row_id = existing.id
+            # Atomic claim (compare-and-set on the row itself, so it holds across workers and processes): a FAILED event is retryable at once; a
+            # RECEIVED event only once its lease has genuinely expired (the worker that owned it crashed). PROCESSED / anything else is final.
+            # The lease is the row's own `updated_at`, stamped by the claim, so no schema change is needed.
+            cutoff = datetime.now(timezone.utc) - timedelta(seconds=get_settings().HALLA_WEBHOOK_LEASE_SECONDS)
+            claim = await session.execute(
+                update(WebhookEvent)
+                .where(
+                    WebhookEvent.id == existing.id,
+                    or_(
+                        WebhookEvent.status == WebhookProcessingStatus.FAILED,
+                        and_(WebhookEvent.status == WebhookProcessingStatus.RECEIVED, WebhookEvent.updated_at < cutoff),
+                    ),
+                )
+                .values(status=WebhookProcessingStatus.RECEIVED, error_detail=None, updated_at=func.now())
+                .execution_options(synchronize_session=False)  # a database-side compare-and-set; never evaluated in Python
+            )
             await session.commit()
+            if not claim.rowcount:
+                logger.info("halla_webhook_duplicate_ignored", event_id=env.id, event_type=env.type, was=str(existing.status))
+                return {"status": "duplicate_ignored"}
+            logger.warning("halla_webhook_event_reclaimed", event_id=env.id, event_type=env.type, was=str(existing.status))
+            row_id = existing.id
         else:
             row = WebhookEvent(
                 provider=PROVIDER, external_event_id=external_event_id, event_type=env.type, tenant_id=tenant_id,
@@ -120,18 +136,21 @@ async def halla_webhook(
                 await session.rollback()
                 return {"status": "duplicate_ignored"}  # a concurrent delivery of the same event won
             row_id = row.id
-
     try:
         result = await HallaEventProcessor(async_session_maker).process(tenant_id, env, bus)
     except Exception as exc:  # noqa: BLE001 - recorded FAILED so Halla's redelivery is reprocessed, never lost
         logger.error("halla_webhook_processing_failed", tenant_id=str(tenant_id), event_id=env.id, event_type=env.type, error_type=type(exc).__name__)
         async with async_session_maker() as session:
             await set_tenant_context(session, tenant_id)
-            row = await session.get(WebhookEvent, row_id)
-            if row is not None:
-                row.status = WebhookProcessingStatus.FAILED
-                row.error_detail = type(exc).__name__
-                await session.commit()
+            # Only a worker that still owns the event may mark it failed: if the lease expired and another worker already finished it, that
+            # result stands (never regress PROCESSED to FAILED).
+            await session.execute(
+                update(WebhookEvent)
+                .where(WebhookEvent.id == row_id, WebhookEvent.status == WebhookProcessingStatus.RECEIVED)
+                .values(status=WebhookProcessingStatus.FAILED, error_detail=type(exc).__name__, updated_at=func.now())
+                .execution_options(synchronize_session=False)
+            )
+            await session.commit()
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"status": "processing_failed"})
 
     async with async_session_maker() as session:
