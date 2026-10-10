@@ -69,6 +69,10 @@ class VoiceCallService:
     ) -> tuple[CallSession, bool]:
         """Idempotent against repeated provider webhook delivery — same
         (provider, external_call_id) never creates a second CallSession."""
+        from app.services.consent_gate import ensure_not_gated
+
+        # A caller number and a transcript are personal data with no consent evidence behind them: refused for a consent-gated tenant.
+        await ensure_not_gated(self._session_factory, tenant_id, "voice_receptionist_disabled_for_consent_gated_tenant")
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)
             existing = (

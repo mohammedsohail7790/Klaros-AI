@@ -64,6 +64,7 @@ class ContactOutput(BaseModel):
 
 class AddOutboundContact(Tool):
     name = "marketing.add_outbound_contact"
+    pii_input_fields = ("company", "contact_name", "email", "phone", "role", "website", "location")
     description = "Add a contact to an outbound list. Rejects duplicates by normalized email/phone within the tenant."
     input_schema = AddContactInput
     output_schema = ContactOutput

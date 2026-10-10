@@ -363,6 +363,9 @@ class BulkImportInvoices(Tool):
             if by_name is not None:
                 return by_name.id, False
 
+            from app.services.consent_gate import ensure_not_gated
+
+            await ensure_not_gated(self._session_factory, tenant_id, "customer_creation_from_import_disabled_for_consent_gated_tenant")
             customer = Customer(
                 tenant_id=tenant_id,
                 name=row.customer_name,

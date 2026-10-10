@@ -100,6 +100,13 @@ async def marketplace_lead_webhook(
     except Exception as exc:  # noqa: BLE001 — malformed JSON is caller error, not a crash
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="malformed JSON body") from exc
 
+    from app.services.consent_gate import tenant_requires_consent
+
+    if await tenant_requires_consent(async_session_maker, tenant_id):
+        # A marketplace lead carries no consent evidence: acknowledge (so the sender stops retrying) but store nothing, not even the raw payload.
+        logger.warning("marketplace_lead_refused_consent_gated_tenant", provider=provider)
+        return {"received": True, "deduplicated": False, "lead_id": None, "refused": "consent_required"}
+
     raw_field_map = credential.get("field_map")
     field_map = json.loads(raw_field_map) if raw_field_map else None
     try:

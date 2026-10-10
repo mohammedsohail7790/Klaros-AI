@@ -635,6 +635,13 @@ async def twilio_inbound_sms_webhook(
         logger.warning("twilio_inbound_sms_signature_rejected", error=str(exc))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid signature") from exc
 
+    from app.services.consent_gate import tenant_requires_consent
+
+    if await tenant_requires_consent(async_session_maker, tenant_id):
+        # A text from an unknown number is not consent to store its number or its words: acknowledge, store nothing.
+        logger.warning("twilio_inbound_refused_consent_gated_tenant", channel="sms")
+        return Response(content="<Response></Response>", media_type="application/xml")
+
     message_sid = params.get("MessageSid", "")
     from_number = params.get("From", "")
     body = params.get("Body", "")
@@ -716,6 +723,12 @@ async def twilio_inbound_voice_webhook(
     except TwilioWebhookSignatureError as exc:
         logger.warning("twilio_inbound_voice_signature_rejected", error=str(exc))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid signature") from exc
+
+    from app.services.consent_gate import tenant_requires_consent
+
+    if await tenant_requires_consent(async_session_maker, tenant_id):
+        logger.warning("twilio_inbound_refused_consent_gated_tenant", channel="voice")
+        return Response(content="<Response></Response>", media_type="application/xml")  # no number, no lead, no session, no promise
 
     call_sid = params.get("CallSid", "")
     from_number = params.get("From", "")

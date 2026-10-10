@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import CommunicationProvider
 from app.communications.composite_adapter import CompositeCommunicationAdapter
+from app.communications.consent_guard import ConsentGuardedProvider
 from app.communications.internal_test_adapter import InternalTestCommunicationAdapter
 from app.communications.sendgrid_adapter import SendGridEmailAdapter
 from app.communications.twilio_adapter import TwilioSMSAdapter
@@ -18,6 +19,10 @@ from app.core.config import get_settings
 
 
 def get_communication_provider(session_factory: async_sessionmaker) -> CommunicationProvider:
+    return ConsentGuardedProvider(_build_provider(session_factory), session_factory)
+
+
+def _build_provider(session_factory: async_sessionmaker) -> CommunicationProvider:
     settings = get_settings()
     internal_test = InternalTestCommunicationAdapter(session_factory)
 

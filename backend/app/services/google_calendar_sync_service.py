@@ -389,6 +389,10 @@ class GoogleCalendarSyncService:
                 # Customer record from.
                 return None
 
+            from app.services.consent_gate import tenant_requires_consent
+
+            if await tenant_requires_consent(self._session_factory, tenant_id):
+                return None  # a calendar attendee is not a consented person: no customer record is created from it
             customer = Customer(tenant_id=tenant_id, name=resolved_name, email=normalize_email(email))
             session.add(customer)
             await session.commit()

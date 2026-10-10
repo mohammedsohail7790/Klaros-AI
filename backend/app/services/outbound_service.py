@@ -64,6 +64,9 @@ class OutboundService:
         industry: str | None = None, location: str | None = None, service_relevance: str | None = None,
         source: str = "MANUAL",
     ) -> OutboundContact:
+        from app.services.consent_gate import ensure_not_gated
+
+        await ensure_not_gated(self._session_factory, tenant_id, "outbound_list_building_disabled_for_consent_gated_tenant")
         email_norm = normalize_email(email)
         phone_norm = normalize_phone(phone)
 

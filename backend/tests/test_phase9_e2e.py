@@ -22,6 +22,11 @@ import asyncio
 import uuid
 
 import pytest
+
+# Root cause of the order-dependent failure (it failed when run alone, passed after other test modules had been imported): the event handlers
+# this loop depends on are registered by import side effects of the full application. Importing the app, as the running service does, makes the
+# test self-contained instead of dependent on which other tests happened to import it first.
+import app.main  # noqa: F401,E402
 from sqlalchemy import func, select
 
 from app.events.bus import EventBus
@@ -94,11 +99,14 @@ async def test_morning_brief_recommendation_approval_resumes_and_executes_automa
         invoice = await call("finance.trigger_invoice_from_job", {"job_id": job.job["id"]})
         await call("finance.request_invoice_approval", {"invoice_id": invoice.invoice["id"]})
         await call("finance.send_invoice", {"invoice_id": invoice.invoice["id"]})
-        async with event_bus.session_factory() as session:
-            row = await session.get(Invoice, uuid.UUID(invoice.invoice["id"]))
-            row.status = InvoiceStatus.OVERDUE
-            row.due_date = date.today() - timedelta(days=10)
-            await session.commit()
+        # This direct write used to happen outside `db_lock` while the running worker was processing the invoice.sent events, so it could be lost
+        # or interleaved (an intermittent "no overdue insight" failure). It now takes the same lock every other DB access in this test uses.
+        async with db_lock:
+            async with event_bus.session_factory() as session:
+                row = await session.get(Invoice, uuid.UUID(invoice.invoice["id"]))
+                row.status = InvoiceStatus.OVERDUE
+                row.due_date = date.today() - timedelta(days=10)
+                await session.commit()
 
         # 3. Referral loop: converted referral requests a reward — a real
         # event chain the worker processes on its own.

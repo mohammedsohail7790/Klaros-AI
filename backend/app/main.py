@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import structlog
+from app.services.consent_gate import ConsentRequiredError
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -173,6 +174,12 @@ async def _request_id_middleware(request: Request, call_next):
         structlog.contextvars.unbind_contextvars("request_id")
     response.headers["X-Request-Id"] = request_id
     return response
+
+
+@app.exception_handler(ConsentRequiredError)
+async def _consent_required_handler(request: Request, exc: ConsentRequiredError) -> JSONResponse:
+    """Any path that refuses to keep personal data for want of consent answers 422 with the reason and the scopes, never a generic 500."""
+    return JSONResponse(status_code=422, content={"detail": {"error": exc.reason, "missing_scopes": exc.missing}})
 
 
 @app.exception_handler(Exception)

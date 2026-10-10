@@ -407,6 +407,7 @@ class CustomerOutput(BaseModel):
 
 class CreateCustomer(Tool):
     name = "crm.create_customer"
+    pii_input_fields = ("name", "company_name", "email", "phone", "address", "city", "state", "postal_code", "notes")
     description = "Create a customer record directly (not via lead conversion)."
     input_schema = CreateCustomerInput
     output_schema = CustomerOutput
@@ -416,6 +417,7 @@ class CreateCustomer(Tool):
         self._session_factory = session_factory
 
     async def execute(self, input: CreateCustomerInput, context: ExecutionContext) -> CustomerOutput:
+        await consent_gate.ensure_not_gated(self._session_factory, context.tenant_id, "direct_customer_creation_disabled_for_consent_gated_tenant")
         async with self._session_factory() as session:
             await set_tenant_context(session, context.tenant_id)
             customer = Customer(
@@ -456,6 +458,7 @@ class BulkImportCustomers(Tool):
     there's nothing reliable to match on."""
 
     name = "crm.bulk_import_customers"
+    pii_input_fields = ("customers",)
     description = "Create many customer records at once, skipping rows whose email already exists for this tenant."
     input_schema = BulkImportCustomersInput
     output_schema = BulkImportCustomersOutput
@@ -465,6 +468,7 @@ class BulkImportCustomers(Tool):
         self._session_factory = session_factory
 
     async def execute(self, input: BulkImportCustomersInput, context: ExecutionContext) -> BulkImportCustomersOutput:
+        await consent_gate.ensure_not_gated(self._session_factory, context.tenant_id, "bulk_import_disabled_without_per_person_consent")
         async with self._session_factory() as session:
             await set_tenant_context(session, context.tenant_id)
             existing_emails = set(
@@ -546,6 +550,7 @@ class UpdateCustomerInput(BaseModel):
 
 class UpdateCustomer(Tool):
     name = "crm.update_customer"
+    pii_input_fields = ("name", "email", "phone", "address", "notes")
     description = "Update mutable fields on a customer."
     input_schema = UpdateCustomerInput
     output_schema = CustomerOutput
@@ -740,6 +745,7 @@ class CreateNoteOutput(BaseModel):
 
 class CreateNote(Tool):
     name = "crm.create_note"
+    pii_input_fields = ("body",)
     description = "Attach a freeform note to a customer."
     input_schema = CreateNoteInput
     output_schema = CreateNoteOutput
@@ -754,6 +760,11 @@ class CreateNote(Tool):
             customer = await session.get(Customer, input.customer_id)
             if customer is None or customer.tenant_id != context.tenant_id:
                 raise ValueError("Customer not found")
+            if await consent_gate.tenant_requires_consent(self._session_factory, context.tenant_id) and not await consent_gate.customer_leads_allow(
+                self._session_factory, context.tenant_id, input.customer_id, consent_gate.STORE_MEDICAL
+            ):
+                # A free-text note may contain health information: it needs store_medical_information on every lead behind this customer.
+                raise consent_gate.ConsentRequiredError([consent_gate.STORE_MEDICAL])
             note = CustomerNote(
                 tenant_id=context.tenant_id,
                 customer_id=input.customer_id,

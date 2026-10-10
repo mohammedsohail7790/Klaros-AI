@@ -98,3 +98,65 @@ def check_create(claim: ConsentClaim | None, *, has_medical_fields: bool) -> Non
     missing = [s for s in need if s not in have]
     if missing:
         raise ConsentRequiredError(missing)
+
+
+async def ensure_not_gated(session_factory, tenant_id: uuid.UUID | None, reason: str) -> None:
+    """For features that cannot carry per-person consent evidence (customer imports, list building, the voice receptionist ...): a consent-gated
+    tenant is refused with `reason`; everyone else is untouched."""
+    if await tenant_requires_consent(session_factory, tenant_id):
+        raise ConsentRequiredError([], reason)
+
+
+async def customer_leads_allow(session_factory, tenant_id: uuid.UUID, customer_id: uuid.UUID, scope: str) -> bool:
+    """True only when the customer is linked to at least one lead and EVERY linked lead's newest evidence grants `scope`."""
+    from sqlalchemy import select
+
+    from app.db.session import set_tenant_context
+    from app.models.crm import Lead
+    from app.services import halla_consent
+
+    async with session_factory() as session:
+        await set_tenant_context(session, tenant_id)
+        leads = (await session.execute(select(Lead).where(Lead.tenant_id == tenant_id, Lead.customer_id == customer_id))).scalars().all()
+        if not leads:
+            return False
+        for lead in leads:
+            state = await halla_consent.state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+            if not state.allows(scope):
+                return False
+    return True
+
+
+async def recipient_may_be_contacted(session_factory, tenant_id: uuid.UUID, *, email: str | None = None, phone: str | None = None) -> bool:
+    """Contact consent for an outbound message recipient, identified only by address. Fail closed: the recipient must match at least one lead
+    (directly, or through a customer record) and EVERY matching lead's newest evidence must grant `contact`."""
+    from sqlalchemy import or_, select
+
+    from app.db.session import set_tenant_context
+    from app.models.crm import Customer, Lead
+    from app.services import halla_consent
+    from app.services.customer_matching import normalize_email, normalize_phone
+
+    e, ph = normalize_email(email), normalize_phone(phone)
+    if not e and not ph:
+        return False
+    async with session_factory() as session:
+        await set_tenant_context(session, tenant_id)
+        lead_keys = ([Lead.email == e] if e else []) + ([Lead.phone_normalized == ph] if ph else [])
+        cust_keys = ([Customer.email == e] if e else []) + ([Customer.phone_normalized == ph] if ph else [])
+        leads = list((await session.execute(select(Lead).where(Lead.tenant_id == tenant_id, or_(*lead_keys)))).scalars())
+        cust_ids = [c for c in (await session.execute(select(Customer.id).where(Customer.tenant_id == tenant_id, or_(*cust_keys)))).scalars()]
+        if cust_ids:
+            leads += list((await session.execute(select(Lead).where(Lead.tenant_id == tenant_id, Lead.customer_id.in_(cust_ids)))).scalars())
+        seen, unique = set(), []
+        for lead in leads:
+            if lead.id not in seen:
+                seen.add(lead.id)
+                unique.append(lead)
+        if not unique:
+            return False
+        for lead in unique:
+            state = await halla_consent.state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+            if not state.allows(CONTACT):
+                return False
+    return True
