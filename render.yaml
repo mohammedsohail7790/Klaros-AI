@@ -36,6 +36,6 @@ services:
       - key: WORKFORCE_ADAPTER
         value: halla
       - key: HALLA_API_BASE_URL
-        value: https://halla-ai-gateway.onrender.com
+        value: https://gateway.hallaai.com
       - key: HALLA_ALLOWED_HOSTS
-        value: halla-ai-gateway.onrender.com
+        value: gateway.hallaai.com

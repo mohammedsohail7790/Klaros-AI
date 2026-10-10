@@ -1,12 +1,12 @@
-"""DRAFT -- not applied to any database. Halla consent evidence history (`halla_consent_evidence`).
+"""Halla consent evidence history (`halla_consent_evidence`).
 
 Append-only: one row per distinct Halla event that carried valid `data.consent` (HALLA_KLAROS_INTEGRATION_CONTRACT 3.1). Holds the opaque
 Halla lead id, the scopes, granted flag, method, wording_version label and Halla's recorded_at -- no wording text, transcript, medical
 content or contact details. The current state is derived in code (services/halla_consent.py); nothing is updated or deleted here, and no
 retention period is set (an owner/legal decision). Real row-level security as in 0067 (PostgreSQL only).
 
-Numbering: the pilot branch ends at 0064; the unreleased MT/Dropshipping work in the main tree also uses 0065-0067. Whichever branch merges
-second MUST renumber this revision (revision id, down_revision and filename) -- two heads would otherwise exist.
+Validated on PostgreSQL 16 (full chain 0001->head, downgrade to 0064 and back, RLS exercised as a non-owner role). The unreleased MT/Dropshipping
+work in the main tree also uses 0065-0067: whichever branch merges second MUST renumber (tests/test_alembic_single_head.py fails on two heads).
 
 Revision ID: 0065_halla_consent_evidence
 Revises: 0064

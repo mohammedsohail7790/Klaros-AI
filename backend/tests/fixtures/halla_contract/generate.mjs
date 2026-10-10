@@ -28,7 +28,15 @@ const events = {
 // Consent variants (Halla patch 10bce7ad, sha256 9e4653dc...3142). `HALLA_CONSENT_MODULE` = consent-evidence.ts with its two DB imports and
 // everything from getTenantConsentWordingVersion onward removed (pure functions only). Each fixture records whether HALLA'S OWN
 // sanitizeConsentEvidence accepts the object -- a producer only ever emits an accepted one; the rejected ones model a forged / foreign payload.
-const consentMod = process.env.HALLA_CONSENT_MODULE ? await import(pathToFileURL(process.env.HALLA_CONSENT_MODULE).href) : null;
+// The pure functions are cut out of Halla's own consent-evidence.ts (its two DB imports and the DB functions are removed) and imported, so the
+// fixtures use Halla's REAL deriveConsentEvidence / sanitizeConsentEvidence, not a copy.
+import { readFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+const src = readFileSync(join(repo, 'apps/gateway/src/services/consent/consent-evidence.ts'), 'utf8')
+  .replace(/^import .*tenant-scope\.js';\n/m, '').replace(/^import .*logger\.js';\n/m, '');
+const tmpDir = mkdtempSync(join(tmpdir(), 'halla-consent-'));
+writeFileSync(join(tmpDir, 'pure-consent.ts'), src.slice(0, src.indexOf('export async function getTenantConsentWordingVersion')));
+const consentMod = await import(pathToFileURL(join(tmpDir, 'pure-consent.ts')).href);
 const C = { method: 'voice_ai_verbal', wording_version: 'owner-label-v1', recorded_at: '2026-10-09T10:00:02.000Z' };
 const consents = {
   granted_all: { granted: true, scope: ['contact', 'store_personal_data', 'store_medical_information'], ...C },
@@ -54,10 +62,36 @@ for (const [name, consent] of Object.entries(consents)) {
   const body = envelope(id, 'lead.created', { leadId: 'halla-lead-9001', phone: '+15550100901', name: 'Synthetic Patient', callId: 'CA-fixture-1', consent });
   consentEvents[name] = { id, body, signature: 'sha256=' + signWebhookPayload(SECRET, TS, body), halla_sanitizer_accepts: consentMod ? Boolean(consentMod.sanitizeConsentEvidence(consent)) : null };
 }
-const out = { consent_events: consentEvents, patch_sha256: '9e4653dca6353586cb897bda17c2991731f7c1f93f782e114e14d19dec313142', secret: SECRET, halla_tenant_id: HALLA_TENANT, timestamp: TS, signer: 'apps/gateway/src/security/webhook-signing.ts signWebhookPayload', events: {} };
+
+// A realistic history, one decision row at a time (what Halla's lead_consents table holds). Every event below is what Halla's REAL derivation
+// emits after that row -- including the time it reports after a PARTIAL withdrawal. `expected` is the independent oracle (hand-written).
+const W = { method: 'voice_ai_verbal', wording_version: 'owner-label-v1' };
+const steps = [
+  { row: { scope: 'store_personal_data', granted: true, recorded_at: '2026-10-09T10:00:00.000Z' }, expected: ['store_personal_data'] },
+  { row: { scope: 'contact', granted: true, recorded_at: '2026-10-09T11:00:00.000Z' }, expected: ['contact', 'store_personal_data'] },
+  { row: { scope: 'store_medical_information', granted: true, recorded_at: '2026-10-09T11:30:00.000Z' }, expected: ['contact', 'store_medical_information', 'store_personal_data'] },
+  { row: { scope: 'contact', granted: false, recorded_at: '2026-10-09T12:00:00.000Z' }, expected: ['store_medical_information', 'store_personal_data'] },
+  { row: { scope: 'store_personal_data', granted: false, recorded_at: '2026-10-09T13:00:00.000Z' }, expected: ['store_medical_information'] },
+  { row: { scope: 'contact', granted: true, recorded_at: '2026-10-09T14:00:00.000Z' }, expected: ['contact', 'store_medical_information'] },
+  { row: { scope: 'store_personal_data', granted: true, recorded_at: '2026-10-09T15:00:00.000Z' }, expected: ['contact', 'store_medical_information', 'store_personal_data'] },
+  { row: { scope: 'contact', granted: false, recorded_at: '2026-10-09T16:00:00.000Z' }, expected: ['store_medical_information', 'store_personal_data'] },
+  { row: { scope: 'store_personal_data', granted: false, recorded_at: '2026-10-09T16:00:01.000Z' }, expected: ['store_medical_information'] },
+  { row: { scope: 'store_medical_information', granted: false, recorded_at: '2026-10-09T16:00:02.000Z' }, expected: [] },
+];
+const history = [];
+const lifecycle = steps.map((st, i) => {
+  history.push({ ...W, ...st.row });
+  const consent = consentMod.deriveConsentEvidence(history);
+  const granted = consent && consent.granted ? [...consent.scope].sort() : [];
+  if (JSON.stringify(granted) !== JSON.stringify(st.expected)) throw new Error(`step ${i + 1}: Halla derives ${JSON.stringify(granted)}, oracle says ${JSON.stringify(st.expected)}`);
+  const id = `evt-fixture-lifecycle-${String(i + 1).padStart(2, '0')}`;
+  const body = envelope(id, i === 0 ? 'lead.created' : 'lead.updated', { leadId: 'halla-lead-9001', phone: '+15550100901', name: 'Synthetic Patient', consent });
+  return { id, step: i + 1, body, signature: 'sha256=' + signWebhookPayload(SECRET, TS, body), expected_granted: st.expected, recorded_at: consent.recorded_at };
+});
+const out = { lifecycle, consent_events: consentEvents, patch_sha256: '9e4653dca6353586cb897bda17c2991731f7c1f93f782e114e14d19dec313142', secret: SECRET, halla_tenant_id: HALLA_TENANT, timestamp: TS, signer: 'apps/gateway/src/security/webhook-signing.ts signWebhookPayload', events: {} };
 for (const [type, { id, data }] of Object.entries(events)) {
   const body = envelope(id, type, data);
   out.events[type] = { id, body, signature: 'sha256=' + signWebhookPayload(SECRET, TS, body) };
 }
 writeFileSync(join(dirname(fileURLToPath(import.meta.url)), 'halla_events.json'), JSON.stringify(out, null, 2) + '\n');
-console.log('wrote', Object.keys(out.events).length, '+', Object.keys(consentEvents).length, 'fixtures');
+console.log('lifecycle', lifecycle.length, 'steps verified against the oracle'); console.log('wrote', Object.keys(out.events).length, '+', Object.keys(consentEvents).length, 'fixtures');

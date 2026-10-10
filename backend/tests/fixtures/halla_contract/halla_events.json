@@ -1,4 +1,112 @@
 {
+  "lifecycle": [
+    {
+      "id": "evt-fixture-lifecycle-01",
+      "step": 1,
+      "body": "{\"id\":\"evt-fixture-lifecycle-01\",\"type\":\"lead.created\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"consent\":{\"granted\":true,\"scope\":[\"store_personal_data\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T10:00:00.000Z\"}}}",
+      "signature": "sha256=e790663ef1ec081d2f06320bee64e2642718d1020395e2dc491c400b97cc9031",
+      "expected_granted": [
+        "store_personal_data"
+      ],
+      "recorded_at": "2026-10-09T10:00:00.000Z"
+    },
+    {
+      "id": "evt-fixture-lifecycle-02",
+      "step": 2,
+      "body": "{\"id\":\"evt-fixture-lifecycle-02\",\"type\":\"lead.updated\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"consent\":{\"granted\":true,\"scope\":[\"contact\",\"store_personal_data\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T11:00:00.000Z\"}}}",
+      "signature": "sha256=3b0f2f206d6abb43dea8856b80a02699387a547eaaeb8b064566b2137033dd21",
+      "expected_granted": [
+        "contact",
+        "store_personal_data"
+      ],
+      "recorded_at": "2026-10-09T11:00:00.000Z"
+    },
+    {
+      "id": "evt-fixture-lifecycle-03",
+      "step": 3,
+      "body": "{\"id\":\"evt-fixture-lifecycle-03\",\"type\":\"lead.updated\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"consent\":{\"granted\":true,\"scope\":[\"contact\",\"store_personal_data\",\"store_medical_information\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T11:30:00.000Z\"}}}",
+      "signature": "sha256=a9f876fc98d7987210b49e341cb1970de7b304325ccf26ef2ac47f4caaee2af4",
+      "expected_granted": [
+        "contact",
+        "store_medical_information",
+        "store_personal_data"
+      ],
+      "recorded_at": "2026-10-09T11:30:00.000Z"
+    },
+    {
+      "id": "evt-fixture-lifecycle-04",
+      "step": 4,
+      "body": "{\"id\":\"evt-fixture-lifecycle-04\",\"type\":\"lead.updated\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"consent\":{\"granted\":true,\"scope\":[\"store_personal_data\",\"store_medical_information\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T12:00:00.000Z\"}}}",
+      "signature": "sha256=55c74a80d71d83bdec1942022493535c2b554264f1583df5e3a0fe0d6904defd",
+      "expected_granted": [
+        "store_medical_information",
+        "store_personal_data"
+      ],
+      "recorded_at": "2026-10-09T12:00:00.000Z"
+    },
+    {
+      "id": "evt-fixture-lifecycle-05",
+      "step": 5,
+      "body": "{\"id\":\"evt-fixture-lifecycle-05\",\"type\":\"lead.updated\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"consent\":{\"granted\":true,\"scope\":[\"store_medical_information\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T13:00:00.000Z\"}}}",
+      "signature": "sha256=433f509eb269d376c25b1986691546c2a76a1eaf3e5a285a6ecc43af003ab1d3",
+      "expected_granted": [
+        "store_medical_information"
+      ],
+      "recorded_at": "2026-10-09T13:00:00.000Z"
+    },
+    {
+      "id": "evt-fixture-lifecycle-06",
+      "step": 6,
+      "body": "{\"id\":\"evt-fixture-lifecycle-06\",\"type\":\"lead.updated\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"consent\":{\"granted\":true,\"scope\":[\"contact\",\"store_medical_information\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T14:00:00.000Z\"}}}",
+      "signature": "sha256=314cd83751ddc8f917f7769e12ceee8ea91a2526a513b952f0b60e83f0a29e6e",
+      "expected_granted": [
+        "contact",
+        "store_medical_information"
+      ],
+      "recorded_at": "2026-10-09T14:00:00.000Z"
+    },
+    {
+      "id": "evt-fixture-lifecycle-07",
+      "step": 7,
+      "body": "{\"id\":\"evt-fixture-lifecycle-07\",\"type\":\"lead.updated\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"consent\":{\"granted\":true,\"scope\":[\"contact\",\"store_personal_data\",\"store_medical_information\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T15:00:00.000Z\"}}}",
+      "signature": "sha256=3a0d9b2f49f0efb2c4109a0a22289c5f82c83cf041a79b6eab851569490480c1",
+      "expected_granted": [
+        "contact",
+        "store_medical_information",
+        "store_personal_data"
+      ],
+      "recorded_at": "2026-10-09T15:00:00.000Z"
+    },
+    {
+      "id": "evt-fixture-lifecycle-08",
+      "step": 8,
+      "body": "{\"id\":\"evt-fixture-lifecycle-08\",\"type\":\"lead.updated\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"consent\":{\"granted\":true,\"scope\":[\"store_personal_data\",\"store_medical_information\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T16:00:00.000Z\"}}}",
+      "signature": "sha256=4a62267bdcd745b9b408ac874dcc0bc076e8597a728cbe46f8dd6e3df8cf5ef7",
+      "expected_granted": [
+        "store_medical_information",
+        "store_personal_data"
+      ],
+      "recorded_at": "2026-10-09T16:00:00.000Z"
+    },
+    {
+      "id": "evt-fixture-lifecycle-09",
+      "step": 9,
+      "body": "{\"id\":\"evt-fixture-lifecycle-09\",\"type\":\"lead.updated\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"consent\":{\"granted\":true,\"scope\":[\"store_medical_information\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T16:00:01.000Z\"}}}",
+      "signature": "sha256=2519eb6f52bb973087c141409ceacbcb2f28363e38a348d6e9b3eb9e0344a0e6",
+      "expected_granted": [
+        "store_medical_information"
+      ],
+      "recorded_at": "2026-10-09T16:00:01.000Z"
+    },
+    {
+      "id": "evt-fixture-lifecycle-10",
+      "step": 10,
+      "body": "{\"id\":\"evt-fixture-lifecycle-10\",\"type\":\"lead.updated\",\"timestamp\":\"2026-10-08T22:53:20.000Z\",\"tenant_id\":\"00000000-0000-4000-8000-00000000a11a\",\"data\":{\"leadId\":\"halla-lead-9001\",\"phone\":\"+15550100901\",\"name\":\"Synthetic Patient\",\"consent\":{\"granted\":false,\"scope\":[\"contact\",\"store_personal_data\",\"store_medical_information\"],\"method\":\"voice_ai_verbal\",\"wording_version\":\"owner-label-v1\",\"recorded_at\":\"2026-10-09T16:00:02.000Z\"}}}",
+      "signature": "sha256=34f77b28cb98210939babaa35307564cf9e5c623e5146a7ae86199d0289baf2e",
+      "expected_granted": [],
+      "recorded_at": "2026-10-09T16:00:02.000Z"
+    }
+  ],
   "consent_events": {
     "granted_all": {
       "id": "evt-fixture-consent-granted_all",

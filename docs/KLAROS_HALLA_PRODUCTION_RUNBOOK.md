@@ -43,8 +43,8 @@ Migration compatibility: head is `0064`; verified on PostgreSQL from empty to he
 | `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` | **secret** | generated on the host: a Fernet key (`python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"`) |
 | `EVENT_TRANSPORT`, `RATE_LIMIT_BACKEND` | setting | `memory`, `memory` (one free instance) |
 | `WORKFORCE_ADAPTER` | setting | `halla` |
-| `HALLA_API_BASE_URL` | setting | `https://halla-ai-gateway.onrender.com` |
-| `HALLA_ALLOWED_HOSTS` | setting | `halla-ai-gateway.onrender.com` |
+| `HALLA_API_BASE_URL` | setting | `https://gateway.hallaai.com` |
+| `HALLA_ALLOWED_HOSTS` | setting | `gateway.hallaai.com` |
 | `HALLA_API_KEY_HEADER`, `HALLA_API_KEY_SCHEME` | setting | as Halla specifies (owner to confirm) |
 | `KLAROS_PUBLIC_API_URL` | setting | this service's https origin, no trailing slash |
 | `CORS_ORIGINS` | setting | the frontend origin(s), JSON list |
@@ -115,8 +115,8 @@ No production key is available to me, so **OPENAI = BLOCKED/DEFERRED**. When the
 ## 8. Twilio — one number per business (nothing purchased, no call made)
 
 For EACH business (Medical Tourism, Dropshipping), once the owner buys/assigns the number in the Twilio console:
-* **A call comes in → Voice webhook, HTTP POST** to the Halla production gateway: `https://halla-ai-gateway.onrender.com/<Halla voice-webhook path for that tenant>`
-* **Media stream, WebSocket** (returned by Halla's TwiML `<Connect><Stream>`): `wss://halla-ai-gateway.onrender.com/<Halla media-stream path>`
+* **A call comes in → Voice webhook, HTTP POST** to the Halla production gateway: `https://gateway.hallaai.com/<Halla voice-webhook path for that tenant>`
+* **Media stream, WebSocket** (returned by Halla's TwiML `<Connect><Stream>`): `wss://gateway.hallaai.com/<Halla media-stream path>`
 * Status callback, if Halla uses one: the Halla status-callback path on the same host.
 The three `<…path…>` values are Halla-owned; they are not in this repository and I did not invent them — Halla must supply them (they may differ per tenant). Klaros's own `/api/v1/webhooks/twilio/...` routes are NOT used for the Halla pilot. A real test call happens only after the owner explicitly approves it, to a number the owner designates, with no real customer data.
 

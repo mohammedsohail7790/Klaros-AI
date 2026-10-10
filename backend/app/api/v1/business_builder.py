@@ -264,6 +264,47 @@ async def ask_halla_to_call(
         raise _halla_error(exc) from exc
 
 
+@router.get("/leads/{lead_id}/halla/consent")
+async def get_lead_consent(
+    lead_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_permission(Permission.READ_BUSINESS_JOURNEY)),
+) -> dict[str, Any]:
+    """What Halla's consent evidence currently allows for this lead. Scopes and times only."""
+    from app.db.session import set_tenant_context
+    from app.models.crm import Lead
+    from app.services import halla_consent
+
+    async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
+        lead = await session.get(Lead, lead_id)
+        if lead is None or lead.tenant_id != current_user.tenant_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+        return await halla_consent.describe_for_lead(session, current_user.tenant_id, lead)
+
+
+@router.post("/leads/{lead_id}/halla/erase-personal-data")
+async def erase_lead_personal_data(
+    lead_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_INTEGRATIONS)),
+) -> dict[str, Any]:
+    """Operator-initiated erasure of a lead's contact details after consent was withdrawn or declined. Refused while consent is still granted."""
+    from app.db.session import set_tenant_context
+    from app.models.crm import Lead
+    from app.services import halla_consent
+
+    async with async_session_maker() as session:
+        await set_tenant_context(session, current_user.tenant_id)
+        lead = await session.get(Lead, lead_id)
+        if lead is None or lead.tenant_id != current_user.tenant_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+        try:
+            result = await halla_consent.erase_personal_data(session, current_user.tenant_id, lead)
+        except halla_consent.ConsentStillGrantedError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        await session.commit()
+        return result
+
+
 @router.get("/leads")
 async def get_lead_board(
     status_filter: str | None = Query(None, alias="status"),

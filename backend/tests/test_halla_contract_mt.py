@@ -169,19 +169,6 @@ async def test_scopes_are_independent(client, halla) -> None:  # noqa: F811
     assert st.allows("store_personal_data") and not st.allows("contact") and not st.allows("store_medical_information")
 
 
-async def test_a_later_event_that_omits_a_scope_withdraws_it_and_stale_evidence_cannot_restore_it(client, halla) -> None:  # noqa: F811
-    token, tid = await _mt(client, "MT Withdraw", "mtwithdraw@example.com")
-    await _deliver(client, tid, _consent_raw("granted_all"), secret=SECRET)  # 10:00:02: everything granted
-    assert (await _state(tid)).granted == {"contact", "store_personal_data", "store_medical_information"}
-    await _deliver(client, tid, _consent_raw("later_withdrawal_of_contact", etype="lead.updated"), secret=SECRET)  # 12:00: only personal data listed
-    assert (await _state(tid)).granted == {"store_personal_data"}  # contact and medical are no longer granted
-    await _deliver(client, tid, _consent_raw("stale_grant_all", etype="lead.updated"), secret=SECRET)  # 08:00 delivered late: older than what we hold
-    assert (await _state(tid)).granted == {"store_personal_data"}
-    await _deliver(client, tid, _consent_raw("declined_all", etype="lead.updated"), secret=SECRET)  # 10:00:02 is also older than 12:00
-    assert (await _state(tid)).granted == {"store_personal_data"}
-    assert len(await _evidence(tid)) == 4  # nothing is erased: the history keeps every decision
-
-
 async def test_a_decline_then_a_newer_re_grant_stores_the_lead_only_after_the_re_grant(client, halla) -> None:  # noqa: F811
     token, tid = await _mt(client, "MT Regrant", "mtregrant@example.com")
     await _deliver(client, tid, _consent_raw("declined_or_withdrawn_personal"), secret=SECRET)
@@ -324,3 +311,128 @@ async def test_contact_consent_allows_the_call_until_a_newer_event_omits_it(clie
     await _deliver(client, tid, at("granted_personal_only", "2026-10-09T14:00:00.000Z", "evt-c2-3"), secret=SECRET)  # newer still: contact no longer listed
     assert (await client.post(f"{BASE}/leads/{lead}/halla/call", headers=_h(token))).status_code == 422
     assert len(halla.sent("POST", "/calls/outbound")) == 1
+
+
+# ============================================================================== the real lifecycle: events emitted by HALLA'S derivation (see generate.mjs)
+LIFE = FIX["lifecycle"]
+EXPECTED = [frozenset(e["expected_granted"]) for e in LIFE]
+
+
+def _life_raw(i: int, *, event_id: str | None = None) -> bytes:
+    env = json.loads(LIFE[i]["body"])
+    if event_id:
+        env["id"] = event_id
+    return json.dumps(env).encode()
+
+
+def _ev(i):
+    return hw.consent_evidence(json.loads(LIFE[i]["body"])["data"])
+
+
+def test_halla_lifecycle_fixtures_are_signed_by_hallas_signer_and_every_event_is_valid_and_monotonic() -> None:
+    now = datetime.fromtimestamp(int(TS), tz=timezone.utc)
+    times = []
+    for i, f in enumerate(LIFE):
+        hw.verify_signature(f["body"].encode(), TS, f["signature"], SECRET, tolerance_seconds=300, now=now)
+        ev = _ev(i)
+        assert ev is not None and (frozenset(ev.scopes) if ev.granted else frozenset()) == EXPECTED[i]
+        times.append(ev.recorded_at)
+    assert times == sorted(times) and len(set(times)) == len(times)  # a partial withdrawal never reports an older time
+
+
+def test_every_prefix_of_the_lifecycle_gives_the_same_state_in_any_arrival_order_and_with_duplicates() -> None:
+    import random
+    from types import SimpleNamespace as R
+
+    from app.services.halla_consent import derive_state
+
+    rng = random.Random(20261009)
+    for k in range(1, len(LIFE) + 1):
+        evs = [_ev(i) for i in range(k)]
+        for _ in range(40):
+            order = evs[:] + rng.choices(evs, k=3)  # plus duplicate deliveries
+            rng.shuffle(order)
+            rows = [R(granted=e.granted, scopes=list(e.scopes), recorded_at=e.recorded_at) for e in order]
+            assert derive_state(rows).granted == EXPECTED[k - 1], (k, [r.recorded_at for r in rows])
+
+
+async def test_lifecycle_through_the_receiver_withdrawal_freezes_the_lead_regrant_restores_only_what_was_granted(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "MT Life", "mtlife@example.com")
+    BASE = "/api/v1/business-builder"
+    # 1: personal data granted -> the lead is stored
+    assert (await _deliver(client, tid, _life_raw(0), secret=SECRET)).json() == {"status": "ok"}
+    lead = (await _named(client, token, "Synthetic Patient"))[0]["id"]
+    view = (await client.get(f"{BASE}/leads/{lead}/halla/consent", headers=_h(token))).json()
+    assert view["store_personal_data"] is True and view["contact"] is False and view["store_medical_information"] is False
+
+    async def call_status():
+        return (await client.post(f"{BASE}/leads/{lead}/halla/call", headers=_h(token))).status_code
+
+    async def stored_texts():
+        return " ".join(str(e.payload) for e in await _events_of(tid, "halla.interaction.completed"))
+
+    def completed(text: str) -> bytes:
+        return json.dumps({"id": f"evt-call-{time.time_ns()}", "type": "call.completed", "timestamp": "2026-10-09T10:05:00.000Z", "tenant_id": HTENANT,
+                           "data": {"callId": "CA-L", "leadId": "halla-lead-9001", "klarosLeadId": lead, "qualificationStatus": "qualified", "summary": text}}).encode()
+
+    assert await call_status() == 422                                                  # no contact consent yet
+    await _deliver(client, tid, completed("Wants a planned knee consultation ZXQ-health-text."), secret=SECRET)
+    assert "ZXQ-health-text" not in await stored_texts()                                # no store_medical_information => free text is not retained
+    # 2-3: contact, then medical information granted
+    for i in (1, 2):
+        await _deliver(client, tid, _life_raw(i), secret=SECRET)
+    assert await call_status() == 200                                                   # contact consent => outbound allowed
+    await _deliver(client, tid, completed("Planned knee consultation ZXQ-kept-text."), secret=SECRET)
+    assert "ZXQ-kept-text" in await stored_texts()                                      # store_medical_information => retained
+    # 4: contact withdrawn (a PARTIAL withdrawal; the time still moves forward)
+    await _deliver(client, tid, _life_raw(3), secret=SECRET)
+    assert await call_status() == 422 and (await client.get(f"{BASE}/leads/{lead}/halla/consent", headers=_h(token))).json()["contact"] is False
+    # 5: personal-data consent withdrawn -> the lead is frozen
+    await _deliver(client, tid, _life_raw(4), secret=SECRET)
+    r = await _deliver(client, tid, completed("After withdrawal ZXQ-after-text."), secret=SECRET)
+    assert "ZXQ-after-text" not in await stored_texts() and (await _lead_state(client, token, lead)) is not None
+    erase = await client.post(f"{BASE}/leads/{lead}/halla/erase-personal-data", headers=_h(token))
+    assert erase.status_code == 200 and erase.json()["erased"] is True
+    assert (await _named(client, token, "Synthetic Patient")) == []                      # the name is gone from the lead
+    # a late, OLDER event (step 4's state) cannot restore anything
+    await _deliver(client, tid, _life_raw(3, event_id="evt-late-replay"), secret=SECRET)
+    assert (await client.get(f"{BASE}/leads/{lead}/halla/consent", headers=_h(token))).json()["store_personal_data"] is False
+    # 6-7: re-grants restore exactly what was granted
+    await _deliver(client, tid, _life_raw(5), secret=SECRET)
+    v6 = (await client.get(f"{BASE}/leads/{lead}/halla/consent", headers=_h(token))).json()
+    assert (v6["contact"], v6["store_personal_data"], v6["store_medical_information"]) == (True, False, True)
+    await _deliver(client, tid, _life_raw(6), secret=SECRET)
+    v7 = (await client.get(f"{BASE}/leads/{lead}/halla/consent", headers=_h(token))).json()
+    assert (v7["contact"], v7["store_personal_data"], v7["store_medical_information"]) == (True, True, True)
+    # 10: everything withdrawn
+    for i in (7, 8, 9):
+        await _deliver(client, tid, _life_raw(i), secret=SECRET)
+    v10 = (await client.get(f"{BASE}/leads/{lead}/halla/consent", headers=_h(token))).json()
+    assert v10["granted_scopes"] == [] and v10["history_count"] == 11  # ten decisions plus the late replay, all retained and await call_status() == 422
+    rows = await _evidence(tid)
+    assert len(rows) == 11 and all("Synthetic" not in str(vars(r)) and "+1555" not in str(vars(r)) for r in rows)  # full history kept, no personal data in it
+
+
+async def test_erasure_is_refused_while_consent_is_granted_and_for_other_tenants(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "MT Erase", "mterase@example.com")
+    token2, tid2 = await _mt(client, "MT Erase2", "mterase2@example.com")
+    BASE = "/api/v1/business-builder"
+    await _deliver(client, tid, _life_raw(0), secret=SECRET)
+    lead = (await _named(client, token, "Synthetic Patient"))[0]["id"]
+    assert (await client.post(f"{BASE}/leads/{lead}/halla/erase-personal-data", headers=_h(token))).status_code == 409   # still granted
+    assert (await client.post(f"{BASE}/leads/{lead}/halla/erase-personal-data", headers=_h(token2))).status_code == 404  # another tenant's lead
+    assert (await client.get(f"{BASE}/leads/{lead}/halla/consent", headers=_h(token2))).status_code == 404
+    assert len(await _named(client, token, "Synthetic Patient")) == 1
+
+
+async def test_a_safety_escalation_still_reaches_a_person_while_a_lead_is_frozen(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "MT Frozen", "mtfrozen@example.com")
+    await _deliver(client, tid, _life_raw(0), secret=SECRET)
+    lead = (await _named(client, token, "Synthetic Patient"))[0]["id"]
+    for i in (1, 2, 3, 4):
+        await _deliver(client, tid, _life_raw(i), secret=SECRET)   # personal data now withdrawn
+    urgent = json.dumps({"id": "evt-urgent-1", "type": "lead.escalated", "timestamp": "2026-10-09T10:05:00.000Z", "tenant_id": HTENANT,
+                         "data": {"callId": "CA-U", "leadId": "halla-lead-9001", "klarosLeadId": lead, "target": "human-coordinator", "reason": "Caller has chest pain and cannot breathe."}}).encode()
+    await _deliver(client, tid, urgent, secret=SECRET)
+    esc = await _events_of(tid, "halla.lead.escalated")
+    assert len(esc) == 1 and esc[0].payload.get("category") == "EMERGENCY" and "chest pain" not in str(esc[0].payload)

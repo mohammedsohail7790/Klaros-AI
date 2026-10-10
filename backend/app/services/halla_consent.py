@@ -92,3 +92,48 @@ async def state_for(session, tenant_id: uuid.UUID, *, halla_lead_id: str | None 
         return NO_CONSENT
     rows = (await session.execute(select(HallaConsentEvidence).where(HallaConsentEvidence.tenant_id == tenant_id, or_(*keys)))).scalars().all()
     return derive_state(rows)
+
+
+class ConsentStillGrantedError(Exception):
+    """Erasure is refused while the newest evidence still grants `store_personal_data` (or there is no evidence at all)."""
+
+
+async def describe_for_lead(session, tenant_id: uuid.UUID, lead) -> dict:
+    """Operator-facing view: what is consented NOW and why. No contact details, no wording text, no secrets."""
+    state = await state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+    rows = (
+        await session.execute(
+            select(HallaConsentEvidence)
+            .where(HallaConsentEvidence.tenant_id == tenant_id, or_(HallaConsentEvidence.lead_id == lead.id, HallaConsentEvidence.halla_lead_id == (lead.external_id or "\0")))
+            .order_by(HallaConsentEvidence.recorded_at.desc())
+        )
+    ).scalars().all()
+    newest = rows[0] if rows else None
+    return {
+        "evidence_recorded": state.has_evidence,
+        "granted_scopes": sorted(state.granted),
+        "contact": state.allows(CONTACT),
+        "store_personal_data": state.allows(STORE_PERSONAL),
+        "store_medical_information": state.allows(STORE_MEDICAL),
+        "as_of": _utc(newest.recorded_at).isoformat() if newest else None,
+        "wording_version": newest.wording_version if newest else None,
+        "method": newest.method if newest else None,
+        "history_count": len(rows),  # the history itself is retained and never rewritten
+        "note": None if state.has_evidence else "Halla has sent no consent evidence for this lead; nothing is treated as consented.",
+    }
+
+
+ERASED_NAME = "Erased (consent withdrawn)"
+
+
+async def erase_personal_data(session, tenant_id: uuid.UUID, lead) -> dict:
+    """Operator action (never automatic: no retention period has been approved). Removes the lead's contact details and free text after the
+    newest evidence shows `store_personal_data` is not consented. The lead row, its ids, status and the consent history stay (the history holds
+    no personal data and is the audit trail of the decision). A linked customer record is NOT touched here: it may carry other business."""
+    state = await state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+    if not state.has_evidence or state.allows(STORE_PERSONAL):
+        raise ConsentStillGrantedError("Personal-data consent has not been withdrawn or declined for this lead.")
+    lead.name = ERASED_NAME
+    lead.phone = lead.phone_normalized = lead.email = lead.description = lead.location = lead.service_requested = None
+    await session.flush()
+    return {"erased": True, "customer_linked": lead.customer_id is not None}

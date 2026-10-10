@@ -120,6 +120,9 @@ class HallaEventProcessor:
                 return {"handled": False, "note": "consent not established" if gated and env.type in ("lead.created", "lead.updated") else "no matching Klaros lead"}
 
             await self._link(session, tenant_id, lead, data)
+            consent_state = None
+            if gated:
+                consent_state = await halla_consent.state_for(session, tenant_id, halla_lead_id=lead.external_id or hw.halla_lead_id(data), lead_id=lead.id)
             events: list[tuple[EventType, dict[str, Any]]] = []
             q = hw.qualification(data)
             summary, outcome, call = hw.summary_of(data), hw.outcome_of(data), hw.call_id(data)
@@ -131,9 +134,19 @@ class HallaEventProcessor:
             if flagged:
                 logger.warning("halla_safety_escalation", event_id=env.id, event_type=env.type, profile=profile.key, category=safety.category)
                 q = None
+            if consent_state is not None and consent_state.has_evidence and not consent_state.allows(halla_consent.STORE_PERSONAL) and not flagged and env.type != "lead.escalated":
+                # The newest evidence says personal-data storage is NOT (or no longer) consented. The lead is frozen: Halla's later events do not
+                # change it, qualify it, book it or add text to it. Safety escalations still reach a person. Nothing is erased automatically
+                # (see HallaConsentService.erase_personal_data); a person decides.
+                logger.warning("halla_event_ignored_consent_not_granted", event_id=env.id, event_type=env.type)
+                await session.commit()
+                return {"handled": False, "note": "consent not granted for this lead"}
             stale = env.type in ("call.completed", "lead.qualified") and await self._qualification_is_stale(session, tenant_id, lead.id, env)
+            # Free text from a Medical Tourism conversation may contain health information: it is kept only while the newest evidence grants
+            # `store_medical_information`. (No evidence, or any other combination of scopes => not retained.) Other tenants are unchanged.
+            keep_text = not flagged and (not gated or (consent_state is not None and consent_state.allows(halla_consent.STORE_MEDICAL)))
             base = {"halla_event_id": env.id, "occurred_at": env.timestamp, "interaction_id": call, "channel": "voice" if env.type.startswith("call.") else None,
-                    "summary": None if flagged else summary, "outcome": None if flagged else outcome, "simulated": False}  # sensitive text is not stored
+                    "summary": summary if keep_text else None, "outcome": outcome if keep_text else None, "simulated": False}  # sensitive text is not stored
 
             if env.type in ("call.started",):
                 events.append((EventType.HALLA_INTERACTION_STARTED, base))
