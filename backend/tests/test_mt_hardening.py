@@ -379,3 +379,59 @@ def test_redact_pii_masks_keys_and_scrubs_patterns_but_keeps_dates_and_refs() ->
         M(email="secret@x.org")
     except ValidationError as exc:
         assert "secret" not in safe_error_text(exc)
+
+
+# ------------------------------------------------------------------------------------------------ item 10: Stripe is an external channel
+async def test_stripe_checkout_email_is_passed_only_if_the_invoice_customer_may_be_contacted(client, halla, monkeypatch) -> None:  # noqa: F811
+    from types import SimpleNamespace
+
+    from app.models.finance import Invoice, InvoiceStatus
+    from app.tools.builtin import stripe_tools
+
+    token, tid = await _gated(client, "Stripe Gate", "stripegate@example.com")
+    lead = await _attested_lead(client, token, email="stripe.pt@example.com", phone="+15550606060")
+    cid = await _customer(tid, email="stripe.pt@example.com")
+    await _link(tid, lead, cid)
+    async with async_session_maker() as s:
+        await set_tenant_context(s, tid)
+        inv = Invoice(tenant_id=tid, customer_id=cid, invoice_number=f"S-{uuid.uuid4().hex[:6]}", status=InvoiceStatus.SENT, issue_date=date(2026, 1, 1),
+                      due_date=date(2026, 2, 1), subtotal=50, total=50, amount_paid=0, amount_due=50)
+        s.add(inv)
+        await s.commit()
+        inv_id = inv.id
+    seen: list = []
+
+    class FakeStripe:
+        def __init__(self, key): pass
+
+        async def create_checkout_session(self, **kw):
+            seen.append(kw.get("customer_email"))
+            return SimpleNamespace(url="https://pay.test/x", id="cs_test")
+
+    async def key(*a, **k): return "sk_test_not_real"
+
+    monkeypatch.setattr(stripe_tools, "StripeClient", FakeStripe)
+    monkeypatch.setattr(stripe_tools, "resolve_stripe_secret_key", key)
+    tool = stripe_tools.CreateStripeCheckoutSession(async_session_maker, None)
+    payload = stripe_tools.CreateStripeCheckoutInput(invoice_id=inv_id, success_url="https://x.test/ok", cancel_url="https://x.test/no", customer_email="stripe.pt@example.com")
+    await tool.execute(payload, _ctx(tid))
+    assert seen == ["stripe.pt@example.com"]                       # contact consent for that customer: allowed
+    await client.post(f"/api/v1/leads/{lead}/consent", json={"scopes": ["store_personal_data"]}, headers=_h(token))
+    await tool.execute(payload, _ctx(tid))
+    assert seen[-1] is None                                        # contact withdrawn: the address is not handed to Stripe
+    other = stripe_tools.CreateStripeCheckoutInput(invoice_id=inv_id, success_url="https://x.test/ok", cancel_url="https://x.test/no", customer_email="not.this.customer@example.com")
+    await client.post(f"/api/v1/leads/{lead}/consent", json={"scopes": ["contact", "store_personal_data"]}, headers=_h(token))
+    await tool.execute(other, _ctx(tid))
+    assert seen[-1] is None                                        # an address that is not the invoice customer's own is never passed
+
+
+def test_no_outbound_adapter_is_built_outside_the_guarded_factory() -> None:
+    """Every e-mail/SMS provider is created in app/communications/factory.py (which wraps it in the consent guard); constructing an adapter anywhere
+    else would be an unguarded channel."""
+    import pathlib
+    import re
+
+    root = pathlib.Path(__file__).resolve().parents[1] / "app"
+    pat = re.compile(r"\b(SendGridEmailAdapter|TwilioSMSAdapter|CompositeCommunicationAdapter|InternalTestCommunicationAdapter)\(")
+    offenders = [str(p.relative_to(root)) for p in root.rglob("*.py") if p.name not in {"factory.py", "sendgrid_adapter.py", "twilio_adapter.py", "composite_adapter.py", "internal_test_adapter.py"} and pat.search(p.read_text())]
+    assert offenders == []

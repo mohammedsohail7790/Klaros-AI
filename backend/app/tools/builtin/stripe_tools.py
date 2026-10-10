@@ -104,6 +104,20 @@ class CreateStripeCheckoutSession(Tool):
             invoice_number = invoice.invoice_number
             customer_id = invoice.customer_id
 
+        # A customer e-mail handed to Stripe makes STRIPE send the customer mail (receipt / checkout) and shares the address with Stripe: an external
+        # channel that bypasses the shared consent guard. For a consent-gated tenant it is passed only if the invoice's own customer may be contacted;
+        # otherwise it is dropped (the hosted page still works, the payer types their own address there).
+        checkout_email = input.customer_email
+        if checkout_email:
+            from app.services import consent_gate
+
+            if await consent_gate.tenant_requires_consent(self._session_factory, context.tenant_id):
+                ok, _ = await consent_gate.contact_decision(
+                    self._session_factory, context.tenant_id, email=checkout_email, customer_id=customer_id
+                )
+                if not ok:
+                    checkout_email = None
+
         client = StripeClient(secret_key)
         try:
             session_obj = await client.create_checkout_session(
@@ -117,7 +131,7 @@ class CreateStripeCheckoutSession(Tool):
                 success_url=input.success_url,
                 cancel_url=input.cancel_url,
                 description=f"Invoice {invoice_number}",
-                customer_email=input.customer_email,
+                customer_email=checkout_email,
                 # Same invoice + same amount due -> same idempotency key ->
                 # a duplicate/retried request gets Stripe's cached original
                 # response instead of a second, separate Checkout Session.

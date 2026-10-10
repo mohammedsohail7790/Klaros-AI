@@ -198,6 +198,13 @@ async def erase_personal_data(session, tenant_id: uuid.UUID, lead, actor_user_id
         if blockers:
             report["customer"] = "kept"
             report["customer_kept_because_referenced_by"] = sorted(blockers)
+            # The customer record stays (other records reference it) but its FREE TEXT may hold health information the patient has withdrawn
+            # consent for: notes are not financial records, so they are erased even when the customer row is kept.
+            kept = await session.get(Customer, cid)
+            if kept is not None and kept.tenant_id == tenant_id:
+                kept.notes = None
+                res = await session.execute(update(CustomerNote).where(CustomerNote.tenant_id == tenant_id, CustomerNote.customer_id == cid).values(body=ERASED_TEXT))
+                report["customer_notes_erased"] = res.rowcount or 0
         else:
             customer = await session.get(Customer, cid)
             if customer is not None and customer.tenant_id == tenant_id:

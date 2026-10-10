@@ -305,14 +305,24 @@ async def test_a_customer_referenced_elsewhere_is_kept_and_the_reason_is_reporte
         (await s.get(Lead, lid)).customer_id = cust.id
         other = Lead(tenant_id=tid, name="Other Lead", source="WEB", status="NEW", qualification_status="PENDING", urgency="MEDIUM", customer_id=cust.id)
         s.add(other)
+        from app.models.crm import CustomerNote
+
+        cust.notes = "ZXQ-kept-customer-notes"
+        s.add(CustomerNote(tenant_id=tid, customer_id=cust.id, body="ZXQ-kept-note-body", author_type="USER"))
         await s.commit()
         cust_id = cust.id
     await client.post(f"/api/v1/leads/{lead}/consent", json={"scopes": []}, headers=_h(token))
     r = (await client.post(f"/api/v1/business-builder/leads/{lead}/halla/erase-personal-data", headers=_h(token))).json()
-    assert r["customer"] == "kept" and r["customer_kept_because_referenced_by"] == ["leads"]
+    assert r["customer"] == "kept" and r["customer_kept_because_referenced_by"] == ["leads"] and r["customer_notes_erased"] == 1
     async with async_session_maker() as s:
         await set_tenant_context(s, tid)
-        assert (await s.get(Customer, cust_id)).name == PII_NAME            # an owner decision, not erased automatically
+        kept = await s.get(Customer, cust_id)
+        assert kept.name == PII_NAME                                          # the row is an owner decision, not erased automatically
+        assert kept.notes is None                                              # but free text that may hold health information is
+        from sqlalchemy import select as _select
+        from app.models.crm import CustomerNote as _N
+
+        assert all("ZXQ-kept-note-body" not in n.body for n in (await s.execute(_select(_N).where(_N.customer_id == cust_id))).scalars())
 
 
 async def test_public_form_with_approved_wording_and_medical_consent_creates_lead_patient_lead_and_evidence(client, halla) -> None:  # noqa: F811
