@@ -79,9 +79,17 @@ async def test_other_tenants_are_not_screened(client, halla) -> None:  # noqa: F
 
 
 # ---------------------------------------------------------------------------------------------------- never auto-qualified
+# A lead the scorer WOULD qualify (service, location, high urgency and value): without the guard a machine would mark it QUALIFIED.
+STRONG = dict(service_requested="Dental implants", location="Istanbul", urgency="HIGH", estimated_value=6000)
+
+
 async def test_a_flagged_lead_is_not_qualified_by_a_machine_but_a_person_can_decide(client, halla, tool_registry) -> None:  # noqa: F811
     token, tid = await _gated(client, "Safe Qualify", "safequalify@example.com")
-    r = await client.post("/api/v1/leads", json=_body(description=EMERGENCY, consent={"scopes": ALL}), headers=_h(token))
+    # control: the same strong lead with a normal inquiry IS qualified by the machine, so the setup below genuinely would qualify
+    ok = (await client.post("/api/v1/leads", json=_body(name="Control Person", email="control.person@example.com", phone="+15550808080", description=NORMAL, consent={"scopes": ALL}, **STRONG), headers=_h(token))).json()["lead"]["id"]
+    assert (await tool_registry.execute("crm.qualify_lead", {"lead_id": ok}, _ctx(tid, ActorType.AI))).qualification_status == QualificationStatus.QUALIFIED
+
+    r = await client.post("/api/v1/leads", json=_body(description=EMERGENCY, consent={"scopes": ALL}, **STRONG), headers=_h(token))
     lead_id = r.json()["lead"]["id"]
     for actor in (ActorType.AI, ActorType.WORKFLOW, ActorType.SYSTEM):
         out = await tool_registry.execute("crm.qualify_lead", {"lead_id": lead_id}, _ctx(tid, actor))
@@ -90,11 +98,12 @@ async def test_a_flagged_lead_is_not_qualified_by_a_machine_but_a_person_can_dec
             await tool_registry.execute("crm.update_lead", {"lead_id": lead_id, "status": "QUALIFIED"}, _ctx(tid, actor))
     lead = await _lead(tid, lead_id)
     assert lead.qualification_status == QualificationStatus.REQUIRES_HUMAN and lead.status != LeadStatus.QUALIFIED
-    # a signed-in person can act on it
+    assert lead.lead_score is not None                                   # the score is still recorded; only the decision is held
+    # a signed-in person can act on it, and an explicit qualify by a person is allowed to apply the score
     done = await tool_registry.execute("crm.update_lead", {"lead_id": lead_id, "status": "CONTACTED"}, _ctx(tid, ActorType.USER))
     assert done.lead["status"] == "CONTACTED"
     again = await tool_registry.execute("crm.qualify_lead", {"lead_id": lead_id}, _ctx(tid, ActorType.USER))
-    assert again.qualification_status != QualificationStatus.REQUIRES_HUMAN or again.score is not None
+    assert again.qualification_status == QualificationStatus.QUALIFIED
 
 
 async def test_the_automatic_qualification_that_follows_creation_does_not_override_the_flag(client, halla, event_bus) -> None:  # noqa: F811
