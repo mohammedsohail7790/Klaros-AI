@@ -25,7 +25,7 @@ Prerequisite decisions: approval to merge `feat/mt-halla-contract-hardening` int
 | `HALLA_API_BASE_URL=https://gateway.hallaai.com`, `HALLA_ALLOWED_HOSTS=gateway.hallaai.com` | setting | **change needed if the live values still say `halla-ai-gateway.onrender.com`** (V: `gateway.hallaai.com` is a CNAME to the `middle-east` production service) |
 | `HALLA_API_KEY_HEADER` (+ `HALLA_API_KEY_SCHEME` if the contract needs one) | setting | owner to confirm Halla's header name |
 | `KLAROS_PUBLIC_API_URL=https://klaros-halla-pilot.onrender.com` | setting | required by preflight |
-| `HALLA_PILOT_TENANTS` (JSON: slug, name, `klaros_tenant_id`, `halla_tenant_id`, `api_key_env`, `secret_env`, `safety_profile: "medical_tourism"`, optional owner fields) | setting | **one Medical Tourism entry only; no Dropshipping entry** |
+| `HALLA_PILOT_TENANTS` (JSON: slug, name, `klaros_tenant_id`, `halla_tenant_id`, `api_key_env`, `secret_env`, `safety_profile: "medical_tourism"`, optional `approved_wording_versions` (owner-approved labels; empty keeps the public form closed), optional owner fields) | setting | **one Medical Tourism entry only; no Dropshipping entry** |
 | the variables named by `api_key_env` / `secret_env` / `owner_password_env` | **secret** | owner-entered; unique per tenant |
 | `EVENT_TRANSPORT=memory`, `RATE_LIMIT_BACKEND=memory` | setting | single instance only (V) |
 
@@ -45,16 +45,32 @@ Conflict: the main tree's unreleased `0065`–`0067` (Dropshipping / activation)
 Halla side (separate database): `075_lead_consents.sql` then `076_lead_consent_outbox.sql`, both additive and `IF NOT EXISTS` (V on PostgreSQL 16 with stub parent tables;
 A: real Halla schema has `voice_tenants`, `leads`).
 
-## C. Operator erasure review (`POST …/leads/{id}/halla/erase-personal-data`)
-Works as designed (V by tests): refused with 409 while consent is granted or no evidence exists; clears name, phone, email, description, location, service on the
-lead; keeps lead id, status and the consent history; tenant-scoped; operator-only. **Gaps found (not fixed):**
-1. **Copies are not erased:** a Halla appointment mirror puts the lead's name into `appointments.title` and creates a `customers` row (name, email, phone) — both remain (V: `halla_event_processor.py` lines 317 and 338–344). The response reports `customer_linked` but nothing removes it.
-2. **Earlier free text remains:** summaries/outcomes stored on `halla.*` events while `store_medical_information` was granted are not removed on withdrawal.
-3. **No audit record of the erasure** (who, when) — only the response; the consent history is the sole trail.
-4. **No retention clock:** nothing erases automatically and the consent history is kept forever; no approved retention period exists. Needs a decision, then a scheduled job.
-5. **Erased leads still match:** `idempotency_key` (`halla-lead-<id>`) and `external_id` stay, which is wanted (prevents re-creation) but is an identifier — owner to confirm.
-6. **Backups / Neon history** are outside this feature.
-7. **Other intake paths bypass consent entirely** (V: routes on this branch): unauthenticated `POST /public/leads/{tenant}` (also creates a `PatientLead` with health text), authenticated `POST /leads`, `POST /leads/import`, `POST /medical-tourism/patient-leads`. The consent-gated intake exists only in the uncommitted main tree.
+## C. Consent gate on every intake path, withdrawal and erasure (implemented on the branch; SQLite + PostgreSQL tested)
+A tenant is **consent-gated** when its Halla connection has the Medical Tourism safety profile **or** the `medical_tourism` vertical is enabled for it. Everyone else is unchanged (tests prove it).
+Enforcement is in the service layer (`LeadService.create_lead`, CRM tools, routes), so one rule covers every caller:
+
+| Path | Behaviour for a gated tenant |
+|---|---|
+| Halla `lead.created` / `lead.updated` | lead stored only while the newest evidence grants `store_personal_data`; text kept only with `store_medical_information` |
+| `POST /leads` (operator) | `consent: {scopes, wording_version}` required; missing `store_personal_data` → 422 `consent_required`, nothing stored; `description` / `service_requested` also need `store_medical_information`; evidence recorded with the operator's user id |
+| agent tool `crm.create_lead` | an AI / workflow / system actor can never attest consent → refused |
+| `POST /leads/import` and `crm.bulk_import_leads` | **disabled** (a spreadsheet has no per-person evidence) → 422 `bulk_import_disabled_without_per_person_consent` |
+| `PATCH /leads/{id}` (`crm.update_lead`) | adding `description` needs `store_medical_information` on that lead; status/assignee changes still work |
+| `POST /public/leads/{tenant}` (unauthenticated) | **closed** (403 `public_intake_closed`) until the owner lists `approved_wording_versions` for the tenant; then the visitor's `consent` (checkbox scopes + an approved label) must include `store_personal_data`, health fields need `store_medical_information`; evidence `source=web_form` |
+| `POST /medical-tourism/patient-leads` | the existing lead's newest evidence must allow personal data (and medical for health text); a legacy lead with no evidence is refused until a person records consent |
+| `POST /leads/{id}/consent` (new) | a signed-in person records the COMPLETE set of scopes the lead agreed to, or `[]` to withdraw; audited |
+| outbound: Halla call and sync-to-Halla | need `contact` consent; withdrawal blocks them |
+| audit log | personal fields of the lead tools are replaced by `***PII***` for gated tenants (otherwise `audit_logs` kept every name/phone, even for refused calls) |
+
+Erasure (`POST …/leads/{id}/halla/erase-personal-data`, operator only, refused while consent is granted) now removes: lead contact details and free text; the lead's
+appointments' title/notes/location/service; patient-lead health intake text; voice-session caller number, transcript and state; summary/outcome text on its Halla events;
+and the linked customer + customer notes **only when nothing else references that customer** (otherwise kept and the referencing tables are reported).
+It writes an audit record containing counts only. Kept by design: the lead row and ids (including the Halla idempotency key), consent history, event rows without text.
+
+**Decisions still needed (not guessed):** retention periods and whether erasure becomes automatic; how long the consent history and the idempotency key may live;
+what happens to customers/invoices/quotes/jobs that reference an erased lead (financial records have their own rules); approved wording per scope; whether `approved_wording_versions`
+should be managed in the product instead of `HALLA_PILOT_TENANTS`. **Residual (not gated):** marketing/nurture/retention/collection messaging services act on customers, not
+leads, and are not consent-gated; the pilot configures no messaging provider, so nothing is sent (A: confirm the live service has no Twilio/SendGrid credentials). Backups and Neon history are outside the application.
 
 ## D. Information still required
 | Needed | From | Used for |
@@ -69,7 +85,7 @@ lead; keeps lead id, status and the consent history; tenant-scoped; operator-onl
 | Retention periods (lead, consent history, events) and erasure policy incl. customers/appointments | owner + counsel | scheduled erasure |
 | Escalation destination (phone/email/person), hours, expected response time — verified | owner | human escalation |
 | Approved clinic/provider facts: services, prices, accreditation claims | owner | knowledge/workforce config |
-| Decision: should public/operator intake paths (section C.7) be disabled or consent-gated for this tenant | owner | bypass closure |
+| `approved_wording_versions` labels for the public form (or confirm the public form stays closed) | owner + counsel | public intake |
 
 ## E. Synthetic end-to-end test (to run only after approval; synthetic data only)
 Preconditions: Halla consent branch deployed with `075`/`076` applied; Klaros pilot at the reviewed SHA and `0065`; Medical Tourism Halla tenant with
@@ -88,6 +104,8 @@ Preconditions: Halla consent branch deployed with `075`/`076` applied; Klaros pi
 | 9 | Escalation: synthetic utterance "I have chest pain" | Klaros event `halla.lead.escalated` with `category=EMERGENCY` and no text; Halla escalation reaches the configured destination (delivery receipt from the owner's test phone/inbox) |
 | 10 | Failure and retry: stop the receiver (or return 500) for one event, then restore | Halla delivery log shows the failed attempt + successful retry; Klaros `webhook_events` FAILED→handled; one lead only |
 | 11 | Log hygiene | grep Render logs (both services) for the synthetic name, phone, summary text and any secret prefix → zero matches |
+| 13 | Non-Halla intake negative tests against the pilot (synthetic data): `POST /public/leads/{tenant}` with no approved wording → 403; `POST /leads` without `consent` → 422; `POST /leads/import` → 422 | HTTP responses + zero new `leads` rows + `audit_logs` rows show `***PII***` instead of the synthetic name |
+| 14 | Operator withdrawal: `POST /leads/{id}/consent {"scopes": []}` then a Halla `call.completed` and an outbound call request | `GET …/halla/consent` all false; call → 422; lead unchanged; erase → counts in the `lead.personal_data_erased` audit row, no personal data in it |
 | 12 | Outbox failure | with Redis disabled in a Halla staging copy: outbox row stays pending; after restore the sweeper delivers it |
 
 Pass criterion: every row's evidence captured with event ids and timestamps (no personal data in the report); only then may anyone call the integration verified.

@@ -367,6 +367,12 @@ class ToolRegistry:
         entity_id: uuid.UUID | None = None,
     ) -> None:
         summary = redact_input(raw_input)
+        tool = self._tools.get(tool_name)
+        if tool is not None and tool.pii_input_fields and context.tenant_id is not None:
+            from app.services.consent_gate import tenant_requires_consent
+
+            if await tenant_requires_consent(self._session_factory, context.tenant_id):
+                summary = {k: ("***PII***" if k in tool.pii_input_fields else v) for k, v in summary.items()}
         if error:
             summary = {**summary, "_error": error}
 

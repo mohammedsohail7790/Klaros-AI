@@ -374,7 +374,7 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(RecordAction(session_factory))
 
     registry.register(CreateLead(lead_service))
-    registry.register(BulkImportLeads(lead_service))
+    registry.register(BulkImportLeads(lead_service, session_factory))
     registry.register(GetLead(session_factory))
     registry.register(UpdateLead(session_factory))
     registry.register(SearchLeads(session_factory))

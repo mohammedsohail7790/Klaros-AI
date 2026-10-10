@@ -298,7 +298,7 @@ async def erase_lead_personal_data(
         if lead is None or lead.tenant_id != current_user.tenant_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
         try:
-            result = await halla_consent.erase_personal_data(session, current_user.tenant_id, lead)
+            result = await halla_consent.erase_personal_data(session, current_user.tenant_id, lead, current_user.id)
         except halla_consent.ConsentStillGrantedError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
         await session.commit()

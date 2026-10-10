@@ -272,19 +272,10 @@ async def test_public_lead_creates_patient_lead_for_medical_tourism_tenant(clien
             "has_insurance": False,
         },
     )
-    assert resp.status_code == 201, resp.text
-    body = resp.json()
-    assert body["received"] is True
-    assert body["lead_id"] is not None
-    assert body["patient_lead_id"] is not None
-
-    from app.services.medical_tourism_service import MedicalTourismService
-    from app.db.session import async_session_maker
-
-    mt_service = MedicalTourismService(async_session_maker)
-    patient_lead = await mt_service.get_patient_lead_by_lead_id(tenant_id, uuid.UUID(body["lead_id"]))
-    assert patient_lead.preferred_destination_country == "TR"
-    assert patient_lead.has_insurance is False
+    # Consent gate (tests/test_consent_gate_intake.py): a Medical Tourism tenant whose owner has approved no consent wording keeps its public form
+    # closed, so nothing is stored. The approved-wording happy path (lead + patient lead + evidence) is covered there.
+    assert resp.status_code == 403, resp.text
+    assert resp.json()["detail"]["error"] == "public_intake_closed"
 
 
 @requires_real_postgres

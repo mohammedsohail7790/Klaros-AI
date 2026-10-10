@@ -126,6 +126,9 @@ async def _lead(client, token, name="Pat Ient", phone="+15550001111"):
     if phone:
         body["phone"] = phone
     r = await client.post("/api/v1/leads", json=body, headers=_h(token))
+    if r.status_code == 422 and "consent_required" in r.text:
+        # a consent-gated tenant: the operator attests what the lead agreed to (see tests/test_consent_gate_intake.py for the gate itself)
+        r = await client.post("/api/v1/leads", json={**body, "consent": {"scopes": ["contact", "store_personal_data", "store_medical_information"], "wording_version": "test-v1"}}, headers=_h(token))
     assert r.status_code == 201, r.text
     return (r.json().get("lead") or r.json())["id"]
 

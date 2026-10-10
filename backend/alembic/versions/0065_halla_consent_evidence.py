@@ -1,6 +1,6 @@
 """Halla consent evidence history (`halla_consent_evidence`).
 
-Append-only: one row per distinct Halla event that carried valid `data.consent` (HALLA_KLAROS_INTEGRATION_CONTRACT 3.1). Holds the opaque
+Append-only consent evidence for a lead from any source (`halla` events per HALLA_KLAROS_INTEGRATION_CONTRACT 3.1, `web_form`, `operator_attested`). Holds the opaque
 Halla lead id, the scopes, granted flag, method, wording_version label and Halla's recorded_at -- no wording text, transcript, medical
 content or contact details. The current state is derived in code (services/halla_consent.py); nothing is updated or deleted here, and no
 retention period is set (an owner/legal decision). Real row-level security as in 0067 (PostgreSQL only).
@@ -34,6 +34,8 @@ def upgrade() -> None:
         sa.Column("tenant_id", _UUID, nullable=False),
         sa.Column("halla_event_id", sa.String(255), nullable=False),
         sa.Column("event_type", sa.String(32), nullable=False),
+        sa.Column("source", sa.String(32), nullable=False, server_default="halla"),
+        sa.Column("actor_user_id", _UUID, nullable=True),
         sa.Column("halla_lead_id", sa.String(255), nullable=True),
         sa.Column("lead_id", _UUID, nullable=True),
         sa.Column("granted", sa.Boolean(), nullable=False),

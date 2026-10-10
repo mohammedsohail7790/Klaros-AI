@@ -60,6 +60,8 @@ class Tool(ABC):
     output_schema: type[BaseModel]
     required_permission: Permission | None = None
     tenant_scoped: bool = True
+    # Input keys that hold personal data. For a consent-gated tenant their values are replaced in the audit record (see registry._audit).
+    pii_input_fields: tuple[str, ...] = ()
     # Counted against the tenant's plan's monthly AI-recommendation limit
     # (app/services/billing_service.py::PLAN_LIMITS) before execution.
     # False for every tool by default — only insights.generate_morning_brief

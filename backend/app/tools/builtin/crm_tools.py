@@ -14,6 +14,7 @@ from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.crm import Customer, CustomerNote, CustomerStatus, Lead, LeadSource, LeadStatus
 from app.models.rbac import Permission
+from app.services import consent_gate
 from app.services.customer_matching import normalize_email, normalize_phone
 from app.services.lead_service import CreateLeadInput, LeadService
 from app.services.qualification_service import LeadQualificationService
@@ -69,6 +70,8 @@ class CreateLeadToolInput(BaseModel):
     urgency: str = "MEDIUM"
     estimated_value: float | None = None
     idempotency_key: str | None = None
+    # {"scopes": [...], "wording_version": "..."} — what the person agreed to. Only a signed-in person's claim counts; read by consent-gated tenants only.
+    consent: dict[str, Any] | None = None
 
 
 class LeadOutput(BaseModel):
@@ -82,6 +85,8 @@ class CreateLead(Tool):
     input_schema = CreateLeadToolInput
     output_schema = LeadOutput
     required_permission = Permission.CREATE_LEAD
+    # Redacted from the audit record for consent-gated tenants (the record would otherwise keep what consent has not been given for).
+    pii_input_fields = ("name", "phone", "email", "description", "service_requested", "location")
 
     def __init__(self, lead_service: LeadService) -> None:
         self._lead_service = lead_service
@@ -101,6 +106,7 @@ class CreateLead(Tool):
                 urgency=input.urgency,
                 estimated_value=input.estimated_value,
                 idempotency_key=input.idempotency_key,
+                consent=consent_gate.claim_from_tool(input.consent, context.actor_type, context.actor_id),
             ),
         )
         return LeadOutput(lead=_lead_to_dict(lead), deduplicated=deduplicated)
@@ -141,11 +147,16 @@ class BulkImportLeads(Tool):
     input_schema = BulkImportLeadsInput
     output_schema = BulkImportLeadsOutput
     required_permission = Permission.CREATE_LEAD
+    pii_input_fields = ("leads",)
 
-    def __init__(self, lead_service: LeadService) -> None:
+    def __init__(self, lead_service: LeadService, session_factory: async_sessionmaker | None = None) -> None:
         self._lead_service = lead_service
+        self._session_factory = session_factory
 
     async def execute(self, input: BulkImportLeadsInput, context: ExecutionContext) -> BulkImportLeadsOutput:
+        if self._session_factory is not None and await consent_gate.tenant_requires_consent(self._session_factory, context.tenant_id):
+            # A spreadsheet carries no per-person consent evidence, so for a consent-gated tenant the whole import is refused.
+            raise consent_gate.ConsentRequiredError([consent_gate.STORE_PERSONAL], reason="bulk_import_disabled_without_per_person_consent")
         lead_ids: list[str] = []
         matched_existing = 0
         for row in input.leads:
@@ -206,6 +217,7 @@ class UpdateLead(Tool):
     input_schema = UpdateLeadInput
     output_schema = LeadOutput
     required_permission = Permission.UPDATE_LEAD
+    pii_input_fields = ("description",)
 
     def __init__(self, session_factory: async_sessionmaker) -> None:
         self._session_factory = session_factory
@@ -227,6 +239,12 @@ class UpdateLead(Tool):
             if input.assigned_user_id is not None:
                 lead.assigned_user_id = input.assigned_user_id
             if input.description is not None:
+                if await consent_gate.tenant_requires_consent(self._session_factory, context.tenant_id):
+                    from app.services import halla_consent
+
+                    state = await halla_consent.state_for(session, context.tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+                    if not state.allows(consent_gate.STORE_MEDICAL):
+                        raise consent_gate.ConsentRequiredError([consent_gate.STORE_MEDICAL])
                 lead.description = input.description
             await session.commit()
             await session.refresh(lead)

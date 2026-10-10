@@ -208,6 +208,12 @@ def raise_http_for_tool_error(exc: Exception) -> None:
             status_code=status.HTTP_202_ACCEPTED,
             detail={"status": "pending_approval", "approval_request_id": str(exc.approval_request_id)},
         ) from exc
+    from app.services.consent_gate import ConsentRequiredError
+
+    if isinstance(exc, ConsentRequiredError):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail={"error": exc.reason, "missing_scopes": exc.missing}
+        ) from exc
     if isinstance(exc, ValueError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     # Base ToolError (e.g. "not connected" / "external request failed" from

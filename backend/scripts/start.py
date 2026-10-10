@@ -31,6 +31,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import subprocess
 import sys
 import uuid
@@ -63,6 +64,7 @@ class PilotTenant:
     owner_password_env: str | None = None
     trial_days: int = 14
     safety_profile: str = ""
+    approved_wording_versions: tuple[str, ...] = ()  # labels of consent wording the OWNER approved for public forms; empty keeps public intake closed
 
 
 class ConfigError(Exception):
@@ -118,7 +120,10 @@ def parse_tenants(environ: Mapping[str, str]) -> list[PilotTenant]:
         profile = str(it.get("safety_profile") or "").strip()
         if profile not in PROFILES:
             raise ConfigError(f"HALLA_PILOT_TENANTS[{i}]: safety_profile must be one of {', '.join(sorted(PROFILES))}")
-        out.append(PilotTenant(slug, name, tid, halla, key_env, secret_env, owner_email, owner_pw_env, trial, profile))
+        wording = it.get("approved_wording_versions", [])
+        if not isinstance(wording, list) or any(not isinstance(w, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,63}", w) for w in wording):
+            raise ConfigError(f"HALLA_PILOT_TENANTS[{i}]: approved_wording_versions must be a list of labels (letters, digits, . _ : -)")
+        out.append(PilotTenant(slug, name, tid, halla, key_env, secret_env, owner_email, owner_pw_env, trial, profile, tuple(wording)))
     return out
 
 
@@ -277,7 +282,10 @@ async def set_safety_profile(t: PilotTenant) -> None:
     async with async_session_maker() as db:
         await set_tenant_context(db, t.klaros_tenant_id)
         conn = (await db.execute(select(IntegrationConnection).where(IntegrationConnection.tenant_id == t.klaros_tenant_id, IntegrationConnection.provider == "halla"))).scalar_one()
-        conn.connection_metadata = {**(conn.connection_metadata or {}), "safety_profile": t.safety_profile}
+        meta = {**(conn.connection_metadata or {}), "safety_profile": t.safety_profile}
+        if t.approved_wording_versions:
+            meta["approved_wording_versions"] = list(t.approved_wording_versions)  # only when the owner supplied labels; other profiles are untouched
+        conn.connection_metadata = meta
         await db.commit()
 
 

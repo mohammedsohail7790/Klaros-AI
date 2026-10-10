@@ -47,6 +47,7 @@ from app.core.rate_limit import rate_limit, tenant_and_ip_key
 from app.db.session import async_session_maker, set_tenant_context
 from app.events.bus import EventBus
 from app.models.organization import Organization
+from app.services.consent_gate import ALL_SCOPES, SOURCE_WEB, STORE_MEDICAL, ConsentClaim, ConsentRequiredError, approved_wording_versions, tenant_requires_consent
 from app.services.lead_service import CreateLeadInput, LeadService
 from app.services.medical_tourism_service import InvalidRelationshipError, MedicalTourismService, NotFoundError
 from app.services.vertical_extension_service import VerticalExtensionService
@@ -85,6 +86,15 @@ class PublicLeadRequest(BaseModel):
     travel_end_date: date | None = None
     has_insurance: bool | None = None
     insurance_notes: str | None = Field(default=None, max_length=2000)
+    # Required (and enforced) for tenants whose business requires consent evidence; ignored for every other tenant.
+    consent: "PublicConsent | None" = None
+
+
+class PublicConsent(BaseModel):
+    """The visitor's own answers to the form's consent checkboxes, and the label of the wording the form displayed."""
+
+    scopes: list[str] = Field(default_factory=list, max_length=3)
+    wording_version: str = Field(default="", max_length=64)
 
 
 class PublicLeadResponse(BaseModel):
@@ -118,8 +128,32 @@ async def submit_public_lead(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="phone or email is required"
         )
 
+    claim: ConsentClaim | None = None
+    if await tenant_requires_consent(async_session_maker, tenant_id):
+        approved = await approved_wording_versions(async_session_maker, tenant_id)
+        if not approved:
+            # Fail closed: the owner has not approved any consent wording for this tenant, so no public form may collect data.
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"error": "public_intake_closed", "reason": "no approved consent wording"})
+        if body.consent is None or body.consent.wording_version not in approved:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": "consent_required" if body.consent is None else "wording_not_approved", "missing_scopes": ["store_personal_data"]},
+            )
+        claim = ConsentClaim(frozenset(s for s in body.consent.scopes if s in ALL_SCOPES), SOURCE_WEB, body.consent.wording_version)
+        health_fields = (body.medical_history_summary, body.insurance_notes, body.procedure_id)
+        if any(v not in (None, "") for v in health_fields) and STORE_MEDICAL not in claim.scopes:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail={"error": "consent_required", "missing_scopes": [STORE_MEDICAL]})
+
     service = _lead_service(bus)
-    lead, deduplicated = await service.create_lead(
+    try:
+        lead, deduplicated = await _create(service, tenant_id, body, claim)
+    except ConsentRequiredError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail={"error": exc.reason, "missing_scopes": exc.missing}) from exc
+    return await _finish(tenant_id, body, lead, deduplicated)
+
+
+async def _create(service: LeadService, tenant_id: uuid.UUID, body: PublicLeadRequest, claim: ConsentClaim | None):
+    return await service.create_lead(
         tenant_id,
         CreateLeadInput(
             name=body.name,
@@ -131,9 +165,12 @@ async def submit_public_lead(
             description=body.description,
             location=body.location,
             idempotency_key=body.idempotency_key,
+            consent=claim,
         ),
     )
 
+
+async def _finish(tenant_id: uuid.UUID, body: PublicLeadRequest, lead, deduplicated: bool) -> PublicLeadResponse:
     patient_lead_id: str | None = None
     vertical_service = VerticalExtensionService(async_session_maker)
     try:

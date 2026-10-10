@@ -32,6 +32,7 @@ from app.integrations.workforce import halla_webhook as hw
 from app.models.crm import Appointment, AppointmentStatus, Customer, CustomerStatus, Lead, LeadStatus, QualificationStatus
 from app.models.event import Event, EventType
 from app.services import halla_consent, pilot_safety
+from app.services.consent_gate import ConsentClaim, ConsentRequiredError, tenant_requires_consent
 from app.services.customer_matching import find_matching_customer, normalize_email, normalize_phone
 
 logger = structlog.get_logger(__name__)
@@ -105,12 +106,12 @@ class HallaEventProcessor:
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)
             profile = await pilot_safety.profile_in_session(session, tenant_id)
-            gated = profile is not None and profile.requires_consent_evidence  # Medical Tourism: consent evidence decides what may be stored
+            gated = await tenant_requires_consent(self._session_factory, tenant_id)  # consent evidence decides what may be stored (profile OR vertical)
             lead = await self._resolve_lead(session, tenant_id, data)
             if gated and env.type in ("lead.created", "lead.updated"):
                 await self._record_consent(session, tenant_id, env, data, lead)
             if lead is None and (env.type == "lead.created" or (gated and env.type == "lead.updated")):
-                lead = await self._create_lead_from_halla(tenant_id, data, bus, session, profile)
+                lead = await self._create_lead_from_halla(tenant_id, data, bus, session, gated)
                 if lead is not None and gated:
                     await halla_consent.link_lead(session, tenant_id, hw.halla_lead_id(data), lead.id)
             if lead is None:
@@ -265,30 +266,38 @@ class HallaEventProcessor:
         await session.commit()  # evidence is durable before any lead is written
         await set_tenant_context(session, tenant_id)
 
-    async def _create_lead_from_halla(self, tenant_id: uuid.UUID, data: dict[str, Any], bus: EventBus, session, profile=None) -> Lead | None:
+    async def _create_lead_from_halla(self, tenant_id: uuid.UUID, data: dict[str, Any], bus: EventBus, session, gated: bool = False) -> Lead | None:
         """`lead.created` with no Klaros id: Klaros' existing lead intake policy — idempotent on the Halla lead id,
         never merged or duplicated on a phone number alone. For a profile that requires consent evidence the lead is stored only while the
         newest evidence grants `store_personal_data`; the treatment is kept only if it also grants `store_medical_information`."""
-        from app.services.lead_service import CreateLeadInput, LeadService
-
         hid, facts = hw.halla_lead_id(data), hw.lead_facts(data)
         if not hid or not facts.name or not (facts.phone or facts.email):
             return None
         service = facts.service
-        if profile is not None and profile.requires_consent_evidence:
+        state = None
+        if gated:
             state = await halla_consent.state_for(session, tenant_id, halla_lead_id=hid)
             if not state.allows(halla_consent.STORE_PERSONAL):
                 # Halla did not establish consent to keep personal data (or it was declined / withdrawn / superseded): nothing is stored.
-                logger.warning("halla_lead_refused_no_consent_evidence", halla_lead_id=hid, profile=profile.key, has_evidence=state.has_evidence)
+                logger.warning("halla_lead_refused_no_consent_evidence", halla_lead_id=hid, has_evidence=state.has_evidence)
                 return None
             if not state.allows(halla_consent.STORE_MEDICAL):
                 service = None
-        lead, _ = await LeadService(self._session_factory, bus).create_lead(
+        try:
+            lead, _ = await self._create(tenant_id, bus, facts, service, hid, state)
+        except ConsentRequiredError:
+            return None
+        return await session.get(Lead, lead.id)
+
+    async def _create(self, tenant_id, bus, facts, service, hid, state):
+        from app.services.lead_service import CreateLeadInput, LeadService
+
+        return await LeadService(self._session_factory, bus).create_lead(
             tenant_id,
             CreateLeadInput(name=facts.name, source="VOICE", phone=facts.phone, email=facts.email, source_detail="halla",
-                            service_requested=service, idempotency_key=f"halla-lead-{hid}"),
+                            service_requested=service, idempotency_key=f"halla-lead-{hid}",
+                            consent=ConsentClaim(frozenset(state.granted), "halla", recorded=True) if state is not None else None),
         )
-        return await session.get(Lead, lead.id)
 
     async def _mirror_appointment(self, session, tenant_id: uuid.UUID, lead: Lead, etype: str, data: dict[str, Any]) -> bool:
         facts = hw.appointment_facts(data)

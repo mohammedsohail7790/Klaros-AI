@@ -21,6 +21,7 @@ from app.db.session import set_tenant_context
 from app.events.bus import EventBus
 from app.models.crm import Lead, LeadStatus, QualificationStatus
 from app.models.event import EventType
+from app.services.consent_gate import ConsentClaim, check_create, tenant_requires_consent
 from app.services.customer_matching import find_matching_customer, normalize_email, normalize_phone
 
 
@@ -45,6 +46,9 @@ class CreateLeadInput:
     estimated_value: float | None = None
     idempotency_key: str | None = None
     assigned_user_id: uuid.UUID | None = None
+    # Consent claim for tenants that require consent evidence before personal / health data is kept (see services/consent_gate.py).
+    # Ignored for every other tenant.
+    consent: ConsentClaim | None = None
 
 
 class LeadService:
@@ -69,6 +73,10 @@ class LeadService:
         schedule_next_action` fix."""
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)
+            if await tenant_requires_consent(self._session_factory, tenant_id):
+                # Refused BEFORE anything is stored; the error names scopes only, never the refused data.
+                check_create(data.consent, has_medical_fields=bool(data.service_requested or data.description))
+
             if data.idempotency_key:
                 existing = (
                     await session.execute(
@@ -121,6 +129,28 @@ class LeadService:
             else:
                 await session.commit()
             await session.refresh(lead)
+
+        if data.consent is not None and not data.consent.recorded and await tenant_requires_consent(self._session_factory, tenant_id):
+            from app.services import halla_consent
+
+            try:
+                async with self._session_factory() as session:
+                    await set_tenant_context(session, tenant_id)
+                    await halla_consent.record_snapshot(
+                        session, tenant_id, lead.id, granted_scopes=data.consent.scopes, source=data.consent.source,
+                        wording_version=data.consent.wording_version, actor_user_id=data.consent.actor_user_id,
+                    )
+                    await session.commit()
+            except Exception:
+                # The lead exists but its evidence could not be stored: never leave personal data without evidence.
+                async with self._session_factory() as session:
+                    await set_tenant_context(session, tenant_id)
+                    row = await session.get(Lead, lead.id)
+                    if row is not None:
+                        row.name, row.phone, row.phone_normalized, row.email = "Erased (consent not recorded)", None, None, None
+                        row.description = row.location = row.service_requested = None
+                        await session.commit()
+                raise
 
         await self._bus.publish(
             tenant_id=tenant_id,

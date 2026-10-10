@@ -411,6 +411,27 @@ async def get_patient_lead(
     return {"patient_lead": _patient_lead_to_dict(patient_lead)}
 
 
+async def _require_consent_for_patient_lead(tenant_id: uuid.UUID, lead_id: uuid.UUID, body: dict) -> None:
+    """The patient-lead extension adds health intake to an EXISTING lead: the newest consent evidence for that lead must allow keeping personal data,
+    and (when health fields are sent) medical information. A lead with no evidence has no consent (record it first: POST /leads/{id}/consent)."""
+    from app.db.session import async_session_maker as maker, set_tenant_context
+    from app.models.crm import Lead
+    from app.services import consent_gate, halla_consent
+
+    if not await consent_gate.tenant_requires_consent(maker, tenant_id):
+        return
+    async with maker() as session:
+        await set_tenant_context(session, tenant_id)
+        lead = await session.get(Lead, lead_id)
+        if lead is None or lead.tenant_id != tenant_id:
+            return  # the service answers 404
+        state = await halla_consent.state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+    health = any(body.get(k) not in (None, "") for k in ("medical_history_summary", "insurance_notes", "procedure_id"))
+    missing = [s for s in (consent_gate.STORE_PERSONAL, consent_gate.STORE_MEDICAL if health else None) if s and not state.allows(s)]
+    if missing:
+        raise HTTPException(status_code=422, detail={"error": "consent_required", "missing_scopes": missing})
+
+
 @router.post("/patient-leads")
 async def create_patient_lead(
     body: dict,
@@ -420,6 +441,7 @@ async def create_patient_lead(
     travel_start_date?, travel_end_date?, has_insurance?, insurance_notes?}"""
     _require_manage(current_user)
     service = _service()
+    await _require_consent_for_patient_lead(current_user.tenant_id, uuid.UUID(body["lead_id"]), body)
     travel_start_date = date.fromisoformat(body["travel_start_date"]) if body.get("travel_start_date") else None
     travel_end_date = date.fromisoformat(body["travel_end_date"]) if body.get("travel_end_date") else None
     try:
