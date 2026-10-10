@@ -166,15 +166,15 @@ class TeamService:
 
         email_sent = False
         if self._comms is not None:
-            email_sent = await self._comms.send_email(
-                tenant_id, to=normalized_email,
+            email_sent = (await self._comms.deliver_email(
+                tenant_id, to=normalized_email, invite_id=invite.id,
                 subject=f"You've been invited to join {org_name} on Klaros",
                 body=(
                     f"You've been invited to join {org_name} on Klaros as {role.title()}. "
                     f"Use the link you were given to set up your account."
                 ),
                 template=MessageTemplate.TEAM_INVITE,
-            )
+            )).sent
 
         return invite, token, email_sent
 

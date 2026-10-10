@@ -112,6 +112,7 @@ from app.models.agent import (
     AgentVersion,
 )
 from app.models.rbac import Role
+from app.services.ai_boundary import bound_ai_provider, bound_embedding_provider
 from app.services.agent_execution_service import (
     EXECUTION_LEASE_DURATION,
     AgentExecutionService,
@@ -129,7 +130,7 @@ from app.tools.errors import (
     ToolPermissionError,
     ToolValidationError,
 )
-from app.tools.redact import redact_input
+from app.tools.redact import redact_input, redact_pii, scrub_text
 from app.tools.registry import ToolRegistry
 
 # Rule (bounded reasoning context): only this many of the most recent step
@@ -596,7 +597,7 @@ class AgentReasoningService:
         self, tenant_id: uuid.UUID, execution_id: uuid.UUID, prompt: str
     ) -> tuple[AgentDecision | None, str | None]:
         for attempt in range(_MAX_MALFORMED_OUTPUT_RETRIES + 1):
-            call_outcome = await self._ai_provider.generate_structured(prompt)
+            call_outcome = await bound_ai_provider(self._ai_provider, self._session_factory, tenant_id, "agent_reasoning").generate_structured(prompt)
             await record_ai_invocation(
                 self._session_factory, tenant_id=tenant_id, actor_type=ActorType.AGENT, actor_id=None,
                 operation="agent_reasoning_decide", outcome=call_outcome, correlation_id=execution_id,
@@ -788,10 +789,25 @@ class AgentReasoningService:
 
     # ------------------------------------------------------------ Storage
 
+    async def _pii_safe(self, tenant_id, value):
+        """For a consent-gated tenant (fail closed), persisted agent step inputs / outputs / errors / final responses carry no raw names, e-mails,
+        phones or free text from PII-bearing keys; other tenants are unchanged (credentials are still redacted upstream by redact_input)."""
+        if value is None:
+            return value
+        from app.services import consent_gate
+
+        if not await consent_gate.tenant_requires_consent(self._session_factory, tenant_id):
+            return value
+        if isinstance(value, (dict, list)):
+            return redact_pii(value)
+        return scrub_text(value) if isinstance(value, str) else value
+
     async def _write_step(
         self, tenant_id, execution_id, step_number, *, step_type, status, tool_name,
         input_summary, decision_summary, mark_pending: bool = False,
     ) -> None:
+        input_summary = await self._pii_safe(tenant_id, input_summary)
+        decision_summary = await self._pii_safe(tenant_id, decision_summary)
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)
             session.add(
@@ -817,6 +833,7 @@ class AgentReasoningService:
     ) -> None:
         from sqlalchemy import select
 
+        output_summary = await self._pii_safe(tenant_id, output_summary)
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)
             row = (
@@ -841,6 +858,8 @@ class AgentReasoningService:
         self, tenant_id, execution_id, status, termination_reason, *,
         error: str | None = None, final_response: str | None = None, step_count: int | None = None,
     ) -> AgentExecution:
+        error = await self._pii_safe(tenant_id, error)
+        final_response = await self._pii_safe(tenant_id, final_response)
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)

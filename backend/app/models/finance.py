@@ -321,6 +321,7 @@ class CollectionActionStatus(StrEnum):
     PENDING = "PENDING"
     EXECUTED = "EXECUTED"
     CANCELLED = "CANCELLED"
+    BLOCKED_CONSENT = "BLOCKED_CONSENT"  # consent guard refused the send; not retried, not delivered
 
 
 class CollectionAction(TenantScopedMixin, Base):

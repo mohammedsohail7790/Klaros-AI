@@ -122,11 +122,14 @@ class RetentionCampaignService:
 
                 if self._comms is not None and customer and customer.email:
                     template = _TEMPLATE_BY_TYPE.get(activity.template or "", MessageTemplate.POST_JOB_FOLLOWUP)
-                    await self._comms.send_email(
-                        tenant_id, to=customer.email, subject="A note from your service team",
+                    result = await self._comms.deliver_email(
+                        tenant_id, to=customer.email, customer_id=customer.id, subject="A note from your service team",
                         body=f"Reaching out regarding your recent service ({activity.template or 'follow-up'}).",
                         template=template,
                     )
+                    if result.blocked:
+                        activity.status = RetentionActivityStatus.BLOCKED_CONSENT
+                        continue
 
                 activity.status = RetentionActivityStatus.EXECUTED
                 activity.executed_at = now

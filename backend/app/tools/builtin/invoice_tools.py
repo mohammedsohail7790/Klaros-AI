@@ -335,6 +335,7 @@ class BulkImportInvoices(Tool):
     input_schema = BulkImportInvoicesInput
     output_schema = BulkImportInvoicesOutput
     required_permission = Permission.CREATE_INVOICE
+    pii_input_fields = ("invoices", "customer_name", "customer_email", "customer_phone", "description")
 
     def __init__(self, invoice_service: InvoiceService, session_factory) -> None:
         self._invoice_service = invoice_service

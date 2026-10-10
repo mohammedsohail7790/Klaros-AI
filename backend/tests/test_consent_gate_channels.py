@@ -51,7 +51,7 @@ def test_the_communication_factory_always_returns_the_consent_guard() -> None:
     assert isinstance(get_communication_provider(async_session_maker), ConsentGuardedProvider)
 
 
-async def test_outbound_messages_need_contact_consent_for_the_recipient_and_staff_invites_are_exempt(client, halla) -> None:  # noqa: F811
+async def test_outbound_messages_need_contact_consent_for_the_recipient(client, halla) -> None:  # noqa: F811
     token, tid = await _gated(client, "Gate Out", "gateout@example.com")
     inner = Recorder()
     guard = ConsentGuardedProvider(inner, async_session_maker)
@@ -60,7 +60,8 @@ async def test_outbound_messages_need_contact_consent_for_the_recipient_and_staf
 
     assert await send(to=PII_EMAIL) is True and await guard.send_sms(tid, to=PII_PHONE, body="b", template=MessageTemplate.LEAD_FOLLOW_UP) is True
     assert await send(to="stranger@example.com") is False                                         # a recipient that matches nobody is not messaged
-    assert await send(to="new.staff@example.com", template=MessageTemplate.TEAM_INVITE) is True    # staff invitations are not patient contact
+    # the TEAM_INVITE template name alone exempts nothing (see test_mt_hardening_comms.py for the genuine pending-invitee path)
+    assert await send(to="new.staff@example.com", template=MessageTemplate.TEAM_INVITE) is False
 
     # reaching the lead through a customer record that links to it
     async with async_session_maker() as s:

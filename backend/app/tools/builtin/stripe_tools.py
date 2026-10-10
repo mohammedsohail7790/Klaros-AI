@@ -67,6 +67,7 @@ class CreateStripeCheckoutSession(Tool):
     input_schema = CreateStripeCheckoutInput
     output_schema = CreateStripeCheckoutOutput
     required_permission = Permission.RECORD_PAYMENT
+    pii_input_fields = ("customer_email",)
     # Phase 7 (Agent Runtime Reliability II): verified true — Stripe's own
     # "Idempotency-Key" header (app/integrations/stripe_client.py) makes a
     # retried `create_checkout_session` call with the same key resolve to

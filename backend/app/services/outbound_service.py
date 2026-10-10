@@ -208,10 +208,13 @@ class OutboundService:
                 step = await session.get(OutboundStep, activity.step_id)
 
                 if self._comms is not None and contact and contact.email and step:
-                    await self._comms.send_email(
+                    result = await self._comms.deliver_email(
                         tenant_id, to=contact.email, subject=step.subject or "Follow-up",
                         body=step.body or "", template=MessageTemplate.OUTBOUND_SEQUENCE_STEP,
                     )
+                    if result.blocked:
+                        activity.status = ActivityStatus.BLOCKED_CONSENT
+                        continue
 
                 activity.status = ActivityStatus.EXECUTED
                 activity.executed_at = now

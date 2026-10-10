@@ -33,46 +33,50 @@ class OperationsCommunicationService:
         email = await self._customer_email(tenant_id, job.customer_id)
         if not email:
             return False
-        return await self._provider.send_email(
+        return (await self._provider.deliver_email(
             tenant_id,
             to=email,
+            customer_id=job.customer_id,
             subject=f"Your appointment is scheduled — {job.title}",
             body=f"Job {job.job_number} ('{job.title}') is scheduled for {job.scheduled_start}.",
             template=MessageTemplate.APPOINTMENT_CONFIRMATION,
-        )
+        )).sent
 
     async def notify_job_dispatched(self, tenant_id: uuid.UUID, job: Job) -> bool:
         email = await self._customer_email(tenant_id, job.customer_id)
         if not email:
             return False
-        return await self._provider.send_email(
+        return (await self._provider.deliver_email(
             tenant_id,
             to=email,
+            customer_id=job.customer_id,
             subject=f"Your technician is on the way — {job.title}",
             body=f"A technician has been dispatched for job {job.job_number}.",
             template=MessageTemplate.APPOINTMENT_REMINDER,
-        )
+        )).sent
 
     async def notify_job_en_route(self, tenant_id: uuid.UUID, job: Job) -> bool:
         email = await self._customer_email(tenant_id, job.customer_id)
         if not email:
             return False
-        return await self._provider.send_email(
+        return (await self._provider.deliver_email(
             tenant_id,
             to=email,
+            customer_id=job.customer_id,
             subject=f"Your technician is en route — {job.title}",
             body=f"Your technician is now en route for job {job.job_number}.",
             template=MessageTemplate.APPOINTMENT_REMINDER,
-        )
+        )).sent
 
     async def notify_job_completed(self, tenant_id: uuid.UUID, job: Job) -> bool:
         email = await self._customer_email(tenant_id, job.customer_id)
         if not email:
             return False
-        return await self._provider.send_email(
+        return (await self._provider.deliver_email(
             tenant_id,
             to=email,
+            customer_id=job.customer_id,
             subject=f"Job completed — {job.title}",
             body=f"Job {job.job_number} has been completed. Thank you for your business.",
             template=MessageTemplate.APPOINTMENT_CONFIRMATION,
-        )
+        )).sent

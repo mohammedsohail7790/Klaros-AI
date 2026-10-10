@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.marketing import SEOKeyword, SEOOpportunity, SEOPage, SEOPageStatus
+from app.services.ai_boundary import bound_ai_provider, bound_embedding_provider
 from app.services.ai_content_service import (
     generate_seo_page_draft,
     generate_seo_page_draft_via_ai,
@@ -60,7 +61,7 @@ class SEOService:
         if is_llm_connected():
             company_memory = format_context_as_text(await self._memory.get_context(tenant_id))
             ai_draft, outcome = await generate_seo_page_draft_via_ai(
-                service, location, self._ai_provider, company_memory=company_memory,
+                service, location, bound_ai_provider(self._ai_provider, self._session_factory, tenant_id, "seo_page"), company_memory=company_memory,
             )
             await record_ai_invocation(
                 self._session_factory, tenant_id=tenant_id, actor_type=actor_type, actor_id=actor_id,

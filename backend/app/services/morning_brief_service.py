@@ -36,6 +36,7 @@ from app.models.morning_brief import (
 )
 from app.models.organization import Organization
 from app.models.rbac import Role
+from app.services.ai_boundary import bound_ai_provider, bound_embedding_provider
 from app.services.ai_invocation_log_service import record_ai_invocation
 from app.services.ai_provider import get_ai_provider
 from app.services.company_memory_service import CompanyMemoryService, format_context_as_text
@@ -470,7 +471,7 @@ class MorningBriefService:
             # Empty list -> None, same "no fabricated guidance" honesty as
             # brand_voice above.
             company_memory = format_context_as_text(await self._memory.get_context(tenant_id))
-            result, call_outcome = await provider.enrich_brief(
+            result, call_outcome = await bound_ai_provider(provider, self._session_factory, tenant_id, "morning_brief").enrich_brief(
                 headline, insights, brand_voice=brand_voice, company_memory=company_memory,
             )
             if call_outcome is not None:

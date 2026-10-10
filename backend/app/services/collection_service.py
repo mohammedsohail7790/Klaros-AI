@@ -138,9 +138,10 @@ class CollectionService:
                 customer = await session.get(Customer, invoice.customer_id)
 
                 if self._comms is not None and customer and customer.email:
-                    await self._comms.send_email(
+                    result = await self._comms.deliver_email(
                         tenant_id,
                         to=customer.email,
+                        customer_id=customer.id,
                         subject=f"Payment reminder: Invoice {invoice.invoice_number}",
                         body=(
                             f"Invoice {invoice.invoice_number} for ${invoice.amount_due} is overdue "
@@ -148,6 +149,9 @@ class CollectionService:
                         ),
                         template=MessageTemplate.COLLECTION_REMINDER,
                     )
+                    if result.blocked:
+                        action.status = CollectionActionStatus.BLOCKED_CONSENT
+                        continue
 
                 action.status = CollectionActionStatus.EXECUTED
                 executed.append(action.id)

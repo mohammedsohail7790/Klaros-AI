@@ -18,7 +18,11 @@ import uuid
 from dataclasses import dataclass
 from typing import Iterable
 
+import structlog
+
 from app.models.actor import ActorType
+
+logger = structlog.get_logger()
 
 STORE_PERSONAL, STORE_MEDICAL, CONTACT = "store_personal_data", "store_medical_information", "contact"
 ALL_SCOPES = (CONTACT, STORE_PERSONAL, STORE_MEDICAL)
@@ -56,25 +60,33 @@ def claim_from_tool(raw: dict | None, actor_type: ActorType, actor_id: uuid.UUID
 
 
 async def tenant_requires_consent(session_factory, tenant_id: uuid.UUID | None) -> bool:
+    """True when the tenant is consent-gated. FAILS CLOSED: if the tenant's status cannot be established (any lookup error) it is treated as gated,
+    so a database or catalogue hiccup can never turn a Medical Tourism tenant into an ungated one. Only an ESTABLISHED answer leaves a tenant
+    ungated: no Halla safety profile requiring evidence, and every gated vertical either absent from the catalogue (an established "not enabled")
+    or looked up successfully and not enabled for this tenant. A tenant with no id (system context) has nothing to gate."""
     if tenant_id is None:
         return False
     from app.db.session import set_tenant_context
     from app.services import pilot_safety
-    from app.services.vertical_extension_service import VerticalExtensionService
+    from app.services.vertical_extension_service import VerticalExtensionNotFoundError, VerticalExtensionService
 
-    async with session_factory() as session:
-        await set_tenant_context(session, tenant_id)
-        profile = await pilot_safety.profile_in_session(session, tenant_id)
-    if profile is not None and profile.requires_consent_evidence:
+    try:
+        async with session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            profile = await pilot_safety.profile_in_session(session, tenant_id)
+        if profile is not None and profile.requires_consent_evidence:
+            return True
+        service = VerticalExtensionService(session_factory)
+        for key in GATED_VERTICAL_KEYS:
+            try:
+                if await service.is_enabled_for_organization(tenant_id, key):
+                    return True
+            except VerticalExtensionNotFoundError:
+                continue  # the catalogue has no such vertical: an established "not enabled", not a lookup failure
+        return False
+    except Exception:  # noqa: BLE001 - status unknown: fail closed, never open
+        logger.warning("consent_gate_status_unknown_failing_closed", tenant_id=str(tenant_id))
         return True
-    service = VerticalExtensionService(session_factory)
-    for key in GATED_VERTICAL_KEYS:
-        try:
-            if await service.is_enabled_for_organization(tenant_id, key):
-                return True
-        except Exception:  # noqa: BLE001 - a catalogue lookup problem must not break a non-gated tenant's intake
-            continue
-    return False
 
 
 async def approved_wording_versions(session_factory, tenant_id: uuid.UUID) -> list[str]:
@@ -127,9 +139,17 @@ async def customer_leads_allow(session_factory, tenant_id: uuid.UUID, customer_i
     return True
 
 
-async def recipient_may_be_contacted(session_factory, tenant_id: uuid.UUID, *, email: str | None = None, phone: str | None = None) -> bool:
-    """Contact consent for an outbound message recipient, identified only by address. Fail closed: the recipient must match at least one lead
-    (directly, or through a customer record) and EVERY matching lead's newest evidence must grant `contact`."""
+async def contact_decision(
+    session_factory, tenant_id: uuid.UUID, *, email: str | None = None, phone: str | None = None,
+    lead_id: uuid.UUID | None = None, customer_id: uuid.UUID | None = None,
+) -> tuple[bool, str]:
+    """(allowed, reason_code) for an outbound message to `email` / `phone`. Fails closed.
+
+    UNBOUND (no lead_id / customer_id): the address must resolve to exactly ONE patient (one customer, or one customer-less lead) and every lead of
+    that patient must have newest evidence granting `contact`. An address shared by several patients (family e-mail, shared phone) is AMBIGUOUS and
+    is blocked: one person's consent must not authorise a message about another.
+    BOUND: the validated lead / customer must belong to the tenant, the address must be that patient's own, and only that patient's leads are
+    checked, so a shared address can still be used for the patient the caller can prove the message is about."""
     from sqlalchemy import or_, select
 
     from app.db.session import set_tenant_context
@@ -139,24 +159,74 @@ async def recipient_may_be_contacted(session_factory, tenant_id: uuid.UUID, *, e
 
     e, ph = normalize_email(email), normalize_phone(phone)
     if not e and not ph:
-        return False
+        return False, "no_recipient_address"
     async with session_factory() as session:
         await set_tenant_context(session, tenant_id)
-        lead_keys = ([Lead.email == e] if e else []) + ([Lead.phone_normalized == ph] if ph else [])
-        cust_keys = ([Customer.email == e] if e else []) + ([Customer.phone_normalized == ph] if ph else [])
-        leads = list((await session.execute(select(Lead).where(Lead.tenant_id == tenant_id, or_(*lead_keys)))).scalars())
-        cust_ids = [c for c in (await session.execute(select(Customer.id).where(Customer.tenant_id == tenant_id, or_(*cust_keys)))).scalars()]
-        if cust_ids:
-            leads += list((await session.execute(select(Lead).where(Lead.tenant_id == tenant_id, Lead.customer_id.in_(cust_ids)))).scalars())
-        seen, unique = set(), []
+
+        async def leads_of_customer(cid):
+            return list((await session.execute(select(Lead).where(Lead.tenant_id == tenant_id, Lead.customer_id == cid))).scalars())
+
+        if lead_id is not None or customer_id is not None:
+            lead = await session.get(Lead, lead_id) if lead_id is not None else None
+            if lead_id is not None and (lead is None or lead.tenant_id != tenant_id):
+                return False, "bound_identity_not_found"
+            customer = await session.get(Customer, customer_id) if customer_id is not None else None
+            if customer_id is not None and (customer is None or customer.tenant_id != tenant_id):
+                return False, "bound_identity_not_found"
+            if lead is not None and customer is not None and lead.customer_id != customer.id:
+                return False, "bound_identity_conflict"
+            if customer is None and lead is not None and lead.customer_id is not None:
+                customer = await session.get(Customer, lead.customer_id)
+            own_emails = {normalize_email(x) for x in ((lead.email if lead else None), (customer.email if customer else None)) if x}
+            own_phones = {normalize_phone(x) for x in ((lead.phone if lead else None), (customer.phone if customer else None)) if x}
+            if (e and e not in own_emails) or (ph and ph not in own_phones):
+                return False, "recipient_not_bound_patient"
+            leads = [lead] if (lead is not None and customer is None) else (await leads_of_customer(customer.id) if customer is not None else [])
+            if lead is not None and lead not in leads:
+                leads.append(lead)
+            if not leads:
+                return False, "no_lead_evidence"
+        else:
+            lead_keys = ([Lead.email == e] if e else []) + ([Lead.phone_normalized == ph] if ph else [])
+            cust_keys = ([Customer.email == e] if e else []) + ([Customer.phone_normalized == ph] if ph else [])
+            leads = list((await session.execute(select(Lead).where(Lead.tenant_id == tenant_id, or_(*lead_keys)))).scalars())
+            cust_ids = list((await session.execute(select(Customer.id).where(Customer.tenant_id == tenant_id, or_(*cust_keys)))).scalars())
+            if cust_ids:
+                leads += list((await session.execute(select(Lead).where(Lead.tenant_id == tenant_id, Lead.customer_id.in_(cust_ids)))).scalars())
+            patients = {("c", x) for x in cust_ids} | {("c", l.customer_id) if l.customer_id else ("l", l.id) for l in leads}
+            if not patients:
+                return False, "recipient_matches_no_patient"
+            if len(patients) > 1:
+                return False, "ambiguous_recipient"
+        seen: set = set()
         for lead in leads:
-            if lead.id not in seen:
-                seen.add(lead.id)
-                unique.append(lead)
-        if not unique:
-            return False
-        for lead in unique:
+            if lead.id in seen:
+                continue
+            seen.add(lead.id)
             state = await halla_consent.state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
             if not state.allows(CONTACT):
-                return False
-    return True
+                return False, "no_contact_consent"
+    return True, "ok"
+
+
+async def recipient_may_be_contacted(session_factory, tenant_id: uuid.UUID, *, email: str | None = None, phone: str | None = None) -> bool:
+    """Unbound contact check (kept for callers that only have an address): see `contact_decision`."""
+    return (await contact_decision(session_factory, tenant_id, email=email, phone=phone))[0]
+
+
+async def is_genuine_pending_invitee(session_factory, tenant_id: uuid.UUID, invite_id: uuid.UUID | None, email: str | None) -> bool:
+    """True only for a real, unexpired PENDING team invitation of THIS tenant addressed to exactly `email`."""
+    if invite_id is None or not email:
+        return False
+    from datetime import UTC, datetime
+
+    from app.db.session import set_tenant_context
+    from app.models.user import InviteStatus, TeamInvite
+
+    async with session_factory() as session:
+        await set_tenant_context(session, tenant_id)
+        invite = await session.get(TeamInvite, invite_id)
+    if invite is None or invite.tenant_id != tenant_id or str(invite.status) != str(InviteStatus.PENDING):
+        return False
+    exp = invite.expires_at if invite.expires_at.tzinfo else invite.expires_at.replace(tzinfo=UTC)
+    return exp > datetime.now(UTC) and invite.email.strip().lower() == email.strip().lower()

@@ -40,7 +40,12 @@
 | 14 | What happens to customers/invoices/quotes/jobs referencing an erased lead (financial records have their own rules) | customer kept if referenced, reported |
 | 15 | Keep the public web form closed, or approve wording labels for it | **closed** |
 | 16 | Are transactional messages (appointment confirmations, invoices) exempt from `contact` consent? | **no exemption: every patient-facing message needs `contact`** |
-| 17 | Operator-authored free text on appointments/jobs/quotes/contracts (not intake) | not gated (§3 residual) |
+| 17 | Operator-authored free text on appointments/jobs/quotes/contracts/consultations (not intake) | not gated (§3 residual) |
+| 18 | May an external AI / embedding provider ever process a gated tenant's content? On what lawful basis (AI-processing consent, processor agreement)? | **none: `AI_EXTERNAL_PROCESSING_ALLOWED_PROVIDERS` is empty** |
+| 19 | Operator-attested consent (a staff member ticks a box) — is it sufficient evidence? | accepted as `operator_attested` evidence, recorded with the person's id; **no legal claim made** |
+| 20 | Sharing patient data with hospitals / providers | not implemented; any such feature is a separate decision |
+
+Full wording of items 16–20 and the other open policy questions: `docs/MEDICAL_TOURISM_POLICY_DECISIONS.md`.
 
 **P3 — execution once P0/P1 are done:** deploy (§4) → synthetic end-to-end test (§6) → only then may the integration be called verified.
 
@@ -73,10 +78,15 @@ A tenant is gated when its Halla connection has the Medical Tourism profile **or
 | Marketplace lead webhook | acknowledged, nothing stored |
 | Referral → lead | refused (a referred friend has not consented) |
 | Lead → customer/job conversion | needs `store_personal_data` on the lead |
-| **All outbound email/SMS** (one choke point: `get_communication_provider` returns the consent guard) | sent only if the recipient resolves to a lead whose newest evidence grants `contact`; unknown recipient not sent; staff invites exempt |
+| **All outbound email/SMS** (one choke point: `get_communication_provider` returns the consent guard) | sent only if the recipient resolves to exactly ONE patient whose leads' newest evidence grants `contact`; an address shared by several patients is ambiguous and blocked unless the caller binds a validated `lead_id`/`customer_id` (the address must be that patient's own); unknown recipient not sent; a team invite is exempt only for a real, unexpired, PENDING invitation of that tenant addressed to that exact e-mail (`invite_id`), the template name alone exempts nothing |
+| Collection / outbound sequence / nurture / retention / review-request workflows | a send refused by the guard is recorded as `BLOCKED_CONSENT` (never `EXECUTED`/`REQUESTED`, no "request created" event) and is not picked up again |
+| `PATCH /customers/{id}`, `crm.update_customer` | adding or changing name/e-mail/phone/address needs `store_personal_data`, a note needs `store_medical_information`, on every lead behind the customer (a customer with no lead has no evidence); clearing a field and status changes stay possible |
+| Consent-gate status lookup | **fails closed**: any lookup error is treated as gated; only an established "not gated" leaves a tenant ungated |
+| AI providers (qualification, next action, agent reasoning incl. tool results, knowledge Q&A, voice, morning brief, discovery, content/SEO/website copy, embeddings) | every call goes through `app/services/ai_boundary.py` (static test enforces it): a gated tenant's content reaches an EXTERNAL provider only if that provider is allowlisted (default none); unknown tenant/status is refused; deterministic is recognised by class, not assumed |
+| Agent execution steps / results / errors | persisted redacted for gated tenants |
 | Halla outbound call / sync-to-Halla | need `contact` |
-| Tool audit log | personal fields replaced by `***PII***` (lead, customer, outbound-contact, referral tools) |
-**Residual (A / decisions):** operator-authored free text on appointments, jobs, quotes, contracts and consultations is not gated (it describes existing records); `crm.update_customer` edits existing customers; AI lead qualification sends lead text to the configured AI provider — the pilot's `AI_PROVIDER`/keys must be confirmed to be the internal deterministic provider (A); the invoice-delivery adapter is an internal recorder only (V). The pilot configures no Twilio/SendGrid credentials (A: confirm on the live service) — the guard protects it if they are ever added.
+| Tool audit log | for a gated tenant EVERY tool's audit row is redacted: PII-keyed values replaced by `***PII***`, e-mail/phone patterns scrubbed from the rest, validation/refusal errors reduced to field paths (incl. invoice bulk import, Stripe checkout e-mail, refused operations) |
+**Residual (A / decisions):** operator-authored free text on appointments, jobs, quotes, contracts and consultations is not gated (it describes existing records); redaction of free text is by key and by e-mail/phone pattern only — **medical wording inside an unkeyed string cannot be reliably detected**; the AI boundary blocks external providers for gated tenants by default, but the pilot's real `AI_PROVIDER`/keys and the allowlist value must still be confirmed on the live service (A) — `ai_boundary.effective_provider_report()` shows what the runtime resolves to; the Klaros voice receptionist and its speech provider are disabled for gated tenants at call creation; the invoice-delivery adapter is an internal recorder only (V). The pilot configures no Twilio/SendGrid credentials (A: confirm on the live service) — the guard protects it if they are ever added.
 
 ## 4. Migration plans, backup, rollback (nothing applied)
 **Klaros** (pilot DB `klaros_halla_pilot`, Neon): revision graph `… → 0064 → 0065_halla_consent_evidence` (single head, V; no Dropshipping migration in this tree, V). Offline SQL for `0064→head` is only `CREATE TABLE halla_consent_evidence` (+ `source`, `actor_user_id`), 3 indexes, RLS + select/insert/update policies, `UPDATE alembic_version` (V). It is applied by the service at boot (`scripts.start` → `alembic upgrade head`) after the identity checks; do **not** apply by hand. The main tree's unreleased `0065`–`0067` must be renumbered after this one when they merge (a test fails on two heads).

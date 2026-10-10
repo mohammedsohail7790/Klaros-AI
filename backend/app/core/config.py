@@ -230,6 +230,10 @@ class Settings(BaseSettings):
     # get_ai_provider() still falls back to deterministic if the matching key
     # is missing, it never fabricates a connection.
     AI_PROVIDER: str = "auto"
+    # Consent-gated tenants (Medical Tourism): comma-separated names of EXTERNAL AI / embedding providers that may receive their content. Empty
+    # (the default) means NONE: such a tenant's data is never sent out and every AI call degrades to its deterministic path. Adding a name here is a
+    # legal / data-processing decision (see docs/MEDICAL_TOURISM_POLICY_DECISIONS.md), not a technical switch. Other tenants are not affected.
+    AI_EXTERNAL_PROCESSING_ALLOWED_PROVIDERS: str = ""
     ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
     OPENAI_MODEL: str = "gpt-4o-mini"
     # Phase 12E: previously hardcoded in app/services/ai_provider.py —

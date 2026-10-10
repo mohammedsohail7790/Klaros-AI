@@ -175,6 +175,7 @@ class ReviewStatus(StrEnum):
     RECEIVED = "RECEIVED"
     SKIPPED = "SKIPPED"
     FAILED = "FAILED"
+    BLOCKED_CONSENT = "BLOCKED_CONSENT"
 
 
 class ReviewChannel(StrEnum):
@@ -451,6 +452,7 @@ class RetentionActivityStatus(StrEnum):
     EXECUTED = "EXECUTED"
     SKIPPED = "SKIPPED"
     FAILED = "FAILED"
+    BLOCKED_CONSENT = "BLOCKED_CONSENT"  # consent guard refused the send; not retried, not delivered
 
 
 class RetentionActivity(TenantScopedMixin, Base):

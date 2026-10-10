@@ -490,6 +490,7 @@ class ActivityStatus(StrEnum):
     EXECUTED = "EXECUTED"
     SKIPPED = "SKIPPED"
     FAILED = "FAILED"
+    BLOCKED_CONSENT = "BLOCKED_CONSENT"  # consent guard refused the send; not retried, not delivered
 
 
 class OutboundActivity(TenantScopedMixin, Base):

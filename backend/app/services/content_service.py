@@ -28,6 +28,7 @@ from app.models.marketing import (
 from app.models.actor import ActorType
 from app.models.operations import Job, JobAttachment
 from app.models.retention import CustomerFeedback, FeedbackSentiment
+from app.services.ai_boundary import bound_ai_provider, bound_embedding_provider
 from app.services.ai_content_service import (
     JobContentInput,
     generate_job_caption,
@@ -230,7 +231,7 @@ class ContentService:
         if is_llm_connected():
             company_memory = format_context_as_text(await self._memory.get_context(tenant_id))
             caption, outcome = await generate_job_caption_via_ai(
-                job_input, self._ai_provider, company_memory=company_memory,
+                job_input, bound_ai_provider(self._ai_provider, self._session_factory, tenant_id, "marketing_caption"), company_memory=company_memory,
             )
             await record_ai_invocation(
                 self._session_factory, tenant_id=tenant_id, actor_type=actor_type, actor_id=created_by,

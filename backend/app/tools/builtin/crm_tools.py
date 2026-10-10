@@ -559,6 +559,35 @@ class UpdateCustomer(Tool):
     def __init__(self, session_factory: async_sessionmaker) -> None:
         self._session_factory = session_factory
 
+    async def _require_consent_for_changes(self, input: UpdateCustomerInput, customer: Customer, context: ExecutionContext) -> None:
+        """Consent gate for editing an EXISTING customer of a consent-gated tenant (Medical Tourism). Adding or changing personal data (name, e-mail,
+        phone, address) needs `store_personal_data`; a note (free text that may hold health information) needs `store_medical_information`, exactly
+        like `crm.create_note`. Both are checked against EVERY lead behind the customer, so a customer with no lead behind it (no evidence) cannot be
+        edited. Clearing a field is never refused (erasure must stay possible), and re-sending an unchanged value is not a change. `status` is not
+        personal data. Non-gated tenants are untouched."""
+
+        def adds(new: str | None, old: str | None) -> bool:
+            return new is not None and new.strip() != "" and new != old
+
+        personal = (
+            adds(input.name, customer.name)
+            or adds(input.email, customer.email) and normalize_email(input.email) != customer.email
+            or adds(input.phone, customer.phone)
+            or adds(input.address, customer.address)
+        )
+        medical = adds(input.notes, customer.notes)
+        if not (personal or medical):
+            return
+        if not await consent_gate.tenant_requires_consent(self._session_factory, context.tenant_id):
+            return
+        missing = [
+            scope
+            for scope, needed in ((consent_gate.STORE_PERSONAL, personal), (consent_gate.STORE_MEDICAL, medical))
+            if needed and not await consent_gate.customer_leads_allow(self._session_factory, context.tenant_id, customer.id, scope)
+        ]
+        if missing:
+            raise consent_gate.ConsentRequiredError(missing)
+
     async def execute(self, input: UpdateCustomerInput, context: ExecutionContext) -> CustomerOutput:
         if input.status is not None:
             try:
@@ -571,6 +600,7 @@ class UpdateCustomer(Tool):
             customer = await session.get(Customer, input.customer_id)
             if customer is None or customer.tenant_id != context.tenant_id:
                 raise ValueError("Customer not found")
+            await self._require_consent_for_changes(input, customer, context)
             if input.name is not None:
                 customer.name = input.name
             if input.email is not None:

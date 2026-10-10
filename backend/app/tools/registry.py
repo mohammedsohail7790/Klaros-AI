@@ -32,7 +32,7 @@ from app.tools.errors import (
     ToolValidationError,
 )
 from app.tools.policy import ActionPolicy
-from app.tools.redact import redact_input
+from app.tools.redact import redact_input, redact_pii, safe_error_text, scrub_text
 
 logger = structlog.get_logger(__name__)
 
@@ -194,7 +194,8 @@ class ToolRegistry:
             validated_input = tool.input_schema.model_validate(raw_input)
         except ValidationError as exc:
             await self._audit(
-                context, tool_name=name, raw_input=raw_input, result="failure", error=str(exc)
+                context, tool_name=name, raw_input=raw_input, result="failure", error=str(exc),
+                safe_error=safe_error_text(exc),
             )
             raise ToolValidationError(str(exc)) from exc
 
@@ -365,14 +366,21 @@ class ToolRegistry:
         approval_id: uuid.UUID | None = None,
         entity_type: str | None = None,
         entity_id: uuid.UUID | None = None,
+        safe_error: str | None = None,
     ) -> None:
         summary = redact_input(raw_input)
         tool = self._tools.get(tool_name)
-        if tool is not None and tool.pii_input_fields and context.tenant_id is not None:
+        # Consent-gated tenants (Medical Tourism): EVERY tool's audit row is redacted, not only tools that declared PII fields — personal, contact,
+        # free-text and health values are masked by key, and e-mail/phone patterns are scrubbed from the rest. The error text of a refused or failed
+        # call is reduced the same way (`safe_error` for a validation error, which would otherwise echo the offending value). The gate lookup only
+        # runs when redaction would actually change something, so tools that carry nothing personal pay nothing; non-gated tenants are unchanged.
+        redacted = redact_pii(summary, tool.pii_input_fields if tool is not None else ())
+        safe_err = (safe_error if safe_error is not None else scrub_text(error)) if error else None
+        if (redacted != summary or safe_err != error) and context.tenant_id is not None:
             from app.services.consent_gate import tenant_requires_consent
 
             if await tenant_requires_consent(self._session_factory, context.tenant_id):
-                summary = {k: ("***PII***" if k in tool.pii_input_fields else v) for k, v in summary.items()}
+                summary, error = redacted, safe_err
         if error:
             summary = {**summary, "_error": error}
 

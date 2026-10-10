@@ -47,6 +47,7 @@ from app.models.actor import ActorType
 from app.models.crm import Customer
 from app.models.rbac import Role
 from app.models.voice import BookingState, CallOutcome
+from app.services.ai_boundary import bound_ai_provider, bound_embedding_provider
 from app.services.ai_invocation_log_service import record_ai_invocation
 from app.services.ai_provider import AIProvider
 from app.services.customer_matching import find_matching_customer
@@ -308,7 +309,7 @@ class VoiceConversationService:
             return TurnResult(reply_text=reply, outcome=CallOutcome.AI_FAILURE, call_ended=True, handoff=True)
 
         prompt = _build_prompt(call.transcript, caller_text)
-        outcome = await self._provider.generate_structured(prompt)
+        outcome = await bound_ai_provider(self._provider, self._session_factory, tenant_id, "voice_conversation").generate_structured(prompt)
         await record_ai_invocation(
             self._session_factory, tenant_id=tenant_id, actor_type=ActorType.AI, actor_id=None,
             operation="voice_receptionist_turn", outcome=outcome,
