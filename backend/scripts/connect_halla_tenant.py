@@ -8,7 +8,7 @@ list), stored encrypted per tenant through the same service the Workforce page u
 printed is the result of a REAL health request to Halla, unless --skip-verify is given: then NO request is made, the credential is saved
 and the status is UNVERIFIED (never CONNECTED) — signed webhooks from Halla are accepted either way; only DISCONNECTED stops them. Re-running
 with a new HALLA_WEBHOOK_SECRET/HALLA_API_KEY replaces the stored credential (this is how a secret is rotated). Requires WORKFORCE_ADAPTER=halla and the HALLA_* deployment
-configuration (see .env.example).
+configuration (see .env.example). Optional HALLA_SAFETY_PROFILE=medical_tourism (non-secret) sets the tenant's safety profile.
 """
 
 from __future__ import annotations
@@ -27,8 +27,27 @@ async def connect(klaros_tenant_id: uuid.UUID, halla_tenant_id: str, environ: Ma
     api_key, secret = environ.get(key_var, ""), environ.get(secret_var, "")
     if not api_key or not secret:
         raise SystemExit(f"{key_var} and {secret_var} must be set in the environment.")
+    profile = (environ.get("HALLA_SAFETY_PROFILE") or "").strip()
+    if profile:
+        from app.services.pilot_safety import PROFILES
+
+        if profile not in PROFILES:
+            raise SystemExit(f"HALLA_SAFETY_PROFILE must be one of: {', '.join(sorted(PROFILES))} (or unset).")
     service = get_halla_integration_service()
     report = await service.connect(klaros_tenant_id, None, halla_tenant_id=halla_tenant_id, api_key=api_key, signing_secret=secret, verify=verify)
+    if profile:
+        # Non-secret tenant setting, merged into the connection's metadata exactly like scripts.start does for HALLA_PILOT_TENANTS: it is what turns on
+        # the consent gate and the Medical Tourism safety screening for this tenant.
+        from sqlalchemy import select
+
+        from app.db.session import async_session_maker, set_tenant_context
+        from app.models.integration import IntegrationConnection
+
+        async with async_session_maker() as db:
+            await set_tenant_context(db, klaros_tenant_id)
+            row = (await db.execute(select(IntegrationConnection).where(IntegrationConnection.tenant_id == klaros_tenant_id, IntegrationConnection.provider == "halla"))).scalar_one()
+            row.connection_metadata = {**(row.connection_metadata or {}), "safety_profile": profile}
+            await db.commit()
     info = await service.connection_info(klaros_tenant_id)
     conn = await service._connections.get_connection(klaros_tenant_id, "halla")
     return {"connection_status": conn.status if conn is not None else None, "status": report.status.value, "message": report.message, "halla_tenant_id": info["halla_tenant_id"], "webhook_url": info["webhook_url"]}

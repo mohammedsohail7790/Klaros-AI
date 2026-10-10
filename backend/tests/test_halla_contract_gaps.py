@@ -104,3 +104,22 @@ async def test_a_lead_qualified_without_its_qualification_changes_nothing_and_fi
                      "data": {"leadId": HALLA_LEAD, "klarosLeadId": lead, "qualification": "qualified", "status": "qualified"}}).encode()
     await _deliver(client, tid, ok, secret=SECRET)
     assert await _lead_state(client, token, lead) == ("QUALIFIED", "QUALIFIED") and len(await _events_of(tid, "halla.lead.qualified")) == 1
+
+
+async def test_the_connect_script_sets_the_medical_tourism_profile_from_a_non_secret_env_var(client, halla) -> None:  # noqa: F811
+    """How the dedicated staging tenant becomes Medical Tourism without editing its start command: HALLA_SAFETY_PROFILE=medical_tourism."""
+    from scripts.connect_halla_tenant import connect
+    from tests.test_business_journey_api import _register
+    from tests.test_halla_integration import API_KEY, HALLA_TENANT, _tenant_id
+    from app.services import consent_gate
+    from app.db.session import async_session_maker
+
+    token = await _register(client, "Script Profile", "scriptprofile@example.com")
+    tid = await _tenant_id(client, token)
+    env = {"HALLA_API_KEY": API_KEY, "HALLA_WEBHOOK_SECRET": SECRET, "HALLA_SAFETY_PROFILE": "medical_tourism"}
+    assert await consent_gate.tenant_requires_consent(async_session_maker, tid) is False
+    result = await connect(tid, HALLA_TENANT, env)
+    assert result["status"] == "CONNECTED" and SECRET not in repr(result) and API_KEY not in repr(result)
+    assert await consent_gate.tenant_requires_consent(async_session_maker, tid) is True            # the profile turns the consent gate on
+    with pytest.raises(SystemExit):
+        await connect(tid, HALLA_TENANT, {**env, "HALLA_SAFETY_PROFILE": "not_a_profile"})          # an unknown profile is refused, never ignored
