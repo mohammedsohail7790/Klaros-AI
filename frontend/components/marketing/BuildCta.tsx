@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { getAccessToken } from "@/lib/session";
 
 /**
  * The marketing site's primary call to action. It always lands in the real
@@ -26,7 +27,7 @@ export function BuildCta({
   const [href, setHref] = useState("/register");
   useEffect(() => {
     try {
-      if (sessionStorage.getItem("klaros_access_token")) setHref("/business");
+      if (getAccessToken()) setHref("/business");
     } catch {
       // sessionStorage unavailable — sign-up is the safe default.
     }

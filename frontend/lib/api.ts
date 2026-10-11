@@ -1,13 +1,18 @@
+import { clearSession, getRefreshToken, setSession } from "@/lib/session";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {
   status: number;
   /** The backend's closed error code for a {error, message} detail (for example "no_share_consent"), when it sent one. */
   code?: string;
-  constructor(status: number, message: string, code?: string) {
+  /** The rest of a structured error detail (for example the list of workspaces in a "multiple_workspaces" answer). */
+  details?: Record<string, unknown>;
+  constructor(status: number, message: string, code?: string, details?: Record<string, unknown>) {
     super(message);
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -57,7 +62,7 @@ let refreshPromise: Promise<string | null> | null = null;
 
 async function trySilentRefresh(): Promise<string | null> {
   if (typeof window === "undefined") return null;
-  const refreshToken = sessionStorage.getItem("klaros_refresh_token");
+  const refreshToken = getRefreshToken();
   if (!refreshToken) return null;
 
   if (!refreshPromise) {
@@ -67,10 +72,10 @@ async function trySilentRefresh(): Promise<string | null> {
       body: JSON.stringify({ refresh_token: refreshToken }),
     })
       .then(async (res) => {
+        if (res.status === 401) clearSession(); // the refresh token is revoked or expired: this session is over
         if (!res.ok) return null;
         const body = await res.json();
-        sessionStorage.setItem("klaros_access_token", body.access_token);
-        sessionStorage.setItem("klaros_refresh_token", body.refresh_token);
+        setSession({ access_token: body.access_token, refresh_token: body.refresh_token });
         return body.access_token as string;
       })
       .catch(() => null)
@@ -125,7 +130,8 @@ async function request<T>(path: string, init?: RequestInit, _isRetry = false): P
     const body = await res.json().catch(() => ({ detail: res.statusText }));
     const detail = formatErrorDetail(body.detail ?? body);
     const code = body.detail && typeof body.detail === "object" && typeof (body.detail as { error?: unknown }).error === "string" ? (body.detail as { error: string }).error : undefined;
-    throw new ApiError(res.status, detail || "Request failed", code);
+    const details = body.detail && typeof body.detail === "object" && !Array.isArray(body.detail) ? (body.detail as Record<string, unknown>) : undefined;
+    throw new ApiError(res.status, detail || "Request failed", code, details);
   }
 
   // 202 Accepted for an APPROVAL_REQUIRED tool call: FastAPI's HTTPException
@@ -178,7 +184,7 @@ export interface UserResponse {
   role: string;
 }
 
-export function login(organization_slug: string, email: string, password: string) {
+export function login(organization_slug: string | null, email: string, password: string) {
   return request<TokenResponse>("/api/v1/auth/login", {
     method: "POST",
     body: JSON.stringify({ organization_slug, email, password }),
@@ -5712,4 +5718,25 @@ export function submitMedicalTourismSetup(token: string, body: { business_name: 
 
 export function confirmSetupItem(token: string, key: string, confirmed: boolean) {
   return request<MedicalTourismSetup>("/api/v1/business-setup/medical-tourism/confirm", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ key, confirmed }) });
+}
+
+// --- Account lifecycle (backend auth.py / account_service.py) ---
+export function forgotPassword(email: string) {
+  return request<{ message: string }>("/api/v1/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
+}
+
+export function resetPassword(token: string, new_password: string) {
+  return request<void>("/api/v1/auth/reset-password", { method: "POST", body: JSON.stringify({ token, new_password }) });
+}
+
+export function changePassword(accessToken: string, current_password: string, new_password: string) {
+  return request<TokenResponse>("/api/v1/auth/change-password", {
+    method: "POST",
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({ current_password, new_password }),
+  });
+}
+
+export function sendContactMessage(body: { name: string; email: string; message: string; website?: string }) {
+  return request<{ message: string }>("/api/v1/public/contact", { method: "POST", body: JSON.stringify(body) });
 }

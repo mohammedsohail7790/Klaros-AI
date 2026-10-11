@@ -31,6 +31,7 @@ import {
   Plug,
   CreditCard,
   UserPlus,
+  UserCog,
   Truck,
   ShieldCheck,
   ChevronDown,
@@ -54,6 +55,7 @@ import {
   ClipboardList,
   Send,
 } from "lucide-react";
+import { clearSession, getAccessToken } from "@/lib/session";
 import { UserResponse, logout as logoutRequest } from "@/lib/api";
 import NotificationBell from "./NotificationBell";
 import { usePilotMode } from "@/lib/usePilotMode";
@@ -160,6 +162,7 @@ const MODULE_SECTIONS: { label: string; items: NavItem[] }[] = [
       { href: "/settings/integrations", label: "Integrations", icon: Plug },
       { href: "/settings/billing", label: "Billing", icon: CreditCard },
       { href: "/settings/team", label: "Team", icon: UserPlus },
+      { href: "/settings/account", label: "Account & security", icon: UserCog },
       { href: "/settings/compliance", label: "Compliance", icon: ShieldCheck },
     ],
   },
@@ -204,6 +207,7 @@ const PILOT_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Settings",
     items: [
       { href: "/settings/team", label: "Team", icon: UserPlus },
+      { href: "/settings/account", label: "Account & security", icon: UserCog },
       { href: "/settings/compliance", label: "Privacy & consent", icon: ShieldCheck },
     ],
   },
@@ -270,7 +274,7 @@ export default function AppShell({
   const ActiveIcon = activeItem?.icon ?? null;
 
   useEffect(() => {
-    setToken(sessionStorage.getItem("klaros_access_token"));
+    setToken(getAccessToken());
   }, []);
 
   // The sidebar is a fixed overlay below the lg breakpoint — close it on every navigation.
@@ -328,14 +332,13 @@ export default function AppShell({
   }, [query, navItems]);
 
   async function signOut() {
-    const currentToken = sessionStorage.getItem("klaros_access_token");
+    const currentToken = getAccessToken();
     if (currentToken) {
       // Real revocation: bumps the user's token_version server-side. Best-effort — even if
       // this fails (e.g. already expired), still clear local state below.
       await logoutRequest(currentToken).catch(() => {});
     }
-    sessionStorage.removeItem("klaros_access_token");
-    sessionStorage.removeItem("klaros_refresh_token");
+    clearSession();
     router.push("/login");
   }
 
