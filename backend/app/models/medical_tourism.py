@@ -91,6 +91,10 @@ class Provider(TenantScopedMixin, Base):
     contact_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=ProviderStatus.ACTIVE, index=True)
+    # UNVERIFIED | UNDER_REVIEW | VERIFIED | SUSPENDED | EXPIRED. Only an ACTIVE provider that is currently VERIFIED can be matched or referred to (services/mt_referrals.py).
+    verification_status: Mapped[str] = mapped_column(String(16), nullable=False, default="UNVERIFIED", server_default="UNVERIFIED", index=True)
+    verification_updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    verification_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 
     __table_args__ = (
@@ -206,6 +210,12 @@ class PatientLead(TenantScopedMixin, Base):
     travel_end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     has_insurance: Mapped[bool | None] = mapped_column(nullable=True)
     insurance_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Structured intake from the AI receptionist (all optional, short, consent-gated; see services/mt_intake.py)
+    preferred_language: Mapped[str | None] = mapped_column(String(35), nullable=True)
+    preferred_contact_time: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    timeframe: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    procedure_text: Mapped[str | None] = mapped_column(String(80), nullable=True)  # the treatment as the caller said it; kept only with store_medical_information
+    destination_text: Mapped[str | None] = mapped_column(String(80), nullable=True)  # when the destination is not a country we can resolve to an ISO code
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "lead_id", name="uq_medical_tourism_patient_leads_tenant_lead"),
@@ -255,8 +265,11 @@ class ReferralCommissionBasis(StrEnum):
 
 
 class ReferralCommissionStatus(StrEnum):
-    PENDING = "PENDING"
-    CONFIRMED = "CONFIRMED"
+    PENDING = "PENDING"  # potential: not revenue
+    CONFIRMED = "CONFIRMED"  # earned: needs the clinic's reported outcome with evidence (services/mt_commission.py)
+    INVOICED = "INVOICED"
+    PAID = "PAID"
+    DISPUTED = "DISPUTED"
     CANCELLED = "CANCELLED"
 
 
@@ -274,9 +287,15 @@ class ReferralCommission(TenantScopedMixin, Base):
 
     __tablename__ = "medical_tourism_referral_commissions"
 
-    referral_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("referrals.id"), nullable=False, index=True
+    referral_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("referrals.id"), nullable=True, index=True
     )
+    # A commission earned on a provider referral (medical_tourism_provider_referrals) rather than on a retention-programme referral.
+    provider_referral_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True, index=True)
+    qualifying_outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    invoiced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     provider_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("medical_tourism_providers.id"), nullable=True, index=True
     )

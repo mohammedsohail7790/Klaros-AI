@@ -74,9 +74,15 @@ class Lead(TenantScopedMixin, Base):
     )
     assigned_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    # The id of this lead in an external system that works on it (e.g. the AI workforce platform),
+    # mirroring Customer/Appointment's external_provider/external_id. Klaros' own id stays the
+    # lead's identity; this is only the link. NULL until a real sync returns one — never fabricated.
+    external_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "idempotency_key", name="uq_leads_tenant_idempotency_key"),
+        UniqueConstraint("tenant_id", "external_provider", "external_id", name="uq_leads_tenant_external_provider_id"),
     )
 
 

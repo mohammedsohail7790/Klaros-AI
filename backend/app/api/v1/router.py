@@ -12,6 +12,7 @@ from app.api.v1 import (
     billing,
     business_blueprint,
     business_discovery,
+    business_builder,
     business_journey,
     cash,
     company_memory,
@@ -40,7 +41,10 @@ from app.api.v1 import (
     marketing_seo,
     mcp,
     medical_tourism,
+    mt_referrals,
+    business_setup,
     mcp_admin,
+    halla_webhooks,
     marketplace_webhooks,
     morning_brief,
     notifications,
@@ -92,6 +96,7 @@ api_router.include_router(business_discovery.router)
 api_router.include_router(business_blueprint.router)
 api_router.include_router(recommendations.router)
 api_router.include_router(business_journey.router)
+api_router.include_router(business_builder.router)
 api_router.include_router(agents.router)
 api_router.include_router(quickbooks_oauth.router)
 api_router.include_router(google_calendar_oauth.router)
@@ -146,9 +151,12 @@ api_router.include_router(notifications.router)
 api_router.include_router(knowledge.router)
 api_router.include_router(webhooks.router)
 api_router.include_router(marketplace_webhooks.router)
+api_router.include_router(halla_webhooks.router)
 api_router.include_router(voice.router)
 api_router.include_router(voice_stream.router)
 api_router.include_router(mcp.router)
 api_router.include_router(mcp_admin.router)
 api_router.include_router(medical_tourism.router)
+api_router.include_router(mt_referrals.router)
+api_router.include_router(business_setup.router)
 api_router.include_router(websites.router)

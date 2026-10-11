@@ -335,6 +335,7 @@ class BulkImportInvoices(Tool):
     input_schema = BulkImportInvoicesInput
     output_schema = BulkImportInvoicesOutput
     required_permission = Permission.CREATE_INVOICE
+    pii_input_fields = ("invoices", "customer_name", "customer_email", "customer_phone", "description")
 
     def __init__(self, invoice_service: InvoiceService, session_factory) -> None:
         self._invoice_service = invoice_service
@@ -363,6 +364,9 @@ class BulkImportInvoices(Tool):
             if by_name is not None:
                 return by_name.id, False
 
+            from app.services.consent_gate import ensure_not_gated
+
+            await ensure_not_gated(self._session_factory, tenant_id, "customer_creation_from_import_disabled_for_consent_gated_tenant")
             customer = Customer(
                 tenant_id=tenant_id,
                 name=row.customer_name,

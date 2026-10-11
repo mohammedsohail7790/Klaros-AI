@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, LabelHTMLAttributes, forwardRef } from "react";
+import { InputHTMLAttributes, LabelHTMLAttributes, ReactElement, cloneElement, forwardRef, isValidElement, useId } from "react";
 import { cn } from "@/lib/cn";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
@@ -12,6 +12,8 @@ export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElem
   return <label className={cn("klaros-label", className)} {...props} />;
 }
 
+/** A labelled form control. The label is programmatically associated with the control
+ * (a generated id, unless the child already has one) so assistive tech announces it. */
 export function Field({
   label,
   children,
@@ -19,10 +21,13 @@ export function Field({
   label: string;
   children: React.ReactNode;
 }) {
+  const generated = useId();
+  const child = isValidElement(children) ? (children as ReactElement<{ id?: string }>) : null;
+  const id = child?.props.id ?? generated;
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
+      <Label htmlFor={id}>{label}</Label>
+      {child ? (child.props.id ? child : cloneElement(child, { id })) : children}
     </div>
   );
 }

@@ -303,3 +303,113 @@ async def test_deterministic_fallback_completion_is_vertical_neutral(
     dropshipping_outcome = outcomes["dropshipping"]
     assert medical_outcome == dropshipping_outcome
     assert medical_outcome[0] == DiscoverySessionStatus.COMPLETED
+
+
+async def test_stated_but_unconfirmed_sections_are_not_asked_about_again(
+    service: BusinessDiscoveryService, blueprint_service: BusinessBlueprintService
+) -> None:
+    """A section the user has already spoken about (a PROPOSED claim) must not
+    be re-asked by a connected provider — Discovery never confirms claims, so
+    waiting for COMPLETE would loop until the question cap. Activation still
+    requires COMPLETE (human confirmation), which is untouched."""
+    tenant_id = uuid.uuid4()
+    bp = await blueprint_service.get_or_create_draft(tenant_id, created_by=None)
+    assert set(await service._gap_keys(tenant_id, bp.id)) == {
+        "IDENTITY", "INDUSTRY", "BUSINESS_MODEL", "REQUIRED_CAPABILITIES", "CUSTOMERS", "PRODUCTS_SERVICES", "GEOGRAPHY",
+    }
+
+    claim = await blueprint_service.propose_claim(
+        tenant_id, bp.id, section_key="INDUSTRY", claim_type="Fact", key="industry.type", value="x",
+        confidence=0.9, provenance="USER_STATED", discovery_turn_id=None, evidence_ref=None,
+    )
+    assert "INDUSTRY" not in await service._gap_keys(tenant_id, bp.id)
+    sections = {s.section_key: s for s in await blueprint_service.list_sections(tenant_id, bp.id)}
+    assert sections["INDUSTRY"].status != BlueprintSectionStatus.COMPLETE  # still needs human confirmation
+
+    # A rejected claim re-opens the gap.
+    await blueprint_service.reject_claim(tenant_id, claim.id, rejected_by=None, reason="wrong")
+    assert "INDUSTRY" in await service._gap_keys(tenant_id, bp.id)
+
+
+class _NoFollowUpProvider:
+    """A connected provider that extracts nothing and proposes no follow-up."""
+
+    is_connected = True
+    name = "stub"
+
+    async def generate_structured(self, prompt: str):
+        from app.services.ai_provider import AICallOutcome
+
+        return AICallOutcome(
+            success=True, raw_text='{"claims": [], "follow_up_question": null, "follow_up_section_key": null}',
+            provider="stub", model="stub", latency_ms=1,
+        )
+
+
+async def test_connected_provider_with_nothing_more_to_ask_completes_instead_of_stranding_the_user(
+    blueprint_service: BusinessBlueprintService,
+) -> None:
+    """Regression: a connected AI that answered with no follow-up used to leave the
+    session ACTIVE with no pending question (UI stuck on "getting your next question")."""
+    from app.db.session import async_session_maker
+
+    tenant_id = uuid.uuid4()
+    extraction = DiscoveryExtractionService(async_session_maker, _NoFollowUpProvider())
+    svc = BusinessDiscoveryService(async_session_maker, blueprint_service, extraction)
+    started = await svc.start_session(tenant_id, business_idea="A boutique candle shop.", created_by=None)
+    assert started.session.status == DiscoverySessionStatus.COMPLETED
+    assert started.next_question is None
+
+
+async def test_user_can_finish_discovery_early_and_it_is_idempotent(service: BusinessDiscoveryService) -> None:
+    tenant_id = uuid.uuid4()
+    started = await service.start_session(tenant_id, business_idea="A boutique candle shop.", created_by=None)
+    assert started.session.status == DiscoverySessionStatus.ACTIVE
+    done = await service.finish_session(tenant_id, started.session.id)
+    assert done.status == DiscoverySessionStatus.COMPLETED
+    again = await service.finish_session(tenant_id, started.session.id)
+    assert again.status == DiscoverySessionStatus.COMPLETED
+    with pytest.raises(DiscoverySessionNotFoundError):
+        await service.finish_session(uuid.uuid4(), started.session.id)  # tenant isolation
+
+
+class _CapturingProvider:
+    """Connected provider that records the prompt and always asks the same question."""
+
+    is_connected = True
+    name = "stub"
+
+    def __init__(self) -> None:
+        self.prompts: list[str] = []
+
+    async def generate_structured(self, prompt: str):
+        from app.services.ai_provider import AICallOutcome
+
+        self.prompts.append(prompt)
+        return AICallOutcome(
+            success=True,
+            raw_text='{"claims": [{"claim_type": "Fact", "section_key": "INDUSTRY", "key": "industry", "value": "dropshipping", '
+            '"confidence": null, "provenance": "USER_STATED"}], "follow_up_question": "What industry are you in?", '
+            '"follow_up_section_key": "INDUSTRY"}',
+            provider="stub", model="stub", latency_ms=1,
+        )
+
+
+async def test_prompt_carries_known_facts_and_a_repeated_question_is_never_asked_twice(
+    blueprint_service: BusinessBlueprintService,
+) -> None:
+    from app.db.session import async_session_maker
+
+    tenant_id = uuid.uuid4()
+    provider = _CapturingProvider()
+    svc = BusinessDiscoveryService(async_session_maker, blueprint_service, DiscoveryExtractionService(async_session_maker, provider))
+    started = await svc.start_session(tenant_id, business_idea="I want to start a dropshipping business.", created_by=None)
+    assert started.next_question == "What industry are you in?"  # first time: allowed
+    assert "KNOWN FACTS" in provider.prompts[0] and "ONE clear question" in provider.prompts[0]
+
+    second = await svc.submit_answer(tenant_id, started.session.id, answer="Home goods.", actor_id=None)
+    # The model asked the identical question again -> suppressed, session ends instead of looping.
+    assert second.next_question is None
+    assert second.session.status == DiscoverySessionStatus.COMPLETED
+    # What the user already said was handed to the model on the second call.
+    assert "dropshipping" in provider.prompts[1]

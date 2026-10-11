@@ -187,7 +187,7 @@ class AgentExecutionService:
         # "Critical crash boundaries"). This single write is what makes
         # `resume_recovered` able to distinguish "nothing happened yet"
         # from "the tool call was in flight" after a crash.
-        await self._mark_running(execution.id)
+        await self._mark_running(tenant_id, execution.id)
         await self._create_step(tenant_id, execution.id, tool_name=tool_name, tool_input=tool_input)
 
         return await self._execute_tool_and_finish(
@@ -233,25 +233,27 @@ class AgentExecutionService:
             await self._update_step(
                 tenant_id, execution_id, status=AgentExecutionStepStatus.APPROVAL_REQUIRED
             )
-            return await self._mark_waiting_approval(execution_id, approval_request_id=exc.approval_request_id)
+            return await self._mark_waiting_approval(
+                tenant_id, execution_id, approval_request_id=exc.approval_request_id
+            )
         except ToolError as exc:
             await self._update_step(
                 tenant_id, execution_id, status=AgentExecutionStepStatus.FAILED,
                 error_code=str(exc)[:100],
             )
-            return await self._mark_failed(execution_id, error=str(exc))
+            return await self._mark_failed(tenant_id, execution_id, error=str(exc))
         except Exception as exc:  # noqa: BLE001 — always recorded, never swallowed
             await self._update_step(
                 tenant_id, execution_id, status=AgentExecutionStepStatus.FAILED, error_code="execution_error",
             )
-            return await self._mark_failed(execution_id, error=str(exc))
+            return await self._mark_failed(tenant_id, execution_id, error=str(exc))
 
         result = output.model_dump(mode="json") if hasattr(output, "model_dump") else None
         await self._update_step(
             tenant_id, execution_id, status=AgentExecutionStepStatus.EXECUTED,
             output_summary=redact_input(result) if isinstance(result, dict) else None,
         )
-        return await self._mark_completed(execution_id, result=result)
+        return await self._mark_completed(tenant_id, execution_id, result=result)
 
     # ----------------------------------------------- Phase 7: crash recovery
 
@@ -317,7 +319,7 @@ class AgentExecutionService:
             # own terminal status (which may not have been persisted before
             # the crash) needs to be finished from that durable record.
             if step_status == AgentExecutionStepStatus.EXECUTED:
-                return await self._mark_completed(execution_id, result=step_output_summary)
+                return await self._mark_completed(tenant_id, execution_id, result=step_output_summary)
             if step_status == AgentExecutionStepStatus.APPROVAL_REQUIRED:
                 # Already durably parked on ApprovalExecutionService's own
                 # governed resume path — nothing for this service to do.
@@ -325,7 +327,7 @@ class AgentExecutionService:
                     await set_tenant_context(session, tenant_id)
                     return await session.get(AgentExecution, execution_id)
             return await self._mark_failed(
-                execution_id,
+                tenant_id, execution_id,
                 error=f"Tool call ended in {step_status} before the crash (error_code={step_error_code})",
             )
 
@@ -335,7 +337,7 @@ class AgentExecutionService:
         if tool is not None and tool.supports_idempotency:
             # Case 1 (Unknown External Outcome policy): verified idempotency
             # support — reuse the SAME deterministic identity and retry.
-            await self._audit(execution_id, "agent.execution.tool.idempotency_reused")
+            await self._audit(tenant_id, execution_id, "agent.execution.tool.idempotency_reused")
             return await self._execute_tool_and_finish(
                 tenant_id, execution_id, agent_id=agent_id, version_id=version_id,
                 acting_role=acting_role, tool_name=tool_name, tool_input=tool_input,
@@ -346,17 +348,17 @@ class AgentExecutionService:
         await self._update_step(
             tenant_id, execution_id, status=AgentExecutionStepStatus.FAILED, error_code="interrupted_by_crash",
         )
-        await self._audit(execution_id, "agent.execution.tool.idempotency_ambiguous")
-        return await self._halt_ambiguous(execution_id)
+        await self._audit(tenant_id, execution_id, "agent.execution.tool.idempotency_ambiguous")
+        return await self._halt_ambiguous(tenant_id, execution_id)
 
-    async def _halt_ambiguous(self, execution_id: uuid.UUID) -> AgentExecution:
+    async def _halt_ambiguous(self, tenant_id: uuid.UUID, execution_id: uuid.UUID) -> AgentExecution:
+        # Real-RLS-enforcement fix (see `_mark_running`'s docstring above):
+        # this used to load the row by PK before stamping tenant context,
+        # which always returned None under real RLS enforcement. Its only
+        # caller (`resume_recovered`) already has `tenant_id` in scope.
         async with self._session_factory() as session:
-            # tenant_id is not a parameter here (this is an internal
-            # recovery helper keyed only by execution_id); load the row by
-            # PK first, then stamp its own tenant_id onto this same
-            # transaction before the subsequent UPDATE below.
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
-            await set_tenant_context(session, execution.tenant_id if execution else None)
             execution.status = AgentExecutionStatus.HALTED
             execution.termination_reason = AgentExecutionTerminationReason.AMBIGUOUS_TOOL_OUTCOME_SAFE_HALT
             execution.error_message = (
@@ -369,12 +371,19 @@ class AgentExecutionService:
             await session.refresh(execution)
             return execution
 
-    async def _audit(self, execution_id: uuid.UUID, action: str) -> None:
+    async def _audit(self, tenant_id: uuid.UUID, execution_id: uuid.UUID, action: str) -> None:
+        # Real-RLS-enforcement fix (see `_mark_running`'s docstring above):
+        # this previously loaded the row before stamping tenant context and
+        # silently no-op'd (via the `execution is None` guard) when that
+        # lookup failed closed under real RLS — meaning this audit log was
+        # never actually written in a real enforcing environment, with no
+        # error surfaced anywhere. Both callers already have `tenant_id` in
+        # scope.
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
             if execution is None:
                 return
-            await set_tenant_context(session, execution.tenant_id)
             session.add(
                 AuditLog(
                     tenant_id=execution.tenant_id,
@@ -568,10 +577,24 @@ class AgentExecutionService:
             await session.refresh(execution)
             return _snapshot(execution)
 
-    async def _mark_running(self, execution_id: uuid.UUID) -> None:
+    async def _mark_running(self, tenant_id: uuid.UUID, execution_id: uuid.UUID) -> None:
+        # Real-RLS-enforcement fix (found via live staging validation,
+        # round 6 of the staging-readiness task — same bug class as
+        # team_service.py's invite-accept fix from round 4): this method
+        # used to call `session.get(AgentExecution, execution_id)` BEFORE
+        # `set_tenant_context`, then try to derive the tenant_id to stamp
+        # FROM the row it had just (unsuccessfully) fetched. AgentExecution
+        # is RLS-enforcing, so with no context set the lookup always
+        # returned None regardless of validity, raising
+        # `AttributeError: 'NoneType' object has no attribute 'status'` on
+        # every single agent execution. `tenant_id` is already known to
+        # every caller (it's `run_action`'s own parameter) — pass it in
+        # and stamp context before the lookup, exactly like every other
+        # correctly-ordered method in this file (`_load_executable`,
+        # `resume_recovered`, `get_execution`).
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
-            await set_tenant_context(session, execution.tenant_id if execution else None)
             now = datetime.now(timezone.utc)
             execution.status = AgentExecutionStatus.RUNNING
             execution.started_at = now
@@ -585,10 +608,13 @@ class AgentExecutionService:
             execution.heartbeat_at = now
             await session.commit()
 
-    async def _mark_completed(self, execution_id: uuid.UUID, *, result: dict | None) -> AgentExecution:
+    async def _mark_completed(
+        self, tenant_id: uuid.UUID, execution_id: uuid.UUID, *, result: dict | None
+    ) -> AgentExecution:
+        # Same real-RLS-enforcement fix as `_mark_running` above.
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
-            await set_tenant_context(session, execution.tenant_id if execution else None)
             execution.status = AgentExecutionStatus.COMPLETED
             execution.result_summary = result
             execution.completed_at = datetime.now(timezone.utc)
@@ -596,10 +622,11 @@ class AgentExecutionService:
             await session.refresh(execution)
             return _snapshot(execution)
 
-    async def _mark_failed(self, execution_id: uuid.UUID, *, error: str) -> AgentExecution:
+    async def _mark_failed(self, tenant_id: uuid.UUID, execution_id: uuid.UUID, *, error: str) -> AgentExecution:
+        # Same real-RLS-enforcement fix as `_mark_running` above.
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
-            await set_tenant_context(session, execution.tenant_id if execution else None)
             execution.status = AgentExecutionStatus.FAILED
             execution.error_message = error[:2000]
             execution.completed_at = datetime.now(timezone.utc)
@@ -608,11 +635,12 @@ class AgentExecutionService:
             return _snapshot(execution)
 
     async def _mark_waiting_approval(
-        self, execution_id: uuid.UUID, *, approval_request_id: uuid.UUID
+        self, tenant_id: uuid.UUID, execution_id: uuid.UUID, *, approval_request_id: uuid.UUID
     ) -> AgentExecution:
+        # Same real-RLS-enforcement fix as `_mark_running` above.
         async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
             execution = await session.get(AgentExecution, execution_id)
-            await set_tenant_context(session, execution.tenant_id if execution else None)
             execution.status = AgentExecutionStatus.WAITING_APPROVAL
             execution.approval_request_id = approval_request_id
             await session.commit()

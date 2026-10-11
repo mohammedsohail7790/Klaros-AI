@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.session import set_tenant_context
 from app.models.actor import ActorType
-from app.models.crm import Customer, CustomerNote, CustomerStatus, Lead, LeadSource, LeadStatus
+from app.models.crm import Customer, CustomerNote, CustomerStatus, Lead, LeadSource, LeadStatus, QualificationStatus
 from app.models.rbac import Permission
+from app.services import consent_gate
 from app.services.customer_matching import normalize_email, normalize_phone
 from app.services.lead_service import CreateLeadInput, LeadService
 from app.services.qualification_service import LeadQualificationService
@@ -69,6 +70,8 @@ class CreateLeadToolInput(BaseModel):
     urgency: str = "MEDIUM"
     estimated_value: float | None = None
     idempotency_key: str | None = None
+    # {"scopes": [...], "wording_version": "..."} — what the person agreed to. Only a signed-in person's claim counts; read by consent-gated tenants only.
+    consent: dict[str, Any] | None = None
 
 
 class LeadOutput(BaseModel):
@@ -82,6 +85,8 @@ class CreateLead(Tool):
     input_schema = CreateLeadToolInput
     output_schema = LeadOutput
     required_permission = Permission.CREATE_LEAD
+    # Redacted from the audit record for consent-gated tenants (the record would otherwise keep what consent has not been given for).
+    pii_input_fields = ("name", "phone", "email", "description", "service_requested", "location")
 
     def __init__(self, lead_service: LeadService) -> None:
         self._lead_service = lead_service
@@ -101,6 +106,7 @@ class CreateLead(Tool):
                 urgency=input.urgency,
                 estimated_value=input.estimated_value,
                 idempotency_key=input.idempotency_key,
+                consent=consent_gate.claim_from_tool(input.consent, context.actor_type, context.actor_id),
             ),
         )
         return LeadOutput(lead=_lead_to_dict(lead), deduplicated=deduplicated)
@@ -141,11 +147,16 @@ class BulkImportLeads(Tool):
     input_schema = BulkImportLeadsInput
     output_schema = BulkImportLeadsOutput
     required_permission = Permission.CREATE_LEAD
+    pii_input_fields = ("leads",)
 
-    def __init__(self, lead_service: LeadService) -> None:
+    def __init__(self, lead_service: LeadService, session_factory: async_sessionmaker | None = None) -> None:
         self._lead_service = lead_service
+        self._session_factory = session_factory
 
     async def execute(self, input: BulkImportLeadsInput, context: ExecutionContext) -> BulkImportLeadsOutput:
+        if self._session_factory is not None and await consent_gate.tenant_requires_consent(self._session_factory, context.tenant_id):
+            # A spreadsheet carries no per-person consent evidence, so for a consent-gated tenant the whole import is refused.
+            raise consent_gate.ConsentRequiredError([consent_gate.STORE_PERSONAL], reason="bulk_import_disabled_without_per_person_consent")
         lead_ids: list[str] = []
         matched_existing = 0
         for row in input.leads:
@@ -206,6 +217,7 @@ class UpdateLead(Tool):
     input_schema = UpdateLeadInput
     output_schema = LeadOutput
     required_permission = Permission.UPDATE_LEAD
+    pii_input_fields = ("description",)
 
     def __init__(self, session_factory: async_sessionmaker) -> None:
         self._session_factory = session_factory
@@ -223,14 +235,28 @@ class UpdateLead(Tool):
             if lead is None or lead.tenant_id != context.tenant_id:
                 raise ValueError("Lead not found")
             if input.status is not None:
+                if input.status == LeadStatus.QUALIFIED and lead.qualification_status == QualificationStatus.REQUIRES_HUMAN and context.actor_type != ActorType.USER:
+                    # Handed to a person (safety category / needs human review): only a signed-in person may mark it qualified.
+                    raise ValueError("This lead requires human review before it can be marked qualified")
                 lead.status = input.status
             if input.assigned_user_id is not None:
                 lead.assigned_user_id = input.assigned_user_id
             if input.description is not None:
+                if await consent_gate.tenant_requires_consent(self._session_factory, context.tenant_id):
+                    from app.services import halla_consent
+
+                    state = await halla_consent.state_for(session, context.tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+                    if not state.allows(consent_gate.STORE_MEDICAL):
+                        raise consent_gate.ConsentRequiredError([consent_gate.STORE_MEDICAL])
                 lead.description = input.description
             await session.commit()
             await session.refresh(lead)
-            return LeadOutput(lead=_lead_to_dict(lead))
+            out = LeadOutput(lead=_lead_to_dict(lead))
+        if input.description:
+            from app.services.mt_intake_safety import screen_lead
+
+            await screen_lead(self._session_factory, context.tenant_id, input.lead_id, input.description, source="lead_update")
+        return out
 
 
 class SearchLeadsInput(BaseModel):
@@ -304,7 +330,7 @@ class QualifyLead(Tool):
         self._qualification_service = qualification_service
 
     async def execute(self, input: QualifyLeadInput, context: ExecutionContext) -> QualifyLeadOutput:
-        outcome = await self._qualification_service.qualify(context.tenant_id, input.lead_id)
+        outcome = await self._qualification_service.qualify(context.tenant_id, input.lead_id, by_person=context.actor_type == ActorType.USER)
         return QualifyLeadOutput(**outcome.__dict__)
 
 
@@ -389,6 +415,7 @@ class CustomerOutput(BaseModel):
 
 class CreateCustomer(Tool):
     name = "crm.create_customer"
+    pii_input_fields = ("name", "company_name", "email", "phone", "address", "city", "state", "postal_code", "notes")
     description = "Create a customer record directly (not via lead conversion)."
     input_schema = CreateCustomerInput
     output_schema = CustomerOutput
@@ -398,6 +425,7 @@ class CreateCustomer(Tool):
         self._session_factory = session_factory
 
     async def execute(self, input: CreateCustomerInput, context: ExecutionContext) -> CustomerOutput:
+        await consent_gate.ensure_not_gated(self._session_factory, context.tenant_id, "direct_customer_creation_disabled_for_consent_gated_tenant")
         async with self._session_factory() as session:
             await set_tenant_context(session, context.tenant_id)
             customer = Customer(
@@ -438,6 +466,7 @@ class BulkImportCustomers(Tool):
     there's nothing reliable to match on."""
 
     name = "crm.bulk_import_customers"
+    pii_input_fields = ("customers",)
     description = "Create many customer records at once, skipping rows whose email already exists for this tenant."
     input_schema = BulkImportCustomersInput
     output_schema = BulkImportCustomersOutput
@@ -447,6 +476,7 @@ class BulkImportCustomers(Tool):
         self._session_factory = session_factory
 
     async def execute(self, input: BulkImportCustomersInput, context: ExecutionContext) -> BulkImportCustomersOutput:
+        await consent_gate.ensure_not_gated(self._session_factory, context.tenant_id, "bulk_import_disabled_without_per_person_consent")
         async with self._session_factory() as session:
             await set_tenant_context(session, context.tenant_id)
             existing_emails = set(
@@ -528,6 +558,7 @@ class UpdateCustomerInput(BaseModel):
 
 class UpdateCustomer(Tool):
     name = "crm.update_customer"
+    pii_input_fields = ("name", "email", "phone", "address", "notes")
     description = "Update mutable fields on a customer."
     input_schema = UpdateCustomerInput
     output_schema = CustomerOutput
@@ -535,6 +566,35 @@ class UpdateCustomer(Tool):
 
     def __init__(self, session_factory: async_sessionmaker) -> None:
         self._session_factory = session_factory
+
+    async def _require_consent_for_changes(self, input: UpdateCustomerInput, customer: Customer, context: ExecutionContext) -> None:
+        """Consent gate for editing an EXISTING customer of a consent-gated tenant (Medical Tourism). Adding or changing personal data (name, e-mail,
+        phone, address) needs `store_personal_data`; a note (free text that may hold health information) needs `store_medical_information`, exactly
+        like `crm.create_note`. Both are checked against EVERY lead behind the customer, so a customer with no lead behind it (no evidence) cannot be
+        edited. Clearing a field is never refused (erasure must stay possible), and re-sending an unchanged value is not a change. `status` is not
+        personal data. Non-gated tenants are untouched."""
+
+        def adds(new: str | None, old: str | None) -> bool:
+            return new is not None and new.strip() != "" and new != old
+
+        personal = (
+            adds(input.name, customer.name)
+            or adds(input.email, customer.email) and normalize_email(input.email) != customer.email
+            or adds(input.phone, customer.phone)
+            or adds(input.address, customer.address)
+        )
+        medical = adds(input.notes, customer.notes)
+        if not (personal or medical):
+            return
+        if not await consent_gate.tenant_requires_consent(self._session_factory, context.tenant_id):
+            return
+        missing = [
+            scope
+            for scope, needed in ((consent_gate.STORE_PERSONAL, personal), (consent_gate.STORE_MEDICAL, medical))
+            if needed and not await consent_gate.customer_leads_allow(self._session_factory, context.tenant_id, customer.id, scope)
+        ]
+        if missing:
+            raise consent_gate.ConsentRequiredError(missing)
 
     async def execute(self, input: UpdateCustomerInput, context: ExecutionContext) -> CustomerOutput:
         if input.status is not None:
@@ -548,6 +608,7 @@ class UpdateCustomer(Tool):
             customer = await session.get(Customer, input.customer_id)
             if customer is None or customer.tenant_id != context.tenant_id:
                 raise ValueError("Customer not found")
+            await self._require_consent_for_changes(input, customer, context)
             if input.name is not None:
                 customer.name = input.name
             if input.email is not None:
@@ -722,6 +783,7 @@ class CreateNoteOutput(BaseModel):
 
 class CreateNote(Tool):
     name = "crm.create_note"
+    pii_input_fields = ("body",)
     description = "Attach a freeform note to a customer."
     input_schema = CreateNoteInput
     output_schema = CreateNoteOutput
@@ -736,6 +798,11 @@ class CreateNote(Tool):
             customer = await session.get(Customer, input.customer_id)
             if customer is None or customer.tenant_id != context.tenant_id:
                 raise ValueError("Customer not found")
+            if await consent_gate.tenant_requires_consent(self._session_factory, context.tenant_id) and not await consent_gate.customer_leads_allow(
+                self._session_factory, context.tenant_id, input.customer_id, consent_gate.STORE_MEDICAL
+            ):
+                # A free-text note may contain health information: it needs store_medical_information on every lead behind this customer.
+                raise consent_gate.ConsentRequiredError([consent_gate.STORE_MEDICAL])
             note = CustomerNote(
                 tenant_id=context.tenant_id,
                 customer_id=input.customer_id,
@@ -746,7 +813,11 @@ class CreateNote(Tool):
             session.add(note)
             await session.commit()
             await session.refresh(note)
-            return CreateNoteOutput(note_id=str(note.id))
+            note_id = str(note.id)
+        from app.services.mt_intake_safety import screen_customer
+
+        await screen_customer(self._session_factory, context.tenant_id, input.customer_id, input.body, source="customer_note")
+        return CreateNoteOutput(note_id=note_id)
 
 
 class GenerateCustomerSummaryInput(BaseModel):

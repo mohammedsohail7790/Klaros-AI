@@ -22,6 +22,7 @@ from app.api.tool_deps import execution_context, get_tool_registry, raise_http_f
 from app.db.session import async_session_maker
 from app.models.medical_tourism import ReferralCommissionBasis
 from app.models.rbac import Permission, role_has_permission
+from app.services import medical_tourism_operations
 from app.services.medical_tourism_service import InvalidRelationshipError, MedicalTourismService, NotFoundError
 from app.tools.errors import ToolError
 from app.tools.registry import ToolRegistry
@@ -56,6 +57,7 @@ def _provider_to_dict(p) -> dict[str, Any]:
         "contact_phone": p.contact_phone,
         "description": p.description,
         "status": p.status,
+        "verification_status": getattr(p, "verification_status", None) or "UNVERIFIED",
         "created_at": p.created_at.isoformat(),
     }
 
@@ -370,6 +372,54 @@ async def list_patient_leads(
     }
 
 
+@router.get("/mode")
+async def get_console_mode(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Tells the UI whether this organisation is a consent-gated Medical Tourism pilot, so it can show the focused pilot console instead of the whole
+    general-purpose navigation. Two booleans about the caller's OWN tenant, no personal data, no permission beyond being signed in. The answer comes from
+    the same check that enforces consent (fail-closed on a lookup error), so what the UI shows can never disagree with what the service enforces."""
+    from app.services.consent_gate import tenant_requires_consent
+
+    gated = await tenant_requires_consent(async_session_maker, current_user.tenant_id)
+    return {"pilot_console": gated, "consent_gated": gated}
+
+
+@router.get("/funnel")
+async def get_funnel(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Counts only (no names, contact details, text or ids): received, consent, qualification, appointments by their own status, escalations asked of
+    a person, webhook delivery health and consent-blocked sends. See app/services/mt_funnel.py for the exact definitions."""
+    _require_read(current_user)
+    from app.services.mt_funnel import build_funnel
+
+    return await build_funnel(async_session_maker, current_user.tenant_id)
+
+
+@router.get("/leads/{lead_id}/operations")
+async def get_lead_operations(
+    lead_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """The operating context of a patient lead: patient details, provider matches (with the
+    reasons for each), consultations, a timeline built from real records, and the next
+    action. 404 when the lead is not a patient lead (or not in this tenant)."""
+    _require_read(current_user)
+    result = await medical_tourism_operations.lead_operations(current_user.tenant_id, lead_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="This lead has no patient details")
+    return result
+
+
+@router.get("/leads/{lead_id}/provider-matches")
+async def get_lead_provider_matches(
+    lead_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    _require_read(current_user)
+    result = await medical_tourism_operations.match_providers(current_user.tenant_id, lead_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="This lead has no patient details")
+    return result
+
+
 @router.get("/patient-leads/{patient_lead_id}")
 async def get_patient_lead(
     patient_lead_id: uuid.UUID, current_user: CurrentUser = Depends(get_current_user)
@@ -383,6 +433,27 @@ async def get_patient_lead(
     return {"patient_lead": _patient_lead_to_dict(patient_lead)}
 
 
+async def _require_consent_for_patient_lead(tenant_id: uuid.UUID, lead_id: uuid.UUID, body: dict) -> None:
+    """The patient-lead extension adds health intake to an EXISTING lead: the newest consent evidence for that lead must allow keeping personal data,
+    and (when health fields are sent) medical information. A lead with no evidence has no consent (record it first: POST /leads/{id}/consent)."""
+    from app.db.session import async_session_maker as maker, set_tenant_context
+    from app.models.crm import Lead
+    from app.services import consent_gate, halla_consent
+
+    if not await consent_gate.tenant_requires_consent(maker, tenant_id):
+        return
+    async with maker() as session:
+        await set_tenant_context(session, tenant_id)
+        lead = await session.get(Lead, lead_id)
+        if lead is None or lead.tenant_id != tenant_id:
+            return  # the service answers 404
+        state = await halla_consent.state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+    health = any(body.get(k) not in (None, "") for k in ("medical_history_summary", "insurance_notes", "procedure_id"))
+    missing = [s for s in (consent_gate.STORE_PERSONAL, consent_gate.STORE_MEDICAL if health else None) if s and not state.allows(s)]
+    if missing:
+        raise HTTPException(status_code=422, detail={"error": "consent_required", "missing_scopes": missing})
+
+
 @router.post("/patient-leads")
 async def create_patient_lead(
     body: dict,
@@ -392,6 +463,7 @@ async def create_patient_lead(
     travel_start_date?, travel_end_date?, has_insurance?, insurance_notes?}"""
     _require_manage(current_user)
     service = _service()
+    await _require_consent_for_patient_lead(current_user.tenant_id, uuid.UUID(body["lead_id"]), body)
     travel_start_date = date.fromisoformat(body["travel_start_date"]) if body.get("travel_start_date") else None
     travel_end_date = date.fromisoformat(body["travel_end_date"]) if body.get("travel_end_date") else None
     try:
@@ -573,4 +645,6 @@ async def update_referral_commission_status(
         )
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvalidRelationshipError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"referral_commission": _referral_commission_to_dict(commission)}

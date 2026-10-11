@@ -9,6 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const getCurrentBusinessJourneyMock = vi.fn();
+const listBusinessJourneysMock = vi.fn().mockResolvedValue([]);
 const startBusinessJourneyMock = vi.fn();
 
 vi.mock("@/lib/api", () => ({
@@ -20,6 +21,7 @@ vi.mock("@/lib/api", () => ({
     }
   },
   getCurrentBusinessJourney: (...args: unknown[]) => getCurrentBusinessJourneyMock(...args),
+  listBusinessJourneys: (...args: unknown[]) => listBusinessJourneysMock(...args),
   startBusinessJourney: (...args: unknown[]) => startBusinessJourneyMock(...args),
   listNotifications: vi.fn().mockResolvedValue({ notifications: [] }),
   getUnreadNotificationCount: vi.fn().mockResolvedValue({ count: 0 }),
@@ -68,8 +70,8 @@ describe("Business journey entry page", () => {
   it("shows the start form when there is no active journey", async () => {
     getCurrentBusinessJourneyMock.mockResolvedValue(null);
     render(<BusinessJourneyEntryPage />);
-    expect(await screen.findByText("Build your business with Klaros")).toBeInTheDocument();
-    expect(screen.getByText("Start Discovery")).toBeInTheDocument();
+    expect(await screen.findByText("What are you building?")).toBeInTheDocument();
+    expect(screen.getByText("Start building")).toBeInTheDocument();
   });
 
   it("starting a journey never sends tenant_id/role/actor_type — only business_idea", async () => {
@@ -78,9 +80,9 @@ describe("Business journey entry page", () => {
     render(<BusinessJourneyEntryPage />);
 
     const { fireEvent } = await import("@testing-library/react");
-    const textarea = await screen.findByPlaceholderText(/subscription meal-prep/i);
+    const textarea = await screen.findByLabelText("Your business idea");
     fireEvent.change(textarea, { target: { value: "A coffee shop" } });
-    fireEvent.click(screen.getByText("Start Discovery"));
+    fireEvent.click(screen.getByText("Start building"));
 
     await waitFor(() => expect(startBusinessJourneyMock).toHaveBeenCalled());
     // Exactly (token, businessIdea) — no tenant/role/actor object anywhere.
@@ -95,17 +97,43 @@ describe("Business journey entry page", () => {
     expect(startBusinessJourneyMock).not.toHaveBeenCalled();
   });
 
-  it("shows a completion state for a COMPLETED journey without redirecting away", async () => {
+  it("sends a COMPLETED journey to the business home instead of the start form", async () => {
     getCurrentBusinessJourneyMock.mockResolvedValue(journey("COMPLETED"));
     render(<BusinessJourneyEntryPage />);
-    expect(await screen.findByText("Your Klaros business foundation is ready")).toBeInTheDocument();
-    expect(replaceMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/business/home"));
+    expect(screen.queryByText("Start building")).not.toBeInTheDocument();
+  });
+
+  it("sends an established business (completed journey, no current one) to its home, never to a blank start form", async () => {
+    getCurrentBusinessJourneyMock.mockResolvedValue(null);
+    listBusinessJourneysMock.mockResolvedValueOnce([journey("COMPLETED")]);
+    render(<BusinessJourneyEntryPage />);
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/business/home"));
+    expect(screen.queryByText("Start building")).not.toBeInTheDocument();
+  });
+
+  it("an example idea only fills the text box — it never starts anything by itself", async () => {
+    getCurrentBusinessJourneyMock.mockResolvedValue(null);
+    const { fireEvent } = await import("@testing-library/react");
+    render(<BusinessJourneyEntryPage />);
+    fireEvent.click(await screen.findByText(/dropshipping business using a supplier catalog/i));
+    expect((screen.getByLabelText("Your business idea") as HTMLTextAreaElement).value).toMatch(/dropshipping/i);
+    expect(startBusinessJourneyMock).not.toHaveBeenCalled();
+  });
+
+  it("pre-fills the idea typed on the marketing site and clears it", async () => {
+    sessionStorage.setItem("klaros_pending_idea", "A boutique hotel booking engine");
+    getCurrentBusinessJourneyMock.mockResolvedValue(null);
+    render(<BusinessJourneyEntryPage />);
+    const box = (await screen.findByLabelText("Your business idea")) as HTMLTextAreaElement;
+    await waitFor(() => expect(box.value).toBe("A boutique hotel booking engine"));
+    expect(sessionStorage.getItem("klaros_pending_idea")).toBeNull();
   });
 
   it("shows a restart option for an ABANDONED journey", async () => {
     getCurrentBusinessJourneyMock.mockResolvedValue(journey("ABANDONED"));
     render(<BusinessJourneyEntryPage />);
-    expect(await screen.findByText("Start Discovery")).toBeInTheDocument();
+    expect(await screen.findByText("Start building")).toBeInTheDocument();
   });
 
   it("shows an error banner rather than crashing on a backend failure", async () => {

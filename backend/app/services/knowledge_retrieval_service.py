@@ -37,6 +37,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.core.config import get_settings
 from app.db.session import set_tenant_context
 from app.models.knowledge import KnowledgeChunk, KnowledgeFile
+from app.services.ai_boundary import bound_ai_provider, bound_embedding_provider
 from app.services.embedding_provider import EmbeddingProvider, get_embedding_provider
 from app.services.knowledge_service import KnowledgeService
 
@@ -155,7 +156,7 @@ class KnowledgeRetrievalService:
 
         vectors: list[list[float]] = []
         if chunks:
-            vectors, outcome = await self._embedding_provider.embed_batch(chunks)
+            vectors, outcome = await bound_embedding_provider(self._embedding_provider, self._session_factory, tenant_id, "knowledge_index").embed_batch(chunks)
             if vectors is None:
                 logger.error(
                     "knowledge_index_embedding_failed", tenant_id=str(tenant_id), path=path,
@@ -226,7 +227,7 @@ class KnowledgeRetrievalService:
 
         await self.ensure_all_indexed(tenant_id)
 
-        query_vector, outcome = await self._embedding_provider.embed(query)
+        query_vector, outcome = await bound_embedding_provider(self._embedding_provider, self._session_factory, tenant_id, "knowledge_search").embed(query)
         if query_vector is None:
             logger.error("knowledge_search_embedding_failed", tenant_id=str(tenant_id), error=outcome.error_detail)
             raise EmbeddingProviderNotConfiguredError(f"embedding call failed: {outcome.error_detail}")

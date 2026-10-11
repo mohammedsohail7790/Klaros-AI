@@ -67,6 +67,7 @@ from app.models.crm import Customer
 from app.models.finance import Invoice
 from app.models.quote import Quote
 from app.models.rbac import Role
+from app.services.ai_boundary import bound_ai_provider, bound_embedding_provider
 from app.services.ai_invocation_log_service import record_ai_invocation
 from app.services.ai_provider import AIProvider
 from app.services.company_memory_service import CompanyMemoryService, format_context_as_text
@@ -310,7 +311,7 @@ class AINextActionService:
 
         # --- DECIDE ---
         prompt = _build_decision_prompt(business_data, event_payload, company_memory)
-        call_outcome = await self._ai_provider.generate_structured(prompt)
+        call_outcome = await bound_ai_provider(self._ai_provider, self._session_factory, tenant_id, "next_action").generate_structured(prompt)
 
         await record_ai_invocation(
             self._session_factory,

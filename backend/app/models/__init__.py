@@ -92,6 +92,7 @@ from app.models.operations import (
     Worker,
 )
 from app.models.organization import Organization
+from app.models.medical_tourism_referral import HandoffTask, MedicalTourismSetup, ProviderReferral, ReferralApproval, ReferralDelivery  # noqa: F401
 from app.models.user import User
 from app.models.morning_brief import (
     MorningBrief,
@@ -103,6 +104,7 @@ from app.models.knowledge import KnowledgeChunk, KnowledgeFile
 from app.models.voice import CallSession, VoiceReceptionistSettings
 from app.models.automation import Automation, AutomationExecution, AutomationExecutionStep, AutomationVersion
 from app.models.integration import IntegrationConnection, WebhookEvent
+from app.models.halla_consent import HallaConsentEvidence
 from app.models.ai_invocation import AIInvocationLog
 from app.models.quote import Quote, QuoteLineItem
 from app.models.contract import Contract, ContractStatus

@@ -24,8 +24,11 @@ worker, and is called out plainly in PROJECT_STATUS.md.
 """
 
 import asyncio
+import json
+import os
 import signal
 import time
+from datetime import datetime, timezone
 
 import structlog
 
@@ -36,6 +39,8 @@ from app.events.metrics import EventWorkerMetrics, worker_metrics
 logger = structlog.get_logger(__name__)
 
 DEFAULT_POLL_INTERVAL_SECONDS = 1.0
+HEARTBEAT_KEY = "klaros:event-worker:heartbeat"
+HEARTBEAT_TTL_SECONDS = 30
 
 
 def combine_on_tick(*hooks):
@@ -111,6 +116,10 @@ class EventWorker:
         reconciled = await self._bus.reconcile_stuck_events()
         if reconciled:
             logger.warning("event_worker_reconciled_stuck_events", count=reconciled)
+        try:  # liveness marker the API reads (/ready -> event_worker); best effort, a hiccup here must never stop event processing
+            await self._bus.transport.set_heartbeat(HEARTBEAT_KEY, HEARTBEAT_TTL_SECONDS)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("event_worker_heartbeat_failed", error_type=type(exc).__name__)
         for event_type in self._bus.subscribed_event_types():
             start = time.monotonic()
             stats = await self._bus.process_pending(event_type, count=self._batch_size)
@@ -186,6 +195,21 @@ async def _standalone_main() -> None:
     configure_logging()
     init_error_monitoring()
     settings = get_settings()
+    # A separate worker process can only consume a transport it shares with the API. Refuse the in-memory one instead of running a worker that
+    # silently sees nothing, and refuse an unreachable Redis instead of starting a worker that would loop on errors.
+    if settings.EVENT_TRANSPORT == "memory":
+        logger.error("event_worker_refused", reason="EVENT_TRANSPORT=memory cannot be shared with another process; set EVENT_TRANSPORT=redis and REDIS_URL")
+        raise SystemExit(2)
+    import redis.asyncio as _redis
+
+    probe = _redis.from_url(settings.REDIS_URL, socket_connect_timeout=5)
+    try:
+        await probe.ping()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("event_worker_refused", reason="Redis is unreachable", error_type=type(exc).__name__)  # never the URL: it holds a credential
+        raise SystemExit(2) from exc
+    finally:
+        await probe.aclose()
     bus = get_wired_event_bus()  # also registers the Phase 6 agent-event-trigger handler
     tool_registry = get_tool_registry()
     morning_brief_service = get_morning_brief_service(tool_registry, bus)
@@ -217,7 +241,38 @@ async def _standalone_main() -> None:
             agent_recovery_service.sweep_once,
         ),
     )
-    await worker.run_forever(shutdown_event)
+    health_server = await _start_health_server(worker, bus) if os.environ.get("PORT") or os.environ.get("EVENT_WORKER_HEALTH_PORT") else None
+    try:
+        await worker.run_forever(shutdown_event)
+    finally:
+        if health_server is not None:
+            health_server.close()
+
+
+async def _start_health_server(worker: "EventWorker", bus: EventBus):
+    """A tiny HTTP responder so the worker can run as a free Render *web* service (which needs a port to bind) or behind any HTTP health check.
+    GET /health -> 200 while the loop is ticking, 503 if it stalled. Reports counters only: no event data, no secrets."""
+    port = int(os.environ.get("EVENT_WORKER_HEALTH_PORT") or os.environ["PORT"])
+
+    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+        except Exception:  # noqa: BLE001
+            writer.close()
+            return
+        snap = worker.metrics.snapshot()
+        last = worker.metrics.last_tick_at
+        age = (datetime.now(timezone.utc) - last).total_seconds() if last else None
+        alive = age is not None and age < max(30.0, worker._poll_interval_seconds * 10)
+        body = json.dumps({"status": "ok" if alive else "stalled", "last_tick_age_seconds": age, "ticks": snap.get("ticks"), "events_processed": snap.get("events_processed"),
+                           "events_dead_lettered": snap.get("events_dead_lettered")}).encode()
+        writer.write(b"HTTP/1.1 " + (b"200 OK" if alive else b"503 Service Unavailable") + b"\r\nContent-Type: application/json\r\nContent-Length: " + str(len(body)).encode() + b"\r\nConnection: close\r\n\r\n" + body)
+        await writer.drain()
+        writer.close()
+
+    server = await asyncio.start_server(handle, "0.0.0.0", port)
+    logger.info("event_worker_health_server_started", port=port)
+    return server
 
 
 if __name__ == "__main__":

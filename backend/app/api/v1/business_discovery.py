@@ -122,6 +122,20 @@ async def answer_discovery_question(
     return TurnResponse.from_result(result)
 
 
+@router.post("/sessions/{discovery_session_id}/finish")
+async def finish_discovery_session(
+    discovery_session_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_BUSINESS_DISCOVERY)),
+    service: BusinessDiscoveryService = Depends(get_business_discovery_service),
+) -> dict[str, Any]:
+    """The user ends Discovery early ("that's enough"). Idempotent."""
+    try:
+        session = await service.finish_session(current_user.tenant_id, discovery_session_id)
+    except DiscoverySessionNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"session": _session_to_dict(session)}
+
+
 @router.get("/sessions/{discovery_session_id}")
 async def get_discovery_session(
     discovery_session_id: uuid.UUID,

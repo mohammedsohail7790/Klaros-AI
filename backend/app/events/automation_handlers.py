@@ -81,6 +81,7 @@ def register_automation_handlers(bus: EventBus, session_factory: async_sessionma
             await set_tenant_context(session, event.tenant_id)
             context = await _build_event_context(session, event)
 
+        failures: list[str] = []
         for version, automation in matches:
             try:
                 await service.start_execution(
@@ -88,10 +89,16 @@ def register_automation_handlers(bus: EventBus, session_factory: async_sessionma
                     source_event_id=event.id, entity_type=event.entity_type, entity_id=event.entity_id,
                     context=context, triggered_by=None,
                 )
-            except Exception as exc:  # noqa: BLE001 — one automation's failure must never block others or the event worker
+            except Exception as exc:  # noqa: BLE001 — one automation's failure must never block the others (they all still run below)
                 logger.error(
                     "automation_dispatch_failed", automation_id=str(automation.id), event_id=str(event.id), error=str(exc),
                 )
+                failures.append(f"{type(exc).__name__}")
+        if failures:
+            # Do NOT report success for an event whose workflow could not be started: swallowing the error here marked the event processed and
+            # silently lost a human handoff. Raising lets the bus retry (start_execution is idempotent on (automation version, source event), so
+            # the automations that already started are untouched) and, after the retry budget, dead-letter it where it is visible and replayable.
+            raise RuntimeError(f"automation dispatch failed for {len(failures)} of {len(matches)} automation(s): {', '.join(sorted(set(failures)))}")
 
     for event_type in EventType:
         bus.subscribe(event_type, "automation_dispatch", automation_dispatch_handler)

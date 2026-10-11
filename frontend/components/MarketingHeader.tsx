@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ExternalLink, Menu, X } from "lucide-react";
+import { BuildCta } from "@/components/marketing/BuildCta";
 
 export default function MarketingHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -14,8 +15,8 @@ export default function MarketingHeader() {
           Klaros AI
         </Link>
         <nav className="hidden items-center gap-8 text-sm font-medium text-muted sm:flex">
-          <Link href="/#features" className="transition-colors hover:text-foreground">
-            Features
+          <Link href="/#how-it-works" className="transition-colors hover:text-foreground">
+            How it works
           </Link>
           <Link href="/pricing" className="transition-colors hover:text-foreground">
             Pricing
@@ -37,9 +38,7 @@ export default function MarketingHeader() {
           <Link href="/login" className="klaros-btn-secondary">
             Sign in
           </Link>
-          <Link href="/register" className="klaros-btn-primary">
-            Create your company
-          </Link>
+          <BuildCta size="md">Build My Business</BuildCta>
         </div>
         <button
           type="button"
@@ -53,8 +52,8 @@ export default function MarketingHeader() {
       </div>
       {menuOpen && (
         <nav className="mt-4 flex flex-col gap-4 border-t border-border pt-4 text-sm font-medium text-muted sm:hidden">
-          <Link href="/#features" onClick={() => setMenuOpen(false)} className="transition-colors hover:text-foreground">
-            Features
+          <Link href="/#how-it-works" onClick={() => setMenuOpen(false)} className="transition-colors hover:text-foreground">
+            How it works
           </Link>
           <Link href="/pricing" onClick={() => setMenuOpen(false)} className="transition-colors hover:text-foreground">
             Pricing
@@ -75,9 +74,7 @@ export default function MarketingHeader() {
           <Link href="/login" onClick={() => setMenuOpen(false)} className="klaros-btn-secondary text-center">
             Sign in
           </Link>
-          <Link href="/register" onClick={() => setMenuOpen(false)} className="klaros-btn-primary text-center">
-            Create your company
-          </Link>
+          <BuildCta size="md" className="w-full">Build My Business</BuildCta>
         </nav>
       )}
     </header>

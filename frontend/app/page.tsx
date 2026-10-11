@@ -1,95 +1,101 @@
 import Link from "next/link";
 import {
-  ArrowRight,
-  CheckCircle2,
-  Sparkles,
+  BarChart3,
   Bot,
-  Layers3,
-  BrainCircuit,
-  ShieldCheck,
+  Boxes,
+  ClipboardList,
+  Compass,
+  FileText,
+  Globe,
+  ListChecks,
+  Network,
+  Rocket,
+  Settings2,
+  Sparkles,
   Workflow,
-  Plug,
-  UserCheck,
-  Wand2,
-  ClipboardCheck,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import HeroVisual from "@/components/HeroVisual";
 import GradientBackdrop from "@/components/GradientBackdrop";
 import MarketingHeader from "@/components/MarketingHeader";
 import MarketingFooter from "@/components/MarketingFooter";
+import { BuildCta } from "@/components/marketing/BuildCta";
+import { HeroIdeaForm } from "@/components/marketing/HeroIdeaForm";
+import { BuilderPreview } from "@/components/marketing/BuilderPreview";
 
-const FEATURES = [
+const JOURNEY = [
+  { icon: Sparkles, title: "Idea", body: "Say what you want to build, in your own words." },
+  { icon: Compass, title: "Discovery", body: "Klaros asks the few questions that matter — and no more." },
+  { icon: FileText, title: "Blueprint", body: "Your business, structured: customers, offer, revenue, operations." },
+  { icon: ClipboardList, title: "Requirements", body: "What the business needs to run, each with the reason why." },
+  { icon: ListChecks, title: "Recommendations", body: "The tools and integrations that fit — honest about what's available today." },
+  { icon: Network, title: "Business architecture", body: "A map of how your business operates, end to end — what exists, and what is still planned." },
+  { icon: Globe, title: "Website", body: "Generated from your Blueprint. You review it before it goes live." },
+  { icon: Bot, title: "AI workforce", body: "A conversation layer for calls and messages, connected to your business." },
+  { icon: Rocket, title: "Launch & operations", body: "Go live when the launch checklist says you are ready, then run the business from one place." },
+];
+
+const CAPABILITIES = [
+  {
+    icon: Compass,
+    title: "AI Business Discovery",
+    body: "A short, adaptive conversation that turns a loose idea into structured facts. It never loops forever — it stops when it has what it needs, and you can review every answer.",
+  },
+  {
+    icon: FileText,
+    title: "Business Blueprint",
+    body: "Everything Klaros understands about your business, in one place you can read, correct and confirm. Every statement is marked as something you said, something Klaros inferred, or something still unknown.",
+  },
+  {
+    icon: ListChecks,
+    title: "Recommended tools & integrations",
+    body: "Each suggestion says what it is, why it's recommended, what it depends on and whether it's available now. If an integration doesn't exist yet it says so — it's labelled Planned, not faked.",
+  },
+  {
+    icon: Network,
+    title: "AI-generated business architecture",
+    body: "The Business Map connects your customers, capabilities, systems and partners, and updates as your business changes.",
+  },
+  {
+    icon: Globe,
+    title: "Website builder",
+    body: "Pages are generated from what your business actually needs — a provider directory only if you have providers. Preview it, publish it, and capture real leads into your CRM.",
+  },
   {
     icon: Bot,
-    title: "An AI that acts, not just chats",
-    body: "Klaros reads every lead, quote, invoice, and job — then proposes the next action, waits for your approval on anything that matters, and executes safely within limits you set.",
-  },
-  {
-    icon: Layers3,
-    title: "One operating system, not twelve tabs",
-    body: "CRM, scheduling, quoting, invoicing, and retention live in one place, wired together by a real event system — not a pile of disconnected tools pretending to integrate.",
-  },
-  {
-    icon: BrainCircuit,
-    title: "It learns your business, on the record",
-    body: "Every recommendation, approval, and outcome is logged. Klaros gets better at recommending what you'd actually do — and you can always see why.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Nothing runs outside your rules",
-    body: "Every AI action is checked against a fixed policy before it executes and written to an audit trail afterward — the AI can propose, but it can never quietly approve its own request.",
+    title: "AI workforce, with Halla",
+    body: "Halla AI is our separate voice and conversation platform for inbound and outbound calls, qualification and booking. Klaros is built to sit behind it; the connection itself is still being built.",
   },
   {
     icon: Workflow,
-    title: "Automations that actually hold up",
-    body: "Event → condition → action, running on the same governed pipeline as everything else. Edit one mid-flight and an execution already in progress keeps running against the version it started with.",
+    title: "Automation",
+    body: "Governed automations and approvals: nothing runs outside rules you set, and every action is logged.",
   },
   {
-    icon: Plug,
-    title: "Real integrations, honestly reported",
-    body: "Stripe, Google Calendar, and QuickBooks connect for real — and every connection status is checked live against the provider, never faked just to look good.",
-  },
-];
-
-const STEPS = [
-  {
-    icon: UserCheck,
-    title: "Set up your business",
-    body: "Add your pricing rules, service catalog, and brand voice once — Klaros reads these before it ever proposes anything on your behalf.",
-  },
-  {
-    icon: Wand2,
-    title: "Klaros proposes the next action",
-    body: "A new lead, an overdue invoice, a quote gone quiet — Klaros reads what changed and recommends what to do about it, in plain language.",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "You approve, or it runs on its own",
-    body: "Set what's automatic and what needs your sign-off. Every action — either way — is policy-checked and written to an audit trail you can always inspect.",
+    icon: BarChart3,
+    title: "Analytics & operations",
+    body: "Leads, customers, jobs, invoices and cash in one operating view — so you can see what's happening in your business.",
   },
 ];
 
 const FAQS = [
   {
-    q: "Can the AI take actions without me knowing?",
-    a: "No. Every action — automatic or approved — is logged to an audit trail you can see in full, including exactly what was proposed, what was approved, and what ran. Nothing happens silently.",
+    q: "What does Klaros actually do for me?",
+    a: "It starts from your idea and works out what the business needs: it interviews you, writes a Business Blueprint, derives requirements, recommends tools, draws a map of how the business operates and helps you build the website. Then it becomes the place you run the business from.",
   },
   {
-    q: "What if I don't trust an AI recommendation?",
-    a: "Reject it. Klaros treats every AI output as a proposal, never a decision — you can require approval on any action type, and rejecting one doesn't just discard it, it teaches Klaros what you'd actually do instead.",
+    q: "Does it build everything automatically?",
+    a: "No. Klaros proposes and you decide: you confirm the Blueprint, accept or reject recommendations, and review the website before anything is published. Nothing is connected or published on your behalf without you.",
   },
   {
-    q: "Do I need to be technical to set this up?",
-    a: "No. Setup is entering your business details in plain forms — pricing rules, service catalog, brand voice. If you can fill out a form, you can configure Klaros.",
+    q: "Which integrations work today?",
+    a: "Stripe, Google Calendar and QuickBooks connect for real, and their status is checked live. Anything else Klaros recommends is clearly marked Planned or as needing an adapter — it won't pretend to be connected.",
   },
   {
-    q: "Which tools does Klaros actually integrate with today?",
-    a: "Stripe, Google Calendar, and QuickBooks connect for real today. Every integration's connection status on your dashboard is checked live against the real provider — never simulated.",
+    q: "Is the AI workforce included?",
+    a: "Halla AI is a separate product with its own voice and calling platform. Klaros defines how the two connect and shows the workforce on your Business Map, but the connection isn't live yet, so Klaros shows it as not connected.",
   },
   {
-    q: "What happens to my data if I stop using Klaros?",
-    a: "Your data is yours. Every record Klaros holds — leads, jobs, invoices, the audit trail — is exportable, and there's no lock-in beyond the switching cost of any software you'd change.",
+    q: "What kinds of business can I build?",
+    a: "Any. The engine doesn't assume a business type. Medical tourism is the most developed example today; a dropshipping store works through the same steps, with different requirements and a different map — though parts of ecommerce, like supplier connections and a storefront, are still planned.",
   },
 ];
 
@@ -99,140 +105,147 @@ export default function Home() {
       <GradientBackdrop />
       <MarketingHeader />
 
-      <section className="mx-auto max-w-4xl px-6 pb-20 pt-16 text-center sm:pt-24">
+      <section className="mx-auto max-w-4xl px-6 pb-16 pt-14 text-center sm:pt-20">
         <div className="mx-auto mb-6 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted">
-          <Sparkles className="h-3.5 w-3.5 text-accent" strokeWidth={2} />
-          The AI operating system for the one-person company
+          <Sparkles className="h-3.5 w-3.5 text-accent" strokeWidth={2} aria-hidden="true" />
+          The AI business builder
         </div>
         <h1 className="font-display text-4xl font-medium leading-[1.1] tracking-tight text-foreground sm:text-6xl">
-          Run your entire business.
+          Build and operate
           <br />
-          <span className="italic text-accent">Not just track it.</span>
+          <span className="italic text-accent">your business with AI.</span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-relaxed text-muted">
-          Klaros is the operating system built for solo operators and small service
-          businesses — leads to cash, quotes to reviews, one governed AI layer that
-          proposes, waits for you, and executes.
+          Describe what you want to build. Klaros figures out what your business needs — then helps you build it and operate it.
         </p>
-        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/register">
-            <Button size="lg" className="gap-2">
-              Create your company
-              <ArrowRight className="h-4 w-4" strokeWidth={2} />
-            </Button>
-          </Link>
-          <Link href="/pricing">
-            <Button variant="secondary" size="lg">
-              See pricing
-            </Button>
+
+        <HeroIdeaForm />
+
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link href="#how-it-works" className="klaros-btn-secondary px-6 py-3 text-base">
+            See How It Works
           </Link>
         </div>
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
-          {[
-            "Real-time Owner Attention Queue — nothing falls through silently",
-            "Governed AI execution — every action is policy-checked and audited",
-            "Built for the one-person company, not an enterprise IT team",
-          ].map((point) => (
-            <div key={point} className="flex items-center gap-2 text-sm text-muted">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-accent" strokeWidth={2} />
-              {point}
-            </div>
+
+        <ol aria-label="How Klaros works" className="mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs font-medium text-muted">
+          {["Idea", "Discovery", "Blueprint", "Architecture", "Website", "AI workforce", "Operations"].map((step, i, a) => (
+            <li key={step} className="flex items-center gap-2">
+              {step}
+              {i < a.length - 1 && <span aria-hidden="true" className="text-accent">→</span>}
+            </li>
           ))}
-        </div>
+        </ol>
 
-        <HeroVisual />
+        <BuilderPreview />
       </section>
 
-      {/* Product facts, not vanity metrics — real capabilities of the
-          platform today, not fabricated customer/usage numbers. */}
-      <section className="border-y border-border bg-surface/60 px-6 py-10">
-        <div className="mx-auto grid max-w-4xl grid-cols-2 gap-8 text-center sm:grid-cols-4">
-          {[
-            { value: "100%", label: "AI actions policy-checked & audited" },
-            { value: "5", label: "modules in one operating system" },
-            { value: "3", label: "real integrations, live-verified" },
-            { value: "24/7", label: "Owner Attention Queue coverage" },
-          ].map((stat) => (
-            <div key={stat.label}>
-              <div className="font-display text-3xl text-accent">{stat.value}</div>
-              <div className="mt-1 text-xs leading-snug text-muted">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="border-t border-border bg-surface px-6 py-20">
-        <div className="mx-auto max-w-5xl">
-          <div className="mx-auto max-w-xl text-center">
-            <h2 className="font-display text-3xl text-foreground">How it actually works</h2>
-            <p className="mt-3 text-sm text-muted">Three real steps, no black box.</p>
-          </div>
-          <div className="mt-14 grid gap-10 sm:grid-cols-3">
-            {STEPS.map((step, i) => (
-              <div key={step.title} className="relative text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                  <step.icon className="h-5 w-5" strokeWidth={1.75} />
-                </div>
-                <div className="mt-4 font-display text-lg text-foreground">
-                  {i + 1}. {step.title}
-                </div>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{step.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="px-6 py-20">
+      <section id="how-it-works" className="scroll-mt-24 border-y border-border bg-surface px-6 py-20">
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto max-w-xl text-center">
-            <h2 className="font-display text-3xl text-foreground">Everything one person needs to run a real business</h2>
+            <h2 className="font-display text-3xl text-foreground">From business idea to operating business</h2>
+            <p className="mt-3 text-sm text-muted">One continuous journey — not a pile of unrelated admin pages.</p>
           </div>
-          <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((feature) => (
-              <div key={feature.title} className="klaros-card p-6 transition-shadow hover:shadow-raised">
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft">
-                  <feature.icon className="h-5 w-5 text-accent" strokeWidth={1.75} />
+          <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {JOURNEY.map((step, i) => (
+              <li key={step.title} className="klaros-card flex gap-4 p-5">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground" aria-hidden="true">
+                  {i + 1}
+                </span>
+                <div>
+                  <h3 className="flex items-center gap-2 font-display text-lg text-foreground">
+                    <step.icon className="h-4 w-4 text-accent" strokeWidth={1.75} aria-hidden="true" />
+                    {step.title}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">{step.body}</p>
                 </div>
-                <h3 className="font-display text-xl text-foreground">{feature.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted">{feature.body}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section id="product" className="scroll-mt-24 px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-xl text-center">
+            <h2 className="font-display text-3xl text-foreground">What's inside</h2>
+          </div>
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {CAPABILITIES.map((c) => (
+              <div key={c.title} className="klaros-card p-6 transition-shadow hover:shadow-raised">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft">
+                  <c.icon className="h-5 w-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
+                </div>
+                <h3 className="font-display text-lg text-foreground">{c.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{c.body}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="border-t border-border bg-surface px-6 py-20">
+      <section id="one-engine" className="scroll-mt-24 border-y border-border bg-surface px-6 py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-xl text-center">
+            <h2 className="font-display text-3xl text-foreground">One engine. Any business.</h2>
+            <p className="mt-3 text-sm text-muted">
+              Klaros doesn't have a template per industry. The same steps produce a different blueprint, different requirements and a different map for each business.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-6 md:grid-cols-2">
+            {[
+              {
+                title: "Medical tourism",
+                note: "The most developed example today.",
+                items: ["Provider & hospital directory", "Patient lead capture & qualification", "Consultations", "Referral & commission tracking"],
+              },
+              {
+                title: "Dropshipping",
+                note: "Mapped end to end; supplier and storefront pieces are planned.",
+                items: ["Storefront", "Supplier connection", "Product catalog & inventory", "Orders & fulfilment"],
+              },
+            ].map((b) => (
+              <div key={b.title} className="klaros-card p-6">
+                <h3 className="font-display text-xl text-foreground">{b.title}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">{b.note}</p>
+                <ul className="mt-4 space-y-2 text-sm text-muted">
+                  {b.items.map((it) => (
+                    <li key={it} className="flex items-center gap-2">
+                      <Boxes className="h-4 w-4 text-accent" strokeWidth={1.75} aria-hidden="true" />
+                      {it}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" className="scroll-mt-24 px-6 py-20">
         <div className="mx-auto max-w-3xl">
           <h2 className="text-center font-display text-3xl text-foreground">Questions worth answering honestly</h2>
-          <div className="mt-12 space-y-6">
+          <div className="mt-12 space-y-4">
             {FAQS.map((item) => (
-              <div key={item.q} className="klaros-card p-6">
-                <h3 className="font-medium text-foreground">{item.q}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{item.a}</p>
-              </div>
+              <details key={item.q} className="klaros-card group p-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                  {item.q}
+                  <Settings2 className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden="true" />
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-muted">{item.a}</p>
+              </details>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-4xl px-6 py-20 text-center">
-        <h2 className="font-display text-3xl italic text-foreground">
-          Built for one person to run what used to take a team.
-        </h2>
+      <section className="border-t border-border bg-surface px-6 py-20 text-center">
+        <h2 className="font-display text-3xl italic text-foreground">What are you building?</h2>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-muted">
-          Set up your company in a couple of minutes and see your first Morning Brief
-          before your coffee's cold.
+          Tell Klaros your idea and see what your business needs — it takes a few minutes.
         </p>
-        <Link href="/register" className="mt-8 inline-block">
-          <Button size="lg" className="gap-2">
-            Get started
-            <ArrowRight className="h-4 w-4" strokeWidth={2} />
-          </Button>
-        </Link>
+        <div className="mt-8">
+          <BuildCta>Build My Business</BuildCta>
+        </div>
       </section>
 
       <MarketingFooter />

@@ -2,9 +2,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** The backend's closed error code for a {error, message} detail (for example "no_share_consent"), when it sent one. */
+  code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -84,6 +87,7 @@ async function trySilentRefresh(): Promise<string | null> {
 // into every error banner in the app. Render the human `msg` instead.
 function formatErrorDetail(detail: unknown): string {
   if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object" && !Array.isArray(detail) && typeof (detail as { message?: unknown }).message === "string") return (detail as { message: string }).message;
   if (Array.isArray(detail)) {
     const messages = detail
       .map((e) => (e && typeof e === "object" && typeof (e as { msg?: unknown }).msg === "string" ? (e as { msg: string }).msg : null))
@@ -120,7 +124,8 @@ async function request<T>(path: string, init?: RequestInit, _isRetry = false): P
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
     const detail = formatErrorDetail(body.detail ?? body);
-    throw new ApiError(res.status, detail || "Request failed");
+    const code = body.detail && typeof body.detail === "object" && typeof (body.detail as { error?: unknown }).error === "string" ? (body.detail as { error: string }).error : undefined;
+    throw new ApiError(res.status, detail || "Request failed", code);
   }
 
   // 202 Accepted for an APPROVAL_REQUIRED tool call: FastAPI's HTTPException
@@ -4182,6 +4187,14 @@ export function answerDiscoveryQuestion(token: string, sessionId: string, answer
   });
 }
 
+/** The user's explicit "that's enough" — ends Discovery early (idempotent). */
+export function finishDiscoverySession(token: string, sessionId: string) {
+  return request<{ session: DiscoverySession }>(`/api/v1/business-discovery/sessions/${sessionId}/finish`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
 export function getDiscoverySession(token: string, sessionId: string) {
   return request<{ session: DiscoverySession; turns: DiscoveryTurn[] }>(
     `/api/v1/business-discovery/sessions/${sessionId}`,
@@ -4652,6 +4665,8 @@ export interface MedicalTourismProvider {
   contact_phone: string | null;
   description: string | null;
   status: string;
+  /** UNVERIFIED | UNDER_REVIEW | VERIFIED | SUSPENDED | EXPIRED. Only an active, currently verified provider can be matched or referred to. */
+  verification_status?: string;
   created_at: string;
 }
 
@@ -4951,4 +4966,750 @@ export function updateReferralCommissionStatus(token: string, commissionId: stri
     `/api/v1/medical-tourism/referral-commissions/${commissionId}/status`,
     { method: "PATCH", headers: authHeaders(token), body: JSON.stringify({ status }) }
   );
+}
+
+// --- Business Builder (requirements / business map / next actions) ---
+// Read-only views derived server-side from the tenant's Business Blueprint
+// (app/api/v1/business_builder.py). Nothing here is computed in the
+// browser: the map, the requirement states and the "connected" claims all
+// come from the backend, which is the only place that knows what is
+// actually connected.
+
+/** The shared status vocabulary. Never display anything softer than this. */
+export type ReadinessState =
+  | "READY"
+  | "CONFIGURATION_REQUIRED"
+  | "CONNECTED"
+  | "NOT_CONNECTED"
+  | "PLANNED"
+  | "NOT_READY"
+  | "AVAILABLE" // a real adapter exists; not connected yet
+  | "INTEGRATION_REQUIRED"; // no adapter exists, so there is nothing to connect
+
+export interface BuilderProviderView {
+  provider_key: string;
+  display_name: string;
+  implementation_status: string;
+  state: ReadinessState;
+  adapter_required: boolean;
+}
+
+export interface BuilderRequirementEvidence {
+  kind: "blueprint_claim" | "vertical_extension";
+  claim_id?: string | null;
+  section_key?: string | null;
+  statement?: string | null;
+  vertical_key?: string | null;
+}
+
+export interface BuilderRequirement {
+  key: string;
+  label: string;
+  group: string;
+  description: string;
+  required: boolean;
+  why: string;
+  technical_why: string;
+  source: "blueprint" | "industry_module";
+  confidence: number;
+  evidence: BuilderRequirementEvidence[];
+  klaros_support: "NATIVE" | "INTEGRATION" | "PLANNED";
+  native_route: string | null;
+  readiness: ReadinessState;
+  readiness_detail: string;
+  workforce_addressable: boolean;
+  providers: BuilderProviderView[];
+  next_step: { text: string; route: string | null };
+  recommendation_id: string | null;
+  recommendation_ids: string[];
+  recommendation_status: string | null;
+}
+
+export interface BusinessMapNode {
+  id: string;
+  kind: "actor" | "core" | "capability" | "system" | "workforce" | "outcome";
+  label: string;
+  sublabel: string | null;
+  lane: number;
+  state: ReadinessState | null;
+  why: string | null;
+  route: string | null;
+  planned: boolean;
+  required?: boolean;
+}
+
+export interface BusinessMapEdge {
+  source: string;
+  target: string;
+  kind: string;
+}
+
+export interface BusinessMap {
+  nodes: BusinessMapNode[];
+  edges: BusinessMapEdge[];
+  lanes: string[];
+}
+
+export interface BuilderNextAction {
+  id: string;
+  title: string;
+  detail: string;
+  state: ReadinessState;
+  route: string | null;
+  kind: "link" | "enable_vertical";
+  vertical_key?: string;
+}
+
+export interface BuilderStage {
+  key: string;
+  label: string;
+  state: "done" | "current" | "todo";
+  route: string;
+}
+
+export interface WorkforceStatus {
+  provider: string;
+  status: "NOT_CONNECTED" | "CONNECTING" | "CONFIGURATION_REQUIRED" | "NEEDS_ATTENTION" | "CONNECTED" | "ERROR";
+  mode?: "none" | "development" | "live";
+  adapter_implemented: boolean;
+  message: string;
+  agent_id: string | null;
+  capabilities: { key: string; label: string; description: string }[];
+}
+
+export interface BuilderOverview {
+  journey: BusinessJourney | null;
+  blueprint: { id: string; version: number; status: string } | null;
+  business: {
+    name: string | null;
+    summary: string | null;
+    industry: string | null;
+    business_model: string | null;
+    customers: string | null;
+  };
+  requirements: BuilderRequirement[];
+  business_map: BusinessMap;
+  next_actions: BuilderNextAction[];
+  launch: {
+    items: {
+      key: string;
+      label: string;
+      status: ReadinessState;
+      detail: string;
+      required: boolean;
+      route: string | null;
+      done: boolean;
+    }[];
+    ready: boolean;
+    verdict: "READY" | "NOT_READY";
+    blocking: string[];
+    launched: boolean;
+  };
+  progress: { key: string; label: string; status: ReadinessState; detail: string; route: string | null }[];
+  stages: BuilderStage[];
+  website: { exists: boolean; published: boolean; has_draft: boolean; pages: string[] };
+  workforce: WorkforceStatus;
+  operations: {
+    lead_count: number;
+    modules: { key: string; label: string; count: number; route: string | null }[];
+  };
+  modules: { key: string; name: string; status: string; enabled: boolean; has_domain_module: boolean }[];
+}
+
+export function getBuilderOverview(token: string) {
+  return request<BuilderOverview>("/api/v1/business-builder/overview", { headers: authHeaders(token) });
+}
+
+export function getWorkforceStatus(token: string) {
+  return request<WorkforceStatus>("/api/v1/business-builder/workforce", { headers: authHeaders(token) });
+}
+
+export function enableIndustryModule(token: string, key: string) {
+  return request<{ key: string; name: string; enabled: boolean }>(
+    `/api/v1/business-builder/modules/${encodeURIComponent(key)}/enable`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+}
+
+// --- Business operations (operating console, workflows, lead operations) ---
+// Read models computed server-side from real records (backend business_operations_service.py,
+// medical_tourism_operations.py). Nothing here is derived or simulated in the browser.
+
+export interface OpsLeadRow {
+  id: string;
+  name: string;
+  source: string;
+  status?: string;
+  created_at: string;
+}
+
+export interface OpsMetric {
+  key: string;
+  label: string;
+  value?: number;
+  count?: number;
+  route?: string | null;
+}
+
+export interface OpsWorkflow {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string;
+  trigger: string | null;
+  trigger_event: string | null;
+  actions: string[];
+  published: boolean;
+  runs: number;
+  failed_runs: number;
+  last_run: { status: string; at: string } | null;
+}
+
+export interface OpsPipelineStage {
+  key: string;
+  label: string;
+  kind: "SYSTEM" | "AUTOMATED" | "ASSISTED" | "MANUAL";
+  state: ReadinessState;
+  detail: string;
+  route?: string | null;
+}
+
+export interface OpsAgent {
+  id: string;
+  name: string;
+  purpose: string;
+  status: string;
+  autonomy_tier: string;
+  tools: string[];
+  executions: number;
+  last_execution: { status: string; at: string } | null;
+}
+
+export interface OpsIntegration {
+  provider_key: string;
+  name: string;
+  category: string;
+  purpose: string | null;
+  capabilities: string[];
+  state: ReadinessState;
+  implementation: string;
+  last_error: string | null;
+}
+
+export interface BusinessOperations {
+  leads: {
+    total: number;
+    new_7d: number;
+    by_status: Record<string, number>;
+    by_source: Record<string, number>;
+    qualified: number;
+    website_enquiries: number;
+    waiting: OpsLeadRow[];
+    recent: OpsLeadRow[];
+  };
+  customers: number;
+  workflows: OpsWorkflow[];
+  lead_pipeline: OpsPipelineStage[];
+  agents: OpsAgent[];
+  activity: { at: string; kind: string; text: string; route?: string | null }[];
+  integrations: OpsIntegration[];
+  integration_groups: string[];
+  attention: { id: string; text: string; route: string; count: number }[];
+  module: {
+    metrics: OpsMetric[];
+    data: OpsMetric[];
+    breakdowns: { key: string; label: string; items: { label: string; value: number }[] }[];
+  };
+  starter_workflow_exists: boolean;
+  escalation_workflow_exists?: boolean;
+  ai: { events: Record<string, number>; interactions: number; qualified: number; escalated: number; needs_person: number };
+}
+
+export function getBusinessOperations(token: string) {
+  return request<BusinessOperations>("/api/v1/business-builder/operations", { headers: authHeaders(token) });
+}
+
+export interface WorkflowDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string;
+  trigger: string | null;
+  trigger_event: string | null;
+  steps: { action: string }[];
+  published: boolean;
+  totals: { runs: number; completed: number; failed: number };
+  runs: { id: string; status: string; at: string; error: string | null; steps: { index: number; action: string; status: string; error: string | null }[] }[];
+}
+
+export function getWorkflowDetail(token: string, id: string) {
+  return request<WorkflowDetail>(`/api/v1/business-builder/workflows/${id}`, { headers: authHeaders(token) });
+}
+
+// --- AI workforce (Klaros side of the Halla boundary) and the lead board ---
+
+export type InteractionState =
+  | "NOT_CONNECTED"
+  | "CONFIGURATION_REQUIRED"
+  | "WAITING_FOR_HALLA"
+  | "IN_PROGRESS"
+  | "QUALIFICATION_PENDING"
+  | "QUALIFIED"
+  | "ESCALATED"
+  | "APPOINTMENT_REQUESTED"
+  | "APPOINTMENT_CONFIRMED";
+
+export interface WorkforceSetup {
+  status: { provider: string; status: string; adapter_implemented: boolean; mode: "none" | "development" | "live"; message: string; agent_id: string | null };
+  /** Present only when the real Halla adapter is enabled. Never contains a credential. */
+  halla?: HallaConnectionInfo;
+  channels: string[];
+  members: { key: string; name: string; purpose: string; status: "ACTIVE" | "NOT_CONFIGURED" | "AVAILABLE_THROUGH_HALLA"; status_label: string; capabilities: string[] }[];
+  steps: { key: string; label: string; state: "DONE" | "READY" | "BLOCKED"; detail: string }[];
+  context: {
+    business_name: string | null;
+    industry: string | null;
+    summary: string | null;
+    customers: string | null;
+    services: string[];
+    markets: string[];
+    qualification_fields: string[];
+    escalation_triggers: string[];
+    booking_rules: string[];
+  };
+  dev_simulator: boolean;
+}
+
+export interface HallaConnectionInfo {
+  halla_tenant_id: string | null;
+  has_credential: boolean;
+  has_signing_secret: boolean;
+  last_verified_at: string | null;
+  last_error: string | null;
+  webhook_url: string | null;
+}
+
+export interface HallaStatusResult {
+  status: string;
+  mode: string;
+  message: string;
+  adapter_implemented: boolean;
+  halla?: HallaConnectionInfo;
+}
+
+const HALLA = "/api/v1/business-builder/workforce/halla";
+
+/** The credential is sent once, over TLS, to the Klaros backend — which encrypts it at once and never returns it. */
+export function connectHalla(token: string, body: { halla_tenant_id: string; api_key: string; signing_secret: string }) {
+  return request<HallaStatusResult>(`${HALLA}/connection`, { method: "PUT", headers: authHeaders(token), body: JSON.stringify(body) });
+}
+
+export function disconnectHalla(token: string) {
+  return request<HallaStatusResult>(`${HALLA}/connection`, { method: "DELETE", headers: authHeaders(token) });
+}
+
+export function checkHallaHealth(token: string) {
+  return request<HallaStatusResult>(`${HALLA}/health`, { method: "POST", headers: authHeaders(token) });
+}
+
+export function configureHalla(token: string) {
+  return request<{ sent: Record<string, number | boolean> }>(`${HALLA}/configure`, { method: "POST", headers: authHeaders(token) });
+}
+
+export interface HallaAgent {
+  id: string;
+  name: string;
+  role: string | null;
+  status: string | null;
+  available: boolean | null;
+}
+
+export function listHallaAgents(token: string) {
+  return request<{ agents: HallaAgent[] }>(`${HALLA}/agents`, { headers: authHeaders(token) });
+}
+
+export function syncLeadToHalla(token: string, leadId: string) {
+  return request<{ synced: boolean; created: boolean }>(`/api/v1/business-builder/leads/${leadId}/halla/sync`, { method: "POST", headers: authHeaders(token) });
+}
+
+export function askHallaToCall(token: string, leadId: string, body: { reason?: string; opening_context?: string } = {}) {
+  return request<{ requested: boolean; call_id: string | null }>(`/api/v1/business-builder/leads/${leadId}/halla/call`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+export function getWorkforceSetup(token: string) {
+  return request<WorkforceSetup>("/api/v1/business-builder/workforce/setup", { headers: authHeaders(token) });
+}
+
+export interface LeadInteraction {
+  state: InteractionState;
+  label: string;
+  workforce: { status: string; mode: string; adapter_implemented: boolean; message: string };
+  events: { type: string; text: string; at: string; channel: string | null; summary: string | null; simulated: boolean }[];
+  summary: string | null;
+  next_action: { text: string; route: string } | null;
+}
+
+export function getLeadInteraction(token: string, leadId: string) {
+  return request<LeadInteraction>(`/api/v1/business-builder/leads/${leadId}/interaction`, { headers: authHeaders(token) });
+}
+
+export interface LeadBoardRow {
+  id: string;
+  name: string;
+  status: string;
+  source: string;
+  created_at: string;
+  priority: string;
+  assigned_to: string | null;
+  country: string | null;
+  service: string | null;
+  next_action: { text: string; route: string } | null;
+  ai_state: InteractionState;
+  ai_label: string;
+}
+
+export function getLeadBoard(token: string, params: { status?: string; source?: string; q?: string; limit?: number; offset?: number } = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  });
+  return request<{ leads: LeadBoardRow[]; total: number; limit: number; offset: number }>(`/api/v1/business-builder/leads?${qs.toString()}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function createStarterWorkflow(token: string, kind: "new_lead" | "escalation" = "new_lead") {
+  return request<{ id: string; name: string; status: string; created: boolean }>(`/api/v1/business-builder/workflows/starter?kind=${kind}`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export interface ProviderMatch {
+  provider_id: string;
+  name: string;
+  location: string;
+  score: number;
+  fit: "STRONG" | "PARTIAL";
+  reasons: string[];
+  offerings: string[];
+}
+
+export interface LeadOperations {
+  patient: {
+    treatment: string | null;
+    destination_country: string | null;
+    medical_history_summary: string | null;
+    travel_start: string | null;
+    travel_end: string | null;
+    has_insurance: boolean | null;
+    insurance_notes: string | null;
+  };
+  matching: {
+    basis: { procedures: string[]; procedure_source: string | null; destination_country: string | null; criteria: string[] };
+    matches: ProviderMatch[];
+    none_reason: string | null;
+  };
+  consultations: { id: string; provider: string; status: string; notes: string | null; created_at: string }[];
+  timeline: { at: string; kind: string; text: string }[];
+  next_action: { text: string; route: string | null; state: ReadinessState };
+}
+
+/** A lead's operating context. Returns null (not an error) for a lead that has no
+ * industry-specific details — the panel simply isn't shown. */
+export async function getLeadOperations(token: string, leadId: string): Promise<LeadOperations | null> {
+  try {
+    return await request<LeadOperations>(`/api/v1/medical-tourism/leads/${leadId}/operations`, { headers: authHeaders(token) });
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 403)) return null;
+    throw err;
+  }
+}
+
+// --- Medical Tourism pilot console ---
+
+/** Whether this organisation is a consent-gated Medical Tourism pilot (the UI then shows the focused pilot navigation). */
+export interface MedicalTourismMode {
+  pilot_console: boolean;
+  consent_gated: boolean;
+}
+
+export function getMedicalTourismMode(token: string) {
+  return request<MedicalTourismMode>("/api/v1/medical-tourism/mode", { headers: authHeaders(token) });
+}
+
+/** Counts only (backend mt_funnel.py): no names, contact details, text or ids. Every stage has its own strict definition. */
+export interface MedicalTourismFunnel {
+  received: number;
+  consent: {
+    no_evidence: number;
+    contact_granted: number;
+    store_personal_data_granted: number;
+    store_medical_information_granted: number;
+    frozen: number;
+  };
+  qualification: { qualified: number; unqualified: number; held_for_person: number; pending: number };
+  appointments: {
+    confirmed: number;
+    confirmed_by_halla: number;
+    tentative_not_a_booking: number;
+    cancelled: number;
+    completed: number;
+    no_show: number;
+  };
+  consultations: Record<string, number>;
+  escalations_requested: { klaros_safety_screen: number; halla: number };
+  delivery: {
+    halla_events_processed: number;
+    halla_events_failed: number;
+    halla_events_in_flight: number;
+    halla_events_stuck_past_lease: number;
+    outbound_blocked_by_consent: number;
+  };
+  drop_off: {
+    no_consent_evidence: number;
+    frozen_after_withdrawal_or_decline: number;
+    awaiting_qualification: number;
+    held_for_person: number;
+  };
+  definitions: string;
+}
+
+export function getMedicalTourismFunnel(token: string) {
+  return request<MedicalTourismFunnel>("/api/v1/medical-tourism/funnel", { headers: authHeaders(token) });
+}
+
+/** What the newest consent decision for a lead allows (backend halla_consent.describe_for_lead): scopes and times only, never contact details. */
+export interface LeadConsentState {
+  evidence_recorded: boolean;
+  granted_scopes: string[];
+  contact: boolean;
+  store_personal_data: boolean;
+  store_medical_information: boolean;
+  as_of: string | null;
+  wording_version: string | null;
+  method: string | null;
+  history_count: number;
+  note: string | null;
+}
+
+export function getLeadConsent(token: string, leadId: string) {
+  return request<LeadConsentState>(`/api/v1/business-builder/leads/${leadId}/halla/consent`, { headers: authHeaders(token) });
+}
+
+/** A team member records what the patient told them: the COMPLETE set of scopes agreed to; an empty list records a withdrawal of everything. */
+export function attestLeadConsent(token: string, leadId: string, scopes: string[], wordingVersion?: string) {
+  return request<LeadConsentState>(`/api/v1/leads/${leadId}/consent`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ scopes, ...(wordingVersion ? { wording_version: wordingVersion } : {}) }),
+  });
+}
+
+/** Refused by the backend (409) while personal-data consent is still granted. */
+export function eraseLeadPersonalData(token: string, leadId: string) {
+  return request<{ erased: boolean }>(`/api/v1/business-builder/leads/${leadId}/halla/erase-personal-data`, { method: "POST", headers: authHeaders(token) });
+}
+
+// --- Medical Tourism: pipeline, provider referrals, handoff tasks, verification, revenue (backend mt_*.py) ---
+const MTR = "/api/v1/medical-tourism";
+const post = <T,>(token: string, path: string, body?: unknown) =>
+  request<T>(path, { method: "POST", headers: authHeaders(token), ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+
+export type PipelineStage = "NEW_ENQUIRY" | "CONSENT" | "QUALIFICATION" | "PROVIDER_OPTIONS" | "PATIENT_APPROVAL" | "REFERRED" | "CLINIC_RESPONSE" | "OUTCOME";
+
+export interface PipelineLead {
+  lead_id: string;
+  /** null when the patient has not agreed to us keeping their details */
+  name: string | null;
+  stage: PipelineStage;
+  stage_number: number;
+  next_action: string;
+  held_for_person: boolean;
+  consent_frozen: boolean;
+  referrals: { id: string; provider_id: string; status: string }[];
+  open_tasks: number;
+  assigned_user_id: string | null;
+  created_at: string | null;
+}
+
+export interface MedicalTourismPipeline {
+  stages: PipelineStage[];
+  counts: Record<PipelineStage, number>;
+  leads: PipelineLead[];
+  definitions: string;
+}
+
+export function getMedicalTourismPipeline(token: string) {
+  return request<MedicalTourismPipeline>(`${MTR}/pipeline`, { headers: authHeaders(token) });
+}
+
+export interface ProviderReferral {
+  id: string;
+  lead_id: string;
+  provider_id: string;
+  status: "DRAFT" | "APPROVED" | "SENT" | "ACCEPTED" | "DECLINED" | "OUTCOME_REPORTED" | "CANCELLED";
+  permitted_fields: string[];
+  sent_at: string | null;
+  send_attempts: number;
+  blocked_reason: string | null;
+  clinic_response_at: string | null;
+  outcome: string | null;
+  outcome_reported_at: string | null;
+  created_at: string | null;
+}
+
+export interface ReferralApprovalRecord {
+  id: string;
+  decision: "GRANTED" | "DECLINED" | "WITHDRAWN";
+  fields: string[];
+  patient_informed: boolean;
+  wording_version: string;
+  source: string;
+  channel: string | null;
+  recorded_by: string;
+  recorded_at: string;
+}
+
+export interface ProviderReferralDetail {
+  referral: ProviderReferral;
+  /** Would a send be allowed right now? `code` is the closed reason when not. */
+  gate: { allowed: boolean; code: string | null; fields: string[] };
+  approvals: ReferralApprovalRecord[];
+  deliveries: { id: string; transport: string; fields_sent: string[]; sent_at: string }[];
+}
+
+export function listProviderReferrals(token: string, params: { lead_id?: string; status?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.lead_id) qs.set("lead_id", params.lead_id);
+  if (params.status) qs.set("status", params.status);
+  return request<{ referrals: ProviderReferral[] }>(`${MTR}/referrals?${qs.toString()}`, { headers: authHeaders(token) });
+}
+
+export function getProviderReferral(token: string, id: string) {
+  return request<ProviderReferralDetail>(`${MTR}/referrals/${id}`, { headers: authHeaders(token) });
+}
+
+export function createProviderReferral(token: string, body: { lead_id: string; provider_id: string }) {
+  return post<{ referral: ProviderReferral; created: boolean }>(token, `${MTR}/referrals`, body);
+}
+
+/** A coordinator records the PATIENT'S decision about sharing with this provider. Never recorded by AI; a grant needs patient_informed. */
+export function recordReferralApproval(
+  token: string,
+  id: string,
+  body: { decision: "GRANTED" | "DECLINED" | "WITHDRAWN"; permitted_fields: string[]; patient_informed: boolean; wording_version: string; channel?: string }
+) {
+  return post<{ referral: ProviderReferral; approval_id: string }>(token, `${MTR}/referrals/${id}/approval`, body);
+}
+
+export function sendProviderReferral(token: string, id: string) {
+  return post<{ referral: ProviderReferral; newly_sent: boolean }>(token, `${MTR}/referrals/${id}/send`);
+}
+
+export function recordClinicResponse(token: string, id: string, accepted: boolean) {
+  return post<{ referral: ProviderReferral }>(token, `${MTR}/referrals/${id}/clinic-response`, { accepted });
+}
+
+export function recordReferralOutcome(token: string, id: string, body: { outcome: string; evidence: string }) {
+  return post<{ referral: ProviderReferral }>(token, `${MTR}/referrals/${id}/outcome`, body);
+}
+
+export interface HandoffTask {
+  id: string;
+  lead_id: string;
+  kind: string;
+  reason_code: string | null;
+  status: "OPEN" | "ACCEPTED" | "DONE" | "CANCELLED";
+  owner_user_id: string | null;
+  accepted_at: string | null;
+  completed_at: string | null;
+  note: string | null;
+  created_at: string | null;
+}
+
+export function listHandoffTasks(token: string, params: { status?: string; lead_id?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set("status", params.status);
+  if (params.lead_id) qs.set("lead_id", params.lead_id);
+  return request<{ tasks: HandoffTask[]; total: number }>(`${MTR}/tasks?${qs.toString()}`, { headers: authHeaders(token) });
+}
+
+export const acceptHandoffTask = (token: string, id: string) => post<{ task: HandoffTask }>(token, `${MTR}/tasks/${id}/accept`);
+export const completeHandoffTask = (token: string, id: string, note?: string) => post<{ task: HandoffTask }>(token, `${MTR}/tasks/${id}/complete`, { note });
+export const cancelHandoffTask = (token: string, id: string, note?: string) => post<{ task: HandoffTask }>(token, `${MTR}/tasks/${id}/cancel`, { note });
+
+export function setProviderVerification(token: string, providerId: string, status: string, note?: string) {
+  return request<{ provider_id: string; verification_status: string }>(`${MTR}/providers/${providerId}/verification`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({ status, note }),
+  });
+}
+
+export type CommissionStatus = "PENDING" | "CONFIRMED" | "INVOICED" | "PAID" | "DISPUTED" | "CANCELLED";
+
+export interface RevenueSummary {
+  by_currency: Record<string, Record<CommissionStatus, { count: number; amount: string }>>;
+  definitions: string;
+}
+
+export function getMedicalTourismRevenue(token: string) {
+  return request<RevenueSummary>(`${MTR}/revenue`, { headers: authHeaders(token) });
+}
+
+// --- One-form business setup (backend mt_setup.py / business_setup.py) ---
+export interface BusinessType {
+  key: string;
+  name: string;
+  available: boolean;
+  description: string;
+}
+
+export interface SetupChecklistItem {
+  key: string;
+  label: string;
+  status: "DONE" | "TODO" | "NEEDS_INFORMATION" | "NEEDS_APPROVAL";
+  why: string;
+  route: string | null;
+}
+
+export interface SetupDraft {
+  status: string;
+  needs: string;
+  items?: string[];
+  text?: string;
+  stages?: string[];
+  scopes?: string[];
+  note?: string;
+}
+
+export interface MedicalTourismSetup {
+  configured: boolean;
+  profile?: { business_name: string; patient_markets: string[]; destinations: string[]; business_model: string; business_model_label: string; procedures: string[] };
+  checklist?: SetupChecklistItem[];
+  ready_to_launch?: boolean;
+  open_items?: number;
+  drafts?: Record<string, SetupDraft>;
+  note?: string;
+}
+
+export function getBusinessTypes(token: string) {
+  return request<{ types: BusinessType[] }>("/api/v1/business-setup/types", { headers: authHeaders(token) });
+}
+
+export function getMedicalTourismSetup(token: string) {
+  return request<MedicalTourismSetup>("/api/v1/business-setup/medical-tourism", { headers: authHeaders(token) });
+}
+
+export function submitMedicalTourismSetup(token: string, body: { business_name: string; patient_markets: string[]; destinations: string[]; procedures: string[]; business_model: string }) {
+  return request<MedicalTourismSetup>("/api/v1/business-setup/medical-tourism", { method: "POST", headers: authHeaders(token), body: JSON.stringify(body) });
+}
+
+export function confirmSetupItem(token: string, key: string, confirmed: boolean) {
+  return request<MedicalTourismSetup>("/api/v1/business-setup/medical-tourism/confirm", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ key, confirmed }) });
 }

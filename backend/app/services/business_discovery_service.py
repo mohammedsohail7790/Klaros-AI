@@ -22,7 +22,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.session import set_tenant_context
-from app.models.business_blueprint import MINIMUM_BAR_SECTIONS, BlueprintSectionStatus
+from app.models.business_blueprint import (
+    MINIMUM_BAR_SECTIONS,
+    BlueprintSectionKey,
+    BlueprintSectionStatus,
+    ClaimStatus,
+)
 from app.models.business_discovery import (
     DiscoverySession,
     DiscoverySessionStatus,
@@ -51,6 +56,23 @@ class DiscoveryTurnResult:
     extraction_error: str | None = None
 
 
+# What Discovery tries to hear about before it stops: the minimum bar that
+# activation requires, plus the three facts a business owner expects to be
+# asked about (who the customers are, what is sold, where it operates).
+# Anything beyond this is the user's to fill in on the Blueprint screen —
+# Discovery stays short and never exceeds the session's question cap.
+DISCOVERY_COVERAGE_SECTIONS = (
+    *MINIMUM_BAR_SECTIONS,
+    BlueprintSectionKey.CUSTOMERS,
+    BlueprintSectionKey.PRODUCTS_SERVICES,
+    BlueprintSectionKey.GEOGRAPHY,
+)
+
+
+def _norm_question(q: str) -> str:
+    return " ".join("".join(ch if ch.isalnum() else " " for ch in q.lower()).split())
+
+
 class BusinessDiscoveryService:
     def __init__(
         self,
@@ -63,13 +85,40 @@ class BusinessDiscoveryService:
         self._extraction_service = extraction_service
 
     async def _gap_keys(self, tenant_id: uuid.UUID, blueprint_id: uuid.UUID) -> list[str]:
+        """Minimum-bar sections Discovery still needs to hear about.
+
+        A section is covered for *Discovery's* purposes once it is COMPLETE
+        (human-confirmed) OR the user has already stated something for it —
+        i.e. it has at least one non-rejected claim (PROPOSED or CONFIRMED).
+        Discovery itself never confirms claims, so counting only COMPLETE
+        sections would make every answered question look unanswered and a
+        connected AI provider would re-ask them until the hard question cap.
+        This does NOT weaken activation: `BusinessBlueprintService.activate`
+        still requires every minimum-bar section to be COMPLETE, which only
+        happens when the human confirms claims on the Blueprint review
+        screen that follows Discovery."""
         sections = await self._blueprint_service.list_sections(tenant_id, blueprint_id)
         by_key = {s.section_key: s for s in sections}
+        claims = await self._blueprint_service.list_claims(tenant_id, blueprint_id)
+        stated = {c.section_key for c in claims if c.status != ClaimStatus.REJECTED}
         return [
             key.value
-            for key in MINIMUM_BAR_SECTIONS
-            if by_key.get(key.value) is None or by_key[key.value].status != BlueprintSectionStatus.COMPLETE
+            for key in DISCOVERY_COVERAGE_SECTIONS
+            if key.value not in stated
+            and (by_key.get(key.value) is None or by_key[key.value].status != BlueprintSectionStatus.COMPLETE)
         ]
+
+    async def _known_facts(self, tenant_id: uuid.UUID, blueprint_id: uuid.UUID) -> list[dict]:
+        """What the user has already told us (non-rejected claims, trimmed), so the
+        model does not ask for it again. Values are user content: they are passed to
+        the extraction prompt inside a fenced DATA block, never as instructions."""
+        facts: list[dict] = []
+        for c in await self._blueprint_service.list_claims(tenant_id, blueprint_id):
+            if c.status == ClaimStatus.REJECTED or c.value in (None, "", False):
+                continue
+            text = c.value if isinstance(c.value, str) else (c.key if c.value is True else str(c.value))
+            facts.append({"section_key": c.section_key, "about": c.key, "said": str(text)[:200]})
+        return facts[:40]
 
     async def start_session(
         self, tenant_id: uuid.UUID, *, business_idea: str, created_by: uuid.UUID | None
@@ -165,6 +214,7 @@ class BusinessDiscoveryService:
             is_initial=is_initial,
             actor_id=actor_id,
             turn_sequence=turn.sequence,
+            known_facts=await self._known_facts(tenant_id, blueprint_id),
         )
 
         proposed_ids: list[uuid.UUID] = []
@@ -241,11 +291,33 @@ class BusinessDiscoveryService:
             else:
                 next_question = outcome.result.follow_up_question
                 if next_question is not None:
+                    prior = {
+                        _norm_question(q)
+                        for q in (
+                            await session.execute(
+                                select(DiscoveryTurn.question).where(
+                                    DiscoveryTurn.tenant_id == tenant_id,
+                                    DiscoveryTurn.discovery_session_id == discovery_session_id,
+                                    DiscoveryTurn.question.is_not(None),
+                                )
+                            )
+                        ).scalars()
+                    }
+                    if _norm_question(next_question) in prior:
+                        next_question = None  # never ask the exact same question twice
+                if next_question is not None:
                     turn_row = await session.get(DiscoveryTurn, turn.id)
                     # Store the just-generated follow-up on THIS turn's
                     # `question` field so the *next* submit_answer call can
                     # read "what was asked" without a separate column.
                     turn_row.question = next_question
+                else:
+                    # A connected provider answered but proposed no follow-up
+                    # ("nothing left worth asking"). Leaving the session ACTIVE
+                    # with no pending question would strand the user on a screen
+                    # with nothing to answer, so Discovery ends here — gaps are
+                    # still visible, and fixable, on the Blueprint review screen.
+                    discovery_session.status = DiscoverySessionStatus.COMPLETED
             await session.commit()
             await session.refresh(discovery_session)
             turn_row = await session.get(DiscoveryTurn, turn.id)
@@ -258,6 +330,22 @@ class BusinessDiscoveryService:
             extraction_available=True,
             extraction_error=None,
         )
+
+    async def finish_session(self, tenant_id: uuid.UUID, discovery_session_id: uuid.UUID) -> DiscoverySession:
+        """The user's explicit "that's enough — build my Blueprint". Idempotent: an
+        already-COMPLETED session is returned unchanged. Nothing is confirmed or
+        invented — the Blueprint review that follows still requires the human to
+        confirm every statement."""
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            discovery_session = await session.get(DiscoverySession, discovery_session_id)
+            if discovery_session is None or discovery_session.tenant_id != tenant_id:
+                raise DiscoverySessionNotFoundError(f"DiscoverySession {discovery_session_id} not found")
+            if discovery_session.status != DiscoverySessionStatus.COMPLETED:
+                discovery_session.status = DiscoverySessionStatus.COMPLETED
+                await session.commit()
+                await session.refresh(discovery_session)
+            return discovery_session
 
     async def get_session(self, tenant_id: uuid.UUID, discovery_session_id: uuid.UUID) -> DiscoverySession:
         async with self._session_factory() as session:

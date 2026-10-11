@@ -42,6 +42,7 @@ class IntegrationConnectionService:
     def __init__(self, session_factory: async_sessionmaker, notification_service=None) -> None:
         self._session_factory = session_factory
         self._verifiers: dict[str, VerifierFn] = {}
+        self._verifier_timeouts: dict[str, float] = {}
         # Optional (production observability phase) — reuses the existing
         # NotificationService, never a second notification mechanism.
         # None in every existing test/call site that doesn't pass one, so
@@ -50,13 +51,15 @@ class IntegrationConnectionService:
         # a real instance.
         self._notifications = notification_service
 
-    def register_verifier(self, provider: str, verifier: VerifierFn) -> None:
+    def register_verifier(self, provider: str, verifier: VerifierFn, *, timeout: float | None = None) -> None:
         """A real, provider-specific async function: takes the decrypted
         credential dict, makes a real read-only API call, returns
         (ok, detail). Never fabricate a True here — an unimplemented
         provider should not register a verifier at all (verify() then
         reports ERROR, "no verifier registered", honestly)."""
         self._verifiers[provider] = verifier
+        if timeout is not None:
+            self._verifier_timeouts[provider] = timeout  # a provider whose real API is legitimately slower than the default
 
     async def get_connection(self, tenant_id: uuid.UUID, provider: str) -> IntegrationConnection | None:
         async with self._session_factory() as session:
@@ -89,12 +92,17 @@ class IntegrationConnectionService:
         created_by: uuid.UUID | None,
         external_account_id: str | None = None,
         scopes: str | None = None,
+        verify: bool = True,
     ) -> IntegrationConnection:
         """Stores the credential (encrypted) and immediately attempts a
         real verification — a connection is never left claiming CONNECTED
         without a real call having actually succeeded. If no verifier is
         registered for this provider, status is ERROR with an honest
-        "not implemented" detail, never CONNECTED."""
+        "not implemented" detail, never CONNECTED.
+
+        `verify=False` (operator tooling only) stores the credential and
+        makes NO external call: the status becomes UNVERIFIED — usable,
+        honestly labelled, and promotable to CONNECTED by a later verify()."""
         encrypted = encrypt_credential(credential_data)
 
         async with self._session_factory() as session:
@@ -131,7 +139,16 @@ class IntegrationConnectionService:
             await session.refresh(connection)
             connection_id = connection.id
 
-        logger.info("integration_connection_created", provider=provider, tenant_id=str(tenant_id), operation="connect")
+        logger.info("integration_connection_created", provider=provider, tenant_id=str(tenant_id), operation="connect", verify=verify)
+        if not verify:
+            async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
+                connection = await session.get(IntegrationConnection, connection_id)
+                connection.status = ConnectionStatus.UNVERIFIED
+                connection.last_error = "Saved without verification; run a health check to verify."
+                await session.commit()
+                await session.refresh(connection)
+                return connection
         return await self.verify(tenant_id, provider, connection_id=connection_id)
 
     async def verify(
@@ -169,9 +186,10 @@ class IntegrationConnectionService:
                     # a stalled provider has no timeout by default —
                     # without this, one hung provider call would hang this
                     # request indefinitely rather than reporting ERROR.
-                    ok, detail = await asyncio.wait_for(verifier(credential_data), timeout=self.VERIFY_TIMEOUT_SECONDS)
+                    limit = self._verifier_timeouts.get(provider, self.VERIFY_TIMEOUT_SECONDS)
+                    ok, detail = await asyncio.wait_for(verifier(credential_data), timeout=limit)
                 except TimeoutError:
-                    ok, detail = False, f"Verification timed out after {self.VERIFY_TIMEOUT_SECONDS}s"
+                    ok, detail = False, f"Verification timed out after {limit}s"
                 except Exception as exc:  # noqa: BLE001 — a verifier failure is a real ERROR state, not a crash
                     ok, detail = False, f"Verification raised: {exc}"
             latency_ms = int((time.monotonic() - started) * 1000)

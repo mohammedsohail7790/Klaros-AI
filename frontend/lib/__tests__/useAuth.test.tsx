@@ -9,6 +9,13 @@ vi.mock("next/navigation", () => ({
 
 const getCurrentUserMock = vi.fn();
 vi.mock("@/lib/api", () => ({
+  ApiError: class ApiError extends Error {
+    status: number;
+    constructor(status: number, message: string) {
+      super(message);
+      this.status = status;
+    }
+  },
   getCurrentUser: (...args: unknown[]) => getCurrentUserMock(...args),
 }));
 
@@ -52,7 +59,10 @@ describe("useAuth", () => {
 
   it("clears the token and redirects to /login when the session has expired", async () => {
     sessionStorage.setItem("klaros_access_token", "stale-token");
-    getCurrentUserMock.mockRejectedValue(new Error("401"));
+    const { ApiError } = await import("@/lib/api");
+    getCurrentUserMock.mockImplementation(async () => {
+      throw new ApiError(401, "Unauthorized");
+    });
 
     const { result } = renderHook(() => useAuth());
 
@@ -60,5 +70,17 @@ describe("useAuth", () => {
     expect(result.current.error).toMatch(/session expired/i);
     expect(sessionStorage.getItem("klaros_access_token")).toBeNull();
     expect(pushMock).toHaveBeenCalledWith("/login");
+  });
+
+  it("does NOT log the user out on a transient network or server failure", async () => {
+    sessionStorage.setItem("klaros_access_token", "valid-token");
+    getCurrentUserMock.mockImplementation(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    const { result } = renderHook(() => useAuth());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toMatch(/couldn't reach klaros/i);
+    expect(sessionStorage.getItem("klaros_access_token")).toBe("valid-token");
+    expect(pushMock).not.toHaveBeenCalledWith("/login");
   });
 });

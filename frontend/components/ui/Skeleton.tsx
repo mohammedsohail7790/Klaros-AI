@@ -14,7 +14,7 @@ export function SkeletonBlock({ className, style }: { className?: string; style?
  */
 export function Skeleton({ stats = 3, rows = 4 }: { stats?: number; rows?: number }) {
   return (
-    <div aria-busy="true" aria-label="Loading">
+    <div role="status" aria-busy="true" aria-label="Loading">
       {stats > 0 && (
         <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: stats }).map((_, i) => (

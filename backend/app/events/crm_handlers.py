@@ -34,7 +34,7 @@ def register_crm_handlers(bus: EventBus, session_factory: async_sessionmaker) ->
 
     async def qualify_new_lead(event: Event) -> None:
         lead_id = event.entity_id or uuid.UUID(event.payload["lead_id"])
-        await qualification_service.qualify(event.tenant_id, lead_id)
+        await qualification_service.qualify(event.tenant_id, lead_id, preserve_decided=True)
         logger.info("lead_auto_qualified", lead_id=str(lead_id))
 
     async def notify_on_appointment_created(event: Event) -> None:

@@ -111,6 +111,7 @@ class ConvertReferralToLead(Tool):
     attribution engine — no second lead, no second attribution system."""
 
     name = "retention.convert_referral_to_lead"
+    pii_input_fields = ("name", "phone", "email", "service_requested")
     description = "Create the real Lead (source=REFERRAL) for a referral and attribute it to the referral program's campaign."
     input_schema = ConvertReferralToLeadInput
     output_schema = ReferralOutput

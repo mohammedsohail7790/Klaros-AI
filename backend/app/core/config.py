@@ -82,6 +82,15 @@ class Settings(BaseSettings):
     # How often the Klaros Event Worker (app/events/worker.py) polls for
     # pending events — distinct from Temporal, which has its own scheduling.
     EVENT_WORKER_POLL_SECONDS: float = 1.0
+    # Crash recovery (see app/events/bus.py). A handler run unfinished for this long is presumed dead and may be taken over by another delivery.
+    EVENT_PROCESSING_LEASE_SECONDS: float = 300.0
+    # A stream message delivered to a worker and not acked for this long belongs to a crashed worker and is reclaimed (Redis XAUTOCLAIM).
+    EVENT_PENDING_RECLAIM_IDLE_MS: int = 60000
+    EVENT_WORKER_CONSUMER_NAME: str = "worker-1"
+    # Run the event worker inside the API process even though the transport is Redis. Only for a deployment that cannot afford a second service
+    # (free-tier staging). Redis durability, pending-message takeover and the Postgres outbox relay all still apply; what is lost is process isolation:
+    # the worker sleeps and restarts with the API. Production keeps a separate `python -m app.events.worker` service.
+    EVENT_WORKER_IN_PROCESS: bool = False
     # A customer review is only eligible to become marketing content at
     # this rating or above (out of 5) — configurable per tenant-agnostic
     # deployment default; the actual gate also requires explicit consent
@@ -119,6 +128,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    # How a provider referral is transferred. Only "sandbox" exists: it records what would be sent and contacts no clinic. Anything else fails closed.
+    MT_REFERRAL_TRANSPORT: str = "sandbox"
     # Phase 13: where the backend redirects the browser back to after a
     # provider OAuth callback completes (QuickBooks, ...) — distinct from
     # CORS_ORIGINS (which is about which origins may call the API, not
@@ -197,6 +208,33 @@ class Settings(BaseSettings):
     # unverified address, so this must be a real, verified sender.
     SENDGRID_FROM_EMAIL: str | None = None
     OPENAI_API_KEY: str | None = None
+    # Which AI-workforce adapter this deployment wires in. "pending" (default) reports
+    # honestly that no workforce is connected. "dev" enables the development simulator
+    # (never reports CONNECTED; lets Halla-shaped events be simulated in dev/test only).
+    WORKFORCE_ADAPTER: str = "pending"
+    # --- Halla (real AI-workforce platform, a SEPARATE service). Used when WORKFORCE_ADAPTER=halla.
+    # The base URL is deployment configuration, never tenant input: it must be https in production.
+    HALLA_API_BASE_URL: str | None = None
+    # Name of the HTTP header that carries the tenant-scoped Halla API credential. Deliberately has no
+    # default: the header is defined by Halla's contract, and Klaros will not guess it.
+    HALLA_API_KEY_HEADER: str | None = None
+    # Optional prefix for the header value, e.g. "Bearer". Empty = send the key as-is.
+    HALLA_API_KEY_SCHEME: str | None = None
+    # Comma-separated hosts the base URL may point at. Defaults to the base URL's own host.
+    HALLA_ALLOWED_HOSTS: str | None = None
+    HALLA_REQUEST_TIMEOUT_SECONDS: float = 8.0
+    # Health is allowed longer than a normal request: a hosted gateway that has been idle can take well over 10s to answer
+    # its first request (measured live: 12s, then 0.6s, then 3s). Too tight a limit makes a healthy Halla flap to ERROR.
+    HALLA_HEALTH_TIMEOUT_SECONDS: float = 20.0
+    HALLA_MAX_RETRIES: int = 2
+    # A stored CONNECTED state older than this is re-proven with a live health request.
+    HALLA_STATUS_TTL_SECONDS: int = 300
+    HALLA_WEBHOOK_TOLERANCE_SECONDS: int = 300
+    # How long a RECEIVED (in-flight) Halla event is owned by the worker that claimed it. After this a crashed worker's event may be reclaimed by a
+    # redelivery; before it, a concurrent delivery of the same event is a duplicate and does nothing.
+    HALLA_WEBHOOK_LEASE_SECONDS: int = 120
+    # Public base URL of THIS Klaros API, used only to show the tenant the webhook URL to register in Halla.
+    KLAROS_PUBLIC_API_URL: str | None = None
     ANTHROPIC_API_KEY: str | None = None
     # "auto" (default) picks a real provider only if its key is set, preferring
     # anthropic > openai > groq > deepseek > nvidia > google, else falls back
@@ -206,6 +244,10 @@ class Settings(BaseSettings):
     # get_ai_provider() still falls back to deterministic if the matching key
     # is missing, it never fabricates a connection.
     AI_PROVIDER: str = "auto"
+    # Consent-gated tenants (Medical Tourism): comma-separated names of EXTERNAL AI / embedding providers that may receive their content. Empty
+    # (the default) means NONE: such a tenant's data is never sent out and every AI call degrades to its deterministic path. Adding a name here is a
+    # legal / data-processing decision (see docs/MEDICAL_TOURISM_POLICY_DECISIONS.md), not a technical switch. Other tenants are not affected.
+    AI_EXTERNAL_PROCESSING_ALLOWED_PROVIDERS: str = ""
     ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
     OPENAI_MODEL: str = "gpt-4o-mini"
     # Phase 12E: previously hardcoded in app/services/ai_provider.py —
