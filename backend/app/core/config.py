@@ -113,6 +113,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_PUBLIC_CONTRACT_PER_MINUTE: int = 30
     RATE_LIMIT_PUBLIC_INVITE_PER_MINUTE: int = 20
     RATE_LIMIT_AUTH_PER_MINUTE: int = 10
+    RATE_LIMIT_CONTACT_PER_MINUTE: int = 3
     RATE_LIMIT_WEBHOOK_PER_MINUTE: int = 120
 
     JWT_SECRET: str = "change-me-in-production"
@@ -135,6 +136,8 @@ class Settings(BaseSettings):
     # CORS_ORIGINS (which is about which origins may call the API, not
     # where to send a browser redirect).
     FRONTEND_BASE_URL: str = "http://localhost:3000"
+    # Where messages from the public contact form are emailed (they are always stored too). Unset = stored only.
+    SUPPORT_INBOX_EMAIL: str | None = None
 
     OBJECT_STORAGE_ENDPOINT: str | None = None
     OBJECT_STORAGE_BUCKET: str = "klaros-documents"
