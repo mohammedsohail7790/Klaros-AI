@@ -866,6 +866,13 @@ class MedicalTourismService:
             ).scalar_one_or_none()
             if commission is None:
                 raise NotFoundError(f"ReferralCommission {commission_id} not found")
+            if commission.provider_referral_id is not None:
+                # A commission on a provider referral moves only through mt_commission.transition (ordered steps, outcome evidence before CONFIRMED).
+                raise InvalidRelationshipError("Use POST /medical-tourism/commissions/{id}/transition for a commission on a provider referral.")
+            from app.services.mt_commission import TRANSITIONS
+
+            if status != commission.status and status not in TRANSITIONS.get(commission.status, set()):
+                raise InvalidRelationshipError(f"A {commission.status.lower()} commission cannot become {status.lower()}.")
             commission.status = status
             await session.commit()
             await session.refresh(commission)

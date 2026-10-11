@@ -2,9 +2,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** The backend's closed error code for a {error, message} detail (for example "no_share_consent"), when it sent one. */
+  code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -84,6 +87,7 @@ async function trySilentRefresh(): Promise<string | null> {
 // into every error banner in the app. Render the human `msg` instead.
 function formatErrorDetail(detail: unknown): string {
   if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object" && !Array.isArray(detail) && typeof (detail as { message?: unknown }).message === "string") return (detail as { message: string }).message;
   if (Array.isArray(detail)) {
     const messages = detail
       .map((e) => (e && typeof e === "object" && typeof (e as { msg?: unknown }).msg === "string" ? (e as { msg: string }).msg : null))
@@ -120,7 +124,8 @@ async function request<T>(path: string, init?: RequestInit, _isRetry = false): P
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
     const detail = formatErrorDetail(body.detail ?? body);
-    throw new ApiError(res.status, detail || "Request failed");
+    const code = body.detail && typeof body.detail === "object" && typeof (body.detail as { error?: unknown }).error === "string" ? (body.detail as { error: string }).error : undefined;
+    throw new ApiError(res.status, detail || "Request failed", code);
   }
 
   // 202 Accepted for an APPROVAL_REQUIRED tool call: FastAPI's HTTPException
@@ -4660,6 +4665,8 @@ export interface MedicalTourismProvider {
   contact_phone: string | null;
   description: string | null;
   status: string;
+  /** UNVERIFIED | UNDER_REVIEW | VERIFIED | SUSPENDED | EXPIRED. Only an active, currently verified provider can be matched or referred to. */
+  verification_status?: string;
   created_at: string;
 }
 
@@ -5506,4 +5513,151 @@ export function attestLeadConsent(token: string, leadId: string, scopes: string[
 /** Refused by the backend (409) while personal-data consent is still granted. */
 export function eraseLeadPersonalData(token: string, leadId: string) {
   return request<{ erased: boolean }>(`/api/v1/business-builder/leads/${leadId}/halla/erase-personal-data`, { method: "POST", headers: authHeaders(token) });
+}
+
+// --- Medical Tourism: pipeline, provider referrals, handoff tasks, verification, revenue (backend mt_*.py) ---
+const MTR = "/api/v1/medical-tourism";
+const post = <T,>(token: string, path: string, body?: unknown) =>
+  request<T>(path, { method: "POST", headers: authHeaders(token), ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+
+export type PipelineStage = "NEW_ENQUIRY" | "CONSENT" | "QUALIFICATION" | "PROVIDER_OPTIONS" | "PATIENT_APPROVAL" | "REFERRED" | "CLINIC_RESPONSE" | "OUTCOME";
+
+export interface PipelineLead {
+  lead_id: string;
+  /** null when the patient has not agreed to us keeping their details */
+  name: string | null;
+  stage: PipelineStage;
+  stage_number: number;
+  next_action: string;
+  held_for_person: boolean;
+  consent_frozen: boolean;
+  referrals: { id: string; provider_id: string; status: string }[];
+  open_tasks: number;
+  assigned_user_id: string | null;
+  created_at: string | null;
+}
+
+export interface MedicalTourismPipeline {
+  stages: PipelineStage[];
+  counts: Record<PipelineStage, number>;
+  leads: PipelineLead[];
+  definitions: string;
+}
+
+export function getMedicalTourismPipeline(token: string) {
+  return request<MedicalTourismPipeline>(`${MTR}/pipeline`, { headers: authHeaders(token) });
+}
+
+export interface ProviderReferral {
+  id: string;
+  lead_id: string;
+  provider_id: string;
+  status: "DRAFT" | "APPROVED" | "SENT" | "ACCEPTED" | "DECLINED" | "OUTCOME_REPORTED" | "CANCELLED";
+  permitted_fields: string[];
+  sent_at: string | null;
+  send_attempts: number;
+  blocked_reason: string | null;
+  clinic_response_at: string | null;
+  outcome: string | null;
+  outcome_reported_at: string | null;
+  created_at: string | null;
+}
+
+export interface ReferralApprovalRecord {
+  id: string;
+  decision: "GRANTED" | "DECLINED" | "WITHDRAWN";
+  fields: string[];
+  patient_informed: boolean;
+  wording_version: string;
+  source: string;
+  channel: string | null;
+  recorded_by: string;
+  recorded_at: string;
+}
+
+export interface ProviderReferralDetail {
+  referral: ProviderReferral;
+  /** Would a send be allowed right now? `code` is the closed reason when not. */
+  gate: { allowed: boolean; code: string | null; fields: string[] };
+  approvals: ReferralApprovalRecord[];
+  deliveries: { id: string; transport: string; fields_sent: string[]; sent_at: string }[];
+}
+
+export function listProviderReferrals(token: string, params: { lead_id?: string; status?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.lead_id) qs.set("lead_id", params.lead_id);
+  if (params.status) qs.set("status", params.status);
+  return request<{ referrals: ProviderReferral[] }>(`${MTR}/referrals?${qs.toString()}`, { headers: authHeaders(token) });
+}
+
+export function getProviderReferral(token: string, id: string) {
+  return request<ProviderReferralDetail>(`${MTR}/referrals/${id}`, { headers: authHeaders(token) });
+}
+
+export function createProviderReferral(token: string, body: { lead_id: string; provider_id: string }) {
+  return post<{ referral: ProviderReferral; created: boolean }>(token, `${MTR}/referrals`, body);
+}
+
+/** A coordinator records the PATIENT'S decision about sharing with this provider. Never recorded by AI; a grant needs patient_informed. */
+export function recordReferralApproval(
+  token: string,
+  id: string,
+  body: { decision: "GRANTED" | "DECLINED" | "WITHDRAWN"; permitted_fields: string[]; patient_informed: boolean; wording_version: string; channel?: string }
+) {
+  return post<{ referral: ProviderReferral; approval_id: string }>(token, `${MTR}/referrals/${id}/approval`, body);
+}
+
+export function sendProviderReferral(token: string, id: string) {
+  return post<{ referral: ProviderReferral; newly_sent: boolean }>(token, `${MTR}/referrals/${id}/send`);
+}
+
+export function recordClinicResponse(token: string, id: string, accepted: boolean) {
+  return post<{ referral: ProviderReferral }>(token, `${MTR}/referrals/${id}/clinic-response`, { accepted });
+}
+
+export function recordReferralOutcome(token: string, id: string, body: { outcome: string; evidence: string }) {
+  return post<{ referral: ProviderReferral }>(token, `${MTR}/referrals/${id}/outcome`, body);
+}
+
+export interface HandoffTask {
+  id: string;
+  lead_id: string;
+  kind: string;
+  reason_code: string | null;
+  status: "OPEN" | "ACCEPTED" | "DONE" | "CANCELLED";
+  owner_user_id: string | null;
+  accepted_at: string | null;
+  completed_at: string | null;
+  note: string | null;
+  created_at: string | null;
+}
+
+export function listHandoffTasks(token: string, params: { status?: string; lead_id?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set("status", params.status);
+  if (params.lead_id) qs.set("lead_id", params.lead_id);
+  return request<{ tasks: HandoffTask[]; total: number }>(`${MTR}/tasks?${qs.toString()}`, { headers: authHeaders(token) });
+}
+
+export const acceptHandoffTask = (token: string, id: string) => post<{ task: HandoffTask }>(token, `${MTR}/tasks/${id}/accept`);
+export const completeHandoffTask = (token: string, id: string, note?: string) => post<{ task: HandoffTask }>(token, `${MTR}/tasks/${id}/complete`, { note });
+export const cancelHandoffTask = (token: string, id: string, note?: string) => post<{ task: HandoffTask }>(token, `${MTR}/tasks/${id}/cancel`, { note });
+
+export function setProviderVerification(token: string, providerId: string, status: string, note?: string) {
+  return request<{ provider_id: string; verification_status: string }>(`${MTR}/providers/${providerId}/verification`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({ status, note }),
+  });
+}
+
+export type CommissionStatus = "PENDING" | "CONFIRMED" | "INVOICED" | "PAID" | "DISPUTED" | "CANCELLED";
+
+export interface RevenueSummary {
+  by_currency: Record<string, Record<CommissionStatus, { count: number; amount: string }>>;
+  definitions: string;
+}
+
+export function getMedicalTourismRevenue(token: string) {
+  return request<RevenueSummary>(`${MTR}/revenue`, { headers: authHeaders(token) });
 }

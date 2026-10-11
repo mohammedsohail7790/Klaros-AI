@@ -57,6 +57,7 @@ def _provider_to_dict(p) -> dict[str, Any]:
         "contact_phone": p.contact_phone,
         "description": p.description,
         "status": p.status,
+        "verification_status": getattr(p, "verification_status", None) or "UNVERIFIED",
         "created_at": p.created_at.isoformat(),
     }
 
@@ -644,4 +645,6 @@ async def update_referral_commission_status(
         )
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvalidRelationshipError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"referral_commission": _referral_commission_to_dict(commission)}

@@ -895,6 +895,9 @@ async def test_provider_matching_and_workflows_stay_the_existing_implementation(
     await client.post(f"{BASE}/modules/medical_tourism/enable", headers=_h(token))
     proc = (await client.post("/api/v1/medical-tourism/procedures", json={"name": "Rhinoplasty", "category": "Aesthetic", "idempotency_key": "p1"}, headers=_h(token))).json()["procedure"]
     prov = (await client.post("/api/v1/medical-tourism/providers", json={"name": "Apex Hospital", "country": "IN", "city": "Delhi", "idempotency_key": "v1"}, headers=_h(token))).json()["provider"]
+    cred = (await client.post(f"/api/v1/medical-tourism/providers/{prov['id']}/credentials", json={"credential_type": "Licence"}, headers=_h(token))).json()["credential"]
+    await client.post(f"/api/v1/medical-tourism/providers/{prov['id']}/credentials/{cred['id']}/verify", headers=_h(token))
+    assert (await client.put(f"/api/v1/medical-tourism/providers/{prov['id']}/verification", json={"status": "VERIFIED"}, headers=_h(token))).status_code == 200  # matching lists only verified providers
     await client.post("/api/v1/medical-tourism/offerings", json={"provider_id": prov["id"], "procedure_id": proc["id"], "estimated_price": "3200", "currency": "USD"}, headers=_h(token))
     lead = await _lead(client, token)
     from app.services.medical_tourism_service import MedicalTourismService

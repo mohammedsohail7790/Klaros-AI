@@ -119,6 +119,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    # How a provider referral is transferred. Only "sandbox" exists: it records what would be sent and contacts no clinic. Anything else fails closed.
+    MT_REFERRAL_TRANSPORT: str = "sandbox"
     # Phase 13: where the backend redirects the browser back to after a
     # provider OAuth callback completes (QuickBooks, ...) — distinct from
     # CORS_ORIGINS (which is about which origins may call the API, not

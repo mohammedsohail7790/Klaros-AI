@@ -259,6 +259,24 @@ def _truthy(value: Any) -> bool:
     return bool(value)
 
 
+_INTAKE_KEYS = (("procedure", "procedure", 80), ("destination", "destination", 80), ("timeframe", "timeframe", 80), ("preferredLanguage", "preferred_language", 35), ("preferredContactTime", "preferred_contact_time", 80))
+
+
+def intake_of(data: dict[str, Any]) -> dict[str, str]:
+    """The optional structured intake on a lead event (HALLA_KLAROS_INTEGRATION_CONTRACT 3.0.1): five known keys, text only, trimmed and capped. Anything else is dropped."""
+    raw = data.get("intake") if isinstance(data, dict) else None
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, str] = {}
+    for src, dst, limit in _INTAKE_KEYS:
+        v = raw.get(src)
+        if isinstance(v, str):
+            clean = " ".join("".join(ch if ch.isprintable() else " " for ch in v).split())[:limit]
+            if clean:
+                out[dst] = clean
+    return out
+
+
 def escalated(data: dict[str, Any]) -> bool:
     """Did Halla report that this call was handed to a person? Reads the flat flags and the embedded
     `escalation` object of `call.completed`; an explicit false inside that object means "no"."""

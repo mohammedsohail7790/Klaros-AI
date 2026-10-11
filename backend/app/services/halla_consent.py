@@ -106,6 +106,37 @@ async def state_for(session, tenant_id: uuid.UUID, *, halla_lead_id: str | None 
     return derive_state(rows)
 
 
+async def record_share_state(session, tenant_id: uuid.UUID, lead_id: uuid.UUID, *, granted: bool, wording_version: str | None, actor_user_id: uuid.UUID) -> None:
+    """Record whether ANY provider currently has the patient's approval to receive their information, as the fourth scope `share_with_selected_provider`.
+
+    Operator-recorded only (Halla's evidence vocabulary has three scopes and an event naming a fourth is rejected). A COMPLETE-STATE snapshot: the scopes granted
+    now are carried over unchanged and only `share_with_selected_provider` is added or removed, so recording a sharing decision never changes another scope. Its
+    time is never earlier than the newest evidence already held (a small clock skew with Halla must not let an older snapshot lose to a newer one)."""
+    from datetime import timedelta
+
+    from app.models.crm import Lead
+    from app.models.medical_tourism_referral import SHARE_SCOPE
+
+    state = await state_for(session, tenant_id, lead_id=lead_id)
+    keys = [HallaConsentEvidence.lead_id == lead_id]
+    lead = await session.get(Lead, lead_id)
+    if lead is not None and lead.external_id:
+        keys.append(HallaConsentEvidence.halla_lead_id == lead.external_id)
+        state = await state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead_id)
+    newest = (await session.execute(select(HallaConsentEvidence.recorded_at).where(HallaConsentEvidence.tenant_id == tenant_id, or_(*keys)))).scalars().all()
+    at = datetime.now(timezone.utc)
+    if newest:
+        at = max(at, max(_utc(x) for x in newest) + timedelta(milliseconds=1))
+    scopes = set(state.granted)
+    scopes.discard(SHARE_SCOPE)
+    if granted:
+        scopes.add(SHARE_SCOPE)
+    ordered = tuple([s for s in ("contact", "store_personal_data", "store_medical_information") if s in scopes] + ([SHARE_SCOPE] if SHARE_SCOPE in scopes else []))
+    evidence = ConsentEvidence(granted=bool(ordered), scopes=ordered or ("contact", "store_personal_data", "store_medical_information"), method="operator_attested",
+                               wording_version=(wording_version or "n/a")[:64], recorded_at=at)
+    await record(session, tenant_id, event_id=f"share:{uuid.uuid4()}", event_type="consent.snapshot", halla_lead_id=None, lead_id=lead_id, evidence=evidence, source="operator_attested", actor_user_id=actor_user_id)
+
+
 class ConsentStillGrantedError(Exception):
     """Erasure is refused while the newest evidence still grants `store_personal_data` (or there is no evidence at all)."""
 
@@ -174,7 +205,16 @@ async def erase_personal_data(session, tenant_id: uuid.UUID, lead, actor_user_id
     pls = (await session.execute(select(PatientLead).where(PatientLead.tenant_id == tenant_id, PatientLead.lead_id == lead.id))).scalars().all()
     for pl in pls:
         pl.medical_history_summary = pl.insurance_notes = None
+        pl.preferred_language = pl.preferred_contact_time = pl.timeframe = pl.procedure_text = pl.destination_text = None
     report["patient_leads"] = len(pls)
+
+    from app.models.medical_tourism_referral import ReferralDelivery
+
+    deliveries = (await session.execute(select(ReferralDelivery).where(ReferralDelivery.tenant_id == tenant_id, ReferralDelivery.lead_id == lead.id))).scalars().all()
+    for d in deliveries:
+        d.payload = None  # what was sent stays as a record (fields_sent, when, to whom); the values themselves are removed
+    if deliveries:
+        report["referral_payloads"] = len(deliveries)
 
     calls = (await session.execute(select(CallSession).where(CallSession.tenant_id == tenant_id, CallSession.lead_id == lead.id))).scalars().all()
     for c in calls:

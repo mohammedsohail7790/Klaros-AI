@@ -77,17 +77,22 @@ describe("AppShell navigation", () => {
     };
     const afterEach_ = () => { sessionStorage.clear(); getMode.mockReset(); };
 
-    it("shows only what a clinic coordinator works with, and none of the general-purpose modules", async () => {
+    it("shows the owner's console: patients, clinic network, money, business and settings, without the general-purpose ERP pages", async () => {
       getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
       signedIn("/medical-tourism/overview");
       const primary = screen.getByRole("navigation", { name: "Primary" });
-      await waitFor(() => expect(within(primary).getByRole("link", { name: "Patient enquiries" })).toHaveAttribute("href", "/medical-tourism/leads"));
+      await waitFor(() => expect(within(primary).getByRole("link", { name: "Pipeline" })).toHaveAttribute("href", "/medical-tourism/pipeline"));
       expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual([
-        "Overview", "Patient enquiries", "Consultations", "Providers", "Procedures", "AI receptionist", "Team", "Compliance",
+        "Overview", "Pipeline", "Patients", "Tasks", "Referrals", "Consultations",
+        "Providers", "Procedures & offers", "Agreements",
+        "Revenue",
+        "Business setup", "Website", "Marketing", "AI receptionist",
+        "Team", "Privacy & consent",
       ]);
       expect(within(primary).getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+      expect(within(primary).getByRole("link", { name: "Referrals" })).toHaveAttribute("href", "/medical-tourism/provider-referrals");
       expect(screen.queryByRole("button", { name: /All modules/ })).not.toBeInTheDocument();
-      for (const hidden of ["Finance", "Invoices", "Marketing", "Retention", "Jobs", "Quotes", "Contracts", "Vendors"]) {
+      for (const hidden of ["Jobs", "Warranties", "Quotes", "Vendors", "Invoices", "Finance", "Retention"]) {
         expect(screen.queryByRole("link", { name: hidden })).not.toBeInTheDocument();
       }
       afterEach_();
@@ -96,9 +101,11 @@ describe("AppShell navigation", () => {
     it("searches only the pilot pages", async () => {
       getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
       signedIn("/medical-tourism/overview");
-      await waitFor(() => expect(screen.getByRole("link", { name: "Patient enquiries" })).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByRole("link", { name: "Pipeline" })).toBeInTheDocument());
       fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "invoice" } });
       expect(screen.getByText(/No pages match/)).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "pipeline" } });
+      expect(screen.getByRole("link", { name: "Pipeline" })).toBeInTheDocument();
       afterEach_();
     });
 
@@ -108,7 +115,7 @@ describe("AppShell navigation", () => {
       await waitFor(() => expect(getMode).toHaveBeenCalled());
       expect(screen.getByRole("link", { name: "Leads" })).toHaveAttribute("href", "/leads");
       expect(screen.getByRole("button", { name: /All modules/ })).toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: "Patient enquiries" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Pipeline" })).not.toBeInTheDocument();
       afterEach_();
     });
 

@@ -142,6 +142,10 @@ class HallaEventProcessor:
                 logger.warning("halla_event_ignored_consent_not_granted", event_id=env.id, event_type=env.type)
                 await session.commit()
                 return {"handled": False, "note": "consent not granted for this lead"}
+            if gated and consent_state is not None and env.type in ("lead.created", "lead.updated"):
+                from app.services import mt_intake
+
+                await mt_intake.apply_intake(session, tenant_id, lead, hw.intake_of(data), personal_ok=consent_state.allows(halla_consent.STORE_PERSONAL), medical_ok=consent_state.allows(halla_consent.STORE_MEDICAL))
             stale = env.type in ("call.completed", "lead.qualified") and await self._qualification_is_stale(session, tenant_id, lead.id, env)
             # Free text from a Medical Tourism conversation may contain health information: it is kept only while the newest evidence grants
             # `store_medical_information`. (No evidence, or any other combination of scopes => not retained.) Other tenants are unchanged.
@@ -182,6 +186,15 @@ class HallaEventProcessor:
                 apply_qualification(lead, "needs_human_review")
                 events.append((EventType.HALLA_LEAD_ESCALATED, {**base, "summary": None, "outcome": None, "category": safety.category, "safety": True, "escalated_from": env.type}))
 
+            if gated:
+                from app.services import mt_handoff
+
+                needs_person = flagged or env.type == "lead.escalated" or (env.type == "call.completed" and hw.escalated(data)) or q == "needs_human_review"
+                if needs_person:
+                    await mt_handoff.ensure_task(session, tenant_id, lead.id, kind="escalation", reason_code=(safety.category if flagged and safety else "halla_escalated"),
+                                                 dedupe_key=f"{lead.id}:{call or env.id}")
+                if q == "qualified" and not flagged and not stale and env.type in ("lead.qualified", "call.completed"):
+                    await mt_handoff.ensure_task(session, tenant_id, lead.id, kind="provider_options", reason_code=None, dedupe_key=str(lead.id))
             lead_id = lead.id
             await session.commit()
 

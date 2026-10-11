@@ -50,6 +50,9 @@ import {
   Map as MapIcon,
   Hammer,
   ChevronRight,
+  GitBranch,
+  ClipboardList,
+  Send,
 } from "lucide-react";
 import { UserResponse, logout as logoutRequest } from "@/lib/api";
 import NotificationBell from "./NotificationBell";
@@ -167,19 +170,45 @@ const MODULE_SECTIONS: { label: string; items: NavItem[] }[] = [
  * The focused navigation for a consent-gated Medical Tourism pilot organisation (see usePilotMode): only what a clinic coordinator needs to
  * work an enquiry that arrived from the AI receptionist. Everything else stays reachable by URL and for other organisations.
  */
-const PILOT_WORK_NAV: NavItem[] = [
-  { href: "/medical-tourism/overview", label: "Overview", icon: Home },
-  { href: "/medical-tourism/leads", label: "Patient enquiries", icon: Users },
-  { href: "/medical-tourism/consultations", label: "Consultations", icon: CalendarCheck },
-  { href: "/medical-tourism/providers", label: "Providers", icon: Stethoscope },
-  { href: "/medical-tourism/procedures", label: "Procedures", icon: FileText },
+const PILOT_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Patients",
+    items: [
+      { href: "/medical-tourism/overview", label: "Overview", icon: Home },
+      { href: "/medical-tourism/pipeline", label: "Pipeline", icon: GitBranch },
+      { href: "/leads", label: "Patients", icon: Users },
+      { href: "/medical-tourism/tasks", label: "Tasks", icon: ClipboardList },
+      { href: "/medical-tourism/provider-referrals", label: "Referrals", icon: Send },
+      { href: "/medical-tourism/consultations", label: "Consultations", icon: CalendarCheck },
+    ],
+  },
+  {
+    label: "Clinic network",
+    items: [
+      { href: "/medical-tourism/providers", label: "Providers", icon: Stethoscope },
+      { href: "/medical-tourism/procedures", label: "Procedures & offers", icon: FileText },
+      { href: "/contracts", label: "Agreements", icon: FileSignature },
+    ],
+  },
+  { label: "Money", items: [{ href: "/medical-tourism/revenue", label: "Revenue", icon: HandCoins }] },
+  {
+    label: "Business",
+    items: [
+      { href: "/business", label: "Business setup", icon: Hammer },
+      { href: "/website", label: "Website", icon: Globe },
+      { href: "/marketing", label: "Marketing", icon: Megaphone },
+      { href: "/workforce", label: "AI receptionist", icon: Headset },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { href: "/settings/team", label: "Team", icon: UserPlus },
+      { href: "/settings/compliance", label: "Privacy & consent", icon: ShieldCheck },
+    ],
+  },
 ];
-const PILOT_SETUP_NAV: NavItem[] = [
-  { href: "/workforce", label: "AI receptionist", icon: Headset },
-  { href: "/settings/team", label: "Team", icon: UserPlus },
-  { href: "/settings/compliance", label: "Compliance", icon: ShieldCheck },
-];
-const PILOT_ITEMS: NavItem[] = [...PILOT_WORK_NAV, ...PILOT_SETUP_NAV];
+const PILOT_ITEMS: NavItem[] = PILOT_GROUPS.flatMap((g) => g.items);
 
 const ALL_ITEMS: NavItem[] = [...PRIMARY_NAV, ...WORK_NAV, ...MODULE_SECTIONS.flatMap((s) => s.items)];
 
@@ -365,18 +394,16 @@ export default function AppShell({
           ) : (
             pilot ? (
               <>
-                <div className="klaros-label px-2.5 pb-1 pt-2">Patient enquiries</div>
-                <div className="space-y-0.5">
-                  {PILOT_WORK_NAV.map((item) => (
-                    <NavLink key={item.href} item={item} active={item.href === activeHref} />
-                  ))}
-                </div>
-                <div className="klaros-label px-2.5 pb-1 pt-4">Setup</div>
-                <div className="space-y-0.5">
-                  {PILOT_SETUP_NAV.map((item) => (
-                    <NavLink key={item.href} item={item} active={item.href === activeHref} />
-                  ))}
-                </div>
+                {PILOT_GROUPS.map((g, i) => (
+                  <div key={g.label}>
+                    <div className={`klaros-label px-2.5 pb-1 ${i === 0 ? "pt-2" : "pt-4"}`}>{g.label}</div>
+                    <div className="space-y-0.5">
+                      {g.items.map((item) => (
+                        <NavLink key={item.href} item={item} active={item.href === activeHref} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </>
             ) : (
             <>

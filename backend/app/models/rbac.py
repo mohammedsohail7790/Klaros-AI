@@ -196,6 +196,8 @@ class Permission(StrEnum):
     # its own domain's permission, not a generic CRM one.
     READ_MEDICAL_TOURISM = "READ_MEDICAL_TOURISM"
     MANAGE_MEDICAL_TOURISM = "MANAGE_MEDICAL_TOURISM"
+    # Work a Medical Tourism case: referrals, the patient's recorded approval, handoff tasks, clinic responses. Provider verification and money stay with MANAGE.
+    COORDINATE_MEDICAL_TOURISM = "COORDINATE_MEDICAL_TOURISM"
     # Phase 11 (Website Builder, PHASE_11_WEBSITE_BUILDER_DESIGN.md §10 RBAC):
     # three permissions, not the usual two-way read/manage split — mirrors
     # how MANAGE_AGENTS/EXECUTE_AGENT are kept separate (Phase 4's own
@@ -317,6 +319,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.READ_AGENT_EXECUTIONS,
         Permission.READ_MEDICAL_TOURISM,
         Permission.MANAGE_MEDICAL_TOURISM,
+        Permission.COORDINATE_MEDICAL_TOURISM,
         Permission.READ_WEBSITE,
         Permission.MANAGE_WEBSITE,
         Permission.PUBLISH_WEBSITE,
@@ -351,6 +354,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         # provider while working a patient lead) but must not mutate
         # vertical configuration merely by having generic platform access.
         Permission.READ_MEDICAL_TOURISM,
+        Permission.COORDINATE_MEDICAL_TOURISM,  # but may work referrals and handoff tasks assigned to them
         # STAFF can view and edit a draft website, but publishing (making it
         # the tenant's live, customer-facing site) is a MANAGER-tier
         # decision, not granted here — the same "can edit, cannot release"
