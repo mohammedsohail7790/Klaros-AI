@@ -433,5 +433,5 @@ def test_no_outbound_adapter_is_built_outside_the_guarded_factory() -> None:
 
     root = pathlib.Path(__file__).resolve().parents[1] / "app"
     pat = re.compile(r"\b(SendGridEmailAdapter|TwilioSMSAdapter|CompositeCommunicationAdapter|InternalTestCommunicationAdapter)\(")
-    offenders = [str(p.relative_to(root)) for p in root.rglob("*.py") if p.name not in {"factory.py", "sendgrid_adapter.py", "twilio_adapter.py", "composite_adapter.py", "internal_test_adapter.py"} and pat.search(p.read_text())]
+    offenders = [str(p.relative_to(root)) for p in root.rglob("*.py") if p.name not in {"factory.py", "sendgrid_adapter.py", "twilio_adapter.py", "composite_adapter.py", "internal_test_adapter.py"} and pat.search(p.read_text(encoding="utf-8"))]
     assert offenders == []
