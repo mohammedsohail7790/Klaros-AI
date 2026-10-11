@@ -50,8 +50,9 @@ const TIERS = [
       "Dedicated onboarding",
       "Direct line to support",
     ],
-    cta: "Get started",
+    cta: "Talk to us",
     highlighted: false,
+    href: "/contact",
   },
 ];
 
@@ -102,7 +103,7 @@ export default function PricingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/register" className="mt-8">
+              <Link href={"href" in tier && tier.href ? tier.href : "/register"} className="mt-8">
                 <Button
                   size="lg"
                   variant={tier.highlighted ? "primary" : "secondary"}

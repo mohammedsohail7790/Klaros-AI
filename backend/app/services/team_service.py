@@ -275,6 +275,11 @@ class TeamService:
                 full_name=full_name, role=invite.role, is_active=True,
             )
             session.add(user)
+            org_for_directory = await session.get(Organization, invite.tenant_id)
+            if org_for_directory is not None:
+                from app.services.account_service import record_directory
+
+                await record_directory(session, email=invite.email, tenant_id=invite.tenant_id, organization_slug=org_for_directory.slug)
             invite.status = InviteStatus.ACCEPTED
             invite.accepted_at = datetime.now(UTC)
             await session.commit()

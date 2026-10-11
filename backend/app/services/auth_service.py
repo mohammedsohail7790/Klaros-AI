@@ -83,6 +83,9 @@ async def register_organization(
             result="success",
         )
     )
+    from app.services.account_service import record_directory
+
+    await record_directory(db, email=user.email, tenant_id=org.id, organization_slug=org.slug)
     await db.commit()
     await db.refresh(org)
     await db.refresh(user)

@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, getCurrentUser, UserResponse } from "@/lib/api";
+import { clearSession, getAccessToken } from "@/lib/session";
+
+/** Where to send a signed-out visitor: the sign-in page, remembering the page they were trying to open so they land back on it. */
+function loginUrl(): string {
+  if (typeof window === "undefined") return "/login";
+  const here = window.location.pathname + window.location.search;
+  return here && here !== "/" ? "/login?next=" + encodeURIComponent(here) : "/login";
+}
 
 export function useAuth() {
   const router = useRouter();
@@ -12,9 +20,9 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("klaros_access_token");
+    const stored = getAccessToken();
     if (!stored) {
-      router.push("/login");
+      router.push(loginUrl());
       return;
     }
     setToken(stored);
@@ -28,9 +36,9 @@ export function useAuth() {
         // Only a genuine authentication failure (the API already tried a silent refresh) ends the
         // session. A network blip or a 5xx must not log the user out of a valid session.
         if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-          sessionStorage.removeItem("klaros_access_token");
+          clearSession();
           setError("Session expired. Please sign in again.");
-          router.push("/login");
+          router.push(loginUrl());
         } else {
           setError("We couldn't reach Klaros just now. Check your connection and reload the page.");
         }

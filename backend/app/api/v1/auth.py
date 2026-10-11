@@ -7,12 +7,16 @@ from app.core.rate_limit import rate_limit
 from app.core.security import TokenError, decode_token
 from app.db.session import get_db
 from app.schemas.auth import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
+    ResetPasswordRequest,
     TokenResponse,
     UserResponse,
 )
+from app.services import account_service
 from app.services.auth_service import (
     AuthError,
     authenticate,
@@ -52,12 +56,24 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
 @router.post("/login", response_model=TokenResponse, dependencies=[_rate_limit_dependency])
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     try:
-        user = await authenticate(
-            db,
-            organization_slug=payload.organization_slug,
-            email=payload.email,
-            password=payload.password,
-        )
+        if payload.organization_slug and payload.organization_slug.strip():
+            user = await authenticate(
+                db,
+                organization_slug=payload.organization_slug.strip(),
+                email=payload.email,
+                password=payload.password,
+            )
+        else:
+            user = await account_service.authenticate_by_email(db, email=payload.email, password=payload.password)
+    except account_service.AmbiguousWorkspaceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "multiple_workspaces",
+                "message": "This email belongs to more than one workspace. Choose the one you want to open.",
+                "workspaces": [{"name": w.name, "slug": w.slug} for w in exc.workspaces],
+            },
+        ) from exc
     except AuthError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
@@ -92,3 +108,35 @@ async def logout(
     current_user: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ) -> None:
     await logout_service(db, user_id=current_user.id)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED, dependencies=[_rate_limit_dependency])
+async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)) -> dict[str, str]:
+    """Always answers the same way, so it cannot be used to find out which emails have accounts."""
+    await account_service.request_password_reset(db, email=payload.email)
+    return {"message": "If an account exists for that email, a reset link is on its way."}
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT, dependencies=[_rate_limit_dependency])
+async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)) -> None:
+    try:
+        await account_service.reset_password(db, token=payload.token, new_password=payload.new_password)
+    except AuthError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/change-password", response_model=TokenResponse)
+async def change_password(
+    payload: ChangePasswordRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Changing the password signs every other session out; this one gets fresh tokens so the person stays signed in."""
+    try:
+        user = await account_service.change_password(
+            db, user_id=current_user.id, current_password=payload.current_password, new_password=payload.new_password
+        )
+    except AuthError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    access, refresh = issue_tokens(user)
+    return TokenResponse(access_token=access, refresh_token=refresh)

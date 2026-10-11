@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import GradientBackdrop from "@/components/GradientBackdrop";
+import { setSession } from "@/lib/session";
 
 export default function AcceptInvitePage() {
   return (
@@ -58,8 +59,7 @@ function AcceptInviteInner() {
     setSubmitting(true);
     try {
       const result = await acceptInvite(token, fullName, password);
-      sessionStorage.setItem("klaros_access_token", result.tokens.access_token);
-      sessionStorage.setItem("klaros_refresh_token", result.tokens.refresh_token);
+      setSession(result.tokens);
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");

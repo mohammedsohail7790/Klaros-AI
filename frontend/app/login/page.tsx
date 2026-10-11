@@ -1,136 +1,144 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError, login } from "@/lib/api";
+import { setSession } from "@/lib/session";
+import { friendlyAuthError, safeNextPath } from "@/lib/authErrors";
+import { SLOW_MESSAGE, useSlowHint } from "@/lib/useSlowHint";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
-import GradientBackdrop from "@/components/GradientBackdrop";
+import AuthLayout from "@/components/auth/AuthLayout";
 
 const TRUST_POINTS = [
   "Every AI action is logged with a full audit trail",
   "Your data stays scoped to your own workspace",
-  "Built for solo operators running a real company",
+  "Patient and customer information is shared only with consent",
 ];
 
-export default function LoginPage() {
+interface Workspace {
+  name: string;
+  slug: string;
+}
+
+function LoginForm() {
   const router = useRouter();
-  const [organizationSlug, setOrganizationSlug] = useState("");
+  const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [workspaceCode, setWorkspaceCode] = useState("");
+  const [workspaces, setWorkspaces] = useState<Workspace[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const slow = useSlowHint(loading);
+  const notice = params.get("reset") === "1" ? "Your password was changed. Sign in with the new one." : null;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function signIn(slug: string | null) {
     setError(null);
     setLoading(true);
     try {
-      const tokens = await login(organizationSlug, email, password);
-      sessionStorage.setItem("klaros_access_token", tokens.access_token);
-      sessionStorage.setItem("klaros_refresh_token", tokens.refresh_token);
-      router.push("/business");
+      const tokens = await login(slug, email.trim(), password);
+      setSession(tokens);
+      router.push(safeNextPath(params.get("next")));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      if (err instanceof ApiError && err.status === 409 && err.code === "multiple_workspaces" && Array.isArray(err.details?.workspaces)) {
+        setWorkspaces(err.details.workspaces as Workspace[]);
+      } else {
+        setWorkspaces(null);
+        setError(friendlyAuthError(err));
+      }
     } finally {
       setLoading(false);
     }
   }
 
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    void signIn(workspaceCode.trim() || null);
+  }
+
   return (
-    <main className="relative flex min-h-screen overflow-hidden">
-      <GradientBackdrop />
-
-      {/* Brand panel — only on larger screens, so mobile stays a single
-          focused form like before. Gives the auth flow real identity
-          instead of a form floating alone on a blob gradient. */}
-      <div className="relative hidden w-[42%] flex-col justify-between overflow-hidden border-r border-border/60 px-12 py-12 lg:flex">
-        <div
-          className="absolute inset-0 -z-10"
-          style={{
-            background:
-              "linear-gradient(160deg, rgb(var(--color-accent-2) / 0.92) 0%, rgb(var(--color-accent-2)) 55%, rgb(var(--color-accent-2) / 0.85) 100%)",
-          }}
-        />
-        <div
-          className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full opacity-30 blur-3xl"
-          style={{ background: "radial-gradient(circle, rgb(var(--color-accent)) 0%, transparent 70%)" }}
-        />
-
-        <Link href="/" className="font-display block text-xl italic text-white">
-          Klaros AI
-        </Link>
-
-        <div className="max-w-sm">
-          <p className="font-display text-3xl leading-snug text-white">
-            Build and operate your business with AI.
-          </p>
-          <ul className="mt-8 space-y-4">
-            {TRUST_POINTS.map((point) => (
-              <li key={point} className="flex items-start gap-3 text-sm text-white/80">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[rgb(var(--color-accent))]" />
-                {point}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <p className="text-xs text-white/50">© {new Date().getFullYear()} Klaros AI</p>
-      </div>
-
-      <div className="flex w-full flex-1 items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm">
-          <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground lg:hidden">
-            Klaros AI
+    <AuthLayout
+      headline="Build and operate your business with AI."
+      points={TRUST_POINTS}
+      title="Welcome back"
+      subtitle="Sign in to your Klaros AI workspace."
+      footer={
+        <>
+          New to Klaros AI?{" "}
+          <Link href="/register" className="font-medium text-accent hover:text-accent-hover">
+            Create your account
           </Link>
-          <div className="klaros-glass rounded-2xl p-7 shadow-xl shadow-black/5">
-            <h1 className="font-display text-2xl text-foreground">Welcome back</h1>
-            <p className="mt-1 text-sm text-muted">Sign in to your Klaros AI workspace.</p>
-
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              <Field label="Company slug">
-                <Input
-                  required
-                  value={organizationSlug}
-                  onChange={(e) => setOrganizationSlug(e.target.value)}
-                  placeholder="your-company-slug"
-                />
-              </Field>
-
-              <Field label="Email">
-                <Input
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </Field>
-
-              <Field label="Password">
-                <Input
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </Field>
-
-              {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-
-              <Button type="submit" disabled={loading} className="w-full">
-                {loading ? "Signing in..." : "Sign in"}
-              </Button>
-            </form>
-          </div>
-          <p className="mt-6 text-center text-sm text-muted">
-            New to Klaros AI?{" "}
-            <Link href="/register" className="font-medium text-accent hover:text-accent-hover">
-              Create your account
-            </Link>
-          </p>
+        </>
+      }
+    >
+      {workspaces ? (
+        <div role="group" aria-label="Choose a workspace" className="space-y-3">
+          <p className="text-sm text-muted">This email belongs to more than one workspace. Which one do you want to open?</p>
+          {workspaces.map((w) => (
+            <Button key={w.slug} type="button" variant="secondary" className="w-full justify-start" disabled={loading} onClick={() => void signIn(w.slug)}>
+              {w.name}
+            </Button>
+          ))}
+          <button type="button" className="text-sm text-muted underline" onClick={() => setWorkspaces(null)}>
+            Back
+          </button>
+          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
         </div>
-      </div>
-    </main>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {notice && <p role="status" className="rounded-lg border border-border bg-surface-muted px-3 py-2 text-sm text-foreground">{notice}</p>}
+          <Field label="Email">
+            <Input required type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </Field>
+
+          <div>
+            <Field label="Password">
+              <Input
+                required
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
+            <div className="mt-1.5 flex items-center justify-between text-xs">
+              <label className="flex items-center gap-1.5 text-muted">
+                <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} /> Show password
+              </label>
+              <Link href="/forgot-password" className="text-accent hover:text-accent-hover">
+                Forgot password?
+              </Link>
+            </div>
+          </div>
+
+          <details className="text-sm text-muted">
+            <summary className="cursor-pointer">Have several workspaces?</summary>
+            <div className="mt-2">
+              <Field label="Workspace code (optional)">
+                <Input value={workspaceCode} onChange={(e) => setWorkspaceCode(e.target.value)} placeholder="your-company" />
+              </Field>
+            </div>
+          </details>
+
+          {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+          {slow && <p role="status" className="text-xs text-muted">{SLOW_MESSAGE}</p>}
+
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? "Signing in..." : "Sign in"}
+          </Button>
+        </form>
+      )}
+    </AuthLayout>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -53,6 +53,7 @@ from app.api.v1 import (
     payments,
     profitability,
     public_contracts,
+    public_contact,
     public_invites,
     public_leads,
     public_quotes,
@@ -119,6 +120,7 @@ api_router.include_router(public_quotes.router)
 api_router.include_router(public_contracts.router)
 api_router.include_router(public_leads.router)
 api_router.include_router(public_invites.router)
+api_router.include_router(public_contact.router)
 api_router.include_router(public_websites.router)
 api_router.include_router(payments.router)
 api_router.include_router(ar.router)

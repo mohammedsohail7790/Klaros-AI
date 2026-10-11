@@ -17,7 +17,7 @@ export default function MarketingFooter() {
             family — Halla AI is Klaros's separate AI workforce platform.
           </p>
         </div>
-        <nav className="flex items-center gap-6 text-sm text-muted">
+        <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted">
           <Link href="/#how-it-works" className="transition-colors hover:text-foreground">
             How it works
           </Link>
@@ -26,6 +26,15 @@ export default function MarketingFooter() {
           </Link>
           <Link href="/#faq" className="transition-colors hover:text-foreground">
             FAQ
+          </Link>
+          <Link href="/contact" className="transition-colors hover:text-foreground">
+            Contact
+          </Link>
+          <Link href="/privacy" className="transition-colors hover:text-foreground">
+            Privacy
+          </Link>
+          <Link href="/terms" className="transition-colors hover:text-foreground">
+            Terms
           </Link>
           <Link href="/login" className="transition-colors hover:text-foreground">
             Sign in
