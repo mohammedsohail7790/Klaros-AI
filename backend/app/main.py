@@ -79,8 +79,8 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
 
     worker_task: asyncio.Task | None = None
     shutdown_event = asyncio.Event()
-    if settings.EVENT_TRANSPORT == "memory":
-        # Dev/test fallback: InMemoryTransport's state lives only inside this
+    if settings.EVENT_TRANSPORT == "memory" or settings.EVENT_WORKER_IN_PROCESS:
+        # Dev/test fallback (or EVENT_WORKER_IN_PROCESS=true on the Redis transport): InMemoryTransport's state lives only inside this
         # process's memory, so the continuous worker has to run co-located
         # with the API here — the same reason InMemoryTransport itself
         # exists (see app/events/transport.py). In production
@@ -348,4 +348,16 @@ async def ready(response: Response) -> dict[str, object]:
 
     all_ok = all(v == "ok" or v.startswith("not_applicable") for v in checks.values())
     response.status_code = 200 if all_ok else 503
-    return {"status": "ready" if all_ok else "not_ready", "checks": checks}
+    body: dict[str, object] = {"status": "ready" if all_ok else "not_ready", "checks": checks}
+    if settings.EVENT_TRANSPORT != "memory" and checks.get("redis") == "ok":
+        # Informational, not a readiness gate: the API can serve without the worker (events are stored durably in Postgres first), but an absent
+        # worker means events are NOT being processed, and that must be visible rather than silent.
+        try:
+            from app.events.factory import get_event_bus
+            from app.events.worker import HEARTBEAT_KEY
+
+            age = await asyncio.wait_for(get_event_bus().transport.heartbeat_age_seconds(HEARTBEAT_KEY), timeout=CHECK_TIMEOUT_SECONDS)
+            body["event_worker"] = f"ok (heartbeat {age:.0f}s ago)" if age is not None else "no_heartbeat (events are queued durably in Postgres but not being processed)"
+        except Exception as exc:  # noqa: BLE001
+            body["event_worker"] = f"unknown ({type(exc).__name__})"
+    return body

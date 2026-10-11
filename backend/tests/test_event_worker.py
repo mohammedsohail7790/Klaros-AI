@@ -265,7 +265,11 @@ async def test_concurrent_insert_race_backs_off_instead_of_crashing(event_bus: E
     monkeypatch.setattr(AsyncSession, "commit", flaky_commit)
     result = await event_bus._handle_one(event.id, sub)
 
-    assert result is None
+    # Another writer owns the claim: back off (the handler never ran). The return value is LEASE_HELD (was None): the delivery is "not mine to ack",
+    # so a transport that keeps unacked messages leaves it pending for a takeover if that other writer dies.
+    from app.events.bus import LEASE_HELD
+
+    assert result == LEASE_HELD
     assert call_count["n"] == 0
 
 

@@ -82,6 +82,15 @@ class Settings(BaseSettings):
     # How often the Klaros Event Worker (app/events/worker.py) polls for
     # pending events — distinct from Temporal, which has its own scheduling.
     EVENT_WORKER_POLL_SECONDS: float = 1.0
+    # Crash recovery (see app/events/bus.py). A handler run unfinished for this long is presumed dead and may be taken over by another delivery.
+    EVENT_PROCESSING_LEASE_SECONDS: float = 300.0
+    # A stream message delivered to a worker and not acked for this long belongs to a crashed worker and is reclaimed (Redis XAUTOCLAIM).
+    EVENT_PENDING_RECLAIM_IDLE_MS: int = 60000
+    EVENT_WORKER_CONSUMER_NAME: str = "worker-1"
+    # Run the event worker inside the API process even though the transport is Redis. Only for a deployment that cannot afford a second service
+    # (free-tier staging). Redis durability, pending-message takeover and the Postgres outbox relay all still apply; what is lost is process isolation:
+    # the worker sleeps and restarts with the API. Production keeps a separate `python -m app.events.worker` service.
+    EVENT_WORKER_IN_PROCESS: bool = False
     # A customer review is only eligible to become marketing content at
     # this rating or above (out of 5) — configurable per tenant-agnostic
     # deployment default; the actual gate also requires explicit consent
