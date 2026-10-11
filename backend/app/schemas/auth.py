@@ -11,7 +11,8 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    organization_slug: str
+    # Optional: with just an email and password Klaros finds the workspace itself. Give the slug only to pick between several workspaces.
+    organization_slug: str | None = Field(default=None, max_length=255)
     email: EmailStr
     password: str
 
@@ -36,3 +37,17 @@ class RegisterResponse(BaseModel):
     organization_slug: str
     user: UserResponse
     tokens: TokenResponse
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)

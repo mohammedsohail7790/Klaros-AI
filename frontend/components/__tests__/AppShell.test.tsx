@@ -87,7 +87,7 @@ describe("AppShell navigation", () => {
         "Providers", "Procedures & offers", "Agreements",
         "Revenue",
         "Business setup", "Website", "Marketing", "AI receptionist",
-        "Team", "Privacy & consent",
+        "Team", "Account & security", "Privacy & consent",
       ]);
       expect(within(primary).getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
       expect(within(primary).getByRole("link", { name: "Referrals" })).toHaveAttribute("href", "/medical-tourism/provider-referrals");

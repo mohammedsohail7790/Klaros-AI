@@ -62,7 +62,7 @@ const CAPABILITIES = [
   {
     icon: Bot,
     title: "AI workforce, with Halla",
-    body: "Halla AI is our separate voice and conversation platform for inbound and outbound calls, qualification and booking. Klaros is built to sit behind it; the connection itself is still being built.",
+    body: "Halla AI is our separate voice and conversation platform for inbound and outbound calls, qualification and booking. Klaros receives its enquiries together with the caller's consent choices and turns them into leads and tasks for your team. The connection is in pilot: it is switched on per business, and nothing flows until you turn it on.",
   },
   {
     icon: Workflow,
@@ -91,7 +91,7 @@ const FAQS = [
   },
   {
     q: "Is the AI workforce included?",
-    a: "Halla AI is a separate product with its own voice and calling platform. Klaros defines how the two connect and shows the workforce on your Business Map, but the connection isn't live yet, so Klaros shows it as not connected.",
+    a: "Halla AI is a separate product with its own voice and calling platform. Klaros receives its enquiries with the caller's consent choices and shows the workforce on your Business Map. The connection is in pilot and is switched on per business, so until you turn it on Klaros shows it as not connected.",
   },
   {
     q: "What kinds of business can I build?",
@@ -196,7 +196,7 @@ export default function Home() {
               {
                 title: "Medical tourism",
                 note: "The most developed example today.",
-                items: ["Provider & hospital directory", "Patient lead capture & qualification", "Consultations", "Referral & commission tracking"],
+                items: ["Clinic directory with verification status", "Patient pipeline with consent on record", "Referral to one clinic, only with the patient's approval", "Commission tracking backed by evidence"],
               },
               {
                 title: "Dropshipping",

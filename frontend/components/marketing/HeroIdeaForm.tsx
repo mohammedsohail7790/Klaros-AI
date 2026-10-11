@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { getAccessToken } from "@/lib/session";
 
 /** Key shared with /business, which pre-fills "What are you building?" from it. */
 export const PENDING_IDEA_KEY = "klaros_pending_idea";
@@ -22,7 +23,7 @@ export function HeroIdeaForm() {
     let signedIn = false;
     try {
       if (idea.trim()) sessionStorage.setItem(PENDING_IDEA_KEY, idea.trim());
-      signedIn = !!sessionStorage.getItem("klaros_access_token");
+      signedIn = !!getAccessToken();
     } catch {
       // Storage blocked: the visitor simply re-types it in the app.
     }
