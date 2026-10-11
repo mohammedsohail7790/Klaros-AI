@@ -204,3 +204,38 @@ async def test_a_classifier_failure_flags_a_medical_tourism_lead_instead_of_pass
     assert r.status_code == 201                                           # the write still succeeds
     assert (await _lead(tid, r.json()["lead"]["id"])).qualification_status == QualificationStatus.REQUIRES_HUMAN
     assert [e.payload["category"] for e in await _safety_events(tid)] == ["SAFETY_CHECK_FAILED"]
+
+
+# ---------------------------------------------------------------------------------------------------- other languages and unreadable text through the real routes
+async def test_a_non_english_emergency_through_the_public_form_is_flagged_as_an_emergency(client, halla) -> None:  # noqa: F811
+    token, tid = await _gated(client, "Safe Arabic", "safearabic@example.com")
+    consent = {"scopes": ["store_personal_data", "store_medical_information"], "wording_version": "owner-label-v1"}
+    text = "عندي ألم في الصدر ولا أستطيع التنفس"
+    r = await client.post(f"/api/v1/public/leads/{tid}", json={"name": PII_NAME, "source": "WEB", "email": PII_EMAIL, "description": text, "consent": consent})
+    assert r.status_code == 201, r.text
+    assert (await _lead(tid, r.json()["lead_id"])).qualification_status == QualificationStatus.REQUIRES_HUMAN
+    ev = await _safety_events(tid)
+    assert len(ev) == 1 and ev[0].payload["category"] == "EMERGENCY"
+    _assert_no_text(ev, text, "الصدر", PII_EMAIL)
+
+
+async def test_text_in_a_language_the_screen_cannot_read_is_held_for_a_person_not_passed(client, halla) -> None:  # noqa: F811
+    token, tid = await _gated(client, "Safe Unreadable", "safeunreadable@example.com")
+    text = "Здравствуйте, хочу узнать о стоимости имплантации зубов в вашей клинике"
+    r = await client.post("/api/v1/leads", json=_body(description=text, consent={"scopes": ALL}), headers=_h(token))
+    assert r.status_code == 201, r.text
+    lead = await _lead(tid, r.json()["lead"]["id"])
+    assert lead.qualification_status == QualificationStatus.REQUIRES_HUMAN and lead.status in (LeadStatus.NEW, LeadStatus.CONTACTED)
+    ev = await _safety_events(tid)
+    assert [e.payload["category"] for e in ev] == ["LANGUAGE_UNSUPPORTED"]
+    _assert_no_text(ev, text, "имплантации")
+
+
+async def test_obfuscated_emergency_wording_through_a_lead_update_is_flagged(client, halla) -> None:  # noqa: F811
+    token, tid = await _gated(client, "Safe Obfus", "safeobfus@example.com")
+    lead_id = (await client.post("/api/v1/leads", json=_body(description=NORMAL, consent={"scopes": ALL}), headers=_h(token))).json()["lead"]["id"]
+    assert await _safety_events(tid) == []
+    r = await client.patch(f"/api/v1/leads/{lead_id}", json={"description": "c h e s t  p a i n since this morning"}, headers=_h(token))
+    assert r.status_code == 200, r.text
+    ev = await _safety_events(tid)
+    assert len(ev) == 1 and ev[0].payload["category"] == "EMERGENCY"

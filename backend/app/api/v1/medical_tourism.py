@@ -371,6 +371,16 @@ async def list_patient_leads(
     }
 
 
+@router.get("/funnel")
+async def get_funnel(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Counts only (no names, contact details, text or ids): received, consent, qualification, appointments by their own status, escalations asked of
+    a person, webhook delivery health and consent-blocked sends. See app/services/mt_funnel.py for the exact definitions."""
+    _require_read(current_user)
+    from app.services.mt_funnel import build_funnel
+
+    return await build_funnel(async_session_maker, current_user.tenant_id)
+
+
 @router.get("/leads/{lead_id}/operations")
 async def get_lead_operations(
     lead_id: uuid.UUID,
