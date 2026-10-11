@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import { UserResponse, logout as logoutRequest } from "@/lib/api";
 import NotificationBell from "./NotificationBell";
+import { usePilotMode } from "@/lib/usePilotMode";
 
 type NavItem = { href: string; label: string; icon: any };
 
@@ -162,6 +163,24 @@ const MODULE_SECTIONS: { label: string; items: NavItem[] }[] = [
 ];
 
 
+/**
+ * The focused navigation for a consent-gated Medical Tourism pilot organisation (see usePilotMode): only what a clinic coordinator needs to
+ * work an enquiry that arrived from the AI receptionist. Everything else stays reachable by URL and for other organisations.
+ */
+const PILOT_WORK_NAV: NavItem[] = [
+  { href: "/medical-tourism/overview", label: "Overview", icon: Home },
+  { href: "/medical-tourism/leads", label: "Patient enquiries", icon: Users },
+  { href: "/medical-tourism/consultations", label: "Consultations", icon: CalendarCheck },
+  { href: "/medical-tourism/providers", label: "Providers", icon: Stethoscope },
+  { href: "/medical-tourism/procedures", label: "Procedures", icon: FileText },
+];
+const PILOT_SETUP_NAV: NavItem[] = [
+  { href: "/workforce", label: "AI receptionist", icon: Headset },
+  { href: "/settings/team", label: "Team", icon: UserPlus },
+  { href: "/settings/compliance", label: "Compliance", icon: ShieldCheck },
+];
+const PILOT_ITEMS: NavItem[] = [...PILOT_WORK_NAV, ...PILOT_SETUP_NAV];
+
 const ALL_ITEMS: NavItem[] = [...PRIMARY_NAV, ...WORK_NAV, ...MODULE_SECTIONS.flatMap((s) => s.items)];
 
 export type Crumb = { label: string; href?: string };
@@ -202,21 +221,23 @@ export default function AppShell({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [moreOpen, setMoreOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const pilot = usePilotMode(token);
+  const navItems = pilot ? PILOT_ITEMS : ALL_ITEMS;
 
   // Only the single most specific matching item is "active" — otherwise /finance/ar would
   // light up both "Finance" and "AR", and every /business/* page would light up "Build".
   const activeHref = (() => {
     if (!pathname) return null;
     let best: string | null = null;
-    for (const item of ALL_ITEMS) {
+    for (const item of [...ALL_ITEMS, ...PILOT_ITEMS]) {
       const matches = pathname === item.href || pathname.startsWith(`${item.href}/`);
       if (matches && (!best || item.href.length > best.length)) best = item.href;
     }
     return best;
   })();
 
-  const activeItem = ALL_ITEMS.find((i) => i.href === activeHref) ?? null;
-  const activeModuleSection = MODULE_SECTIONS.find((s) => s.items.some((i) => i.href === activeHref))?.label ?? null;
+  const activeItem = [...ALL_ITEMS, ...PILOT_ITEMS].find((i) => i.href === activeHref) ?? null;
+  const activeModuleSection = pilot ? null : MODULE_SECTIONS.find((s) => s.items.some((i) => i.href === activeHref))?.label ?? null;
   const ActiveIcon = activeItem?.icon ?? null;
 
   useEffect(() => {
@@ -274,8 +295,8 @@ export default function AppShell({
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return null;
-    return ALL_ITEMS.filter((item) => item.label.toLowerCase().includes(q));
-  }, [query]);
+    return navItems.filter((item) => item.label.toLowerCase().includes(q));
+  }, [query, navItems]);
 
   async function signOut() {
     const currentToken = sessionStorage.getItem("klaros_access_token");
@@ -308,7 +329,7 @@ export default function AppShell({
         }`}
       >
         <div className="flex items-center justify-between px-5 pb-3 pt-5">
-          <Link href="/business/home" className="font-display text-xl italic text-foreground">
+          <Link href={pilot ? "/medical-tourism/overview" : "/business/home"} className="font-display text-xl italic text-foreground">
             Klaros AI
           </Link>
           <button
@@ -342,6 +363,22 @@ export default function AppShell({
               {searchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-muted-foreground">No pages match &ldquo;{query}&rdquo;.</p>}
             </div>
           ) : (
+            pilot ? (
+              <>
+                <div className="klaros-label px-2.5 pb-1 pt-2">Patient enquiries</div>
+                <div className="space-y-0.5">
+                  {PILOT_WORK_NAV.map((item) => (
+                    <NavLink key={item.href} item={item} active={item.href === activeHref} />
+                  ))}
+                </div>
+                <div className="klaros-label px-2.5 pb-1 pt-4">Setup</div>
+                <div className="space-y-0.5">
+                  {PILOT_SETUP_NAV.map((item) => (
+                    <NavLink key={item.href} item={item} active={item.href === activeHref} />
+                  ))}
+                </div>
+              </>
+            ) : (
             <>
               <div className="space-y-0.5 py-1">
                 {PRIMARY_NAV.map((item) => (
@@ -393,6 +430,7 @@ export default function AppShell({
                 )}
               </div>
             </>
+            )
           )}
         </nav>
         {user && (

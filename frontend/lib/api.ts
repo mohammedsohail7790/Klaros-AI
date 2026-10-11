@@ -5422,3 +5422,88 @@ export async function getLeadOperations(token: string, leadId: string): Promise<
     throw err;
   }
 }
+
+// --- Medical Tourism pilot console ---
+
+/** Whether this organisation is a consent-gated Medical Tourism pilot (the UI then shows the focused pilot navigation). */
+export interface MedicalTourismMode {
+  pilot_console: boolean;
+  consent_gated: boolean;
+}
+
+export function getMedicalTourismMode(token: string) {
+  return request<MedicalTourismMode>("/api/v1/medical-tourism/mode", { headers: authHeaders(token) });
+}
+
+/** Counts only (backend mt_funnel.py): no names, contact details, text or ids. Every stage has its own strict definition. */
+export interface MedicalTourismFunnel {
+  received: number;
+  consent: {
+    no_evidence: number;
+    contact_granted: number;
+    store_personal_data_granted: number;
+    store_medical_information_granted: number;
+    frozen: number;
+  };
+  qualification: { qualified: number; unqualified: number; held_for_person: number; pending: number };
+  appointments: {
+    confirmed: number;
+    confirmed_by_halla: number;
+    tentative_not_a_booking: number;
+    cancelled: number;
+    completed: number;
+    no_show: number;
+  };
+  consultations: Record<string, number>;
+  escalations_requested: { klaros_safety_screen: number; halla: number };
+  delivery: {
+    halla_events_processed: number;
+    halla_events_failed: number;
+    halla_events_in_flight: number;
+    halla_events_stuck_past_lease: number;
+    outbound_blocked_by_consent: number;
+  };
+  drop_off: {
+    no_consent_evidence: number;
+    frozen_after_withdrawal_or_decline: number;
+    awaiting_qualification: number;
+    held_for_person: number;
+  };
+  definitions: string;
+}
+
+export function getMedicalTourismFunnel(token: string) {
+  return request<MedicalTourismFunnel>("/api/v1/medical-tourism/funnel", { headers: authHeaders(token) });
+}
+
+/** What the newest consent decision for a lead allows (backend halla_consent.describe_for_lead): scopes and times only, never contact details. */
+export interface LeadConsentState {
+  evidence_recorded: boolean;
+  granted_scopes: string[];
+  contact: boolean;
+  store_personal_data: boolean;
+  store_medical_information: boolean;
+  as_of: string | null;
+  wording_version: string | null;
+  method: string | null;
+  history_count: number;
+  note: string | null;
+}
+
+export function getLeadConsent(token: string, leadId: string) {
+  return request<LeadConsentState>(`/api/v1/business-builder/leads/${leadId}/halla/consent`, { headers: authHeaders(token) });
+}
+
+/** A team member records what the patient told them: the COMPLETE set of scopes agreed to; an empty list records a withdrawal of everything. */
+export function attestLeadConsent(token: string, leadId: string, scopes: string[], wordingVersion?: string) {
+  return request<LeadConsentState>(`/api/v1/leads/${leadId}/consent`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ scopes, ...(wordingVersion ? { wording_version: wordingVersion } : {}) }),
+  });
+}
+
+/** Refused by the backend (409) while personal-data consent is still granted. */
+export function eraseLeadPersonalData(token: string, leadId: string) {
+  return request<{ erased: boolean }>(`/api/v1/business-builder/leads/${leadId}/halla/erase-personal-data`, { method: "POST", headers: authHeaders(token) });
+}

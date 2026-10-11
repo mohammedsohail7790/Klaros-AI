@@ -371,6 +371,17 @@ async def list_patient_leads(
     }
 
 
+@router.get("/mode")
+async def get_console_mode(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Tells the UI whether this organisation is a consent-gated Medical Tourism pilot, so it can show the focused pilot console instead of the whole
+    general-purpose navigation. Two booleans about the caller's OWN tenant, no personal data, no permission beyond being signed in. The answer comes from
+    the same check that enforces consent (fail-closed on a lookup error), so what the UI shows can never disagree with what the service enforces."""
+    from app.services.consent_gate import tenant_requires_consent
+
+    gated = await tenant_requires_consent(async_session_maker, current_user.tenant_id)
+    return {"pilot_console": gated, "consent_gated": gated}
+
+
 @router.get("/funnel")
 async def get_funnel(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
     """Counts only (no names, contact details, text or ids): received, consent, qualification, appointments by their own status, escalations asked of
