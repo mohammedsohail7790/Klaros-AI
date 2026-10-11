@@ -26,12 +26,22 @@ async def _mt(client, token, path, body):
     return r.json()
 
 
+async def _verify(client, token, provider):
+    """Matching only lists a currently verified provider: give the test provider a verified credential and mark it verified."""
+    c = (await client.post(f"/api/v1/medical-tourism/providers/{provider['id']}/credentials", json={"credential_type": "Licence"}, headers=_h(token))).json()["credential"]
+    await client.post(f"/api/v1/medical-tourism/providers/{provider['id']}/credentials/{c['id']}/verify", headers=_h(token))
+    r = await client.put(f"/api/v1/medical-tourism/providers/{provider['id']}/verification", json={"status": "VERIFIED"}, headers=_h(token))
+    assert r.status_code == 200, r.text
+
+
 async def _seed(client, token):
     rhino = (await _mt(client, token, "/procedures", {"name": "Rhinoplasty", "category": "Aesthetic", "idempotency_key": "p-rhino"}))["procedure"]
     cardiac = (await _mt(client, token, "/procedures", {"name": "Cardiac bypass", "category": "Cardiac", "idempotency_key": "p-card"}))["procedure"]
     apex = (await _mt(client, token, "/providers", {"name": "Apex Hospital", "country": "IN", "city": "Delhi", "idempotency_key": "v-apex"}))["provider"]
     lotus = (await _mt(client, token, "/providers", {"name": "Lotus Clinic", "country": "TR", "city": "Istanbul", "idempotency_key": "v-lotus"}))["provider"]
     heart = (await _mt(client, token, "/providers", {"name": "Heart Institute", "country": "IN", "idempotency_key": "v-heart"}))["provider"]
+    for p in (apex, lotus, heart):
+        await _verify(client, token, p)
     await _mt(client, token, "/offerings", {"provider_id": apex["id"], "procedure_id": rhino["id"], "estimated_price": "3200", "currency": "USD"})
     await _mt(client, token, "/offerings", {"provider_id": lotus["id"], "procedure_id": rhino["id"]})
     await _mt(client, token, "/offerings", {"provider_id": heart["id"], "procedure_id": cardiac["id"]})

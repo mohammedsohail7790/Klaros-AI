@@ -126,6 +126,9 @@ async def _lead(client, token, name="Pat Ient", phone="+15550001111"):
     if phone:
         body["phone"] = phone
     r = await client.post("/api/v1/leads", json=body, headers=_h(token))
+    if r.status_code == 422 and "consent_required" in r.text:
+        # a consent-gated tenant: the operator attests what the lead agreed to (see tests/test_consent_gate_intake.py for the gate itself)
+        r = await client.post("/api/v1/leads", json={**body, "consent": {"scopes": ["contact", "store_personal_data", "store_medical_information"], "wording_version": "test-v1"}}, headers=_h(token))
     assert r.status_code == 201, r.text
     return (r.json().get("lead") or r.json())["id"]
 
@@ -892,6 +895,9 @@ async def test_provider_matching_and_workflows_stay_the_existing_implementation(
     await client.post(f"{BASE}/modules/medical_tourism/enable", headers=_h(token))
     proc = (await client.post("/api/v1/medical-tourism/procedures", json={"name": "Rhinoplasty", "category": "Aesthetic", "idempotency_key": "p1"}, headers=_h(token))).json()["procedure"]
     prov = (await client.post("/api/v1/medical-tourism/providers", json={"name": "Apex Hospital", "country": "IN", "city": "Delhi", "idempotency_key": "v1"}, headers=_h(token))).json()["provider"]
+    cred = (await client.post(f"/api/v1/medical-tourism/providers/{prov['id']}/credentials", json={"credential_type": "Licence"}, headers=_h(token))).json()["credential"]
+    await client.post(f"/api/v1/medical-tourism/providers/{prov['id']}/credentials/{cred['id']}/verify", headers=_h(token))
+    assert (await client.put(f"/api/v1/medical-tourism/providers/{prov['id']}/verification", json={"status": "VERIFIED"}, headers=_h(token))).status_code == 200  # matching lists only verified providers
     await client.post("/api/v1/medical-tourism/offerings", json={"provider_id": prov["id"], "procedure_id": proc["id"], "estimated_price": "3200", "currency": "USD"}, headers=_h(token))
     lead = await _lead(client, token)
     from app.services.medical_tourism_service import MedicalTourismService

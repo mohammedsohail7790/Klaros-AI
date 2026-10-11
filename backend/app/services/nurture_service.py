@@ -142,11 +142,14 @@ class NurtureService:
                 lead = await session.get(Lead, enrollment.lead_id)
 
                 if self._comms is not None and lead and lead.email:
-                    await self._comms.send_email(
-                        tenant_id, to=lead.email, subject="Still thinking it over?",
+                    result = await self._comms.deliver_email(
+                        tenant_id, to=lead.email, lead_id=lead.id, subject="Still thinking it over?",
                         body=f"Following up on your {lead.service_requested or 'request'} — happy to help whenever you're ready.",
                         template=MessageTemplate.NURTURE_MESSAGE,
                     )
+                    if result.blocked:
+                        activity.status = ActivityStatus.BLOCKED_CONSENT
+                        continue
 
                 activity.status = ActivityStatus.EXECUTED
                 activity.executed_at = now

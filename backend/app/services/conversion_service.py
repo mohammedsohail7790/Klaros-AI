@@ -82,6 +82,12 @@ class LeadConversionService:
                     session, tenant_id=tenant_id, email=lead.email, phone=lead.phone
                 )
                 if customer is None:
+                    from app.services import consent_gate, halla_consent
+
+                    if await consent_gate.tenant_requires_consent(self._session_factory, tenant_id):
+                        state = await halla_consent.state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+                        if not state.allows(consent_gate.STORE_PERSONAL):
+                            raise consent_gate.ConsentRequiredError([consent_gate.STORE_PERSONAL])
                     customer = Customer(
                         tenant_id=tenant_id,
                         name=lead.name,

@@ -75,6 +75,7 @@ from app.schemas.website_specification import (
     WebsiteSpecification,
     reject_unsafe_text,
 )
+from app.services.ai_boundary import bound_ai_provider, bound_embedding_provider
 from app.services.ai_invocation_log_service import record_ai_invocation
 from app.services.ai_provider import AIProvider, get_ai_provider
 from app.services.business_blueprint_service import BusinessBlueprintService
@@ -521,7 +522,7 @@ class WebsiteGenerationService:
                 }
             )
         )
-        outcome = await ai_provider.generate_structured(prompt)
+        outcome = await bound_ai_provider(ai_provider, self._session_factory, tenant_id, "website_hero").generate_structured(prompt)
         try:
             await record_ai_invocation(
                 self._session_factory,

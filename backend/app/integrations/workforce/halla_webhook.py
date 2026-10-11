@@ -17,8 +17,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 MAX_BODY_BYTES = 256 * 1024
@@ -193,12 +194,87 @@ def outcome_of(data: dict[str, Any]) -> str | None:
     return _text(_pick(data, "outcome", "call_outcome", "callOutcome"), 60)
 
 
+def safety_texts(data: dict[str, Any]) -> list[str]:
+    """Every free-text field a Halla event can carry that the tenant's safety profile should read: the call summary and outcome, and the
+    `reason` Halla attaches to `lead.qualified` / `lead.escalated` (and to an embedded `escalation` object). Halla's real emitter sends
+    `reason` but no `summary`, so reading only the summary would leave the safety check blind on real traffic. Strings only, bounded."""
+    out: list[str] = []
+    for value in (summary_of(data), outcome_of(data), _text(_pick(data, "reason", "qualification_reason"), 2000)):
+        if value:
+            out.append(value)
+    esc = data.get("escalation")
+    if isinstance(esc, dict):
+        inner = _text(_pick(esc, "reason", "summary"), 2000)
+        if inner:
+            out.append(inner)
+    return out
+
+
+CONSENT_SCOPES = ("contact", "store_personal_data", "store_medical_information")
+CONSENT_METHODS = ("voice_ai_verbal",)
+_WORDING_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$")
+_FUTURE_SKEW = timedelta(minutes=5)  # Halla's own tolerance (consent-evidence.ts toIso)
+
+
+@dataclass(frozen=True)
+class ConsentEvidence:
+    """Halla's `data.consent` (HALLA_KLAROS_INTEGRATION_CONTRACT 3.1), validated. No wording text, transcript or medical content exists in it.
+
+    `granted=True`: `scopes` are the scopes currently agreed to. `granted=False`: `scopes` are scopes the caller declined OR withdrew --
+    Halla does not distinguish the two in this contract version and Klaros does not either. A scope that is not listed is NOT granted."""
+
+    granted: bool
+    scopes: tuple[str, ...]
+    method: str
+    wording_version: str
+    recorded_at: datetime
+
+
+def consent_evidence(data: dict[str, Any]) -> ConsentEvidence | None:
+    """The consent evidence on a lead event, or None. Fail closed: a missing key, wrong type, empty/unknown scope, unknown method, bad
+    wording label, unparseable / zone-less / future timestamp are all "no evidence". Nothing is inferred or repaired."""
+    c = data.get("consent") if isinstance(data, dict) else None
+    if not isinstance(c, dict) or not isinstance(c.get("granted"), bool):
+        return None
+    scope = c.get("scope")
+    if not isinstance(scope, list) or not scope or len(scope) > len(CONSENT_SCOPES) or not all(isinstance(x, str) and x in CONSENT_SCOPES for x in scope):
+        return None
+    method, wording, raw_at = c.get("method"), c.get("wording_version"), c.get("recorded_at")
+    if method not in CONSENT_METHODS or not isinstance(wording, str) or not _WORDING_RE.match(wording) or not isinstance(raw_at, str):
+        return None
+    try:
+        at = datetime.fromisoformat(raw_at.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if at.tzinfo is None or at > datetime.now(timezone.utc) + _FUTURE_SKEW:
+        return None
+    return ConsentEvidence(c["granted"], tuple(sorted(set(scope), key=CONSENT_SCOPES.index)), method, wording, at.astimezone(timezone.utc))
+
+
 def _truthy(value: Any) -> bool:
     if value is None:
         return False
     if isinstance(value, str):
         return value.strip().lower() not in ("", "false", "0", "no", "none", "null")
     return bool(value)
+
+
+_INTAKE_KEYS = (("procedure", "procedure", 80), ("destination", "destination", 80), ("timeframe", "timeframe", 80), ("preferredLanguage", "preferred_language", 35), ("preferredContactTime", "preferred_contact_time", 80))
+
+
+def intake_of(data: dict[str, Any]) -> dict[str, str]:
+    """The optional structured intake on a lead event (HALLA_KLAROS_INTEGRATION_CONTRACT 3.0.1): five known keys, text only, trimmed and capped. Anything else is dropped."""
+    raw = data.get("intake") if isinstance(data, dict) else None
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, str] = {}
+    for src, dst, limit in _INTAKE_KEYS:
+        v = raw.get(src)
+        if isinstance(v, str):
+            clean = " ".join("".join(ch if ch.isprintable() else " " for ch in v).split())[:limit]
+            if clean:
+                out[dst] = clean
+    return out
 
 
 def escalated(data: dict[str, Any]) -> bool:

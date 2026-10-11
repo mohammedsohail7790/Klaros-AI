@@ -31,6 +31,8 @@ from app.events.bus import EventBus
 from app.integrations.workforce import halla_webhook as hw
 from app.models.crm import Appointment, AppointmentStatus, Customer, CustomerStatus, Lead, LeadStatus, QualificationStatus
 from app.models.event import Event, EventType
+from app.services import halla_consent, pilot_safety
+from app.services.consent_gate import ConsentClaim, ConsentRequiredError, tenant_requires_consent
 from app.services.customer_matching import find_matching_customer, normalize_email, normalize_phone
 
 logger = structlog.get_logger(__name__)
@@ -53,14 +55,19 @@ _CLOSED = (LeadStatus.BOOKED, LeadStatus.CONVERTED, LeadStatus.LOST)
 
 
 def apply_qualification(lead: Lead, qualification: str | None) -> bool:
-    """Map one of Halla's four states onto the lead's existing status model. Returns True if it changed.
+    """Record one of Halla's four qualification states on the lead. Returns True if anything changed.
 
-    `unknown` (or nothing) never changes anything, and a lead that has already moved on (booked,
-    converted, lost) or that a person already qualified is never pulled backwards by a machine."""
+    Two separate things, deliberately not coupled:
+      * `lead.qualification_status` is a RECORD of what Halla reported. It is recorded for every lead, including one that has
+        already moved on (booked, converted, lost) — Halla's events can arrive in any order, and an `appointment.confirmed`
+        that lands before its `lead.qualified` must not leave the qualification stuck at PENDING.
+      * `lead.status` is the pipeline position. A machine only ever moves it FORWARD out of NEW/CONTACTED; it is never
+        pulled back from QUALIFIED/BOOKED/CONVERTED/LOST.
+    `unknown` (or nothing) never changes anything, and a lead already known to be qualified is never marked not-qualified by
+    a machine (a late or stale `not_qualified` cannot undo a qualification, or a booking that followed it)."""
     if qualification in (None, "unknown"):
         return False
-    if lead.status in _CLOSED:
-        return False
+    closed = lead.status in _CLOSED
     changed = False
     if qualification == "qualified":
         if lead.qualification_status != QualificationStatus.QUALIFIED:
@@ -68,7 +75,7 @@ def apply_qualification(lead: Lead, qualification: str | None) -> bool:
         if lead.status in _OPEN:
             lead.status, changed = LeadStatus.QUALIFIED, True
     elif qualification == "not_qualified":
-        if lead.status == LeadStatus.QUALIFIED:
+        if lead.status == LeadStatus.QUALIFIED or (closed and lead.qualification_status == QualificationStatus.QUALIFIED):
             return False
         if lead.qualification_status != QualificationStatus.UNQUALIFIED:
             lead.qualification_status, changed = QualificationStatus.UNQUALIFIED, True
@@ -98,21 +105,53 @@ class HallaEventProcessor:
         data = env.data
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)
+            profile = await pilot_safety.profile_in_session(session, tenant_id)
+            gated = await tenant_requires_consent(self._session_factory, tenant_id)  # consent evidence decides what may be stored (profile OR vertical)
             lead = await self._resolve_lead(session, tenant_id, data)
-            if lead is None and env.type == "lead.created":
-                lead = await self._create_lead_from_halla(tenant_id, data, bus, session)
+            if gated and env.type in ("lead.created", "lead.updated"):
+                await self._record_consent(session, tenant_id, env, data, lead)
+            if lead is None and (env.type == "lead.created" or (gated and env.type == "lead.updated")):
+                lead = await self._create_lead_from_halla(tenant_id, data, bus, session, gated)
+                if lead is not None and gated:
+                    await halla_consent.link_lead(session, tenant_id, hw.halla_lead_id(data), lead.id)
             if lead is None:
                 # Nothing in Klaros to attach this to. Klaros never creates a lead from a bare phone number.
                 logger.info("halla_event_unresolved", event_type=env.type, event_id=env.id)
-                return {"handled": False, "note": "no matching Klaros lead"}
+                await session.commit()  # keeps any consent evidence recorded above (it holds no personal data)
+                return {"handled": False, "note": "consent not established" if gated and env.type in ("lead.created", "lead.updated") else "no matching Klaros lead"}
 
             await self._link(session, tenant_id, lead, data)
+            consent_state = None
+            if gated:
+                consent_state = await halla_consent.state_for(session, tenant_id, halla_lead_id=lead.external_id or hw.halla_lead_id(data), lead_id=lead.id)
             events: list[tuple[EventType, dict[str, Any]]] = []
             q = hw.qualification(data)
             summary, outcome, call = hw.summary_of(data), hw.outcome_of(data), hw.call_id(data)
+            # Tenant safety profile (Medical Tourism / Dropshipping): if the conversation's own text needs a person, Halla's "qualified" is not
+            # applied and no qualified-lead workflow is triggered; the lead goes to a human with the CATEGORY only (never the text).
+            texts = hw.safety_texts(data)
+            safety = pilot_safety.assess(profile, *texts) if profile is not None and texts else None
+            flagged = bool(safety and safety.requires_human)
+            if flagged:
+                logger.warning("halla_safety_escalation", event_id=env.id, event_type=env.type, profile=profile.key, category=safety.category)
+                q = None
+            if consent_state is not None and consent_state.has_evidence and not consent_state.allows(halla_consent.STORE_PERSONAL) and not flagged and env.type != "lead.escalated":
+                # The newest evidence says personal-data storage is NOT (or no longer) consented. The lead is frozen: Halla's later events do not
+                # change it, qualify it, book it or add text to it. Safety escalations still reach a person. Nothing is erased automatically
+                # (see HallaConsentService.erase_personal_data); a person decides.
+                logger.warning("halla_event_ignored_consent_not_granted", event_id=env.id, event_type=env.type)
+                await session.commit()
+                return {"handled": False, "note": "consent not granted for this lead"}
+            if gated and consent_state is not None and env.type in ("lead.created", "lead.updated"):
+                from app.services import mt_intake
+
+                await mt_intake.apply_intake(session, tenant_id, lead, hw.intake_of(data), personal_ok=consent_state.allows(halla_consent.STORE_PERSONAL), medical_ok=consent_state.allows(halla_consent.STORE_MEDICAL))
             stale = env.type in ("call.completed", "lead.qualified") and await self._qualification_is_stale(session, tenant_id, lead.id, env)
+            # Free text from a Medical Tourism conversation may contain health information: it is kept only while the newest evidence grants
+            # `store_medical_information`. (No evidence, or any other combination of scopes => not retained.) Other tenants are unchanged.
+            keep_text = not flagged and (not gated or (consent_state is not None and consent_state.allows(halla_consent.STORE_MEDICAL)))
             base = {"halla_event_id": env.id, "occurred_at": env.timestamp, "interaction_id": call, "channel": "voice" if env.type.startswith("call.") else None,
-                    "summary": summary, "outcome": outcome, "simulated": False}
+                    "summary": summary if keep_text else None, "outcome": outcome if keep_text else None, "simulated": False}  # sensitive text is not stored
 
             if env.type in ("call.started",):
                 events.append((EventType.HALLA_INTERACTION_STARTED, base))
@@ -124,20 +163,38 @@ class HallaEventProcessor:
                     apply_qualification(lead, "needs_human_review")
                     events.append((EventType.HALLA_LEAD_ESCALATED, {**base, "escalated_from": "call.completed"}))
             elif env.type == "lead.qualified":
-                if stale:
+                if flagged:
+                    pass  # handed to a person below; a qualified-lead event/workflow must not fire for it
+                elif stale:
                     # Delivered late: Halla already told us a newer qualification outcome. Never let a stale event win.
                     logger.info("halla_stale_qualification_ignored", event_id=env.id)
+                elif q in (None, "unknown"):
+                    # The contract requires a `qualification`. A lead.qualified without a usable one says nothing about the lead: it is NEVER
+                    # defaulted to "qualified" (Klaros does not invent a state Halla did not supply) and no qualified-lead workflow fires.
+                    logger.warning("halla_lead_qualified_without_qualification", event_id=env.id)
                 else:
-                    events.append((EventType.HALLA_LEAD_QUALIFIED, {**base, "qualification": q or "qualified"}))
-                    apply_qualification(lead, q or "qualified")
+                    events.append((EventType.HALLA_LEAD_QUALIFIED, {**base, "qualification": q}))
+                    apply_qualification(lead, q)
             elif env.type == "lead.escalated":
-                events.append((EventType.HALLA_LEAD_ESCALATED, base))
+                events.append((EventType.HALLA_LEAD_ESCALATED, {**base, "category": safety.category, "safety": True} if flagged else base))
                 apply_qualification(lead, "needs_human_review")
             elif env.type in ("appointment.confirmed", "appointment.rescheduled", "appointment.cancelled"):
                 booked = await self._mirror_appointment(session, tenant_id, lead, env.type, data)
                 events.append((_TYPE_TO_INTERNAL[env.type], {**base, "appointment_mirrored": booked}))
             # lead.created / lead.updated: only the link above (Klaros stays the source of truth).
+            if flagged and env.type != "lead.escalated":
+                apply_qualification(lead, "needs_human_review")
+                events.append((EventType.HALLA_LEAD_ESCALATED, {**base, "summary": None, "outcome": None, "category": safety.category, "safety": True, "escalated_from": env.type}))
 
+            if gated:
+                from app.services import mt_handoff
+
+                needs_person = flagged or env.type == "lead.escalated" or (env.type == "call.completed" and hw.escalated(data)) or q == "needs_human_review"
+                if needs_person:
+                    await mt_handoff.ensure_task(session, tenant_id, lead.id, kind="escalation", reason_code=(safety.category if flagged and safety else "halla_escalated"),
+                                                 dedupe_key=f"{lead.id}:{call or env.id}")
+                if q == "qualified" and not flagged and not stale and env.type in ("lead.qualified", "call.completed"):
+                    await mt_handoff.ensure_task(session, tenant_id, lead.id, kind="provider_options", reason_code=None, dedupe_key=str(lead.id))
             lead_id = lead.id
             await session.commit()
 
@@ -213,20 +270,51 @@ class HallaEventProcessor:
         if taken is None:
             lead.external_provider, lead.external_id = PROVIDER, hid
 
-    async def _create_lead_from_halla(self, tenant_id: uuid.UUID, data: dict[str, Any], bus: EventBus, session) -> Lead | None:
-        """`lead.created` with no Klaros id: Klaros' existing lead intake policy — idempotent on the Halla lead id,
-        never merged or duplicated on a phone number alone."""
-        from app.services.lead_service import CreateLeadInput, LeadService
+    async def _record_consent(self, session, tenant_id: uuid.UUID, env: hw.HallaEnvelope, data: dict[str, Any], lead: Lead | None) -> None:
+        if "consent" not in data:
+            return  # no evidence on this event; whatever is stored stays as it was (never inferred, never cleared)
+        evidence = hw.consent_evidence(data)
+        if evidence is None:
+            logger.warning("halla_consent_evidence_invalid", event_id=env.id, event_type=env.type)  # the malformed value is never logged
+            return
+        await halla_consent.record(
+            session, tenant_id, event_id=env.id, event_type=env.type, halla_lead_id=hw.halla_lead_id(data), lead_id=lead.id if lead is not None else None, evidence=evidence
+        )
+        await session.commit()  # evidence is durable before any lead is written
+        await set_tenant_context(session, tenant_id)
 
+    async def _create_lead_from_halla(self, tenant_id: uuid.UUID, data: dict[str, Any], bus: EventBus, session, gated: bool = False) -> Lead | None:
+        """`lead.created` with no Klaros id: Klaros' existing lead intake policy — idempotent on the Halla lead id,
+        never merged or duplicated on a phone number alone. For a profile that requires consent evidence the lead is stored only while the
+        newest evidence grants `store_personal_data`; the treatment is kept only if it also grants `store_medical_information`."""
         hid, facts = hw.halla_lead_id(data), hw.lead_facts(data)
         if not hid or not facts.name or not (facts.phone or facts.email):
             return None
-        lead, _ = await LeadService(self._session_factory, bus).create_lead(
+        service = facts.service
+        state = None
+        if gated:
+            state = await halla_consent.state_for(session, tenant_id, halla_lead_id=hid)
+            if not state.allows(halla_consent.STORE_PERSONAL):
+                # Halla did not establish consent to keep personal data (or it was declined / withdrawn / superseded): nothing is stored.
+                logger.warning("halla_lead_refused_no_consent_evidence", halla_lead_id=hid, has_evidence=state.has_evidence)
+                return None
+            if not state.allows(halla_consent.STORE_MEDICAL):
+                service = None
+        try:
+            lead, _ = await self._create(tenant_id, bus, facts, service, hid, state)
+        except ConsentRequiredError:
+            return None
+        return await session.get(Lead, lead.id)
+
+    async def _create(self, tenant_id, bus, facts, service, hid, state):
+        from app.services.lead_service import CreateLeadInput, LeadService
+
+        return await LeadService(self._session_factory, bus).create_lead(
             tenant_id,
             CreateLeadInput(name=facts.name, source="VOICE", phone=facts.phone, email=facts.email, source_detail="halla",
-                            service_requested=facts.service, idempotency_key=f"halla-lead-{hid}"),
+                            service_requested=service, idempotency_key=f"halla-lead-{hid}",
+                            consent=ConsentClaim(frozenset(state.granted), "halla", recorded=True) if state is not None else None),
         )
-        return await session.get(Lead, lead.id)
 
     async def _mirror_appointment(self, session, tenant_id: uuid.UUID, lead: Lead, etype: str, data: dict[str, Any]) -> bool:
         facts = hw.appointment_facts(data)

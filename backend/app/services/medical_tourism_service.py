@@ -548,7 +548,11 @@ class MedicalTourismService:
             session.add(patient_lead)
             await session.commit()
             await session.refresh(patient_lead)
-            return patient_lead
+        # Health intake text is screened for a safety category (Medical Tourism tenants only; never raises); the lead goes to a person if flagged.
+        from app.services.mt_intake_safety import screen_lead
+
+        await screen_lead(self._session_factory, tenant_id, lead_id, medical_history_summary, insurance_notes, source="patient_lead")
+        return patient_lead
 
     async def get_patient_lead(self, tenant_id: uuid.UUID, patient_lead_id: uuid.UUID) -> PatientLead:
         async with self._session_factory() as session:
@@ -655,7 +659,10 @@ class MedicalTourismService:
             session.add(consultation)
             await session.commit()
             await session.refresh(consultation)
-            return consultation
+        from app.services.mt_intake_safety import screen_appointment
+
+        await screen_appointment(self._session_factory, tenant_id, appointment_id, notes, source="consultation")
+        return consultation
 
     async def get_consultation(self, tenant_id: uuid.UUID, consultation_id: uuid.UUID) -> Consultation:
         async with self._session_factory() as session:
@@ -729,7 +736,12 @@ class MedicalTourismService:
                 consultation.notes = notes
             await session.commit()
             await session.refresh(consultation)
-            return consultation
+            appointment_id = consultation.appointment_id
+        if notes:
+            from app.services.mt_intake_safety import screen_appointment
+
+            await screen_appointment(self._session_factory, tenant_id, appointment_id, notes, source="consultation")
+        return consultation
 
     # --- Referral commissions (extends Referral) --------------------------
 
@@ -854,6 +866,13 @@ class MedicalTourismService:
             ).scalar_one_or_none()
             if commission is None:
                 raise NotFoundError(f"ReferralCommission {commission_id} not found")
+            if commission.provider_referral_id is not None:
+                # A commission on a provider referral moves only through mt_commission.transition (ordered steps, outcome evidence before CONFIRMED).
+                raise InvalidRelationshipError("Use POST /medical-tourism/commissions/{id}/transition for a commission on a provider referral.")
+            from app.services.mt_commission import TRANSITIONS
+
+            if status != commission.status and status not in TRANSITIONS.get(commission.status, set()):
+                raise InvalidRelationshipError(f"A {commission.status.lower()} commission cannot become {status.lower()}.")
             commission.status = status
             await session.commit()
             await session.refresh(commission)

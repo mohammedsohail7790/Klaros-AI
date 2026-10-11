@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import re
 import uuid
+
+from app.services import pilot_safety as _pilot_safety
 from collections import Counter
 from typing import Any
 
@@ -83,6 +85,10 @@ async def match_providers(tenant_id: uuid.UUID, lead_id: uuid.UUID) -> dict[str,
         providers = (
             await session.execute(select(Provider).where(Provider.tenant_id == tenant_id, Provider.status == ProviderStatus.ACTIVE))
         ).scalars().all()
+        # Only a provider that is currently VERIFIED can be matched or referred to: an unverified clinic is never presented as a vetted partner.
+        from app.services import mt_referrals
+
+        providers = [p for p in providers if await mt_referrals.provider_is_referable(session, tenant_id, p)]
         offerings = (
             await session.execute(
                 select(ProviderProcedure).where(
@@ -141,15 +147,15 @@ async def match_providers(tenant_id: uuid.UUID, lead_id: uuid.UUID) -> dict[str,
         if not target_ids and not country:
             none_reason = "This enquiry names no treatment or destination Klaros can match on yet."
         elif target_ids:
-            none_reason = "No active provider offers " + ", ".join(p.name for p in target) + " yet — add an offering on a provider."
+            none_reason = "No verified provider offers " + ", ".join(p.name for p in target) + " yet — verify a provider and add an offering."
         else:
-            none_reason = f"No active provider is configured in {country}."
+            none_reason = f"No verified provider is configured in {country}."
     return {
         "basis": {
             "procedures": [p.name for p in target],
             "procedure_source": basis_source,
             "destination_country": country,
-            "criteria": ["Treatment offered (active offering)", "Destination country", "Verified credentials"],
+            "criteria": ["Provider currently verified", "Treatment offered (active offering)", "Destination country", "Verified credentials"],
         },
         "matches": matches,
         "none_reason": none_reason,
@@ -423,7 +429,7 @@ async def _workforce_context(tenant_id: uuid.UUID) -> dict[str, Any]:
         "services": list(services),
         "markets": list(markets),
         "qualification_fields": ["Treatment of interest", "Budget", "Travel timeline", "Preferred destination", "Medical history (only what the patient chooses to share)"],
-        "escalation_triggers": ["Complex medical questions", "High-value lead"],
+        "escalation_triggers": ["Complex medical questions", "High-value lead", *_pilot_safety.MEDICAL_ESCALATION_TRIGGERS],
     }
 
 

@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.crm import Lead
+from app.services.ai_boundary import bound_ai_provider, bound_embedding_provider
 from app.services.ai_invocation_log_service import record_ai_invocation
 from app.services.ai_provider import AIErrorType, AIProvider
 from app.services.company_memory_service import CompanyMemoryService, format_context_as_text
@@ -150,7 +151,7 @@ class AIQualificationService:
                 error_detail=f"No AI provider configured (provider={self._provider.name})",
             )
 
-        outcome = await self._provider.generate_structured(prompt)
+        outcome = await bound_ai_provider(self._provider, self._session_factory, tenant_id, "qualification").generate_structured(prompt)
 
         await record_ai_invocation(
             self._session_factory,

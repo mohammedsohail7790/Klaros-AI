@@ -99,7 +99,7 @@ class HallaIntegrationService:
 
     # --------------------------------------------------------------- connection
 
-    async def connect(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None, *, halla_tenant_id: str, api_key: str, signing_secret: str) -> WorkforceStatusReport:
+    async def connect(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None, *, halla_tenant_id: str, api_key: str, signing_secret: str, verify: bool = True) -> WorkforceStatusReport:
         adapter = self._adapter()
         halla_tenant_id, api_key, signing_secret = (halla_tenant_id or "").strip(), (api_key or "").strip(), (signing_secret or "").strip()
         if not _TENANT_ID_RE.match(halla_tenant_id):
@@ -111,7 +111,7 @@ class HallaIntegrationService:
         await self._connections.connect(
             tenant_id, PROVIDER,
             {"api_key": api_key, "signing_secret": signing_secret, "halla_tenant_id": halla_tenant_id},
-            created_by=user_id, external_account_id=halla_tenant_id,
+            created_by=user_id, external_account_id=halla_tenant_id, verify=verify,
         )
         logger.info("halla_connection_saved", tenant_id=str(tenant_id), operation="connect")
         return await adapter.get_status(tenant_id)
@@ -175,6 +175,13 @@ class HallaIntegrationService:
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)
             lead = await self._lead(session, tenant_id, lead_id)
+            from app.services import consent_gate, halla_consent
+
+            if await consent_gate.tenant_requires_consent(self._session_factory, tenant_id):
+                # Sending a lead to Halla is what lets Halla call or message them: it needs contact consent, newest evidence first.
+                state = await halla_consent.state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+                if not state.allows(consent_gate.CONTACT):
+                    raise LeadNotSyncableError("Contact consent has not been established for this lead.")
             payload = {
                 "id": str(lead.id), "name": lead.name, "phone": lead.phone, "email": lead.email,
                 "service": lead.service_requested, "source": lead.source, "notes": (lead.description or "")[:1000] or None,
@@ -212,6 +219,13 @@ class HallaIntegrationService:
             await set_tenant_context(session, tenant_id)
             lead = await self._lead(session, tenant_id, lead_id)
             phone = (lead.phone or "").strip()
+            if phone:
+                from app.services import consent_gate, halla_consent
+
+                if await consent_gate.tenant_requires_consent(self._session_factory, tenant_id):
+                    state = await halla_consent.state_for(session, tenant_id, halla_lead_id=lead.external_id, lead_id=lead.id)
+                    if not state.allows(halla_consent.CONTACT):
+                        raise LeadNotCallableError("Contact consent has not been established for this lead.")
         if not phone:
             raise LeadNotCallableError("This lead has no phone number to call.")
         result = await adapter.initiate_outbound_call(

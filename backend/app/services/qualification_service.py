@@ -45,7 +45,7 @@ class LeadQualificationService:
         self._bus = bus
         self._enrichment = enrichment
 
-    async def qualify(self, tenant_id: uuid.UUID, lead_id: uuid.UUID, *, preserve_decided: bool = False) -> QualificationOutcome:
+    async def qualify(self, tenant_id: uuid.UUID, lead_id: uuid.UUID, *, preserve_decided: bool = False, by_person: bool = False) -> QualificationOutcome:
         """`preserve_decided=True` is for the AUTOMATIC qualification a new lead triggers: if someone or something else (a
         person, or the AI workforce reporting through Halla) has already decided this lead, the automatic score is still
         recorded but never overwrites that decision — the handler runs asynchronously, so it can land after it. An explicit
@@ -59,7 +59,10 @@ class LeadQualificationService:
             enrichment = await self._enrichment.enrich(tenant_id, lead)
             result = score_lead(lead, enrichment)
 
-            decided = preserve_decided and (
+            # A lead handed to a person (safety category, or Halla's needs_human_review) is never re-qualified by a machine: the score is
+            # still recorded, the decision stays with a person. Only an explicit action by a signed-in person may move it on.
+            held_for_person = lead.qualification_status == QualificationStatus.REQUIRES_HUMAN and not by_person
+            decided = held_for_person or preserve_decided and (
                 lead.qualification_status != QualificationStatus.PENDING
                 or lead.status not in (LeadStatus.NEW, LeadStatus.CONTACTED)
             )

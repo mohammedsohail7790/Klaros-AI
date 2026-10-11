@@ -64,18 +64,26 @@ class ReviewService:
                 raise ValueError(f"Review request is not ELIGIBLE (currently {review.status})")
 
             customer = await session.get(Customer, review.customer_id)
+            blocked = False
+            if self._comms is not None and customer and customer.email:
+                result = await self._comms.deliver_email(
+                    tenant_id, to=customer.email, customer_id=customer.id, subject="How did we do?",
+                    body="We'd love your feedback on the service you just received.",
+                    template=MessageTemplate.REVIEW_REQUEST,
+                )
+                blocked = result.blocked
+            if blocked:
+                # Consent guard refused: record it, do not report a request as made, do not publish the request-created event.
+                review.status = ReviewStatus.BLOCKED_CONSENT
+                review.channel = channel
+                await session.commit()
+                await session.refresh(review)
+                return review
             review.status = ReviewStatus.REQUESTED
             review.channel = channel
             review.requested_at = datetime.now(timezone.utc)
             await session.commit()
             await session.refresh(review)
-
-        if self._comms is not None and customer and customer.email:
-            await self._comms.send_email(
-                tenant_id, to=customer.email, subject="How did we do?",
-                body="We'd love your feedback on the service you just received.",
-                template=MessageTemplate.REVIEW_REQUEST,
-            )
 
         await self._bus.publish(
             tenant_id=tenant_id, event_type=EventType.RETENTION_REVIEW_REQUEST_CREATED, source="retention",

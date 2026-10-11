@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.models.actor import ActorType
 from app.models.business_blueprint import BlueprintSectionKey, ClaimProvenance, ClaimType
+from app.services.ai_boundary import bound_ai_provider, bound_embedding_provider
 from app.services.ai_invocation_log_service import record_ai_invocation
 from app.services.ai_provider import AIErrorType, AIProvider
 
@@ -264,7 +265,7 @@ class DiscoveryExtractionService:
             )
 
         prompt = _build_prompt(discovery_input, gap_keys, known_facts)
-        outcome = await self._provider.generate_structured(prompt)
+        outcome = await bound_ai_provider(self._provider, self._session_factory, tenant_id, "discovery_extraction").generate_structured(prompt)
 
         await record_ai_invocation(
             self._session_factory,
