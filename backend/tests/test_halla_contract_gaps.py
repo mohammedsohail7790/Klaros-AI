@@ -123,3 +123,41 @@ async def test_the_connect_script_sets_the_medical_tourism_profile_from_a_non_se
     assert await consent_gate.tenant_requires_consent(async_session_maker, tid) is True            # the profile turns the consent gate on
     with pytest.raises(SystemExit):
         await connect(tid, HALLA_TENANT, {**env, "HALLA_SAFETY_PROFILE": "not_a_profile"})          # an unknown profile is refused, never ignored
+
+
+# ---------------------------------------------------------------------------------------------------- Halla 623d1db: personalDataWithheld
+def _withheld(etype, data, *, eid=None) -> bytes:
+    return json.dumps({"id": eid or f"evt-wh-{time.time_ns()}", "type": etype, "timestamp": "2026-10-09T10:00:00.000Z", "tenant_id": HTENANT, "data": {**data, "personalDataWithheld": True}}).encode()
+
+
+async def test_personal_data_withheld_by_halla_never_creates_a_lead_or_a_blank_record(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "Gap Withheld A", "gapwithhelda@example.com")
+    consent = {"granted": True, "scope": ["store_personal_data"], "method": "voice_ai_verbal", "wording_version": "owner-label-v1", "recorded_at": "2026-10-09T09:00:00.000Z"}
+    for etype in ("lead.created", "lead.updated"):
+        r = await _deliver(client, tid, _withheld(etype, {"leadId": HALLA_LEAD, "consent": consent}), secret=SECRET)
+        assert r.status_code == 200                                              # accepted and understood, never a 4xx/5xx that Halla would retry forever
+    leads = (await client.get("/api/v1/leads", headers={"Authorization": f"Bearer {token}"})).json()["leads"]
+    assert [x for x in leads if not x.get("name") or x["name"].strip() == ""] == []   # no blank lead was invented from an event without personal data
+    assert await _events_of(tid, "halla.lead.qualified") == []
+
+
+async def test_a_withheld_lead_qualified_still_applies_the_qualification_to_an_existing_lead(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "Gap Withheld B", "gapwithheldb@example.com")
+    lead = await _lead(client, token)
+    raw = _withheld("lead.qualified", {"leadId": HALLA_LEAD, "klarosLeadId": lead, "qualification": "qualified", "status": "qualified"})   # `fields` removed by Halla
+    assert (await _deliver(client, tid, raw, secret=SECRET)).json() == {"status": "ok"}
+    assert await _lead_state(client, token, lead) == ("QUALIFIED", "QUALIFIED")
+    needs = _withheld("lead.qualified", {"leadId": HALLA_LEAD, "klarosLeadId": lead, "qualification": "needs_human_review", "status": "needs_human_review"})
+    await _deliver(client, tid, needs, secret=SECRET)
+    assert (await _lead_state(client, token, lead))[0] == "QUALIFIED"            # a stale-looking downgrade cannot undo a qualification; core status semantics unchanged
+
+
+async def test_a_human_review_qualification_is_never_turned_into_a_qualification(client, halla) -> None:  # noqa: F811
+    token, tid = await _mt(client, "Gap Withheld C", "gapwithheldc@example.com")
+    lead = await _lead(client, token)
+    raw = json.dumps({"id": f"evt-hr-{time.time_ns()}", "type": "lead.qualified", "timestamp": "2026-10-09T10:00:00.000Z", "tenant_id": HTENANT,
+                      "data": {"leadId": HALLA_LEAD, "klarosLeadId": lead, "qualification": "needs_human_review", "status": "needs_human_review", "reason": "incomplete intake"}}).encode()
+    assert (await _deliver(client, tid, raw, secret=SECRET)).json() == {"status": "ok"}
+    assert await _lead_state(client, token, lead) == ("NEW", "REQUIRES_HUMAN")
+    # and a person's decision is still required: no machine can mark it qualified afterwards
+    assert len(await _events_of(tid, "halla.lead.qualified")) == 1
