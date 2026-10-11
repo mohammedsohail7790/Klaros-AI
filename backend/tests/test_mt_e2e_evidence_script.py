@@ -22,4 +22,10 @@ async def test_evidence_output_has_no_personal_data_and_shows_state_duplicates_a
     assert out["derived_consent_now"] == {"evidence_recorded": True, "granted_scopes": ["contact", "store_personal_data"]}
     assert len(out["consent_evidence"]) == 2 and out["duplicate_evidence_event_ids"] == 0
     assert out["isolation"]["leads_with_same_halla_lead_id"] == 0 and out["isolation"]["evidence_with_same_halla_lead_id"] == 0
-    assert out["alembic_revision"] in (None, "0065_halla_consent_evidence")
+    from pathlib import Path
+
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    head = ScriptDirectory.from_config(Config(str(Path(__file__).resolve().parent.parent / "alembic.ini"))).get_current_head()
+    assert out["alembic_revision"] in (None, head)  # the CURRENT migration head (never a stale pinned revision); None when the test database was built without migrations
