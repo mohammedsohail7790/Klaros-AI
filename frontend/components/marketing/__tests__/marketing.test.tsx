@@ -51,8 +51,8 @@ describe("marketing → application flow", () => {
     expect(container.textContent).not.toMatch(/\b\d+%|24\/7|\d+\+ customers/);
   });
 
-  it("is honest that the Halla connection and parts of ecommerce are not live", () => {
+  it("is honest that the Halla connection is a pilot and parts of ecommerce are not live", () => {
     render(<Home />);
-    expect(screen.getAllByText(/isn't live yet|not built|still being built|are still planned/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/in pilot|isn't live yet|not built|still being built|are still planned/i).length).toBeGreaterThan(0);
   });
 });
