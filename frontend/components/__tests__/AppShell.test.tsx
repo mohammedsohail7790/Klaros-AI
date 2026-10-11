@@ -91,6 +91,7 @@ describe("AppShell navigation", () => {
       ]);
       expect(within(primary).getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
       expect(within(primary).getByRole("link", { name: "Referrals" })).toHaveAttribute("href", "/medical-tourism/provider-referrals");
+      expect(within(primary).getByRole("link", { name: "Business setup" })).toHaveAttribute("href", "/setup");
       expect(screen.queryByRole("button", { name: /All modules/ })).not.toBeInTheDocument();
       for (const hidden of ["Jobs", "Warranties", "Quotes", "Vendors", "Invoices", "Finance", "Retention"]) {
         expect(screen.queryByRole("link", { name: hidden })).not.toBeInTheDocument();

@@ -5661,3 +5661,55 @@ export interface RevenueSummary {
 export function getMedicalTourismRevenue(token: string) {
   return request<RevenueSummary>(`${MTR}/revenue`, { headers: authHeaders(token) });
 }
+
+// --- One-form business setup (backend mt_setup.py / business_setup.py) ---
+export interface BusinessType {
+  key: string;
+  name: string;
+  available: boolean;
+  description: string;
+}
+
+export interface SetupChecklistItem {
+  key: string;
+  label: string;
+  status: "DONE" | "TODO" | "NEEDS_INFORMATION" | "NEEDS_APPROVAL";
+  why: string;
+  route: string | null;
+}
+
+export interface SetupDraft {
+  status: string;
+  needs: string;
+  items?: string[];
+  text?: string;
+  stages?: string[];
+  scopes?: string[];
+  note?: string;
+}
+
+export interface MedicalTourismSetup {
+  configured: boolean;
+  profile?: { business_name: string; patient_markets: string[]; destinations: string[]; business_model: string; business_model_label: string; procedures: string[] };
+  checklist?: SetupChecklistItem[];
+  ready_to_launch?: boolean;
+  open_items?: number;
+  drafts?: Record<string, SetupDraft>;
+  note?: string;
+}
+
+export function getBusinessTypes(token: string) {
+  return request<{ types: BusinessType[] }>("/api/v1/business-setup/types", { headers: authHeaders(token) });
+}
+
+export function getMedicalTourismSetup(token: string) {
+  return request<MedicalTourismSetup>("/api/v1/business-setup/medical-tourism", { headers: authHeaders(token) });
+}
+
+export function submitMedicalTourismSetup(token: string, body: { business_name: string; patient_markets: string[]; destinations: string[]; procedures: string[]; business_model: string }) {
+  return request<MedicalTourismSetup>("/api/v1/business-setup/medical-tourism", { method: "POST", headers: authHeaders(token), body: JSON.stringify(body) });
+}
+
+export function confirmSetupItem(token: string, key: string, confirmed: boolean) {
+  return request<MedicalTourismSetup>("/api/v1/business-setup/medical-tourism/confirm", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ key, confirmed }) });
+}

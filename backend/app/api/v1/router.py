@@ -42,6 +42,7 @@ from app.api.v1 import (
     mcp,
     medical_tourism,
     mt_referrals,
+    business_setup,
     mcp_admin,
     halla_webhooks,
     marketplace_webhooks,
@@ -157,4 +158,5 @@ api_router.include_router(mcp.router)
 api_router.include_router(mcp_admin.router)
 api_router.include_router(medical_tourism.router)
 api_router.include_router(mt_referrals.router)
+api_router.include_router(business_setup.router)
 api_router.include_router(websites.router)

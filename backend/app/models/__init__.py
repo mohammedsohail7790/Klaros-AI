@@ -92,7 +92,7 @@ from app.models.operations import (
     Worker,
 )
 from app.models.organization import Organization
-from app.models.medical_tourism_referral import HandoffTask, ProviderReferral, ReferralApproval, ReferralDelivery  # noqa: F401
+from app.models.medical_tourism_referral import HandoffTask, MedicalTourismSetup, ProviderReferral, ReferralApproval, ReferralDelivery  # noqa: F401
 from app.models.user import User
 from app.models.morning_brief import (
     MorningBrief,

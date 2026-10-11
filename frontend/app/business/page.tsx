@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 /**
  * Business Builder entry — "What are you building?"
  *
@@ -121,6 +123,14 @@ export default function BusinessJourneyEntryPage() {
             build it.
           </p>
         </div>
+
+        <Link href="/setup" className="klaros-card mb-4 flex items-center justify-between gap-3 p-4 text-sm hover:bg-surface-muted">
+          <span>
+            <span className="font-medium text-foreground">Starting a Medical Tourism business?</span>
+            <span className="block text-muted">Answer one form and Klaros builds the draft workspace and a launch checklist.</span>
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+        </Link>
 
         <div className="klaros-card space-y-4 p-5 sm:p-6">
           {error && <Alert variant="danger">{error}</Alert>}

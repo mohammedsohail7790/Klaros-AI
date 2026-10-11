@@ -134,3 +134,18 @@ class HandoffTask(TenantScopedMixin, Base):
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)  # written by a person; never filled from a call
+
+
+class MedicalTourismSetup(TenantScopedMixin, Base):
+    """One row per organisation: the answers the owner gave when setting up a Medical Tourism business (services/mt_setup.py). The `confirmations` column holds only things
+    the OWNER confirmed (signed agreements, approved consent wording, escalation contact, reviewed claims, owned domain), each with who and when."""
+
+    __tablename__ = "medical_tourism_setup"
+    __table_args__ = (UniqueConstraint("tenant_id", name="uq_mt_setup_tenant"),)
+
+    business_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    business_model: Mapped[str] = mapped_column(String(16), nullable=False)  # referral | coordination | both
+    patient_markets: Mapped[list] = mapped_column(JSON, nullable=False, default=list)  # ISO 3166-1 alpha-2
+    destinations: Mapped[list] = mapped_column(JSON, nullable=False, default=list)  # ISO 3166-1 alpha-2
+    confirmations: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)

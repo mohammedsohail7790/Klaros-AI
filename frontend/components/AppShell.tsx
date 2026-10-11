@@ -194,7 +194,7 @@ const PILOT_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Business",
     items: [
-      { href: "/business", label: "Business setup", icon: Hammer },
+      { href: "/setup", label: "Business setup", icon: Hammer },
       { href: "/website", label: "Website", icon: Globe },
       { href: "/marketing", label: "Marketing", icon: Megaphone },
       { href: "/workforce", label: "AI receptionist", icon: Headset },
