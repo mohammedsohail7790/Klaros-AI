@@ -279,13 +279,13 @@ async def test_only_an_active_verified_provider_can_be_referred_to_or_receive_da
 async def test_a_verified_status_whose_credentials_have_all_expired_counts_as_expired(client, halla) -> None:  # noqa: F811
     token, tid = await _gated(client, "Expiry Co", "expiry@example.com")
     lead = await _patient(client, token)
-    p = await _provider(client, token, "Soon Expired", expiry=(date.today() + timedelta(days=30)).isoformat())
+    p = await _provider(client, token, "Soon Expired", expiry=(datetime.now(timezone.utc).date() + timedelta(days=30)).isoformat())
     ref = await _approved(client, token, lead, p["id"])
     assert (await client.get(f"{BASE}/providers/{p['id']}/verification", headers=_h(token))).json() == {"provider_id": p["id"], "stored": "VERIFIED", "effective": "VERIFIED", "referable": True}
     async with async_session_maker() as s:  # time passes: the only verified credential is now out of date
         await set_tenant_context(s, tid)
         for c in (await s.execute(select(ProviderCredential).where(ProviderCredential.provider_id == uuid.UUID(p["id"])))).scalars():
-            c.expiry_date = date.today() - timedelta(days=1)
+            c.expiry_date = datetime.now(timezone.utc).date() - timedelta(days=1)  # the service compares against the UTC date
         await s.commit()
     v = (await client.get(f"{BASE}/providers/{p['id']}/verification", headers=_h(token))).json()
     assert v["stored"] == "VERIFIED" and v["effective"] == "EXPIRED" and v["referable"] is False

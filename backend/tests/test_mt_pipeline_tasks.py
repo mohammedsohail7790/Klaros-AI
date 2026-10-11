@@ -277,3 +277,34 @@ async def test_revenue_never_mixes_currencies(client, halla) -> None:  # noqa: F
     await client.post(f"{BASE}/referrals/{ref}/commission", json={"currency": "USD", "basis": "FLAT", "flat_amount": "250"}, headers=_h(token))
     by = (await client.get(f"{BASE}/revenue", headers=_h(token))).json()["by_currency"]
     assert set(by) == {"EUR", "USD"} and by["USD"]["PENDING"]["amount"] == "250.00" and by["EUR"]["PENDING"]["amount"] == "400.00"
+
+
+async def test_the_pipeline_row_carries_the_enquiry_details_only_while_consent_allows_them(client, halla) -> None:  # noqa: F811
+    token, tid = await _gated(client, "Intake Rows Co", "introws@example.com")
+    provider = await _provider(client, token, name="Row Clinic")
+    lead = await _patient(client, token)
+    async with async_session_maker() as s:
+        await set_tenant_context(s, tid)
+        pl = PatientLead(tenant_id=tid, lead_id=uuid.UUID(lead))
+        s.add(pl)
+        pl.procedure_text, pl.destination_text, pl.timeframe, pl.preferred_language = "Dental implants", "Turkey", "Within 2 months", "Arabic"
+        await s.commit()
+    row = next(x for x in (await client.get(f"{BASE}/pipeline", headers=_h(token))).json()["leads"] if x["lead_id"] == lead)
+    assert row["intake"] == {"procedure": "Dental implants", "destination": "Turkey", "timeframe": "Within 2 months", "language": "Arabic", "contact_time": None}
+    ref = await _referral(client, token, lead, provider["id"])
+    row = next(x for x in (await client.get(f"{BASE}/pipeline", headers=_h(token))).json()["leads"] if x["lead_id"] == lead)
+    assert row["referrals"][0]["provider_name"] == "Row Clinic" and row["referrals"][0]["sent_at"] is None and row["referrals"][0]["id"] == ref
+    # withdrawing personal-data consent removes every detail from the row, not just the name
+    await client.post(f"/api/v1/leads/{lead}/consent", json={"scopes": []}, headers=_h(token))
+    row = next(x for x in (await client.get(f"{BASE}/pipeline", headers=_h(token))).json()["leads"] if x["lead_id"] == lead)
+    assert row["name"] is None and all(v is None for v in row["intake"].values())
+    # medical consent alone controls the treatment
+    lead2 = await _patient(client, token, scopes=["contact", "store_personal_data"])
+    async with async_session_maker() as s:
+        await set_tenant_context(s, tid)
+        pl = PatientLead(tenant_id=tid, lead_id=uuid.UUID(lead2))
+        s.add(pl)
+        pl.procedure_text, pl.destination_text = "Hair transplant", "Turkey"
+        await s.commit()
+    row2 = next(x for x in (await client.get(f"{BASE}/pipeline", headers=_h(token))).json()["leads"] if x["lead_id"] == lead2)
+    assert row2["intake"]["procedure"] is None and row2["intake"]["destination"] == "Turkey"

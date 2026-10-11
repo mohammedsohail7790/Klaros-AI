@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePat
 vi.mock("@/lib/api", () => ({
   logout: vi.fn(),
   getMedicalTourismMode: (...a: unknown[]) => getMode(...a),
+  listHandoffTasks: vi.fn().mockResolvedValue({ tasks: [], total: 3 }),
   listNotifications: vi.fn().mockResolvedValue({ notifications: [] }),
   getUnreadNotificationCount: vi.fn().mockResolvedValue({ count: 0 }),
   markNotificationRead: vi.fn(), markAllNotificationsRead: vi.fn(), dismissNotification: vi.fn(),
@@ -81,15 +82,15 @@ describe("AppShell navigation", () => {
       getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
       signedIn("/medical-tourism/overview");
       const primary = screen.getByRole("navigation", { name: "Primary" });
-      await waitFor(() => expect(within(primary).getByRole("link", { name: "Pipeline" })).toHaveAttribute("href", "/medical-tourism/pipeline"));
+      await waitFor(() => expect(within(primary).getByRole("link", { name: "Patients" })).toHaveAttribute("href", "/medical-tourism/pipeline"));
       expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual([
-        "Overview", "Pipeline", "Patients", "Tasks", "Referrals", "Consultations",
+        "Today", "Patients", "Tasks3", "Referrals", "Consultations",
         "Providers", "Procedures & offers", "Agreements",
         "Revenue",
         "Business setup", "Website", "Marketing", "AI receptionist",
         "Team", "Account & security", "Privacy & consent",
       ]);
-      expect(within(primary).getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+      expect(within(primary).getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
       expect(within(primary).getByRole("link", { name: "Referrals" })).toHaveAttribute("href", "/medical-tourism/provider-referrals");
       expect(within(primary).getByRole("link", { name: "Business setup" })).toHaveAttribute("href", "/setup");
       expect(screen.queryByRole("button", { name: /All modules/ })).not.toBeInTheDocument();
@@ -102,11 +103,11 @@ describe("AppShell navigation", () => {
     it("searches only the pilot pages", async () => {
       getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
       signedIn("/medical-tourism/overview");
-      await waitFor(() => expect(screen.getByRole("link", { name: "Pipeline" })).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByRole("link", { name: "Patients" })).toBeInTheDocument());
       fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "invoice" } });
       expect(screen.getByText(/No pages match/)).toBeInTheDocument();
-      fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "pipeline" } });
-      expect(screen.getByRole("link", { name: "Pipeline" })).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "patient" } });
+      expect(screen.getByRole("link", { name: "Patients" })).toBeInTheDocument();
       afterEach_();
     });
 
@@ -116,7 +117,7 @@ describe("AppShell navigation", () => {
       await waitFor(() => expect(getMode).toHaveBeenCalled());
       expect(screen.getByRole("link", { name: "Leads" })).toHaveAttribute("href", "/leads");
       expect(screen.getByRole("button", { name: /All modules/ })).toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: "Pipeline" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Patients" })).not.toBeInTheDocument();
       afterEach_();
     });
 

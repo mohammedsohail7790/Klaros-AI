@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ApiError, login } from "@/lib/api";
+import { ApiError, getMedicalTourismMode, login } from "@/lib/api";
 import { setSession } from "@/lib/session";
 import { friendlyAuthError, safeNextPath } from "@/lib/authErrors";
 import { SLOW_MESSAGE, useSlowHint } from "@/lib/useSlowHint";
@@ -41,7 +41,14 @@ function LoginForm() {
     try {
       const tokens = await login(slug, email.trim(), password);
       setSession(tokens);
-      router.push(safeNextPath(params.get("next")));
+      // A page the person asked for wins; otherwise a Medical Tourism owner lands on Today and everyone else on the builder.
+      let home = "/business";
+      try {
+        if ((await getMedicalTourismMode(tokens.access_token)).pilot_console === true) home = "/medical-tourism/overview";
+      } catch {
+        // the mode is a convenience: never block signing in on it
+      }
+      router.push(safeNextPath(params.get("next"), home));
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && err.code === "multiple_workspaces" && Array.isArray(err.details?.workspaces)) {
         setWorkspaces(err.details.workspaces as Workspace[]);

@@ -11,7 +11,7 @@ import {
   listMedicalTourismProviders,
   setProviderVerification,
 } from "@/lib/api";
-import { VERIFICATION_LABEL, VERIFICATION_STATUSES } from "@/lib/mtLabels";
+import { VERIFICATION_LABEL, VERIFICATION_STATUSES, countryName, referableNote } from "@/lib/mtLabels";
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -60,7 +60,7 @@ export default function MedicalTourismProvidersPage() {
       <div className="px-8 py-8">
         <PageHeader
           title={`Providers (${total})`}
-          description="The tenant's Medical Tourism provider (hospital/clinic) directory."
+          description="The hospitals and clinics you refer patients to. Only a verified clinic can receive a referral."
           icon={Stethoscope}
           actions={
             <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">
@@ -127,7 +127,7 @@ export default function MedicalTourismProvidersPage() {
                     <td className="px-4 py-2 font-medium text-foreground">{p.name}</td>
                     <td className="px-4 py-2 text-muted">{p.practitioner_name || "—"}</td>
                     <td className="px-4 py-2 text-muted">
-                      {[p.city, p.country].filter(Boolean).join(", ") || "—"}
+                      {[p.city, countryName(p.country)].filter(Boolean).join(", ") || "—"}
                     </td>
                     <td className="px-4 py-2">
                       <Badge status={p.status}>{p.status}</Badge>
@@ -135,6 +135,7 @@ export default function MedicalTourismProvidersPage() {
                     <td className="px-4 py-2 whitespace-nowrap">
                       <span className={p.verification_status === "VERIFIED" ? "font-medium text-success" : "text-muted"}>{VERIFICATION_LABEL[p.verification_status ?? "UNVERIFIED"] ?? p.verification_status}</span>
                       <button onClick={() => setVerifying(p)} className="ml-2 text-xs underline">Change</button>
+                      <div className={`mt-0.5 text-xs ${referableNote(p.status, p.verification_status).ok ? "text-success" : "text-muted-foreground"}`}>{referableNote(p.status, p.verification_status).text}</div>
                     </td>
                     <td className="px-4 py-2 text-muted">{p.contact_email || p.contact_phone || "—"}</td>
                   </tr>

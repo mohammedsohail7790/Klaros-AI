@@ -28,7 +28,8 @@ from app.models.crm import Lead, QualificationStatus
 from app.models.halla_consent import HallaConsentEvidence
 from app.models.medical_tourism_referral import HandoffTask, ProviderReferral, ReferralStatus, TaskStatus
 from app.services import halla_consent
-from app.services.consent_gate import STORE_PERSONAL
+from app.models.medical_tourism import PatientLead, Provider
+from app.services.consent_gate import STORE_MEDICAL, STORE_PERSONAL
 
 STAGES = ("NEW_ENQUIRY", "CONSENT", "QUALIFICATION", "PROVIDER_OPTIONS", "PATIENT_APPROVAL", "REFERRED", "CLINIC_RESPONSE", "OUTCOME")
 NEXT_ACTION = {
@@ -78,6 +79,8 @@ async def build_pipeline(session_factory, tenant_id: uuid.UUID, *, limit: int = 
         evidence = list((await s.execute(select(HallaConsentEvidence).where(HallaConsentEvidence.tenant_id == tenant_id))).scalars())
         referrals = list((await s.execute(select(ProviderReferral).where(ProviderReferral.tenant_id == tenant_id))).scalars())
         tasks = list((await s.execute(select(HandoffTask).where(HandoffTask.tenant_id == tenant_id, HandoffTask.status.in_((TaskStatus.OPEN, TaskStatus.ACCEPTED))))).scalars())
+        intake_rows = {p.lead_id: p for p in (await s.execute(select(PatientLead).where(PatientLead.tenant_id == tenant_id))).scalars()}
+        provider_names = {p.id: p.name for p in (await s.execute(select(Provider).where(Provider.tenant_id == tenant_id))).scalars()}
     by_lead: dict[uuid.UUID, list] = defaultdict(list)
     by_halla: dict[str, list] = defaultdict(list)
     for r in evidence:
@@ -100,13 +103,31 @@ async def build_pipeline(session_factory, tenant_id: uuid.UUID, *, limit: int = 
         mine = refs.get(lead.id, [])
         stage = derive_stage(Facts(state.has_evidence, state.allows(STORE_PERSONAL), str(lead.qualification_status), tuple(r.status for r in mine), any(r.outcome for r in mine)))
         counts[stage] += 1
+        pl = intake_rows.get(lead.id)
+        personal_ok = state.allows(STORE_PERSONAL)
         rows.append({
             "lead_id": str(lead.id),
             "name": lead.name if state.allows(STORE_PERSONAL) else None,  # data minimisation: no consent to keep it, no name in a list
             "stage": stage, "stage_number": STAGES.index(stage) + 1, "next_action": NEXT_ACTION[stage],
             "held_for_person": str(lead.qualification_status) == str(QualificationStatus.REQUIRES_HUMAN),
             "consent_frozen": state.has_evidence and not state.allows(STORE_PERSONAL),
-            "referrals": [{"id": str(r.id), "provider_id": str(r.provider_id), "status": r.status} for r in mine],
+            # What the enquiry is about, shown only while the patient's consent allows it (details need store_personal_data, the treatment also needs store_medical_information).
+            "intake": {
+                "procedure": pl.procedure_text if pl is not None and personal_ok and state.allows(STORE_MEDICAL) else None,
+                "destination": pl.destination_text if pl is not None and personal_ok else None,
+                "timeframe": pl.timeframe if pl is not None and personal_ok else None,
+                "language": pl.preferred_language if pl is not None and personal_ok else None,
+                "contact_time": pl.preferred_contact_time if pl is not None and personal_ok else None,
+            },
+            "referrals": [
+                {
+                    "id": str(r.id), "provider_id": str(r.provider_id), "provider_name": provider_names.get(r.provider_id), "status": r.status,
+                    "sent_at": r.sent_at.isoformat() if r.sent_at else None,
+                    "clinic_response_at": r.clinic_response_at.isoformat() if r.clinic_response_at else None,
+                    "outcome_reported_at": r.outcome_reported_at.isoformat() if r.outcome_reported_at else None,
+                }
+                for r in mine
+            ],
             "open_tasks": len(open_tasks.get(lead.id, [])),
             "assigned_user_id": str(lead.assigned_user_id) if lead.assigned_user_id else None,
             "created_at": lead.created_at.isoformat() if lead.created_at else None,
