@@ -17,6 +17,10 @@ class TransportMessage:
 
 
 class EventTransport(ABC):
+    # True when a message that was delivered but NOT acked is kept by the transport and can be taken over later (`claim_stale`). Then a delivery that
+    # cannot proceed yet (another worker's lease is still running) must be left un-acked so it is retried; acking it would destroy the only copy.
+    keeps_unacked_messages: bool = False
+
     @abstractmethod
     async def ensure_group(self, stream: str, group: str) -> None: ...
 
@@ -38,6 +42,21 @@ class EventTransport(ABC):
         """
         return None
 
+    async def claim_stale(
+        self, stream: str, group: str, consumer: str, min_idle_ms: int, count: int = 10
+    ) -> list[TransportMessage]:
+        """Messages that were DELIVERED to some consumer but never acked and have been idle for at least `min_idle_ms` (the consumer that read
+        them crashed). Redis Streams never redelivers these through a plain read (`>` only returns never-delivered messages), so a transport that
+        has such a state must implement this. Default: none (a transport whose unacked messages are simply read again needs nothing)."""
+        return []
+
+    async def set_heartbeat(self, name: str, ttl_seconds: int) -> None:
+        """Worker liveness marker, best effort. Default: nothing."""
+
+    async def heartbeat_age_seconds(self, name: str) -> float | None:
+        """Seconds since `set_heartbeat(name)` last ran, or None if never / expired / unsupported."""
+        return None
+
 
 class RedisStreamTransport(EventTransport):
     """Real transport, backed by Redis Streams + consumer groups.
@@ -50,6 +69,8 @@ class RedisStreamTransport(EventTransport):
     EventBus's dedup/retry/dead-letter logic, which lives in Postgres and
     is transport-agnostic, not this class's Redis wiring specifically.
     """
+
+    keeps_unacked_messages = True
 
     def __init__(self, redis_client) -> None:
         self._redis = redis_client
@@ -82,6 +103,42 @@ class RedisStreamTransport(EventTransport):
 
     async def ack(self, stream: str, group: str, message_id: str) -> None:
         await self._redis.xack(stream, group, message_id)
+
+    async def claim_stale(
+        self, stream: str, group: str, consumer: str, min_idle_ms: int, count: int = 10
+    ) -> list[TransportMessage]:
+        """XAUTOCLAIM: take over messages another (crashed) consumer read but never acked. Needs Redis >= 6.2."""
+        try:
+            result = await self._redis.xautoclaim(stream, group, consumer, min_idle_time=min_idle_ms, start_id="0-0", count=count)
+        except Exception as exc:  # noqa: BLE001 - no such stream/group yet is normal; anything else is surfaced by the caller's next read
+            if "NOGROUP" in str(exc) or "no such key" in str(exc).lower():
+                return []
+            raise
+        entries = result[1] if isinstance(result, (list, tuple)) and len(result) > 1 else []
+        messages: list[TransportMessage] = []
+        for message_id, fields in entries or []:
+            if not fields:  # an entry deleted from the stream but still in the pending list
+                await self._redis.xack(stream, group, message_id if isinstance(message_id, str) else message_id.decode())
+                continue
+            mid = message_id if isinstance(message_id, str) else message_id.decode()
+            messages.append(TransportMessage(message_id=mid, fields={(k if isinstance(k, str) else k.decode()): (v if isinstance(v, str) else v.decode()) for k, v in fields.items()}))
+        return messages
+
+    async def set_heartbeat(self, name: str, ttl_seconds: int) -> None:
+        import time
+
+        await self._redis.set(name, repr(time.time()), ex=ttl_seconds)
+
+    async def heartbeat_age_seconds(self, name: str) -> float | None:
+        import time
+
+        raw = await self._redis.get(name)
+        if raw is None:
+            return None
+        try:
+            return max(0.0, time.time() - float(raw if isinstance(raw, str) else raw.decode()))
+        except ValueError:
+            return None
 
     async def pending_count(self, stream: str, group: str) -> int | None:
         try:

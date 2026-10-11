@@ -24,4 +24,10 @@ def get_event_bus() -> EventBus:
         redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
         transport = RedisStreamTransport(redis_client)
 
-    return EventBus(session_factory=async_session_maker, transport=transport)
+    return EventBus(
+        session_factory=async_session_maker,
+        transport=transport,
+        processing_lease_seconds=settings.EVENT_PROCESSING_LEASE_SECONDS,
+        pending_reclaim_idle_ms=settings.EVENT_PENDING_RECLAIM_IDLE_MS,
+        consumer_name=settings.EVENT_WORKER_CONSUMER_NAME,
+    )
