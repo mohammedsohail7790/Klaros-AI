@@ -60,6 +60,12 @@ export const TASK_REASON_LABEL: Record<string, string> = {
   consent_withdrawn_after_send: "The patient withdrew consent after their details were sent: ask the clinic to remove them.",
   halla_escalated: "The AI receptionist asked for a person.",
   emergency: "Possible emergency raised on a call.",
+  urgent: "The caller said it was urgent.",
+  human_requested: "The caller asked to speak to a person.",
+  complaint: "The caller raised a complaint.",
+  clinical_question: "The caller asked a medical question the AI must not answer.",
+  billing: "The caller asked about billing or payment.",
+  other: "The AI receptionist asked for a person.",
 };
 
 export const OUTCOME_LABEL: Record<string, string> = {
@@ -77,3 +83,31 @@ export const VERIFICATION_LABEL: Record<string, string> = {
   SUSPENDED: "Suspended",
   EXPIRED: "Expired",
 };
+
+/** "TR" becomes "Türkiye" (or the viewer's language); anything that is not a two-letter code is shown as given. */
+export function countryName(code: string | null | undefined): string {
+  if (!code) return "";
+  if (!/^[A-Za-z]{2}$/.test(code)) return code;
+  try {
+    return new Intl.DisplayNames(undefined, { type: "region" }).of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/** Whether a clinic can receive referrals right now, and if not what to do about it. Mirrors the backend rule: active and verified. */
+export function referableNote(status: string | undefined, verification: string | undefined): { ok: boolean; text: string } {
+  if (status !== "ACTIVE") return { ok: false, text: "Inactive: cannot receive referrals." };
+  switch (verification ?? "UNVERIFIED") {
+    case "VERIFIED":
+      return { ok: true, text: "Can receive referrals" };
+    case "UNDER_REVIEW":
+      return { ok: false, text: "Under review: finish checking it to refer patients." };
+    case "SUSPENDED":
+      return { ok: false, text: "Suspended: cannot receive referrals." };
+    case "EXPIRED":
+      return { ok: false, text: "Credentials expired: renew them to refer patients." };
+    default:
+      return { ok: false, text: "Not verified: check its credentials before referring patients." };
+  }
+}

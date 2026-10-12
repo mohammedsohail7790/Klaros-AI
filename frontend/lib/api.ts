@@ -5537,7 +5537,17 @@ export interface PipelineLead {
   next_action: string;
   held_for_person: boolean;
   consent_frozen: boolean;
-  referrals: { id: string; provider_id: string; status: string }[];
+  /** What the enquiry is about; each value is null unless the patient's consent allows it to be shown. */
+  intake: { procedure: string | null; destination: string | null; timeframe: string | null; language: string | null; contact_time: string | null };
+  referrals: {
+    id: string;
+    provider_id: string;
+    provider_name: string | null;
+    status: string;
+    sent_at: string | null;
+    clinic_response_at: string | null;
+    outcome_reported_at: string | null;
+  }[];
   open_tasks: number;
   assigned_user_id: string | null;
   created_at: string | null;

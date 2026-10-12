@@ -9,6 +9,7 @@ vi.mock("@/components/AppShell", () => ({ default: ({ children }: { children: Re
 vi.mock("@/lib/api", () => ({
   ApiError: class ApiError extends Error { status: number; code?: string; constructor(status: number, message: string, code?: string) { super(message); this.status = status; this.code = code; } },
   listHandoffTasks: (...a: unknown[]) => list(...a), acceptHandoffTask: (...a: unknown[]) => accept(...a), completeHandoffTask: (...a: unknown[]) => complete(...a), cancelHandoffTask: vi.fn(),
+  getMedicalTourismPipeline: vi.fn().mockResolvedValue({ leads: [{ lead_id: "L1", name: "Layla Test", stage: "QUALIFICATION", intake: { procedure: "Dental implants", destination: "Turkey" }, referrals: [] }] }),
 }));
 import Page from "@/app/medical-tourism/tasks/page";
 
@@ -46,5 +47,13 @@ describe("Medical Tourism tasks", () => {
     list.mockResolvedValue({ tasks: [], total: 0 });
     render(<Page />);
     expect(await screen.findByText("Nothing is waiting for a person.")).toBeInTheDocument();
+  });
+
+  it("names the patient, links to their case file and shows the treatment", async () => {
+    list.mockResolvedValue({ tasks: [task({})], total: 1 });
+    render(<Page />);
+    const link = await screen.findByRole("link", { name: "Layla Test" });
+    expect(link).toHaveAttribute("href", "/medical-tourism/patients/L1");
+    expect(screen.getByText("Dental implants · Turkey")).toBeInTheDocument();
   });
 });

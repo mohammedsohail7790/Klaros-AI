@@ -56,7 +56,7 @@ import {
   Send,
 } from "lucide-react";
 import { clearSession, getAccessToken } from "@/lib/session";
-import { UserResponse, logout as logoutRequest } from "@/lib/api";
+import { UserResponse, listHandoffTasks, logout as logoutRequest } from "@/lib/api";
 import NotificationBell from "./NotificationBell";
 import { usePilotMode } from "@/lib/usePilotMode";
 
@@ -177,9 +177,8 @@ const PILOT_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Patients",
     items: [
-      { href: "/medical-tourism/overview", label: "Overview", icon: Home },
-      { href: "/medical-tourism/pipeline", label: "Pipeline", icon: GitBranch },
-      { href: "/leads", label: "Patients", icon: Users },
+      { href: "/medical-tourism/overview", label: "Today", icon: Home },
+      { href: "/medical-tourism/pipeline", label: "Patients", icon: Users },
       { href: "/medical-tourism/tasks", label: "Tasks", icon: ClipboardList },
       { href: "/medical-tourism/provider-referrals", label: "Referrals", icon: Send },
       { href: "/medical-tourism/consultations", label: "Consultations", icon: CalendarCheck },
@@ -218,7 +217,7 @@ const ALL_ITEMS: NavItem[] = [...PRIMARY_NAV, ...WORK_NAV, ...MODULE_SECTIONS.fl
 
 export type Crumb = { label: string; href?: string };
 
-function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+function NavLink({ item, active, badge }: { item: NavItem; active: boolean; badge?: number }) {
   const Icon = item.icon;
   return (
     <Link
@@ -230,6 +229,11 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
     >
       <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
       {item.label}
+      {badge !== undefined && badge > 0 && (
+        <span aria-label={`${badge} open`} className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[11px] font-medium leading-none text-accent-foreground">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
@@ -255,12 +259,24 @@ export default function AppShell({
   const [moreOpen, setMoreOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const pilot = usePilotMode(token);
+  const [openTasks, setOpenTasks] = useState(0);
+  useEffect(() => {
+    if (!pilot || !token) return;
+    let cancelled = false;
+    listHandoffTasks(token, { status: "OPEN" })
+      .then((r) => !cancelled && setOpenTasks(r.total))
+      .catch(() => {}); // a badge is a convenience: never block the page on it
+    return () => {
+      cancelled = true;
+    };
+  }, [pilot, token, pathname]);
   const navItems = pilot ? PILOT_ITEMS : ALL_ITEMS;
 
   // Only the single most specific matching item is "active" — otherwise /finance/ar would
   // light up both "Finance" and "AR", and every /business/* page would light up "Build".
   const activeHref = (() => {
     if (!pathname) return null;
+    if (pathname.startsWith("/medical-tourism/patients/")) return "/medical-tourism/pipeline";
     let best: string | null = null;
     for (const item of [...ALL_ITEMS, ...PILOT_ITEMS]) {
       const matches = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -402,7 +418,7 @@ export default function AppShell({
                     <div className={`klaros-label px-2.5 pb-1 ${i === 0 ? "pt-2" : "pt-4"}`}>{g.label}</div>
                     <div className="space-y-0.5">
                       {g.items.map((item) => (
-                        <NavLink key={item.href} item={item} active={item.href === activeHref} />
+                        <NavLink key={item.href} item={item} active={item.href === activeHref} badge={item.href === "/medical-tourism/tasks" ? openTasks : undefined} />
                       ))}
                     </div>
                   </div>
