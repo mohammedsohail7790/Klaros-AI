@@ -3902,7 +3902,10 @@ export interface WebsiteSection {
     | "PROVIDER_DIRECTORY"
     | "PROCEDURE_LIST"
     | "CONTACT_FORM"
-    | "FOOTER";
+    | "FOOTER"
+    | "STEPS"
+    | "FAQ"
+    | "TRUST_BAR";
   props: Record<string, unknown>;
   data_source?: { provider_key: string; params?: Record<string, unknown> } | null;
   order_index?: number;

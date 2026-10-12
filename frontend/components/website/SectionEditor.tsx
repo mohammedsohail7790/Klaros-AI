@@ -13,6 +13,7 @@
  * editor never trusts its own validation as final).
  */
 
+import { useId } from "react";
 import type { WebsiteSection } from "@/lib/api";
 import { Input, Label } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +29,9 @@ export const COMPONENT_TYPES: WebsiteSection["component_type"][] = [
   "PROCEDURE_LIST",
   "CONTACT_FORM",
   "FOOTER",
+  "STEPS",
+  "FAQ",
+  "TRUST_BAR",
 ];
 
 /** What each building block is called in the editor (the stored type stays the closed enum). */
@@ -40,6 +44,9 @@ export const SECTION_LABELS: Record<WebsiteSection["component_type"], string> = 
   PROCEDURE_LIST: "Services list",
   CONTACT_FORM: "Enquiry form",
   FOOTER: "Footer",
+  STEPS: "Steps",
+  FAQ: "Questions and answers",
+  TRUST_BAR: "Facts bar",
 };
 
 export function defaultPropsFor(type: WebsiteSection["component_type"]): Props {
@@ -60,6 +67,12 @@ export function defaultPropsFor(type: WebsiteSection["component_type"]): Props {
       return { title: "Contact us", fields: ["NAME", "EMAIL", "MESSAGE"], submit_label: "Send" };
     case "FOOTER":
       return { business_name: "" };
+    case "STEPS":
+      return { title: "How it works", items: [{ title: "First step" }, { title: "Second step" }] };
+    case "FAQ":
+      return { title: "Questions", items: [{ question: "A question people ask", answer: "Your answer." }] };
+    case "TRUST_BAR":
+      return { items: ["Something true about your business"] };
   }
 }
 
@@ -82,11 +95,13 @@ function Field({ label, value, onChange, placeholder, textarea }: {
   placeholder?: string;
   textarea?: boolean;
 }) {
+  const id = useId(); // ties the label to its control so screen readers announce it
   return (
     <div className="space-y-1">
-      <Label>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       {textarea ? (
         <textarea
+          id={id}
           className="klaros-input"
           value={value}
           placeholder={placeholder}
@@ -94,7 +109,7 @@ function Field({ label, value, onChange, placeholder, textarea }: {
           rows={3}
         />
       ) : (
-        <Input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+        <Input id={id} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
       )}
     </div>
   );
@@ -121,7 +136,16 @@ export function SectionPropsForm({
           <Field label="Headline" value={String(props.headline ?? "")} onChange={(v) => update("headline", v)} />
           <Field label="Subheadline" value={String(props.subheadline ?? "")} onChange={(v) => update("subheadline", v)} textarea />
           <Field label="CTA text" value={String(props.cta_text ?? "")} onChange={(v) => update("cta_text", v)} />
-          <Field label="CTA URL" value={String(props.cta_url ?? "")} onChange={(v) => update("cta_url", v)} placeholder="https://..." />
+          <Field label="CTA URL" value={String(props.cta_url ?? "")} onChange={(v) => update("cta_url", v)} placeholder="https://, mailto: or tel:" />
+          <Field label="Second button text (optional)" value={String(props.secondary_cta_text ?? "")} onChange={(v) => update("secondary_cta_text", v)} />
+          <Field label="Second button URL" value={String(props.secondary_cta_url ?? "")} onChange={(v) => update("secondary_cta_url", v)} placeholder="https://, mailto: or tel:" />
+          <Field label="Side card title (optional)" value={String(props.highlights_title ?? "")} onChange={(v) => update("highlights_title", v)} />
+          <Field
+            label="Side card lines (one per line, up to 5)"
+            value={(Array.isArray(props.highlights) ? (props.highlights as string[]) : []).join("\n")}
+            onChange={(v) => update("highlights", v.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 5))}
+            textarea
+          />
         </div>
       );
     case "TEXT":
@@ -180,6 +204,84 @@ export function SectionPropsForm({
               Add feature
             </Button>
           </div>
+        </div>
+      );
+    }
+    case "STEPS": {
+      const items = Array.isArray(props.items) ? (props.items as Props[]) : [];
+      return (
+        <div className="space-y-2">
+          <Field label="Title (optional)" value={String(props.title ?? "")} onChange={(v) => update("title", v)} />
+          <Field label="Introduction (optional)" value={String(props.intro ?? "")} onChange={(v) => update("intro", v)} textarea />
+          {items.map((item, i) => (
+            <div key={i} className="rounded border border-border p-2 space-y-1">
+              <Field
+                label={`Step ${i + 1} title`}
+                value={String(item.title ?? "")}
+                onChange={(v) => update("items", items.map((x, j) => (j === i ? { ...x, title: v } : x)))}
+              />
+              <Field
+                label="Description (optional)"
+                value={String(item.description ?? "")}
+                onChange={(v) => update("items", items.map((x, j) => (j === i ? { ...x, description: v } : x)))}
+                textarea
+              />
+              <Button variant="ghost" size="sm" onClick={() => update("items", items.filter((_, j) => j !== i))}>
+                Remove step
+              </Button>
+            </div>
+          ))}
+          {items.length < 8 && (
+            <Button variant="secondary" size="sm" onClick={() => update("items", [...items, { title: "New step" }])}>
+              Add step
+            </Button>
+          )}
+          <p className="text-xs text-muted">Steps are numbered in the order shown. Only describe what you really do.</p>
+        </div>
+      );
+    }
+    case "FAQ": {
+      const items = Array.isArray(props.items) ? (props.items as Props[]) : [];
+      return (
+        <div className="space-y-2">
+          <Field label="Title (optional)" value={String(props.title ?? "")} onChange={(v) => update("title", v)} />
+          {items.map((item, i) => (
+            <div key={i} className="rounded border border-border p-2 space-y-1">
+              <Field
+                label={`Question ${i + 1}`}
+                value={String(item.question ?? "")}
+                onChange={(v) => update("items", items.map((x, j) => (j === i ? { ...x, question: v } : x)))}
+              />
+              <Field
+                label="Answer"
+                value={String(item.answer ?? "")}
+                onChange={(v) => update("items", items.map((x, j) => (j === i ? { ...x, answer: v } : x)))}
+                textarea
+              />
+              <Button variant="ghost" size="sm" onClick={() => update("items", items.filter((_, j) => j !== i))}>
+                Remove question
+              </Button>
+            </div>
+          ))}
+          {items.length < 12 && (
+            <Button variant="secondary" size="sm" onClick={() => update("items", [...items, { question: "New question", answer: "Your answer." }])}>
+              Add question
+            </Button>
+          )}
+        </div>
+      );
+    }
+    case "TRUST_BAR": {
+      const items = Array.isArray(props.items) ? (props.items as string[]) : [];
+      return (
+        <div className="space-y-2">
+          <Field
+            label="Facts (one per line, up to 6)"
+            value={items.join("\n")}
+            onChange={(v) => update("items", v.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 6))}
+            textarea
+          />
+          <p className="text-xs text-muted">Plain facts about your business, such as the places you serve or languages you speak. Not ratings or numbers you cannot show.</p>
         </div>
       );
     }

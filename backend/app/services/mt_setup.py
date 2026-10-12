@@ -144,6 +144,16 @@ async def _seed_blueprint(session_factory, tenant_id: uuid.UUID, user_id: uuid.U
         BlueprintSectionKey.REQUIRED_CAPABILITIES: {"capabilities": capabilities},
         BlueprintSectionKey.CUSTOMERS: {"target_customer": f"Patients in {markets} who want treatment in {destinations}."},
         BlueprintSectionKey.PRODUCTS_SERVICES: {"services": list(data["procedures"])},
+        # Places the owner named, as short statements the website's trust bar can show as they are.
+        BlueprintSectionKey.GEOGRAPHY: {"highlights": [f"Patients from {markets}", f"Treatment in {destinations}"]},
+        # How the enquiry is handled. These describe what Klaros itself enforces (consent before anything is kept, nothing shared with a clinic without
+        # the patient's approval, the clinic confirms the consultation), so the website can state them without promising prices, times or outcomes.
+        BlueprintSectionKey.CUSTOMER_JOURNEY: {"steps": [
+            {"title": "Tell us what you need", "description": "Send an enquiry through this website. Your details are only kept once you agree to how they will be used."},
+            {"title": "We read it and reply", "description": "A coordinator looks at your enquiry and answers you directly."},
+            {"title": "You decide about a clinic", "description": "Nothing about you is shared with a clinic until you say yes."},
+            {"title": "The clinic confirms with you", "description": "A consultation is only confirmed once the clinic has agreed it with you."},
+        ]},
     }
     for key, section in sections.items():
         await blueprints.update_section(tenant_id, draft.id, section_key=key.value, data=section, updated_by=user_id)
