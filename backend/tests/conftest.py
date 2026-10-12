@@ -132,3 +132,22 @@ def _restore_tool_policies():
     yield
     DEFAULT_TOOL_POLICIES.clear()
     DEFAULT_TOOL_POLICIES.update(snapshot)
+
+
+@pytest.fixture
+def fresh_db_pool():
+    """For synchronous tests that drive the app through starlette's TestClient.
+
+    TestClient runs the app on its own event loop, but the shared engine's pool
+    may still hold connections opened on pytest-asyncio's loop (and, afterwards,
+    ones opened on TestClient's). An asyncpg connection only works on the loop
+    that created it, so on a real PostgreSQL either direction fails with "attached
+    to a different loop". Dropping the pool (without closing the connections from
+    the wrong loop) before and after gives each side a clean one. A no-op in
+    effect on SQLite."""
+    from app.db.session import engine
+
+    engine.sync_engine.dispose(close=False)
+    yield
+    engine.sync_engine.dispose(close=False)
+

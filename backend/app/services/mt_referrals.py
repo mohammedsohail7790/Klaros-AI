@@ -19,6 +19,7 @@ Halla never calls into this module: Halla creates the lead (subject to its own c
 
 from __future__ import annotations
 
+import asyncio
 import re
 import uuid
 from dataclasses import dataclass
@@ -319,11 +320,29 @@ async def _payload(session, tenant_id: uuid.UUID, referral: ProviderReferral, le
     return {"reference": str(referral.id), **body}
 
 
+# One send per referral at a time inside this process. Two requests arriving together used to both read "not sent yet", both hand the patient's data to
+# the transport, and only then collide on the delivery's unique key — so the clinic could be contacted twice. The row lock below does the same job across
+# processes (PostgreSQL); the in-process lock also covers engines that ignore FOR UPDATE.
+_SEND_LOCKS: dict[uuid.UUID, asyncio.Lock] = {}
+
+
 async def send_referral(session_factory, tenant_id: uuid.UUID, referral_id: uuid.UUID, actor_id: uuid.UUID | None, transport=None) -> tuple[ProviderReferral, bool]:
     """Transfer the permitted data to the provider. Returns (referral, newly_sent). Safe to call again: a repeat after success returns the existing delivery."""
+    lock = _SEND_LOCKS.setdefault(referral_id, asyncio.Lock())
+    try:
+        async with lock:
+            return await _send_referral_locked(session_factory, tenant_id, referral_id, actor_id, transport)
+    finally:
+        if not lock.locked():
+            _SEND_LOCKS.pop(referral_id, None)
+
+
+async def _send_referral_locked(session_factory, tenant_id: uuid.UUID, referral_id: uuid.UUID, actor_id: uuid.UUID | None, transport=None) -> tuple[ProviderReferral, bool]:
     async with session_factory() as session:
         await set_tenant_context(session, tenant_id)
-        referral = (await session.execute(select(ProviderReferral).where(ProviderReferral.id == referral_id, ProviderReferral.tenant_id == tenant_id))).scalar_one_or_none()
+        referral = (
+            await session.execute(select(ProviderReferral).where(ProviderReferral.id == referral_id, ProviderReferral.tenant_id == tenant_id).with_for_update())
+        ).scalar_one_or_none()
         if referral is None:
             raise ReferralError("not_found", status=404)
         if referral.status in _SENT_OR_LATER:

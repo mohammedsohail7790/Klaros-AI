@@ -56,8 +56,9 @@ def _app_role_url(app_user: str, app_password: str) -> str:
     Docker Compose Postgres, CI's Postgres service container, or a
     pgserver-backed disposable instance — never hardcodes a host)."""
     owner_url = owner_engine.url
-    return str(
-        owner_url.set(username=app_user, password=app_password, drivername="postgresql+asyncpg")
+    # render_as_string(hide_password=False): str(URL) masks the password as "***".
+    return owner_url.set(username=app_user, password=app_password, drivername="postgresql+asyncpg").render_as_string(
+        hide_password=False
     )
 
 
@@ -74,7 +75,7 @@ async def app_role():
     app_password = uuid.uuid4().hex
 
     await provision_app_role(
-        owner_dsn=str(owner_engine.url).replace("postgresql+asyncpg", "postgresql"),
+        owner_dsn=owner_engine.url.render_as_string(hide_password=False).replace("postgresql+asyncpg", "postgresql"),
         app_user=app_user,
         app_password=app_password,
     )
@@ -299,7 +300,7 @@ async def test_provisioning_is_idempotent(app_role) -> None:
     redeploy or a second `docker compose up` performs."""
     app_user, app_engine = app_role
     await provision_app_role(
-        owner_dsn=str(owner_engine.url).replace("postgresql+asyncpg", "postgresql"),
+        owner_dsn=owner_engine.url.render_as_string(hide_password=False).replace("postgresql+asyncpg", "postgresql"),
         app_user=app_user,
         app_password=uuid.uuid4().hex,
     )

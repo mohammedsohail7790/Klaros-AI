@@ -548,6 +548,7 @@ async def test_caller_identification_never_leaks_another_tenants_customer(tool_r
 
 # --- Wiring: the WebSocket route dispatches to this engine when selected ---
 
+@pytest.mark.usefixtures("fresh_db_pool")
 def test_voice_stream_route_dispatches_to_realtime_engine_when_configured(monkeypatch) -> None:
     """A real WebSocket connection to our own app, with
     VOICE_AI_ENGINE=openai_realtime — proves the route-level dispatch
