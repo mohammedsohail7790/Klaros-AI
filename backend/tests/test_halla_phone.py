@@ -26,7 +26,7 @@ async def test_status_is_translated_and_asks_halla_for_this_business_only(client
     r = await client.get(PHONE, headers=_h(token))
     assert r.status_code == 200, r.text
     assert r.json() == {
-        "numbers": [], "business_number": None, "human_handoff": False, "can_buy": True, "monthly_cost_usd": 1.15,
+        "numbers": [], "business_number": None, "human_handoff": False, "can_buy": True, "monthly_cost_usd": 1.15, "template_outdated": False,
         "plan": {"plan": "professional", "status": "trialing", "trial_expires_at": "2026-10-26T00:00:00Z", "trial_minutes_used": 0},
     }
     (call,) = provisioner.phone_calls
@@ -129,3 +129,60 @@ async def test_phone_actions_need_the_manage_permission_and_the_platform_secret(
     gone = await client.get(PHONE, headers=_h(token))
     assert gone.status_code == 404 and "not available" in gone.json()["detail"]
     assert provisioner.phone_calls == []
+
+
+REFRESH = f"{BASE}/workforce/halla/refresh"
+
+
+async def test_status_says_when_a_newer_receptionist_version_is_available(client, provisioner) -> None:  # noqa: F811
+    token = await _ready_mt(client, "refresh-status@example.com")
+    provisioner.phone_replies["status"] = httpx.Response(200, json={"success": True, "data": {
+        "numbers": [], "businessNumber": None, "humanHandoff": False, "canBuy": False, "monthlyCostUsd": 1.15, "plan": None,
+        "template": {"templateVersion": "unknown", "currentVersion": "2026-10-12.1", "outdated": True}}})
+    r = await client.get(PHONE, headers=_h(token))
+    assert r.status_code == 200 and r.json()["template_outdated"] is True
+
+
+async def test_updating_the_receptionist_asks_halla_for_this_business_and_re_sends_the_business_context(client, provisioner) -> None:  # noqa: F811
+    token = await _ready_mt(client, "refresh-do@example.com")
+    from tests.test_halla_integration import _connect, _tenant_id
+
+    assert (await _connect(client, token)).status_code == 200
+    r = await client.post(REFRESH, headers=_h(token))
+    assert r.status_code == 200, r.text
+    assert r.json() == {"updated": True, "template_version": "2026-10-12.1", "configured": True}
+    (call,) = provisioner.refresh_calls
+    assert call.headers["Authorization"] == f"Bearer {PLATFORM_SECRET}"
+    assert json.loads(call.content) == {"klarosTenantId": str(await _tenant_id(client, token))}
+    assert len(provisioner.sent("PUT", "/integrations/klaros/workforce")) == 1  # the template resets the questions, so the context goes across again
+
+
+async def test_a_receptionist_that_is_already_up_to_date_is_left_alone(client, provisioner) -> None:  # noqa: F811
+    token = await _ready_mt(client, "refresh-noop@example.com")
+    provisioner.refresh_reply = httpx.Response(200, json={"success": True, "data": {"updated": False, "templateVersion": "2026-10-12.1", "previousVersion": "2026-10-12.1"}})
+    r = await client.post(REFRESH, headers=_h(token))
+    assert r.status_code == 200 and r.json() == {"updated": False, "template_version": "2026-10-12.1", "configured": False}
+    assert provisioner.sent("PUT", "/integrations/klaros/workforce") == []
+
+
+async def test_a_failed_update_is_explained_and_leaks_nothing(client, provisioner) -> None:  # noqa: F811
+    token = await _ready_mt(client, "refresh-fail@example.com")
+    provisioner.refresh_reply = _err(500, "refresh_failed")
+    r = await client.post(REFRESH, headers=_h(token))
+    assert r.status_code == 502 and "Nothing was changed" in r.json()["detail"] and "internal text" not in r.text
+    provisioner.refresh_reply = _err(409, "no_receptionist")
+    r2 = await client.post(REFRESH, headers=_h(token))
+    assert r2.status_code == 409 and "Create your AI receptionist first" in r2.json()["detail"]
+
+
+async def test_updating_needs_the_manage_permission_and_the_platform_secret(client, provisioner) -> None:  # noqa: F811
+    from app.core.config import get_settings
+    from tests.test_business_journey_api import _tech_token
+
+    token = await _ready_mt(client, "refresh-perm@example.com")
+    tech = await _tech_token(client, token, "tech-refresh@example.com")
+    assert (await client.post(REFRESH, headers=_h(tech))).status_code in (401, 403)
+    assert provisioner.refresh_calls == []
+    get_settings().HALLA_PROVISIONING_SECRET = None
+    gone = await client.post(REFRESH, headers=_h(token))
+    assert gone.status_code == 404 and provisioner.refresh_calls == []

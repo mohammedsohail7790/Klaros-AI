@@ -143,6 +143,10 @@ class HallaClient:
         `provision`. Never retried: a buy spends money."""
         return await self._request("POST", "/platform/klaros/phone", operation="phone", json=body)
 
+    async def refresh(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Ask Halla to roll its current agent template out to this business's existing receptionist (prompts only). Idempotent on Halla's side."""
+        return await self._request("POST", "/platform/klaros/refresh", operation="refresh", json=body)
+
     # ----------------------------------------------------------------- plumbing
 
     def _headers(self) -> dict[str, str]:

@@ -8,6 +8,7 @@ import {
   HallaPhoneStatus,
   buyHallaPhone,
   getHallaPhone,
+  refreshHallaReceptionist,
   searchHallaPhone,
   setHallaBusinessNumber,
 } from "@/lib/api";
@@ -75,6 +76,24 @@ export function HallaPhonePanel({ token, connected }: { token: string | null; co
     }
   }
 
+  const update = () =>
+    run("update", async () => {
+      try {
+        const r = await refreshHallaReceptionist(token as string);
+        setNotice({
+          kind: "success",
+          text: !r.updated
+            ? "Your AI receptionist is already up to date."
+            : r.configured
+              ? "Your AI receptionist is updated and your business details were sent to it again."
+              : "Your AI receptionist is updated, but your business details did not reach it. Use “Send business context to Halla” above.",
+        });
+      } catch (err) {
+        setNotice({ kind: "danger", text: fail(err, "We couldn't update the receptionist. Nothing was changed.") });
+      }
+      await load();
+    });
+
   const search = () =>
     run("search", async () => {
       try {
@@ -125,6 +144,13 @@ export function HallaPhonePanel({ token, connected }: { token: string | null; co
         {notice && <Alert variant={notice.kind}>{notice.text}</Alert>}
         {loadError && <Alert variant="danger">{loadError}</Alert>}
         {!status && !loadError && <p className="text-sm text-muted">Loading…</p>}
+
+        {status?.template_outdated && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-muted/70 p-3">
+            <p className="text-sm text-foreground">A newer version of your AI receptionist is ready. It includes improvements to what it says about medical questions.</p>
+            <Button variant="secondary" size="sm" onClick={update} disabled={busy !== null}>{busy === "update" ? "Updating…" : "Update receptionist"}</Button>
+          </div>
+        )}
 
         {status && (
           <>
