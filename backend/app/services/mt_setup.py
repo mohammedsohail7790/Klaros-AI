@@ -188,10 +188,11 @@ async def get_setup(session_factory, tenant_id: uuid.UUID) -> dict[str, Any]:
         referable = [p for p in providers if await provider_is_referable(session, tenant_id, p)]
         offerings = (await session.execute(select(func.count()).select_from(ProviderProcedure).where(ProviderProcedure.tenant_id == tenant_id, ProviderProcedure.status == ProviderProcedureStatus.ACTIVE))).scalar() or 0
         halla = (await session.execute(select(IntegrationConnection).where(IntegrationConnection.tenant_id == tenant_id, IntegrationConnection.provider == "halla"))).scalar_one_or_none()
-        meta = halla.connection_metadata if halla is not None and isinstance(halla.connection_metadata, dict) else {}
-        wording = [v for v in (meta.get("approved_wording_versions") or []) if isinstance(v, str)]
         confirmed = set((row.confirmations or {}).keys())
         names = [p.name for p in procedures]
+    from app.services.consent_gate import approved_wording_versions
+
+    wording = await approved_wording_versions(session_factory, tenant_id)
     items = [
         _item("profile", "Business profile", "DONE", "Saved from your setup answers."),
         _item("procedures", "Procedure catalogue", "DONE" if procedures else "TODO", f"{len(procedures)} procedure(s) in the catalogue." if procedures else "Add the procedures you offer.", "/medical-tourism/procedures"),
@@ -200,7 +201,7 @@ async def get_setup(session_factory, tenant_id: uuid.UUID) -> dict[str, Any]:
         _item("offerings", "What each clinic offers", "DONE" if offerings else "TODO", f"{offerings} offering(s) recorded." if offerings else "Record which procedures each clinic really offers (and any price it has approved).", "/medical-tourism/procedures"),
         _item("halla", "AI receptionist connected", "DONE" if halla is not None and halla.status == ConnectionStatus.CONNECTED else "TODO",
               "Connected." if halla is not None and halla.status == ConnectionStatus.CONNECTED else "Connect Halla AI so calls become leads.", "/workforce"),
-        _item("consent_wording", "Consent wording approved for the website form", "DONE" if wording else "NEEDS_APPROVAL", "Approved wording is on file." if wording else "Until wording is approved the public enquiry form stays closed.", "/workforce"),
+        _item("consent_wording", "Consent wording approved for the website form", "DONE" if wording else "NEEDS_APPROVAL", "Approved wording is on file." if wording else "Until wording is approved the public enquiry form stays closed. Write it below, then approve it.", "/setup#consent-wording"),
     ]
     for key, text in CONFIRMATIONS.items():
         items.append(_item(key, text, "DONE" if key in confirmed else "NEEDS_APPROVAL", "Confirmed by the owner." if key in confirmed else "Only you can confirm this; Klaros cannot see it.", None))
