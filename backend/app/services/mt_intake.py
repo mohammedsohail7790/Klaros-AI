@@ -24,6 +24,14 @@ _COUNTRIES = {
 }
 
 
+def country_name(code: str | None) -> str:
+    """The display name for a country code ("TR" -> "Türkiye"), the longest spelling we know; the code itself when we do not know it."""
+    if not code:
+        return ""
+    best = max((n for n, c in _COUNTRIES.items() if c == code.upper()), key=lambda n: (len(n), not n.isascii()), default=None)
+    return best.title() if best else code.upper()
+
+
 def country_code(text: str | None) -> str | None:
     if not text:
         return None
