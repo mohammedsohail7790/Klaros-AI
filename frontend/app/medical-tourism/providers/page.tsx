@@ -9,14 +9,14 @@ import {
   MedicalTourismProvider,
   createMedicalTourismProvider,
   listMedicalTourismProviders,
-  setProviderVerification,
 } from "@/lib/api";
-import { VERIFICATION_LABEL, VERIFICATION_STATUSES, countryName, referableNote } from "@/lib/mtLabels";
+import { VERIFICATION_LABEL, countryName, referableNote } from "@/lib/mtLabels";
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
+import { ClinicVerification } from "@/components/mt/ClinicVerification";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 const STATUS_TABS = ["ALL", "ACTIVE", "INACTIVE"];
@@ -147,7 +147,7 @@ export default function MedicalTourismProvidersPage() {
       </div>
 
       {verifying && token && (
-        <VerificationModal token={token} provider={verifying} onClose={() => setVerifying(null)} onSaved={() => { setVerifying(null); load(); }} />
+        <ClinicVerification token={token} provider={verifying} onClose={() => setVerifying(null)} onSaved={() => { setVerifying(null); load(); }} />
       )}
 
       {showCreate && token && (
@@ -247,49 +247,6 @@ function CreateProviderModal({
           </button>
         </div>
       </form>
-    </Modal>
-  );
-}
-
-/**
- * Set a clinic's verification. A clinic can be marked Verified only with at least one verified, unexpired credential on record (the backend refuses otherwise),
- * and only an active, currently verified clinic can be matched or referred to.
- */
-function VerificationModal({ token, provider, onClose, onSaved }: { token: string; provider: MedicalTourismProvider; onClose: () => void; onSaved: () => void }) {
-  const [status, setStatus] = useState(provider.verification_status ?? "UNVERIFIED");
-  const [note, setNote] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  async function save() {
-    setSaving(true);
-    setError(null);
-    try {
-      await setProviderVerification(token, provider.id, status, note || undefined);
-      onSaved();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to change the verification.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Modal title={`Verification: ${provider.name}`} onClose={onClose}>
-      {error && <div role="alert" className="mb-3 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>}
-      <label className="block text-sm">Status
-        <select aria-label="Verification status" value={status} onChange={(e) => setStatus(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5">
-          {VERIFICATION_STATUSES.map((v) => <option key={v} value={v}>{VERIFICATION_LABEL[v]}</option>)}
-        </select>
-      </label>
-      <label className="mt-3 block text-sm">Note (optional)
-        <input value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5" />
-      </label>
-      <p className="mt-2 text-xs text-muted-foreground">Verified needs at least one verified, unexpired credential. Only an active, verified clinic can be matched or referred to.</p>
-      <div className="mt-4 flex justify-end gap-2">
-        <button onClick={onClose} className="klaros-btn-secondary">Cancel</button>
-        <button onClick={save} disabled={saving} className="klaros-btn-primary">{saving ? "Saving…" : "Save"}</button>
-      </div>
     </Modal>
   );
 }

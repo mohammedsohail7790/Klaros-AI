@@ -11,6 +11,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Alert } from "@/components/ui/Alert";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { BarBreakdown } from "@/components/ui/Chart";
+import { plainDetail, statusLabel } from "@/lib/integrationLabels";
 
 export default function MarketingPage() {
   const { token, user, loading: authLoading } = useAuth();
@@ -104,9 +105,9 @@ export default function MarketingPage() {
                 <div key={p.provider} className="klaros-card p-4">
                   <div className="text-sm font-medium">{p.provider.replace(/_/g, " ")}</div>
                   <Badge status={p.status} className="mt-1">
-                    {p.status}
+                    {statusLabel(p.status)}
                   </Badge>
-                  <div className="mt-2 text-xs text-muted">{p.detail}</div>
+                  <div className="mt-2 text-xs text-muted">{p.status === "CONNECTED" ? plainDetail(p.status, p.detail) : `${plainDetail(p.status, p.detail)} No campaign data has been synced.`}</div>
                 </div>
               ))}
             </div>

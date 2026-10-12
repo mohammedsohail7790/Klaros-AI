@@ -109,3 +109,23 @@ describe("clinic labels", () => {
     expect(referableNote("INACTIVE", "VERIFIED").ok).toBe(false);
   });
 });
+
+import { plainDetail, statusLabel } from "@/lib/integrationLabels";
+
+describe("integration wording", () => {
+  it("shows plain status words", () => {
+    expect(statusLabel("CONNECTED")).toBe("Connected");
+    expect(statusLabel("NOT_CONNECTED")).toBe("Not connected");
+    expect(statusLabel("ERROR")).toBe("Needs attention");
+    expect(statusLabel("NOT_IMPLEMENTED")).toBe("Coming soon");
+  });
+
+  it("never shows environment variable names or API routes to an owner", () => {
+    expect(plainDetail("NOT_CONNECTED", "SERVICETITAN_CLIENT_ID not configured")).toBe("Not set up yet.");
+    expect(plainDetail("CONNECTED", "verified via GET /v1/balance")).toBe("Connected and working.");
+    expect(plainDetail("NOT_CONNECTED", "OAuth app configured — connect per-tenant via Settings → Integrations")).toBe("Ready: connect your own account below.");
+    expect(plainDetail("NOT_CONNECTED", "TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN not configured")).toBe("Not set up yet.");
+    expect(plainDetail("ERROR", "401 invalid key")).toMatch(/Reconnect/);
+    expect(plainDetail("NOT_CONNECTED", "SOME_UNKNOWN_FLAG missing")).toBe("Not connected.");
+  });
+});

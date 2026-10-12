@@ -418,3 +418,21 @@ async def test_every_decision_leaves_an_audit_row(client, halla) -> None:  # noq
         await set_tenant_context(s, tid)
         actions = [a.action for a in (await s.execute(select(AuditLog).where(AuditLog.tenant_id == tid, AuditLog.entity_id == uuid.UUID(ref)))).scalars()]
     assert {"mt.referral.created", "mt.referral.approval_granted", "mt.referral.sent"} <= set(actions)
+
+
+async def test_a_clinic_is_verified_through_credentials_an_owner_can_add_and_check(client, halla) -> None:  # noqa: F811
+    """The owner's whole path in the product: add a credential (with its expiry), record that a person checked it, then mark the clinic verified."""
+    token, tid = await _gated(client, "Cred Co", "credco@example.com")
+    p = await _provider(client, token, "Unchecked Clinic", verified=False)
+    refused = await client.put(f"{BASE}/providers/{p['id']}/verification", json={"status": "VERIFIED"}, headers=_h(token))
+    assert refused.status_code in (409, 422)  # nothing checked yet: the gate holds
+    expiry = (datetime.now(timezone.utc).date() + timedelta(days=200)).isoformat()
+    c = (await client.post(f"{BASE}/providers/{p['id']}/credentials", json={"credential_type": "Operating licence", "issuing_authority": "Ministry of Health", "credential_number": "OL-1", "expiry_date": expiry}, headers=_h(token))).json()["credential"]
+    assert c["status"] == "PENDING" and c["expiry_date"] == expiry and c["issued_date"] is None
+    assert (await client.put(f"{BASE}/providers/{p['id']}/verification", json={"status": "VERIFIED"}, headers=_h(token))).status_code in (409, 422)  # added is not checked
+    checked = (await client.post(f"{BASE}/providers/{p['id']}/credentials/{c['id']}/verify", headers=_h(token))).json()["credential"]
+    assert checked["status"] == "VERIFIED" and checked["verified_at"]
+    ok = await client.put(f"{BASE}/providers/{p['id']}/verification", json={"status": "VERIFIED"}, headers=_h(token))
+    assert ok.status_code == 200
+    listed = (await client.get(f"{BASE}/providers/{p['id']}/credentials", headers=_h(token))).json()["credentials"]
+    assert [x["expiry_date"] for x in listed] == [expiry]

@@ -111,3 +111,22 @@ export function referableNote(status: string | undefined, verification: string |
       return { ok: false, text: "Not verified: check its credentials before referring patients." };
   }
 }
+
+/** The three things a patient can agree to, in the words an owner would use. The backend names are the closed consent scopes. */
+export const CONSENT_SCOPES: { key: string; label: string; help: string }[] = [
+  { key: "contact", label: "We may contact them", help: "By phone, email or message about their enquiry." },
+  { key: "store_personal_data", label: "We may keep their details", help: "Name, phone, email and what they asked for." },
+  { key: "store_medical_information", label: "We may keep their health information", help: "The treatment they are asking about." },
+];
+
+const SCOPE_WORDS: Record<string, string> = {
+  contact: "contact them",
+  store_personal_data: "keep their details",
+  store_medical_information: "keep their health information",
+};
+
+/** "keep their details and keep their health information" for a list of missing consent scopes. */
+export function missingConsentSentence(scopes: unknown): string {
+  const list = Array.isArray(scopes) ? scopes.map((s) => SCOPE_WORDS[String(s)] ?? String(s)) : [];
+  return list.length === 0 ? "record their consent" : list.join(" and ");
+}

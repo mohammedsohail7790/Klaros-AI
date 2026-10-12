@@ -127,3 +127,32 @@ async def test_only_business_types_that_really_exist_are_offered(client, halla) 
     token = await _reg(client, "Types Co", "typesco@example.com")
     types = (await client.get(f"{BASE}/types", headers=_h(token))).json()["types"]
     assert [(t["key"], t["available"]) for t in types] == [("medical_tourism", True)]
+
+
+async def test_the_setup_answers_become_the_active_blueprint_so_the_website_builder_works(client, halla) -> None:  # noqa: F811
+    """Found on the live site: the one-form setup left the owner with no Blueprint, so 'Generate website' failed with 'requires an ACTIVE Business Blueprint'."""
+    token = await _reg(client, "Blueprint Co", "blueprintco@example.com")
+    assert (await client.post("/api/v1/websites/generate", headers=_h(token))).status_code == 409  # nothing yet
+    await client.post(f"{BASE}/medical-tourism", json=FORM, headers=_h(token))
+    made = await client.post("/api/v1/websites/generate", headers=_h(token))
+    assert made.status_code in (200, 201), made.text
+    assert "Atlas Care Connect" in made.text
+    again = await client.post(f"{BASE}/medical-tourism", json={**FORM, "business_name": "Renamed Co"}, headers=_h(token))
+    assert again.status_code == 200  # running setup again never fails on the existing Blueprint
+
+
+async def test_setup_never_overwrites_a_blueprint_the_owner_already_has(client, halla) -> None:  # noqa: F811
+    from app.db.session import async_session_maker
+    from app.models.business_blueprint import BlueprintSectionKey
+    from app.services.business_blueprint_service import BusinessBlueprintService
+
+    token = await _reg(client, "Has Blueprint Co", "hasbp@example.com")
+    tid = (await client.get("/api/v1/users/me", headers=_h(token))).json()["tenant_id"]
+    import uuid as _uuid
+
+    svc = BusinessBlueprintService(async_session_maker)
+    bp = await svc.get_or_create_draft(_uuid.UUID(tid), created_by=None)
+    await svc.update_section(_uuid.UUID(tid), bp.id, section_key=BlueprintSectionKey.IDENTITY.value, data={"business_name": "Owner Chosen Name"}, updated_by=None)
+    await client.post(f"{BASE}/medical-tourism", json=FORM, headers=_h(token))
+    sections = {s.section_key: s.data for s in await svc.list_sections(_uuid.UUID(tid), bp.id)}
+    assert sections[BlueprintSectionKey.IDENTITY.value] == {"business_name": "Owner Chosen Name"}

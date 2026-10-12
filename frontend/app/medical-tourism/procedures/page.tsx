@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ClinicOffers } from "@/components/mt/ClinicOffers";
 
 const STATUS_TABS = ["ALL", "ACTIVE", "INACTIVE"];
 
@@ -57,7 +58,7 @@ export default function MedicalTourismProceduresPage() {
       <div className="px-8 py-8">
         <PageHeader
           title={`Procedures (${total})`}
-          description="The tenant's Medical Tourism treatment/procedure catalog."
+          description="The treatments you arrange, and which clinics offer them."
           icon={FileText}
           actions={
             <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">
@@ -131,6 +132,8 @@ export default function MedicalTourismProceduresPage() {
             </table>
           </div>
         )}
+
+        {token && <ClinicOffers token={token} />}
       </div>
 
       {showCreate && token && (
