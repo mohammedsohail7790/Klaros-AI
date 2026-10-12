@@ -189,7 +189,7 @@ const PILOT_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/medical-tourism/providers", label: "Providers", icon: Stethoscope },
       { href: "/medical-tourism/procedures", label: "Procedures & offers", icon: FileText },
-      { href: "/contracts", label: "Agreements", icon: FileSignature },
+      { href: "/contracts", label: "Contracts", icon: FileSignature },
     ],
   },
   {
@@ -213,7 +213,7 @@ const PILOT_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/settings/team", label: "Team", icon: UserPlus },
       { href: "/settings/account", label: "Account & security", icon: UserCog },
-      { href: "/settings/compliance", label: "Privacy & consent", icon: ShieldCheck },
+      { href: "/settings/compliance", label: "Licences & insurance", icon: ShieldCheck },
     ],
   },
 ];

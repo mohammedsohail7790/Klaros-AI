@@ -30,6 +30,18 @@ export const COMPONENT_TYPES: WebsiteSection["component_type"][] = [
   "FOOTER",
 ];
 
+/** What each building block is called in the editor (the stored type stays the closed enum). */
+export const SECTION_LABELS: Record<WebsiteSection["component_type"], string> = {
+  HERO: "Headline banner",
+  TEXT: "Text",
+  CTA: "Call to action",
+  FEATURE_GRID: "Feature grid",
+  PROVIDER_DIRECTORY: "Provider list",
+  PROCEDURE_LIST: "Services list",
+  CONTACT_FORM: "Enquiry form",
+  FOOTER: "Footer",
+};
+
 export function defaultPropsFor(type: WebsiteSection["component_type"]): Props {
   switch (type) {
     case "HERO":
@@ -182,7 +194,7 @@ export function SectionPropsForm({
             onChange={(v) => update("empty_state_text", v)}
           />
           <Field
-            label="Data source provider key (format: <namespace>.<key>)"
+            label="Where this list comes from"
             value={section.data_source?.provider_key ?? ""}
             onChange={(v) =>
               onChange({
@@ -193,8 +205,8 @@ export function SectionPropsForm({
             placeholder="<namespace>.<key>"
           />
           <p className="text-xs text-muted">
-            Matches a data provider registered for your active vertical (backend/app/services/website_data_providers.py) —
-            this editor does not validate the key itself; the backend rejects an unknown or malformed one on save.
+            Filled in for you when the website is generated — it links this list to your own records. Leave it as it is
+            unless you were asked to change it; a value Klaros doesn&apos;t recognise is rejected when you save.
           </p>
         </div>
       );

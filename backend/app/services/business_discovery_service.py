@@ -26,7 +26,9 @@ from app.models.business_blueprint import (
     MINIMUM_BAR_SECTIONS,
     BlueprintSectionKey,
     BlueprintSectionStatus,
+    ClaimProvenance,
     ClaimStatus,
+    ClaimType,
 )
 from app.models.business_discovery import (
     DiscoverySession,
@@ -35,7 +37,11 @@ from app.models.business_discovery import (
     DiscoveryTurnKind,
 )
 from app.services.business_blueprint_service import BusinessBlueprintService
-from app.services.discovery_extraction_service import DiscoveryExtractionService
+from app.services.discovery_extraction_service import (
+    DiscoveryExtractionService,
+    fallback_claim_target,
+    fallback_questions,
+)
 
 
 class DiscoverySessionNotFoundError(Exception):
@@ -220,22 +226,10 @@ class BusinessDiscoveryService:
         proposed_ids: list[uuid.UUID] = []
         next_question: str | None = None
 
-        async with self._session_factory() as session:
-            await set_tenant_context(session, tenant_id)
-            discovery_session = await session.get(DiscoverySession, discovery_session_id)
-
-            if not outcome.available:
-                turn_row = await session.get(DiscoveryTurn, turn.id)
-                turn_row.extraction_error = outcome.error_detail
-                await session.commit()
-                return DiscoveryTurnResult(
-                    session=discovery_session,
-                    turn=turn_row,
-                    proposed_claim_ids=[],
-                    next_question=None,
-                    extraction_available=False,
-                    extraction_error=outcome.error_detail,
-                )
+        if not outcome.available:
+            return await self._continue_without_provider(
+                discovery_session_id, turn, blueprint_id, is_initial=is_initial, error_detail=outcome.error_detail
+            )
 
         for claim in outcome.result.claims:
             proposed = await self._blueprint_service.propose_claim(
@@ -329,6 +323,91 @@ class BusinessDiscoveryService:
             next_question=next_question,
             extraction_available=True,
             extraction_error=None,
+        )
+
+    async def _continue_without_provider(
+        self,
+        discovery_session_id: uuid.UUID,
+        turn: DiscoveryTurn,
+        blueprint_id: uuid.UUID,
+        *,
+        is_initial: bool,
+        error_detail: str | None,
+    ) -> DiscoveryTurnResult:
+        """A connected provider failed this turn (rate limit, timeout, bad JSON…).
+
+        The failure is recorded on the turn and reported to the caller, and the
+        raw answer is already persisted — but the session must never be left
+        ACTIVE with no pending question, which strands the user on a screen
+        with nothing to answer and no way forward. So Discovery carries on with
+        the fixed question sequence for whichever minimum-bar sections are still
+        uncovered, and completes when none are left.
+
+        Nothing is invented: the only claim proposed is the user's own words,
+        and only when the fixed sequence (or the opening idea) is what asked for
+        them. An answer to a model-written question stays on its turn."""
+        tenant_id = turn.tenant_id
+        proposed_ids: list[uuid.UUID] = []
+
+        target = fallback_claim_target(turn.question, is_initial=is_initial)
+        if target is not None and (turn.answer or "").strip():
+            section_key, claim_key = target
+            proposed = await self._blueprint_service.propose_claim(
+                tenant_id,
+                blueprint_id,
+                section_key=section_key,
+                claim_type=ClaimType.FACT.value,
+                key=claim_key,
+                value=turn.answer,
+                confidence=None,
+                provenance=ClaimProvenance.USER_STATED.value,
+                discovery_turn_id=turn.id,
+                evidence_ref=f"discovery_turn:{turn.id}",
+            )
+            proposed_ids.append(proposed.id)
+
+        remaining_gaps = set(await self._gap_keys(tenant_id, blueprint_id))
+        next_question: str | None = None
+
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            discovery_session = await session.get(DiscoverySession, discovery_session_id)
+            turn_row = await session.get(DiscoveryTurn, turn.id)
+            turn_row.extraction_error = error_detail
+
+            if discovery_session.questions_asked < discovery_session.max_questions:
+                asked = {
+                    _norm_question(q)
+                    for q in (
+                        await session.execute(
+                            select(DiscoveryTurn.question).where(
+                                DiscoveryTurn.tenant_id == tenant_id,
+                                DiscoveryTurn.discovery_session_id == discovery_session_id,
+                                DiscoveryTurn.question.is_not(None),
+                            )
+                        )
+                    ).scalars()
+                }
+                for section_key, question in fallback_questions():
+                    if section_key in remaining_gaps and _norm_question(question) not in asked:
+                        next_question = question
+                        break
+
+            if next_question is not None:
+                turn_row.question = next_question
+            else:
+                discovery_session.status = DiscoverySessionStatus.COMPLETED
+            await session.commit()
+            await session.refresh(discovery_session)
+            turn_row = await session.get(DiscoveryTurn, turn.id)
+
+        return DiscoveryTurnResult(
+            session=discovery_session,
+            turn=turn_row,
+            proposed_claim_ids=proposed_ids,
+            next_question=next_question,
+            extraction_available=False,
+            extraction_error=error_detail,
         )
 
     async def finish_session(self, tenant_id: uuid.UUID, discovery_session_id: uuid.UUID) -> DiscoverySession:

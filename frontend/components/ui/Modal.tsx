@@ -36,14 +36,16 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-foreground/20 px-4 py-8 backdrop-blur-sm animate-[klaros-fade-in_0.15s_ease-out]"
+      className="fixed inset-0 z-50 flex overflow-y-auto bg-foreground/20 px-4 py-8 backdrop-blur-sm animate-[klaros-fade-in_0.15s_ease-out]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         className={cn(
-          "klaros-glass w-full rounded-2xl p-6 animate-[klaros-modal-in_0.18s_cubic-bezier(0.16,1,0.3,1)]",
+          // m-auto (not items-center on the overlay) centres a short form and lets a
+          // tall one scroll from its title instead of being cut off above the viewport.
+          "klaros-glass m-auto w-full rounded-2xl p-6 animate-[klaros-modal-in_0.18s_cubic-bezier(0.16,1,0.3,1)]",
           size === "lg" ? "max-w-2xl" : "max-w-md"
         )}
       >

@@ -204,6 +204,36 @@ _FALLBACK_STEPS: tuple[dict[str, str | None], ...] = (
 )
 
 
+def fallback_claim_target(answered_question: str | None, *, is_initial: bool) -> tuple[str, str] | None:
+    """Which (section_key, claim_key) the user's own words belong under when
+    the fixed question sequence — not the model — asked for them. The opening
+    idea is always the IDENTITY description. An answer to any other question
+    (one a connected provider wrote) has no fixed home, so it returns None and
+    the answer stays on its DiscoveryTurn rather than being filed somewhere it
+    may not belong."""
+    if is_initial:
+        step = _FALLBACK_STEPS[0]
+        return str(step["claim_section_key"]), str(step["claim_key"])
+    if not answered_question:
+        return None
+    asked = " ".join(answered_question.lower().split())
+    for i, step in enumerate(_FALLBACK_STEPS[:-1]):
+        q = step["next_question"]
+        if q and " ".join(q.lower().split()) == asked:
+            target = _FALLBACK_STEPS[i + 1]
+            return str(target["claim_section_key"]), str(target["claim_key"])
+    return None
+
+
+def fallback_questions() -> list[tuple[str, str]]:
+    """The fixed sequence as (section_key, question), in asking order."""
+    return [
+        (str(step["next_section_key"]), str(step["next_question"]))
+        for step in _FALLBACK_STEPS
+        if step["next_question"] and step["next_section_key"]
+    ]
+
+
 def _deterministic_fallback(discovery_input: str, turn_sequence: int) -> DiscoveryExtractionResult:
     """KLAROS_BUSINESS_DISCOVERY_SPEC.md §6's fixed-question degrade, now a
     genuinely bounded, multi-turn sequence (Phase 16a) instead of a single

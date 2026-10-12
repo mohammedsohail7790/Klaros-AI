@@ -211,16 +211,15 @@ class _FailingConnectedProvider(AIProvider):
 
 
 @pytest.mark.parametrize("error_type_name", ["TIMEOUT", "AUTHENTICATION", "RATE_LIMIT", "PROVIDER_ERROR", "NETWORK_ERROR"])
-async def test_connected_provider_failure_leaves_session_active_with_raw_answer_persisted(
+async def test_connected_provider_failure_records_error_and_still_asks_a_question(
     blueprint_service: BusinessBlueprintService, error_type_name: str
 ) -> None:
-    """Existing, unmodified contract (business_discovery_service.py
-    `_process_turn`'s `if not outcome.available` branch): a provider
-    failure of any classified type does NOT complete the session, does NOT
-    silently fall back to the deterministic path, and does NOT lose the
-    user's raw answer — it records `extraction_error` and leaves the
-    session ACTIVE for a retry. This phase does not change this behavior;
-    it only verifies it still holds for a connected provider."""
+    """A provider failure of any classified type is recorded and reported,
+    never loses the user's raw answer, and never invents a claim — but it
+    must not strand the user either. An ACTIVE session with no pending
+    question is a dead end (seen live: an exhausted provider quota left
+    every new user on "Getting your next question ready…" forever), so
+    Discovery carries on with the fixed question sequence."""
     from app.services.ai_provider import AIErrorType
 
     provider = _FailingConnectedProvider(AIErrorType[error_type_name])
@@ -233,13 +232,19 @@ async def test_connected_provider_failure_leaves_session_active_with_raw_answer_
     assert result.extraction_error is not None
     assert error_type_name.lower() in result.extraction_error.lower()
     assert result.session.status == DiscoverySessionStatus.ACTIVE
+    assert result.next_question  # the user always has something to answer
     turns = await service.get_turns(tenant_id, result.session.id)
     assert turns[0].answer == "A business idea."  # raw answer never lost
+    assert turns[0].question == result.next_question
+    assert turns[0].extraction_error == result.extraction_error
     claims = await blueprint_service.list_claims(tenant_id, result.session.blueprint_id)
-    assert claims == []  # no claim was fabricated from a failed call
+    # Only the user's own words, under the same key the no-provider path uses.
+    assert [(c.key, c.value, c.provenance) for c in claims] == [
+        ("identity.description", "A business idea.", "USER_STATED")
+    ]
 
 
-async def test_connected_provider_malformed_json_response_leaves_session_active(
+async def test_connected_provider_malformed_json_response_still_asks_a_question(
     blueprint_service: BusinessBlueprintService,
 ) -> None:
     provider = _ScriptedConnectedProvider(["not valid json {{{"])
@@ -251,6 +256,40 @@ async def test_connected_provider_malformed_json_response_leaves_session_active(
     assert result.extraction_available is False
     assert "malformed_response" in result.extraction_error
     assert result.session.status == DiscoverySessionStatus.ACTIVE
+    assert result.next_question
+
+
+async def test_provider_down_for_whole_session_walks_fixed_questions_then_completes(
+    blueprint_service: BusinessBlueprintService,
+) -> None:
+    """With the provider failing on every turn the session asks each fixed
+    question once, files each answer under that question's own section, and
+    completes — it never repeats a question and never ends up ACTIVE with
+    nothing to ask."""
+    from app.services.ai_provider import AIErrorType
+
+    service = _service_with_provider(blueprint_service, _FailingConnectedProvider(AIErrorType.RATE_LIMIT))
+    tenant_id = uuid.uuid4()
+
+    result = await service.start_session(tenant_id, business_idea="Dental travel agency.", created_by=None)
+    asked: list[str] = []
+    for i in range(10):
+        if result.session.status != DiscoverySessionStatus.ACTIVE:
+            break
+        assert result.next_question
+        asked.append(result.next_question)
+        result = await service.submit_answer(tenant_id, result.session.id, answer=f"answer {i}", actor_id=None)
+
+    assert result.session.status == DiscoverySessionStatus.COMPLETED
+    assert result.next_question is None
+    assert len(asked) == len(set(asked)) == 3
+    claims = await blueprint_service.list_claims(tenant_id, result.session.blueprint_id)
+    assert {c.key: c.value for c in claims} == {
+        "identity.description": "Dental travel agency.",
+        "industry.business_type_and_geography": "answer 0",
+        "business_model.revenue_model": "answer 1",
+        "required_capabilities.summary": "answer 2",
+    }
 
 
 # --- max_questions=8 enforcement for a connected, never-closing provider ---

@@ -89,7 +89,7 @@ export default function MedicalTourismConsultationsPage() {
       <div className="px-8 py-8">
         <PageHeader
           title={`Consultations (${total})`}
-          description="Medical Tourism provider consultations — a Medical Tourism extension of the tenant's Appointments."
+          description="Consultations booked between a patient and a clinic, and how each one went."
           icon={CalendarCheck}
           actions={
             <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">

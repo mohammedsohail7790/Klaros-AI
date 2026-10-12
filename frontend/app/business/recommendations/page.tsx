@@ -33,6 +33,7 @@ import {
 import { getJourneyDestination, isJourneyAtStage } from "@/lib/businessJourneyController";
 import { StageTracker } from "@/components/business/StageTracker";
 import { StatusPill } from "@/components/business/StatusPill";
+import { actionLabel } from "@/lib/opsLabels";
 import { useBuilderOverview } from "@/components/business/useBuilderOverview";
 
 const label = (k: string) => k.replace(/[._]+/g, " ").replace(/^\w/, (c) => c.toUpperCase());
@@ -224,7 +225,7 @@ export default function RecommendationsPage() {
                       <ul className="mt-2 space-y-1 pl-4 text-xs text-muted">
                         {tools.map((t) => (
                           <li key={t.id}>
-                            <span className="font-mono">{t.tool_name}</span>
+                            {actionLabel(t.tool_name ?? "")}
                           </li>
                         ))}
                       </ul>

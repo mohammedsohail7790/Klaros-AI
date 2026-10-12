@@ -269,6 +269,17 @@ def _provider_serves(provider_tags: list, capability_key: str) -> bool:
     return any(isinstance(t, str) and (t in wanted or canonical_key(t) in wanted) for t in provider_tags)
 
 
+def provider_fits_business(recommended_for_verticals: list | None, enabled_vertical_keys: set[str]) -> bool:
+    """Whether a catalog provider is worth showing this business at all.
+
+    A provider tagged for particular industries (a home-services lead
+    marketplace, say) is noise to a business running a different industry
+    module, so it is left out for them. Untagged providers suit anyone, and a
+    business with no industry module enabled is shown everything."""
+    tags = {t for t in (recommended_for_verticals or []) if isinstance(t, str)}
+    return not tags or not enabled_vertical_keys or bool(tags & enabled_vertical_keys)
+
+
 class RecommendationService:
     def __init__(self, session_factory: async_sessionmaker) -> None:
         self._session_factory = session_factory
@@ -299,7 +310,11 @@ class RecommendationService:
             )
 
         requirements, verticals_considered = await self._collect_capability_requirements(tenant_id, blueprint)
-        providers = await self._load_providers()
+        providers = [
+            p
+            for p in await self._load_providers()
+            if provider_fits_business(p.recommended_for_verticals, set(verticals_considered))
+        ]
         tool_catalog = list_tool_catalog(tool_registry)
 
         run_id = uuid.uuid4()

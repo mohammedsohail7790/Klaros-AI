@@ -435,3 +435,28 @@ def test_no_vertical_branch_in_recommendation_service_source() -> None:
     ).read_text()
     pattern = re.compile(r"\b(if|elif)\b[^:\n]*==\s*[\"'](medical_tourism|dropshipping)[\"']")
     assert not pattern.search(src)
+
+
+def test_industry_tagged_provider_is_only_offered_to_a_matching_or_untagged_business() -> None:
+    """Seen live: a dental-travel business was offered home-services lead
+    marketplaces. A provider tagged for an industry is hidden from a business
+    running a different industry module; untagged providers and businesses
+    with no industry module are unaffected."""
+    from app.services.recommendation_service import provider_fits_business
+
+    assert provider_fits_business([], {"some_industry"}) is True  # untagged suits anyone
+    assert provider_fits_business(None, set()) is True
+    assert provider_fits_business(["trade_a"], set()) is True  # no module enabled: show everything
+    assert provider_fits_business(["trade_a"], {"trade_a", "trade_b"}) is True
+    assert provider_fits_business(["trade_a"], {"trade_b"}) is False
+
+
+def test_seeded_catalog_copy_is_written_for_business_owners() -> None:
+    """Catalog descriptions are shown on the Integrations page, so they must
+    not carry file paths, class names or adapter error strings."""
+    from app.data.integration_provider_catalog_seed import SEED_PROVIDERS
+
+    for p in SEED_PROVIDERS:
+        text = p["description"]
+        for leak in ("app/", ".py", "Adapter", "adapter", "OAuth2", "HMAC", "IntegrationConnection", "self-reports"):
+            assert leak not in text, f"{p['provider_key']}: {text!r}"

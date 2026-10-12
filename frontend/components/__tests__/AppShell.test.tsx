@@ -85,10 +85,10 @@ describe("AppShell navigation", () => {
       await waitFor(() => expect(within(primary).getByRole("link", { name: "Patients" })).toHaveAttribute("href", "/medical-tourism/pipeline"));
       expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual([
         "Today", "Patients", "Tasks3", "Referrals", "Consultations",
-        "Providers", "Procedures & offers", "Agreements",
+        "Providers", "Procedures & offers", "Contracts",
         "Commissions", "Revenue",
         "Business setup", "Website", "Marketing", "AI receptionist",
-        "Team", "Account & security", "Privacy & consent",
+        "Team", "Account & security", "Licences & insurance",
       ]);
       expect(within(primary).getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
       expect(within(primary).getByRole("link", { name: "Referrals" })).toHaveAttribute("href", "/medical-tourism/provider-referrals");

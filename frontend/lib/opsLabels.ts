@@ -48,7 +48,7 @@ const LEAD_STATUS: Record<string, string> = {
 export const LEAD_STATUS_ORDER = ["NEW", "CONTACTED", "QUALIFIED", "BOOKED", "CONVERTED", "UNQUALIFIED", "LOST"];
 export const leadStatusLabel = (s: string) => LEAD_STATUS[s] ?? titleCase(s.toLowerCase());
 
-const SOURCE: Record<string, string> = { WEB: "Website", CHAT: "Website chat", PHONE: "Phone", REFERRAL: "Referral", IMPORT: "Import" };
+const SOURCE: Record<string, string> = { WEB: "Website", CHAT: "Website chat", PHONE: "Phone", TEXT: "Text message", DM: "Direct message", MARKETPLACE: "Marketplace", REFERRAL: "Referral", WALK_IN: "Walk-in", IMPORT: "Import" };
 export const sourceLabel = (s: string) => SOURCE[s] ?? titleCase(s.toLowerCase());
 
 export function when(iso: string | null | undefined): string {

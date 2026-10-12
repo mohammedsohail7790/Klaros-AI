@@ -82,7 +82,7 @@ _DEFS: tuple[CapabilityDefinition, ...] = (
         "lead_capture", "Lead capture", "Sales & customers",
         "Capture enquiries from the website and other channels into one place.",
         "NATIVE", "/leads", False,
-        ("lead capture", "lead intake", "lead generation", "enquiries", "inquiries", "quote request", "patient leads", "patient lead capture"),
+        ("lead capture", "lead intake", "lead generation", "lead pipeline", "enquiries", "inquiries", "quote request", "patient leads", "patient lead capture", "patient lead pipeline", "patient pipeline", "patient enquiries", "patient intake"),
     ),
     CapabilityDefinition(
         "lead_qualification", "Lead qualification", "Sales & customers",
@@ -114,14 +114,14 @@ _DEFS: tuple[CapabilityDefinition, ...] = (
         "provider_directory", "Provider / partner directory", "Catalog & supply",
         "A managed list of the providers or partners customers are referred to.",
         "NATIVE", "/medical-tourism/providers", False,
-        ("provider directory", "hospital connections", "partner hospitals", "hospital partnerships", "provider database", "hospital database", "hospital directory", "doctor directory", "hospital and doctor directory", "doctor and hospital directory", "directory of hospitals", "provider information", "doctor information", "providers", "partner network", "provider management", "hospital network"),
+        ("provider directory", "hospital connections", "partner hospitals", "hospital partnerships", "provider database", "hospital database", "hospital directory", "doctor directory", "hospital and doctor directory", "doctor and hospital directory", "directory of hospitals", "provider information", "doctor information", "providers", "partner network", "provider management", "hospital network", "clinic directory", "clinic network", "clinic database", "partner clinics", "clinic partnerships", "directory of clinics"),
         external_party='Providers & partners',
     ),
     CapabilityDefinition(
         "service_catalog", "Service / treatment catalog", "Catalog & supply",
         "A structured catalog of what the business offers.",
         "NATIVE", "/medical-tourism/procedures", False,
-        ("service catalog", "treatment catalog", "procedure catalog", "treatments", "procedures", "service menu"),
+        ("service catalog", "treatment catalog", "procedure catalog", "treatments", "procedures", "service menu", "provider offerings", "clinic offerings"),
     ),
     CapabilityDefinition(
         "product_catalog", "Product catalog", "Catalog & supply",

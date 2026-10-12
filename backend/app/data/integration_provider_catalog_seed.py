@@ -29,10 +29,7 @@ SEED_PROVIDERS: list[dict] = [
         "category": "finance",
         "implementation_status": ProviderImplementationStatus.REAL,
         "auth_shape": ProviderAuthShape.API_KEY,
-        "description": (
-            "Payments and payouts. Real, code-verified client "
-            "(app/integrations/stripe_client.py) with a live GET /v1/balance health check."
-        ),
+        "description": "Take card payments and receive payouts.",
         "capabilities": ['payment_processing', 'billing'],
         "recommended_for_verticals": [],
         "health_check_strategy_ref": "stripe.check_status",
@@ -43,7 +40,7 @@ SEED_PROVIDERS: list[dict] = [
         "category": "finance",
         "implementation_status": ProviderImplementationStatus.REAL,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": "Accounting sync. Real per-tenant OAuth2 connection via IntegrationConnection.",
+        "description": "Keep invoices and payments in sync with your QuickBooks books.",
         "capabilities": ['accounting', 'invoicing', 'bookkeeping'],
         "recommended_for_verticals": [],
         "health_check_strategy_ref": None,
@@ -54,7 +51,7 @@ SEED_PROVIDERS: list[dict] = [
         "category": "calendar",
         "implementation_status": ProviderImplementationStatus.REAL,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": "Scheduling sync. Real per-tenant OAuth2 connection via IntegrationConnection.",
+        "description": "Put bookings and consultations on your Google Calendar.",
         "capabilities": ['appointment_scheduling', 'scheduling', 'calendar_sync'],
         "recommended_for_verticals": [],
         "health_check_strategy_ref": None,
@@ -65,7 +62,7 @@ SEED_PROVIDERS: list[dict] = [
         "category": "finance",
         "implementation_status": ProviderImplementationStatus.STUB,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": "Accounting sync — no adapter client implemented yet.",
+        "description": "Keep invoices and payments in sync with Xero. Not available yet.",
         "capabilities": ['accounting', 'invoicing', 'bookkeeping'],
         "recommended_for_verticals": [],
         "health_check_strategy_ref": None,
@@ -76,10 +73,7 @@ SEED_PROVIDERS: list[dict] = [
         "category": "marketing",
         "implementation_status": ProviderImplementationStatus.STUB,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": (
-            'Ad spend/campaign sync — adapter self-reports "Client not implemented" '
-            "(app/integrations/adapters.py::GoogleAdsAdapter)."
-        ),
+        "description": "Bring Google Ads spend and campaign results into Klaros. Not available yet.",
         "capabilities": ['marketing', 'advertising', 'lead_generation'],
         "recommended_for_verticals": [],
         "health_check_strategy_ref": None,
@@ -90,10 +84,7 @@ SEED_PROVIDERS: list[dict] = [
         "category": "marketing",
         "implementation_status": ProviderImplementationStatus.STUB,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": (
-            'Ad spend/campaign sync — adapter self-reports "Client not implemented" '
-            "(app/integrations/adapters.py::MetaAdsAdapter)."
-        ),
+        "description": "Bring Facebook and Instagram ad spend and campaign results into Klaros. Not available yet.",
         "capabilities": ['marketing', 'advertising', 'lead_generation'],
         "recommended_for_verticals": [],
         "health_check_strategy_ref": None,
@@ -104,7 +95,7 @@ SEED_PROVIDERS: list[dict] = [
         "category": "marketing",
         "implementation_status": ProviderImplementationStatus.STUB,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": "Local listing/review sync — no adapter client implemented yet.",
+        "description": "Manage your Google listing and reviews from Klaros. Not available yet.",
         "capabilities": ['local_listing', 'reviews', 'reputation_management'],
         "recommended_for_verticals": [],
         "health_check_strategy_ref": None,
@@ -115,12 +106,9 @@ SEED_PROVIDERS: list[dict] = [
         "category": "operations",
         "implementation_status": ProviderImplementationStatus.STUB,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": (
-            'Field-service sync — adapter self-reports "OAuth flow not implemented" '
-            "(app/integrations/adapters.py::ServiceTitanAdapter)."
-        ),
+        "description": "Sync jobs and scheduling with ServiceTitan. Not available yet.",
         "capabilities": ['field_service_management', 'job_scheduling', 'dispatch'],
-        "recommended_for_verticals": [],
+        "recommended_for_verticals": ["home_services"],
         "health_check_strategy_ref": None,
     },
     {
@@ -129,12 +117,9 @@ SEED_PROVIDERS: list[dict] = [
         "category": "operations",
         "implementation_status": ProviderImplementationStatus.STUB,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": (
-            'Field-service sync — adapter self-reports "OAuth flow not implemented" '
-            "(app/integrations/adapters.py::JobberAdapter)."
-        ),
+        "description": "Sync jobs and scheduling with Jobber. Not available yet.",
         "capabilities": ['field_service_management', 'job_scheduling', 'dispatch'],
-        "recommended_for_verticals": [],
+        "recommended_for_verticals": ["home_services"],
         "health_check_strategy_ref": None,
     },
     {
@@ -143,12 +128,9 @@ SEED_PROVIDERS: list[dict] = [
         "category": "marketing",
         "implementation_status": ProviderImplementationStatus.WEBHOOK_NORMALIZER,
         "auth_shape": ProviderAuthShape.WEBHOOK,
-        "description": (
-            "Inbound lead webhook only (HMAC-verified generic normalizer) — "
-            "not a live outbound API integration."
-        ),
+        "description": "Receive leads from Angi. Leads arrive in Klaros; nothing is sent back to Angi.",
         "capabilities": ['lead_generation', 'local_listing'],
-        "recommended_for_verticals": [],
+        "recommended_for_verticals": ["home_services"],
         "health_check_strategy_ref": None,
     },
     {
@@ -157,12 +139,9 @@ SEED_PROVIDERS: list[dict] = [
         "category": "marketing",
         "implementation_status": ProviderImplementationStatus.WEBHOOK_NORMALIZER,
         "auth_shape": ProviderAuthShape.WEBHOOK,
-        "description": (
-            "Inbound lead webhook only (HMAC-verified generic normalizer) — "
-            "not a live outbound API integration."
-        ),
+        "description": "Receive leads from Thumbtack. Leads arrive in Klaros; nothing is sent back to Thumbtack.",
         "capabilities": ['lead_generation', 'local_listing'],
-        "recommended_for_verticals": [],
+        "recommended_for_verticals": ["home_services"],
         "health_check_strategy_ref": None,
     },
     {
@@ -171,12 +150,9 @@ SEED_PROVIDERS: list[dict] = [
         "category": "marketing",
         "implementation_status": ProviderImplementationStatus.WEBHOOK_NORMALIZER,
         "auth_shape": ProviderAuthShape.WEBHOOK,
-        "description": (
-            "Inbound lead webhook only (HMAC-verified generic normalizer) — "
-            "not a live outbound API integration."
-        ),
+        "description": "Receive leads from Nextdoor. Leads arrive in Klaros; nothing is sent back to Nextdoor.",
         "capabilities": ['lead_generation', 'local_listing'],
-        "recommended_for_verticals": [],
+        "recommended_for_verticals": ["home_services"],
         "health_check_strategy_ref": None,
     },
 ]
@@ -185,6 +161,10 @@ SEED_PROVIDERS: list[dict] = [
 # future edit to SEED_PROVIDERS that silently drops/renames a provider
 # fails loudly (tests/test_integration_provider_catalog.py imports and
 # asserts against this).
+# `recommended_for_verticals` narrows who a provider is suggested to: a
+# provider tagged for an industry is not offered to a business running a
+# different industry module (recommendation_service.provider_fits_business).
+# An untagged provider suits any business.
 EXPECTED_REAL = {"stripe", "quickbooks", "google_calendar"}
 EXPECTED_STUB = {"xero", "google_ads", "meta_ads", "google_business_profile", "servicetitan", "jobber"}
 EXPECTED_WEBHOOK_NORMALIZER = {"angi", "thumbtack", "nextdoor"}

@@ -137,7 +137,7 @@ const CONTACT_FIELD_LABELS: Record<string, string> = {
   MESSAGE: "Message",
 };
 
-function ContactForm({ props, tenantId }: { props: Item; tenantId: string }) {
+function ContactForm({ props, tenantId, preview = false }: { props: Item; tenantId: string; preview?: boolean }) {
   const fields = Array.isArray(props.fields) && props.fields.length > 0 ? (props.fields as string[]) : ["NAME", "EMAIL", "MESSAGE"];
   const [values, setValues] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -146,6 +146,12 @@ function ContactForm({ props, tenantId }: { props: Item; tenantId: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (status === "sending") return;
+    if (preview) {
+      // A draft preview is not live: nothing is sent and no lead is created.
+      setStatus("error");
+      setError("This is a preview — the form starts taking enquiries once the website is published.");
+      return;
+    }
     setStatus("sending");
     setError(null);
     try {
@@ -244,7 +250,7 @@ function Footer({ props }: { props: Item }) {
  * treats it as untrusted-shaped: any value outside the known 8 renders
  * nothing rather than guessing.
  */
-export function RenderSection({ section, tenantId }: { section: RenderedSection; tenantId: string }) {
+export function RenderSection({ section, tenantId, preview = false }: { section: RenderedSection; tenantId: string; preview?: boolean }) {
   const props = (section.props ?? {}) as Item;
   switch (section.component_type) {
     case "HERO":
@@ -259,7 +265,7 @@ export function RenderSection({ section, tenantId }: { section: RenderedSection;
     case "PROCEDURE_LIST":
       return <ItemList props={props} data={section.data} />;
     case "CONTACT_FORM":
-      return <ContactForm props={props} tenantId={tenantId} />;
+      return <ContactForm props={props} tenantId={tenantId} preview={preview} />;
     case "FOOTER":
       return <Footer props={props} />;
     default:
