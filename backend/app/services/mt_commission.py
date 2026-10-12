@@ -113,7 +113,7 @@ async def revenue_summary(session_factory, tenant_id: uuid.UUID) -> dict[str, An
         slot["amount"] = str(Decimal(slot["amount"]) + (c.computed_amount or Decimal("0")))
     return {
         "by_currency": dict(out),
-        "definitions": "PENDING is potential value, not revenue. CONFIRMED needs the clinic's reported outcome with evidence. Currencies are never mixed.",
+        "definitions": "Potential is not revenue. A commission counts as earned only once the clinic has reported the agreed outcome, with evidence. Currencies are never mixed.",
     }
 
 

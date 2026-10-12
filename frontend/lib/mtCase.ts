@@ -87,7 +87,7 @@ export function nextStepFor(l: PipelineLead, now: number = Date.now()): NextStep
         case null:
           return { cta: "Set up the commission", hint: "The clinic reported an outcome. Record the commission you agreed; it counts as earned only once the agreed outcome is confirmed with evidence.", priority: 2 };
         case "PENDING":
-          return { cta: "Check the commission", hint: "The commission is potential until the outcome your agreement names is on record with evidence.", priority: 3 };
+          return { cta: "Check the commission", hint: "The commission is recorded but not earned yet. If the clinic has reported the outcome your agreement names, mark it earned.", priority: 3 };
         case "CONFIRMED":
           return { cta: "Invoice the clinic", hint: "The commission is earned. Send the clinic an invoice, then mark it invoiced.", priority: 2 };
         case "INVOICED":
