@@ -83,6 +83,9 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60]
 
 
+MODULE_KEY = "medical_tourism"
+
+
 async def apply_setup(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID, body: dict[str, Any]) -> dict[str, Any]:
     data = validate(body)
     verticals = VerticalExtensionService(session_factory)
@@ -132,7 +135,8 @@ async def _seed_blueprint(session_factory, tenant_id: uuid.UUID, user_id: uuid.U
         return
     markets = _join([country_name(c) for c in data["patient_markets"]])
     destinations = _join([country_name(c) for c in data["destinations"]])
-    capabilities = next((list(v.get("capabilities", [])) for v in SEED_VERTICALS if v["key"] == "medical_tourism"), [])
+    module = {v["key"]: v for v in SEED_VERTICALS}.get(MODULE_KEY, {})  # looked up by key, never branched on
+    capabilities = list(module.get("capabilities", []))
     sections = {
         BlueprintSectionKey.IDENTITY: {"business_name": data["business_name"], "description": f"{data['business_name']} arranges treatment abroad for patients in {markets}, in {destinations}."},
         BlueprintSectionKey.INDUSTRY: {"industry": "Medical tourism"},
