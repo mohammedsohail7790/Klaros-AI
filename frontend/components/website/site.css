@@ -594,6 +594,42 @@
   min-height: 8rem;
   resize: vertical;
 }
+/* Shown while the form finds out whether it may open: the same footprint as the form, so nothing jumps when it resolves. */
+.klaros-site-form-loading {
+  display: grid;
+  gap: 1.1rem;
+  max-width: 36rem;
+}
+.klaros-site-form-loading-bar {
+  display: block;
+  height: 2.7rem;
+  border-radius: var(--klaros-site-radius);
+  background: var(--klaros-site-surface);
+}
+.klaros-site-band[data-tone="alt"] .klaros-site-form-loading-bar {
+  background: color-mix(in srgb, var(--klaros-site-text) 8%, var(--klaros-site-bg));
+}
+.klaros-site-form-loading-tall {
+  height: 8rem;
+}
+.klaros-site-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .klaros-site-form-loading-bar {
+    animation: klaros-site-pulse 1.4s ease-in-out infinite;
+  }
+}
+@keyframes klaros-site-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
 .klaros-site-honeypot {
   position: absolute;
   left: -9999px;

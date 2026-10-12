@@ -325,7 +325,22 @@ function ContactForm({ props, tenantId, preview = false, tone }: { props: Item; 
       </Band>
     );
   }
-  if (consent && consent.required && !consent.open) {
+  if (!consent) {
+    // Whether the form may open (and which consent wording it must show) is not known yet. Show a quiet placeholder of the same shape instead of
+    // the fields, which for a business that has not approved a wording would appear and then vanish.
+    return (
+      <Band tone={tone}>
+        {props.title ? <h2 className="klaros-site-section-title">{str(props.title)}</h2> : null}
+        <div className="klaros-site-form-loading" role="status" aria-busy="true">
+          <span className="klaros-site-sr-only">Loading the form…</span>
+          <span className="klaros-site-form-loading-bar" />
+          <span className="klaros-site-form-loading-bar" />
+          <span className="klaros-site-form-loading-bar klaros-site-form-loading-tall" />
+        </div>
+      </Band>
+    );
+  }
+  if (consent.required && !consent.open) {
     return (
       <Band tone={tone}>
         {props.title ? <h2 className="klaros-site-section-title">{str(props.title)}</h2> : null}
