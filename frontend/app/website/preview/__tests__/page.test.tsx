@@ -24,6 +24,7 @@ vi.mock("@/lib/api", () => ({
   listWebsiteVersions: (...a: unknown[]) => listWebsiteVersionsMock(...a),
   previewWebsiteVersion: (...a: unknown[]) => previewWebsiteVersionMock(...a),
   submitPublicWebsiteLead: (...a: unknown[]) => submitPublicWebsiteLeadMock(...a),
+  getPublicConsent: () => Promise.resolve({ required: false, open: true }),
 }));
 
 vi.mock("@/lib/useAuth", () => ({
@@ -63,6 +64,7 @@ describe("Website draft preview", () => {
     search = "version=v-draft&page=contact";
     const { container } = render(<WebsitePreviewPage />);
     await screen.findByText("Get in touch");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Send" })).toBeEnabled()); // the form is ready once its consent state has loaded
     fireEvent.submit(container.querySelector("form")!);
     await waitFor(() => expect(screen.getByText(/This is a preview/)).toBeInTheDocument());
     expect(submitPublicWebsiteLeadMock).not.toHaveBeenCalled();
