@@ -164,15 +164,18 @@ export function ReferralDetail({ token, id, providerName, onClose }: { token: st
             </div>
           )}
 
-          {r.status === "ACCEPTED" && (
+          {(r.status === "ACCEPTED" || r.status === "OUTCOME_REPORTED") && (
             <section aria-label="Outcome" className="rounded-md border border-border p-4">
-              <h3 className="font-medium text-foreground">Record the outcome the clinic reported</h3>
+              <h3 className="font-medium text-foreground">{r.status === "OUTCOME_REPORTED" ? "Update the outcome" : "Record the outcome the clinic reported"}</h3>
+              {r.status === "OUTCOME_REPORTED" && (
+                <p className="mt-1 text-xs text-muted-foreground">Reported so far: {r.outcome ? OUTCOME_LABEL[r.outcome] ?? r.outcome : "an outcome"}. A consultation usually comes first and treatment later: record the new outcome here when the clinic reports it.</p>
+              )}
               <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <select aria-label="Outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)} className="rounded-md border border-border-strong bg-surface px-2 py-1.5">
                   {Object.entries(OUTCOME_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
                 <input aria-label="Where the clinic reported it" value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Where it was reported (reference)" className="rounded-md border border-border-strong bg-surface px-2 py-1.5" />
               </div>
-              <div className="mt-3"><Button size="sm" disabled={busy || !evidence.trim()} onClick={() => run(() => recordReferralOutcome(token, id, { outcome, evidence: evidence.trim() }), "Outcome recorded.")}>Record outcome</Button></div>
+              <div className="mt-3"><Button size="sm" disabled={busy || !evidence.trim()} onClick={() => run(() => recordReferralOutcome(token, id, { outcome, evidence: evidence.trim() }), r.status === "OUTCOME_REPORTED" ? "Outcome updated." : "Outcome recorded.")}>{r.status === "OUTCOME_REPORTED" ? "Update outcome" : "Record outcome"}</Button></div>
             </section>
           )}
 

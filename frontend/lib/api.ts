@@ -5559,6 +5559,8 @@ export interface PipelineLead {
     sent_at: string | null;
     clinic_response_at: string | null;
     outcome_reported_at: string | null;
+    /** The commission on this referral, or null when none has been set up yet. */
+    commission_status?: string | null;
   }[];
   open_tasks: number;
   assigned_user_id: string | null;
