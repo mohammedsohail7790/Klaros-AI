@@ -151,3 +151,30 @@ describe("after the outcome: the commission decides what is left to do", () => {
     expect(buildNeedsYou([outcomeLead("PAID")], [], NOW)).toEqual([]);
   });
 });
+
+describe("a patient who withdrew consent is never pointed at 'send'", () => {
+  const frozen = (status: string, stage: PipelineLead["stage"] = "PATIENT_APPROVAL") =>
+    lead({ name: null, consent_frozen: true, stage, referrals: [ref(status, { sent_at: status === "APPROVED" ? null : daysAgo(1) })] });
+
+  it("before anything was sent: nothing will go, open the referral and record that they declined", () => {
+    const step = nextStepFor(frozen("APPROVED"), NOW);
+    expect(step).toMatchObject({ cta: "Review the referral", priority: 1 });
+    expect(step.hint).toContain("Nothing will be sent");
+    expect(step.cta).not.toBe("Send referral");
+  });
+
+  it("after details were sent: ask the clinic to remove them", () => {
+    const step = nextStepFor(frozen("SENT", "REFERRED"), NOW);
+    expect(step.hint).toContain("Ask the clinic to remove them");
+    expect(step.priority).toBe(1);
+  });
+
+  it("is listed first on Today", () => {
+    const items = buildNeedsYou([lead({ lead_id: "B", stage: "PROVIDER_OPTIONS" }), { ...frozen("APPROVED"), lead_id: "F" }], [], NOW);
+    expect(items[0]).toMatchObject({ leadId: "F", cta: "Review the referral", priority: 1 });
+  });
+
+  it("a held enquiry no longer claims the AI held it", () => {
+    expect(nextStepFor(lead({ stage: "QUALIFICATION", held_for_person: true }), NOW).hint).toBe("This enquiry is waiting for a person to review it. It was not qualified automatically.");
+  });
+});
