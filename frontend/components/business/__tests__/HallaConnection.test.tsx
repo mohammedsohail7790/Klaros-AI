@@ -7,6 +7,7 @@ const api = {
   checkHallaHealth: vi.fn(),
   configureHalla: vi.fn(),
   listHallaAgents: vi.fn(),
+  provisionHalla: vi.fn(),
 };
 // Rejections are produced outside the spies (a spied rejected promise is re-raised by the mock wrapper as an unhandled rejection).
 let failNext: Error | null = null;
@@ -18,6 +19,7 @@ vi.mock("@/lib/api", () => ({
   checkHallaHealth: (...a: unknown[]) => maybeFail(api.checkHallaHealth)(...a),
   configureHalla: (...a: unknown[]) => maybeFail(api.configureHalla)(...a),
   listHallaAgents: (...a: unknown[]) => maybeFail(api.listHallaAgents)(...a),
+  provisionHalla: (...a: unknown[]) => maybeFail(api.provisionHalla)(...a),
 }));
 import { HallaConnectionPanel } from "@/components/business/HallaConnection";
 import type { WorkforceSetup } from "@/lib/api";
@@ -135,5 +137,52 @@ describe("HallaConnectionPanel", () => {
     await waitFor(() => expect(api.disconnectHalla).toHaveBeenCalledWith("t"));
     expect(await screen.findByText(/stored credential was removed/)).toBeInTheDocument();
     expect(onChanged).toHaveBeenCalled();
+  });
+});
+
+describe("one-button receptionist setup", () => {
+  const withProvisioning = (status = "NOT_CONNECTED", halla: Partial<NonNullable<WorkforceSetup["halla"]>> = {}) => setup(status, { provisioning_available: true, ...halla });
+
+  it("offers to create the receptionist, with no credential asked for, and keeps pasting behind an \"I already have\" fold", () => {
+    render(<HallaConnectionPanel token="t" setup={withProvisioning()} onChanged={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /Create my AI receptionist/ })).toBeEnabled();
+    expect(screen.getByText(/You don.t need a Halla account or any key/)).toBeInTheDocument();
+    expect(screen.getByText("I already have a Halla account")).toBeInTheDocument();
+    expect(screen.getByText(/takes no calls/)).toBeInTheDocument(); // honest about what it is not doing yet
+  });
+
+  it("creates it with one request that carries no credential, then refreshes", async () => {
+    api.provisionHalla.mockResolvedValue({ status: "CONNECTED", mode: "live", message: "ok", adapter_implemented: true, configured: true });
+    const onChanged = vi.fn();
+    render(<HallaConnectionPanel token="t" setup={withProvisioning()} onChanged={onChanged} />);
+    fireEvent.click(screen.getByRole("button", { name: /Create my AI receptionist/ }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    expect(api.provisionHalla).toHaveBeenCalledWith("t");
+    expect(screen.getByText(/created and connected/)).toBeInTheDocument();
+    expect(screen.getByText(/not taking patient calls yet/)).toBeInTheDocument();
+  });
+
+  it("says plainly when the business details did not reach the receptionist", async () => {
+    api.provisionHalla.mockResolvedValue({ status: "CONNECTED", mode: "live", message: "ok", adapter_implemented: true, configured: false });
+    render(<HallaConnectionPanel token="t" setup={withProvisioning()} onChanged={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Create my AI receptionist/ }));
+    await waitFor(() => expect(screen.getByText(/did not reach it yet/)).toBeInTheDocument());
+  });
+
+  it("shows a failure as a failure and never claims it is connected", async () => {
+    failNext = new (class extends Error {})("Halla rejected the request");
+    render(<HallaConnectionPanel token="t" setup={withProvisioning()} onChanged={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Create my AI receptionist/ }));
+    await waitFor(() => expect(screen.getByText(/couldn.t create the receptionist/)).toBeInTheDocument());
+    expect(screen.queryByText(/created and connected/)).toBeNull();
+  });
+
+  it("is not offered when this deployment cannot do it, or once a credential is stored", () => {
+    const { unmount } = render(<HallaConnectionPanel token="t" setup={setup()} onChanged={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /Create my AI receptionist/ })).toBeNull();
+    expect(screen.getByLabelText("Halla tenant ID")).toBeInTheDocument(); // the existing form is unchanged
+    unmount();
+    render(<HallaConnectionPanel token="t" setup={withProvisioning("CONNECTED", { has_credential: true, has_signing_secret: true, halla_tenant_id: "h1" })} onChanged={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /Create my AI receptionist/ })).toBeNull();
   });
 });

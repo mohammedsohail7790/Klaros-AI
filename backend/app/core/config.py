@@ -233,6 +233,9 @@ class Settings(BaseSettings):
     # A stored CONNECTED state older than this is re-proven with a live health request.
     HALLA_STATUS_TTL_SECONDS: int = 300
     HALLA_WEBHOOK_TOLERANCE_SECONDS: int = 300
+    # Platform secret that lets THIS Klaros deployment ask Halla to create a business's AI receptionist, so the owner never has to open a Halla account.
+    # Unset = automatic setup is off (owners can still paste credentials). It is a service credential, never shown to an owner and never logged.
+    HALLA_PROVISIONING_SECRET: str | None = None
     # How long a RECEIVED (in-flight) Halla event is owned by the worker that claimed it. After this a crashed worker's event may be reclaimed by a
     # redelivery; before it, a concurrent delivery of the same event is a duplicate and does nothing.
     HALLA_WEBHOOK_LEASE_SECONDS: int = 120

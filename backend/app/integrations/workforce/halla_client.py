@@ -76,6 +76,18 @@ def endpoint_from_settings(settings: Any) -> HallaEndpoint:
     return HallaEndpoint(base_url=base, credential_header=header, credential_scheme=scheme)
 
 
+def provisioning_endpoint(settings: Any) -> HallaEndpoint:
+    """Same validated base URL as the tenant endpoint, but the credential travels as `Authorization: Bearer <platform secret>`."""
+    if not settings.HALLA_API_BASE_URL:
+        raise HallaConfigError("HALLA_API_BASE_URL is not set")
+    base = validate_base_url(
+        settings.HALLA_API_BASE_URL,
+        allowed_hosts=settings.HALLA_ALLOWED_HOSTS,
+        production=str(settings.ENV).lower() in ("production", "prod"),
+    )
+    return HallaEndpoint(base_url=base, credential_header="Authorization", credential_scheme="Bearer")
+
+
 class HallaClient:
     def __init__(
         self,
@@ -118,6 +130,12 @@ class HallaClient:
 
     async def outbound_call(self, body: dict[str, Any]) -> dict[str, Any]:
         return await self._request("POST", "/calls/outbound", operation="call_outbound", json=body)
+
+    async def provision(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Ask Halla to create (or re-issue credentials for) the receptionist of one Klaros business. Authenticated with the platform
+        secret, not a tenant key; the answer carries the new tenant's credentials exactly once. Not retried: Halla is idempotent per
+        business, but a lost answer is better re-asked by the owner than silently repeated."""
+        return await self._request("POST", "/platform/klaros/provision", operation="provision", json=body)
 
     # ----------------------------------------------------------------- plumbing
 

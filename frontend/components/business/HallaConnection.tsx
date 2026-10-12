@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Copy, PlugZap, RefreshCw, Send, Unplug } from "lucide-react";
+import { Bot, Copy, PlugZap, RefreshCw, Send, Unplug } from "lucide-react";
 import {
   ApiError,
   HallaAgent,
@@ -11,6 +11,7 @@ import {
   connectHalla,
   disconnectHalla,
   listHallaAgents,
+  provisionHalla,
 } from "@/lib/api";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -109,6 +110,21 @@ export function HallaConnectionPanel({ token, setup, onChanged }: { token: strin
       }
     });
 
+  const create = () =>
+    run("provision", async () => {
+      try {
+        const r = await provisionHalla(token as string);
+        setNotice(
+          r.status === "CONNECTED"
+            ? { kind: "success", text: r.configured ? "Your AI receptionist is created and connected. It is not taking patient calls yet." : "Your AI receptionist is created and connected, but your business details did not reach it yet. Use “Send business context to Halla”. It is not taking patient calls yet." }
+            : { kind: "danger", text: r.message },
+        );
+      } catch (err) {
+        setNotice({ kind: "danger", text: fail(err, "We couldn't create the receptionist. Nothing was changed.") });
+      }
+      onChanged();
+    });
+
   const disconnect = () =>
     run("disconnect", async () => {
       try {
@@ -122,6 +138,29 @@ export function HallaConnectionPanel({ token, setup, onChanged }: { token: strin
     });
 
   const showForm = !halla.has_credential || status === "NOT_CONNECTED" || status === "ERROR" || status === "NEEDS_ATTENTION";
+  // When Klaros can create the receptionist itself, that is the way in; pasting credentials is for a business that already has a Halla account.
+  const canCreate = Boolean(halla.provisioning_available) && !halla.has_credential;
+
+  const connectForm = (
+    <form onSubmit={connect} className="space-y-3" aria-label="Connect Halla">
+      <p className="text-sm text-muted">Paste this business&apos;s Halla details. They are encrypted as soon as they are saved and are never shown again.</p>
+      <label className="block text-sm">
+        <span className="klaros-label">Halla tenant ID</span>
+        <input className="klaros-input mt-1" value={tenantId} onChange={(e) => setTenantId(e.target.value)} autoComplete="off" spellCheck={false} />
+      </label>
+      <label className="block text-sm">
+        <span className="klaros-label">Halla API key</span>
+        <input className="klaros-input mt-1" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} autoComplete="new-password" spellCheck={false} />
+      </label>
+      <label className="block text-sm">
+        <span className="klaros-label">Webhook signing secret</span>
+        <input className="klaros-input mt-1" type="password" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="new-password" spellCheck={false} />
+      </label>
+      <Button type="submit" disabled={busy !== null || !tenantId.trim() || !apiKey.trim() || !secret.trim()}>
+        <PlugZap className="h-4 w-4" aria-hidden="true" /> {busy === "connect" ? "Connecting…" : halla.has_credential ? "Reconnect Halla" : "Connect Halla"}
+      </Button>
+    </form>
+  );
 
   return (
     <section aria-labelledby="halla-conn" className="mb-8">
@@ -151,26 +190,22 @@ export function HallaConnectionPanel({ token, setup, onChanged }: { token: strin
           </div>
         )}
 
-        {showForm && (
-          <form onSubmit={connect} className="space-y-3" aria-label="Connect Halla">
-            <p className="text-sm text-muted">Paste this business&apos;s Halla details. They are encrypted as soon as they are saved and are never shown again.</p>
-            <label className="block text-sm">
-              <span className="klaros-label">Halla tenant ID</span>
-              <input className="klaros-input mt-1" value={tenantId} onChange={(e) => setTenantId(e.target.value)} autoComplete="off" spellCheck={false} />
-            </label>
-            <label className="block text-sm">
-              <span className="klaros-label">Halla API key</span>
-              <input className="klaros-input mt-1" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} autoComplete="new-password" spellCheck={false} />
-            </label>
-            <label className="block text-sm">
-              <span className="klaros-label">Webhook signing secret</span>
-              <input className="klaros-input mt-1" type="password" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="new-password" spellCheck={false} />
-            </label>
-            <Button type="submit" disabled={busy !== null || !tenantId.trim() || !apiKey.trim() || !secret.trim()}>
-              <PlugZap className="h-4 w-4" aria-hidden="true" /> {busy === "connect" ? "Connecting…" : halla.has_credential ? "Reconnect Halla" : "Connect Halla"}
+        {canCreate && (
+          <div className="space-y-2 rounded-lg border border-border p-4">
+            <p className="text-sm text-foreground">Klaros can create your AI receptionist for you. You don&apos;t need a Halla account or any key.</p>
+            <p className="text-xs text-muted">It starts with no phone number and takes no calls. Patient calls only begin when you connect a number and switch it on.</p>
+            <Button onClick={create} disabled={busy !== null}>
+              <Bot className="h-4 w-4" aria-hidden="true" /> {busy === "provision" ? "Creating…" : "Create my AI receptionist"}
             </Button>
-          </form>
+          </div>
         )}
+
+        {showForm && (canCreate ? (
+          <details className="text-sm">
+            <summary className="cursor-pointer text-muted">I already have a Halla account</summary>
+            <div className="mt-3">{connectForm}</div>
+          </details>
+        ) : connectForm)}
 
         {halla.has_credential && (
           <div className="flex flex-wrap gap-2">
