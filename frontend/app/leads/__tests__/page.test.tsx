@@ -3,11 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/leads" }));
 const getBoard = vi.fn();
+const createMock = vi.fn();
+const modeMock = vi.fn();
 vi.mock("@/lib/api", () => ({
-  ApiError: class ApiError extends Error { status: number; constructor(s: number, m: string) { super(m); this.status = s; } },
+  ApiError: class ApiError extends Error { status: number; code?: string; details?: Record<string, unknown>; constructor(s: number, m: string, c?: string, d?: Record<string, unknown>) { super(m); this.status = s; this.code = c; this.details = d; } },
+  getMedicalTourismMode: (...a: unknown[]) => modeMock(...a),
   getLeadBoard: (...a: unknown[]) => getBoard(...a),
   bulkImportLeads: vi.fn(),
-  createLead: vi.fn(),
+  createLead: (...a: unknown[]) => createMock(...a),
   listNotifications: vi.fn().mockResolvedValue({ notifications: [] }),
   getUnreadNotificationCount: vi.fn().mockResolvedValue({ count: 0 }),
   markNotificationRead: vi.fn(), markAllNotificationsRead: vi.fn(), dismissNotification: vi.fn(), logout: vi.fn(),
@@ -24,7 +27,7 @@ const row = (over: Record<string, unknown> = {}) => ({
 });
 const board = (rows: unknown[]) => ({ leads: rows, total: rows.length, limit: 20, offset: 0 });
 
-beforeEach(() => getBoard.mockReset());
+beforeEach(() => { getBoard.mockReset(); createMock.mockReset(); modeMock.mockReset(); modeMock.mockResolvedValue({ pilot_console: false }); });
 
 describe("Leads — the operating workspace", () => {
   it("shows status, priority, country, next action, AI interaction and assignee for each lead", async () => {
@@ -93,5 +96,49 @@ describe("Leads — the operating workspace", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load leads.");
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByRole("table")).toBeInTheDocument();
+  });
+});
+
+describe("Adding a patient to a consent-gated workspace", () => {
+  const openForm = async () => {
+    getBoard.mockResolvedValue(board([]));
+    render(<Page />);
+    fireEvent.click((await screen.findAllByRole("button", { name: "New lead" }))[0]);
+  };
+
+  it("an ordinary workspace sees the plain lead form with no consent section", async () => {
+    await openForm();
+    expect(await screen.findByPlaceholderText("Name")).toBeInTheDocument();
+    expect(screen.queryByText("What the patient agreed to")).not.toBeInTheDocument();
+  });
+
+  it("a Medical Tourism workspace records what the patient agreed to and cannot submit until the owner attests it", async () => {
+    modeMock.mockResolvedValue({ pilot_console: true });
+    createMock.mockResolvedValue({ lead: {}, deduplicated: false });
+    await openForm();
+    expect(await screen.findByText("What the patient agreed to")).toBeInTheDocument();
+    const submit = screen.getByRole("button", { name: "Add patient" });
+    expect(submit).toBeDisabled();
+    fireEvent.change(screen.getByPlaceholderText("Name"), { target: { value: "Layla Test" } });
+    fireEvent.click(screen.getByLabelText(/We may keep their health information/));
+    fireEvent.click(screen.getByLabelText(/The patient told me this themselves/));
+    expect(submit).toBeEnabled();
+    fireEvent.click(submit);
+    await waitFor(() => expect(createMock).toHaveBeenCalled());
+    expect(createMock.mock.calls[0][1]).toMatchObject({ name: "Layla Test", consent: { scopes: ["contact", "store_personal_data", "store_medical_information"], wording_version: "coordinator-recorded" } });
+  });
+
+  it("explains a consent refusal in plain words instead of showing raw JSON", async () => {
+    const { ApiError } = await import("@/lib/api");
+    modeMock.mockResolvedValue({ pilot_console: true });
+    createMock.mockRejectedValue(new ApiError(403, '{"error":"consent_required"}', "consent_required", { missing_scopes: ["store_medical_information", "store_personal_data"] }));
+    await openForm();
+    await screen.findByText("What the patient agreed to");
+    fireEvent.change(screen.getByPlaceholderText("Name"), { target: { value: "Layla Test" } });
+    fireEvent.click(screen.getByLabelText(/The patient told me this themselves/));
+    fireEvent.click(screen.getByRole("button", { name: "Add patient" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("keep their health information and keep their details");
+    expect(alert.textContent).not.toMatch(/{|consent_required/);
   });
 });

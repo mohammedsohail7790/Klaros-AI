@@ -7,6 +7,8 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, LeadBoardRow, LeadImportRow, bulkImportLeads, createLead, getLeadBoard } from "@/lib/api";
 import { parseCsv } from "@/lib/csv";
+import { usePilotMode } from "@/lib/usePilotMode";
+import { CONSENT_SCOPES, missingConsentSentence } from "@/lib/mtLabels";
 
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -253,6 +255,10 @@ function CreateLeadModal({
   const [urgency, setUrgency] = useState("MEDIUM");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A consent-gated (Medical Tourism) workspace may only keep a patient's details with their consent, so the form records what they told the person entering them.
+  const gated = usePilotMode(token);
+  const [scopes, setScopes] = useState<string[]>(["contact", "store_personal_data"]);
+  const [told, setTold] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -266,18 +272,23 @@ function CreateLeadModal({
         phone: phone || undefined,
         service_requested: serviceRequested || undefined,
         urgency,
+        ...(gated ? { consent: { scopes, wording_version: "coordinator-recorded" } } : {}),
       });
       onCreated();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not create lead.");
+      if (err instanceof ApiError && err.code === "consent_required") {
+        setError(`To add this patient you need their consent to ${missingConsentSentence(err.details?.missing_scopes)}. Tick what they agreed to below.`);
+      } else {
+        setError(err instanceof ApiError ? err.message : "Could not create lead.");
+      }
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <Modal title="New lead" onClose={onClose}>
+    <Modal title={gated ? "Add patient" : "New lead"} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
         <input
           required
@@ -319,14 +330,40 @@ function CreateLeadModal({
           ))}
         </select>
 
-        {error && <p className="text-sm text-danger">{error}</p>}
+        {gated && (
+          <fieldset className="rounded-md border border-border p-3">
+            <legend className="px-1 text-sm font-medium text-foreground">What the patient agreed to</legend>
+            <p className="mb-2 text-xs text-muted-foreground">Ask the patient, then tick only what they agreed to. We keep nothing they have not agreed to.</p>
+            <div className="space-y-1.5">
+              {CONSENT_SCOPES.map((c) => (
+                <label key={c.key} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={scopes.includes(c.key)}
+                    onChange={(e) => setScopes((cur) => (e.target.checked ? [...cur, c.key] : cur.filter((k) => k !== c.key)))}
+                  />
+                  <span>
+                    {c.label} <span className="text-muted-foreground">· {c.help}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <label className="mt-3 flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-0.5" checked={told} onChange={(e) => setTold(e.target.checked)} />
+              <span>The patient told me this themselves and I am recording their answer.</span>
+            </label>
+          </fieldset>
+        )}
+
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="klaros-btn-secondary">
             Cancel
           </button>
-          <button type="submit" disabled={submitting} className="klaros-btn-primary">
-            {submitting ? "Creating..." : "Create lead"}
+          <button type="submit" disabled={submitting || (gated && !told)} className="klaros-btn-primary">
+            {submitting ? "Creating..." : gated ? "Add patient" : "Create lead"}
           </button>
         </div>
       </form>

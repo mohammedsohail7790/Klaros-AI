@@ -28,7 +28,7 @@ from app.models.integration import ConnectionStatus, IntegrationConnection
 from app.models.medical_tourism import Procedure, ProcedureStatus, Provider, ProviderProcedure, ProviderProcedureStatus
 from app.models.medical_tourism_referral import MedicalTourismSetup
 from app.services.medical_tourism_service import CreateProcedureInput, MedicalTourismService
-from app.services.mt_intake import country_code
+from app.services.mt_intake import country_code, country_name
 from app.services.mt_referrals import ReferralError, provider_is_referable
 from app.services.vertical_extension_service import VerticalExtensionAlreadyExistsError, VerticalExtensionService
 
@@ -83,6 +83,9 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60]
 
 
+MODULE_KEY = "medical_tourism"
+
+
 async def apply_setup(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID, body: dict[str, Any]) -> dict[str, Any]:
     data = validate(body)
     verticals = VerticalExtensionService(session_factory)
@@ -106,7 +109,48 @@ async def apply_setup(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID,
         session.add(AuditLog(tenant_id=tenant_id, actor_type=ActorType.USER, actor_id=user_id, action="mt.setup.applied", entity_type="medical_tourism_setup", entity_id=row.id,
                              input_summary={"procedures": len(data["procedures"]), "markets": data["patient_markets"], "destinations": data["destinations"], "model": data["business_model"]}, result="success"))
         await session.commit()
+    await _seed_blueprint(session_factory, tenant_id, user_id, data)
     return await get_setup(session_factory, tenant_id)
+
+
+def _join(names: list[str]) -> str:
+    return ", ".join(names[:-1]) + (" and " if len(names) > 1 else "") + names[-1] if names else ""
+
+
+async def _seed_blueprint(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID, data: dict[str, Any]) -> None:
+    """Record the owner's setup answers as their Business Blueprint, using ONLY what they stated, and activate it, so the website builder, recommendations and
+    the business map work for a business that used the one-form setup. An existing Blueprint (one the owner built or edited) is never touched."""
+    from app.data.vertical_extension_seed import SEED_VERTICALS
+    from app.services.business_blueprint_service import BlueprintActivationError, BusinessBlueprintService
+    from app.models.business_blueprint import BlueprintSectionKey, BlueprintStatus
+
+    blueprints = BusinessBlueprintService(session_factory)
+    if await blueprints.get_active(tenant_id) is not None:
+        return
+    draft = await blueprints.get_or_create_draft(tenant_id, created_by=user_id)
+    if draft.status != BlueprintStatus.DRAFT:
+        return
+    # A draft someone has already started filling in (the owner, or a Discovery conversation) is theirs: never overwrite it.
+    if any(sec.status != "EMPTY" for sec in await blueprints.list_sections(tenant_id, draft.id)):
+        return
+    markets = _join([country_name(c) for c in data["patient_markets"]])
+    destinations = _join([country_name(c) for c in data["destinations"]])
+    module = {v["key"]: v for v in SEED_VERTICALS}.get(MODULE_KEY, {})  # looked up by key, never branched on
+    capabilities = list(module.get("capabilities", []))
+    sections = {
+        BlueprintSectionKey.IDENTITY: {"business_name": data["business_name"], "description": f"{data['business_name']} arranges treatment abroad for patients in {markets}, in {destinations}."},
+        BlueprintSectionKey.INDUSTRY: {"industry": "Medical tourism"},
+        BlueprintSectionKey.BUSINESS_MODEL: {"model": data["business_model"]},
+        BlueprintSectionKey.REQUIRED_CAPABILITIES: {"capabilities": capabilities},
+        BlueprintSectionKey.CUSTOMERS: {"target_customer": f"Patients in {markets} who want treatment in {destinations}."},
+        BlueprintSectionKey.PRODUCTS_SERVICES: {"services": list(data["procedures"])},
+    }
+    for key, section in sections.items():
+        await blueprints.update_section(tenant_id, draft.id, section_key=key.value, data=section, updated_by=user_id)
+    try:
+        await blueprints.activate(tenant_id, draft.id, activated_by=user_id)
+    except BlueprintActivationError:
+        pass  # leave it as a complete draft: the owner can still confirm it in the Blueprint view
 
 
 async def confirm(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID, key: str, confirmed: bool) -> dict[str, Any]:
