@@ -129,6 +129,11 @@ _ALLOWED_FONTS = (
     "Roboto",
     "Merriweather",
     "Poppins",
+    "Playfair Display",
+    "DM Sans",
+    "Source Serif 4",
+    "Cairo",
+    "Tajawal",
 )
 
 
@@ -151,6 +156,11 @@ class ShadowScale(StrEnum):
     MD = "MD"
 
 
+class TextDirection(StrEnum):
+    LTR = "LTR"
+    RTL = "RTL"
+
+
 class ButtonVariant(StrEnum):
     SOLID = "SOLID"
     OUTLINE = "OUTLINE"
@@ -162,6 +172,8 @@ class ThemeTokens(_SafeModel):
     secondary_color: str = "#E94560"
     background_color: str = "#FFFFFF"
     text_color: str = "#1A1A2E"
+    # A soft tint for alternating bands and cards (v2). Defaults keep every stored v1 theme valid.
+    surface_color: str = "#F4F7FA"
     heading_font: str = "system-ui"
     body_font: str = "system-ui"
     spacing_scale: SpacingScale = SpacingScale.COMFORTABLE
@@ -169,8 +181,19 @@ class ThemeTokens(_SafeModel):
     shadow_scale: ShadowScale = ShadowScale.SM
     container_width_px: int = Field(default=1200, ge=320, le=1600)
     button_variant: ButtonVariant = ButtonVariant.SOLID
+    # RTL flips the whole page (nav, grids, text alignment) for an Arabic-first site.
+    text_direction: TextDirection = TextDirection.LTR
+    # The wordmark shown in the header. Plain text only: there is no image upload, so no logo file to host or to get wrong.
+    logo_text: ShortText | None = None
 
-    @field_validator("primary_color", "secondary_color", "background_color", "text_color")
+    @field_validator("logo_text")
+    @classmethod
+    def _validate_logo_text(cls, v: str | None) -> str | None:
+        if v is None or not v.strip():
+            return None
+        return reject_unsafe_text(v.strip(), max_length=40)
+
+    @field_validator("primary_color", "secondary_color", "background_color", "text_color", "surface_color")
     @classmethod
     def _validate_hex(cls, v: str) -> str:
         if not _HEX_COLOR_RE.match(v):
@@ -252,6 +275,10 @@ class ComponentType(StrEnum):
     PROCEDURE_LIST = "PROCEDURE_LIST"
     CONTACT_FORM = "CONTACT_FORM"
     FOOTER = "FOOTER"
+    # v2: three blocks that only ever show what the business really said (see website_generation_service).
+    STEPS = "STEPS"
+    FAQ = "FAQ"
+    TRUST_BAR = "TRUST_BAR"
 
 
 class DataSourceRef(_SafeModel):
@@ -275,16 +302,26 @@ class HeroProps(_SafeModel):
     subheadline: LongText | None = None
     cta_text: ShortText | None = None
     cta_url: ShortText | None = None
+    secondary_cta_text: ShortText | None = None
+    secondary_cta_url: ShortText | None = None
     background_image_url: ShortText | None = None
+    # A short route down the side of the banner (for example the first steps of the customer journey). Omitted when there is nothing real to show.
+    highlights_title: ShortText | None = None
+    highlights: list[ShortText] = Field(default_factory=list, max_length=5)
 
-    @field_validator("headline", "subheadline", "cta_text")
+    @field_validator("headline", "subheadline", "cta_text", "secondary_cta_text", "highlights_title")
     @classmethod
     def _validate_text(cls, v: str | None) -> str | None:
         if v is None:
             return v
         return reject_unsafe_text(v)
 
-    @field_validator("cta_url", "background_image_url")
+    @field_validator("highlights")
+    @classmethod
+    def _validate_highlights(cls, v: list[str]) -> list[str]:
+        return [reject_unsafe_text(x, max_length=_MAX_SHORT_TEXT) for x in v]
+
+    @field_validator("cta_url", "secondary_cta_url", "background_image_url")
     @classmethod
     def _validate_url(cls, v: str | None) -> str | None:
         if v is None:
@@ -378,6 +415,66 @@ class ProcedureListProps(_SafeModel):
         return reject_unsafe_text(v)
 
 
+class StepItem(_SafeModel):
+    title: ShortText
+    description: LongText | None = None
+
+    @field_validator("title", "description")
+    @classmethod
+    def _validate_text(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return reject_unsafe_text(v)
+
+
+class StepsProps(_SafeModel):
+    """An ordered process. Numbered by position on the page; the owner's own words, never invented."""
+
+    title: ShortText | None = None
+    intro: LongText | None = None
+    items: list[StepItem] = Field(default_factory=list, max_length=8)
+
+    @field_validator("title", "intro")
+    @classmethod
+    def _validate_text(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return reject_unsafe_text(v)
+
+
+class FaqItem(_SafeModel):
+    question: ShortText
+    answer: LongText
+
+    @field_validator("question", "answer")
+    @classmethod
+    def _validate_text(cls, v: str) -> str:
+        return reject_unsafe_text(v)
+
+
+class FaqProps(_SafeModel):
+    title: ShortText | None = None
+    items: list[FaqItem] = Field(default_factory=list, max_length=12)
+
+    @field_validator("title")
+    @classmethod
+    def _validate_text(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return reject_unsafe_text(v)
+
+
+class TrustBarProps(_SafeModel):
+    """A single line of plain facts the business has stated (languages, regions, how it works with you). No ratings, counts or badges."""
+
+    items: list[ShortText] = Field(default_factory=list, max_length=6)
+
+    @field_validator("items")
+    @classmethod
+    def _validate_items(cls, v: list[str]) -> list[str]:
+        return [reject_unsafe_text(x, max_length=_MAX_SHORT_TEXT) for x in v]
+
+
 class ContactFormField(StrEnum):
     NAME = "NAME"
     EMAIL = "EMAIL"
@@ -445,6 +542,9 @@ _PROPS_BY_TYPE: dict[ComponentType, type[_SafeModel]] = {
     ComponentType.PROCEDURE_LIST: ProcedureListProps,
     ComponentType.CONTACT_FORM: ContactFormProps,
     ComponentType.FOOTER: FooterProps,
+    ComponentType.STEPS: StepsProps,
+    ComponentType.FAQ: FaqProps,
+    ComponentType.TRUST_BAR: TrustBarProps,
 }
 
 # Only these two component types are permitted to carry a data_source

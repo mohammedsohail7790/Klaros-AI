@@ -23,6 +23,7 @@ import { Input, Label } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { BRAND_LOOKS, FONT_OPTIONS, contrastRatio } from "@/lib/brandLooks";
 import {
   ApiError,
   RenderedWebsite,
@@ -460,8 +461,20 @@ function AddSectionControl({ onAdd }: { onAdd: (s: WebsiteSection) => void }) {
   );
 }
 
-const FONT_OPTIONS = ["system-ui", "Inter", "Georgia", "Roboto", "Merriweather", "Poppins"];
 const RADIUS_OPTIONS = ["NONE", "SM", "MD", "LG"];
+
+/** Plain-language warnings when a chosen colour pairing would be hard to read. They do not block saving: the owner decides. */
+function readabilityProblems(theme: Record<string, unknown>): string[] {
+  const hex = (v: unknown, fallback: string) => (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback);
+  const problems: string[] = [];
+  if (contrastRatio(hex(theme.text_color, "#1A1A2E"), hex(theme.background_color, "#FFFFFF")) < 4.5) {
+    problems.push("The text colour is hard to read on the background colour. Pick a darker text colour or a lighter background.");
+  }
+  if (contrastRatio("#FFFFFF", hex(theme.primary_color, "#1A1A2E")) < 4.5) {
+    problems.push("White button text is hard to read on the primary colour. Pick a darker primary colour.");
+  }
+  return problems;
+}
 
 function ThemeEditor({
   theme,
@@ -477,8 +490,60 @@ function ThemeEditor({
 
   return (
     <details className="rounded-md border border-border p-4">
-      <summary className="cursor-pointer text-sm font-medium">Theme</summary>
+      <summary className="cursor-pointer text-sm font-medium">Theme and brand</summary>
+      <div className="mt-3 space-y-2">
+        <Label>Start from a look</Label>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Looks">
+          {BRAND_LOOKS.map((look) => (
+            <button
+              key={look.key}
+              type="button"
+              className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-muted"
+              onClick={() =>
+                setLocal({
+                  ...local,
+                  primary_color: look.primary_color,
+                  secondary_color: look.secondary_color,
+                  surface_color: look.surface_color,
+                  text_color: look.text_color,
+                  background_color: "#FFFFFF",
+                  heading_font: look.heading_font,
+                  body_font: look.body_font,
+                })
+              }
+            >
+              <span className="inline-flex overflow-hidden rounded-full border border-border" aria-hidden="true">
+                <span style={{ background: look.primary_color, width: 14, height: 14 }} />
+                <span style={{ background: look.secondary_color, width: 14, height: 14 }} />
+                <span style={{ background: look.surface_color, width: 14, height: 14 }} />
+              </span>
+              {look.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted">A look sets the colours and fonts together. You can still change each one below, then save.</p>
+      </div>
       <div className="mt-3 grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <Label>Name shown in the header</Label>
+          <Input
+            value={String(local.logo_text ?? "")}
+            maxLength={40}
+            placeholder="Your business name"
+            onChange={(e) => setLocal({ ...local, logo_text: e.target.value || null })}
+          />
+        </div>
+        <div>
+          <Label>Reading direction</Label>
+          <select className="klaros-input" value={String(local.text_direction ?? "LTR")} onChange={(e) => setLocal({ ...local, text_direction: e.target.value })}>
+            <option value="LTR">Left to right (English)</option>
+            <option value="RTL">Right to left (Arabic)</option>
+          </select>
+        </div>
+        <div>
+          <Label>Tint for alternate sections</Label>
+          <Input type="color" value={String(local.surface_color ?? "#F4F7FA")} onChange={(e) => setLocal({ ...local, surface_color: e.target.value })} />
+        </div>
         <div>
           <Label>Primary color</Label>
           <Input type="color" value={String(local.primary_color ?? "#1A1A2E")} onChange={(e) => setLocal({ ...local, primary_color: e.target.value })} />
@@ -520,6 +585,11 @@ function ThemeEditor({
           </select>
         </div>
       </div>
+      {readabilityProblems(local).map((problem) => (
+        <p key={problem} className="mt-2 text-xs text-danger" role="status">
+          {problem}
+        </p>
+      ))}
       <Button className="mt-3" size="sm" disabled={busy} onClick={() => onSave(local)}>
         Save theme
       </Button>

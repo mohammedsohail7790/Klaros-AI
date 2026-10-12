@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -10,6 +10,7 @@ const getMyWebsiteMock = vi.fn();
 const listWebsiteVersionsMock = vi.fn();
 const previewWebsiteVersionMock = vi.fn();
 const replaceWebsitePageSectionsMock = vi.fn();
+const updateWebsiteThemeMock = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   ApiError: class ApiError extends Error {
@@ -25,7 +26,7 @@ vi.mock("@/lib/api", () => ({
   replaceWebsitePageSections: (...args: unknown[]) => replaceWebsitePageSectionsMock(...args),
   generateWebsite: vi.fn(),
   addWebsitePage: vi.fn(),
-  updateWebsiteTheme: vi.fn(),
+  updateWebsiteTheme: (...args: unknown[]) => updateWebsiteThemeMock(...args),
   newWebsiteDraft: vi.fn(),
   publishWebsiteVersion: vi.fn(),
   unpublishWebsite: vi.fn(),
@@ -73,6 +74,7 @@ describe("Website Builder page", () => {
     listWebsiteVersionsMock.mockReset();
     previewWebsiteVersionMock.mockReset();
     replaceWebsitePageSectionsMock.mockReset();
+    updateWebsiteThemeMock.mockReset();
   });
 
   it("rehydrates a saved PROVIDER_DIRECTORY section's data source provider key from the preview response", async () => {
@@ -184,5 +186,54 @@ describe("Website Builder page", () => {
         ])
       )
     );
+  });
+});
+
+describe("Website Builder theme and brand", () => {
+  const draftWith = (theme: Record<string, unknown>) => {
+    getMyWebsiteMock.mockResolvedValue(website());
+    listWebsiteVersionsMock.mockResolvedValue([draftVersion()]);
+    previewWebsiteVersionMock.mockResolvedValue({
+      theme,
+      navigation: { items: [] },
+      seo_defaults: { title: null, description: null, og_image_url: null },
+      pages: [{ slug: "home", title: "Home", seo: { title: null, description: null, og_image_url: null }, sections: [{ component_type: "TEXT", props: { body: "Hello" }, data: null }] }],
+    });
+  };
+
+  beforeEach(() => {
+    getMyWebsiteMock.mockReset();
+    listWebsiteVersionsMock.mockReset();
+    previewWebsiteVersionMock.mockReset();
+    updateWebsiteThemeMock.mockReset().mockResolvedValue({});
+  });
+
+  it("picking a look sets colours and fonts together, and saving sends the whole theme including the wordmark and direction", async () => {
+    draftWith({ primary_color: "#1A1A2E", logo_text: "Old name", text_direction: "LTR" });
+    render(<WebsitePage />);
+    fireEvent.click(await screen.findByText("Theme and brand"));
+    fireEvent.click(screen.getByRole("button", { name: /Lagoon/ }));
+    fireEvent.change(screen.getByPlaceholderText("Your business name"), { target: { value: "Acme Clinic" } });
+    fireEvent.change(screen.getByDisplayValue("Left to right (English)"), { target: { value: "RTL" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save theme" }));
+    await waitFor(() => expect(updateWebsiteThemeMock).toHaveBeenCalledTimes(1));
+    const sent = updateWebsiteThemeMock.mock.calls[0][3];
+    expect(sent).toMatchObject({ primary_color: "#0F5C5A", secondary_color: "#E27D60", surface_color: "#EFF6F5", heading_font: "DM Sans", logo_text: "Acme Clinic", text_direction: "RTL" });
+  });
+
+  it("warns, without blocking, when the chosen colours would be hard to read", async () => {
+    draftWith({ primary_color: "#F0F0F0", text_color: "#EEEEEE", background_color: "#FFFFFF" });
+    render(<WebsitePage />);
+    fireEvent.click(await screen.findByText("Theme and brand"));
+    expect(screen.getByText(/text colour is hard to read/)).toBeInTheDocument();
+    expect(screen.getByText(/White button text is hard to read/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save theme" })).toBeEnabled();
+  });
+
+  it("says nothing when the colours are fine", async () => {
+    draftWith({ primary_color: "#14304F", text_color: "#14243A", background_color: "#FFFFFF" });
+    render(<WebsitePage />);
+    fireEvent.click(await screen.findByText("Theme and brand"));
+    expect(screen.queryByText(/hard to read/)).toBeNull();
   });
 });
