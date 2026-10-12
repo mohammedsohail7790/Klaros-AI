@@ -42,7 +42,9 @@ describe("What clinics offer", () => {
   it("adds an offer with no price by default, and never invents one", async () => {
     create.mockResolvedValue({ offering: {}, deduplicated: false });
     render(<ClinicOffers token="t" />);
-    fireEvent.click(await screen.findByRole("button", { name: "Add an offer" }));
+    const open = await screen.findByRole("button", { name: "Add an offer" });
+    await waitFor(() => expect(open).toBeEnabled()); // it renders at once but stays disabled until the clinics and procedures have loaded
+    fireEvent.click(open);
     const submit = screen.getByRole("button", { name: "Add offer" });
     expect(submit).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Clinic"), { target: { value: "P1" } });
@@ -55,7 +57,9 @@ describe("What clinics offer", () => {
   it("sends a price only when one was typed, and refuses a malformed one", async () => {
     create.mockResolvedValue({ offering: {}, deduplicated: false });
     render(<ClinicOffers token="t" />);
-    fireEvent.click(await screen.findByRole("button", { name: "Add an offer" }));
+    const open = await screen.findByRole("button", { name: "Add an offer" });
+    await waitFor(() => expect(open).toBeEnabled()); // it renders at once but stays disabled until the clinics and procedures have loaded
+    fireEvent.click(open);
     fireEvent.change(screen.getByLabelText("Clinic"), { target: { value: "P1" } });
     fireEvent.change(screen.getByLabelText("Procedure"), { target: { value: "X1" } });
     fireEvent.change(screen.getByLabelText("Approved price"), { target: { value: "about 2k" } });

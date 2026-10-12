@@ -44,6 +44,10 @@ class InvalidHallaCredentialError(ValueError):
     pass
 
 
+class HallaProvisioningUnavailableError(Exception):
+    """Automatic receptionist setup cannot run on this deployment (no platform secret, or no public address for Halla to call back)."""
+
+
 class LeadNotFoundError(Exception):
     pass
 
@@ -116,6 +120,38 @@ class HallaIntegrationService:
         logger.info("halla_connection_saved", tenant_id=str(tenant_id), operation="connect")
         return await adapter.get_status(tenant_id)
 
+    @staticmethod
+    def provisioning_available() -> bool:
+        s = get_settings()
+        return bool((s.HALLA_PROVISIONING_SECRET or "").strip()) and bool(s.KLAROS_PUBLIC_API_URL)
+
+    async def provision(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None, *, business_name: str, vertical: str) -> WorkforceStatusReport:
+        """Have Halla create this business's AI receptionist, then store the credentials it returns (encrypted at once) and prove them with a real
+        health request. The owner enters nothing and never sees a credential. Idempotent: a business that is already connected is left alone."""
+        adapter = self._adapter()
+        settings = get_settings()
+        secret = (settings.HALLA_PROVISIONING_SECRET or "").strip()
+        webhook = self.webhook_url(tenant_id)
+        if not secret or not webhook:
+            raise HallaProvisioningUnavailableError("Automatic setup is not available on this deployment.")
+        info = await self.connection_info(tenant_id)
+        if info["has_credential"] and info["has_signing_secret"]:
+            return await adapter.get_status(tenant_id)
+        name, vert = (business_name or "").strip(), (vertical or "").strip()
+        if not (2 <= len(name) <= 120) or not re.fullmatch(r"[a-z][a-z0-9_]{2,39}", vert):
+            raise InvalidHallaCredentialError("The business name or type is not valid for automatic setup.")
+        from app.integrations.workforce.halla_client import HallaClient, provisioning_endpoint
+
+        client = HallaClient(provisioning_endpoint(settings), secret, timeout=settings.HALLA_HEALTH_TIMEOUT_SECONDS, max_retries=0)
+        # `rotate`: Klaros holds no usable credential, so if Halla already knows this business it must issue a new one.
+        raw = await client.provision({"klarosTenantId": str(tenant_id), "businessName": name, "vertical": vert, "webhookUrl": webhook, "rotate": True})
+        data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+        halla_tenant_id, api_key, signing_secret = (str(data.get(k) or "") for k in ("tenantId", "apiKey", "signingSecret"))
+        if not (halla_tenant_id and api_key and signing_secret):
+            raise WorkforceUnavailableError("Halla did not return the receptionist's credentials")
+        logger.info("halla_provisioned", tenant_id=str(tenant_id), operation="provision")
+        return await self.connect(tenant_id, user_id, halla_tenant_id=halla_tenant_id, api_key=api_key, signing_secret=signing_secret)
+
     async def disconnect(self, tenant_id: uuid.UUID) -> WorkforceStatusReport:
         adapter = self._adapter()
         try:
@@ -145,6 +181,7 @@ class HallaIntegrationService:
             "last_verified_at": conn.last_verified_at.isoformat() if conn is not None and conn.last_verified_at else None,
             "last_error": conn.last_error if conn is not None else None,
             "webhook_url": self.webhook_url(tenant_id),
+            "provisioning_available": self.provisioning_available(),
         }
 
     # ------------------------------------------------------------- orchestration
