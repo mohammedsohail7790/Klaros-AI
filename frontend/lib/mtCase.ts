@@ -46,6 +46,17 @@ const currentReferral = (l: PipelineLead) => l.referrals.find((r) => r.status !=
 export function nextStepFor(l: PipelineLead, now: number = Date.now()): NextStep {
   const ref = currentReferral(l);
   const clinic = ref?.provider_name ?? "the clinic";
+  // A patient who withdrew consent must never be pointed at "send": nothing more goes out, and anything already sent has to be taken back.
+  if (l.consent_frozen && ref) {
+    const sent = ["SENT", "ACCEPTED", "DECLINED", "OUTCOME_REPORTED"].includes(ref.status);
+    return {
+      cta: "Review the referral",
+      hint: sent
+        ? `The patient withdrew consent after their details were sent to ${clinic}. Ask the clinic to remove them, and record it.`
+        : `The patient withdrew consent. Nothing will be sent to ${clinic}. Open the referral and record that they declined.`,
+      priority: 1,
+    };
+  }
   switch (l.stage) {
     case "NEW_ENQUIRY":
       return { cta: "Record consent", hint: "No consent decision is on record yet. Ask the patient, or wait for the AI receptionist's record.", priority: 2 };
@@ -54,7 +65,7 @@ export function nextStepFor(l: PipelineLead, now: number = Date.now()): NextStep
         ? { cta: null, hint: "The patient declined or withdrew. Their details are not kept, so there is nothing to do unless they change their mind.", priority: 4 }
         : { cta: "Ask for consent", hint: "Personal details are not kept yet. Ask the patient whether they agree.", priority: 2 };
     case "QUALIFICATION":
-      return { cta: "Review enquiry", hint: l.held_for_person ? "The AI receptionist held this for a person. It does not decide these." : "Check the enquiry is complete, then qualify it.", priority: l.held_for_person ? 1 : 2 };
+      return { cta: "Review enquiry", hint: l.held_for_person ? "This enquiry is waiting for a person to review it. It was not qualified automatically." : "Check the enquiry is complete, then qualify it.", priority: l.held_for_person ? 1 : 2 };
     case "PROVIDER_OPTIONS":
       return { cta: "Choose a clinic", hint: "Qualified. Pick a verified clinic and ask the patient which they prefer.", priority: 2 };
     case "PATIENT_APPROVAL":
