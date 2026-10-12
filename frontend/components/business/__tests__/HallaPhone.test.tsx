@@ -11,7 +11,7 @@ vi.mock("@/lib/api", () => ({
   buyHallaPhone: (...a: unknown[]) => maybeFail(api.buyHallaPhone)(...a),
   setHallaBusinessNumber: (...a: unknown[]) => maybeFail(api.setHallaBusinessNumber)(...a),
 }));
-import { HallaPhonePanel, formatPhone } from "@/components/business/HallaPhone";
+import { HallaPhonePanel, formatPhone, shortDate } from "@/components/business/HallaPhone";
 import { ApiError, type HallaPhoneStatus } from "@/lib/api";
 
 const status = (over: Partial<HallaPhoneStatus> = {}): HallaPhoneStatus => ({
@@ -29,6 +29,13 @@ describe("formatPhone", () => {
     expect(formatPhone("+19193715609")).toBe("+1 (919) 371-5609");
     expect(formatPhone("+971501234567")).toBe("+971501234567");
     expect(formatPhone(null)).toBe("");
+  });
+});
+
+describe("shortDate", () => {
+  it("shows a calendar date and nothing for an unreadable value", () => {
+    expect(shortDate("2026-10-26T16:34:49Z")).toBe("26 Oct 2026");
+    expect(shortDate("not a date")).toBe("");
   });
 });
 
@@ -96,7 +103,7 @@ describe("HallaPhonePanel", () => {
     api.getHallaPhone.mockResolvedValue(status({ numbers: [{ phone_number: "+19193715609", status: "active", agent: "Receptionist / Intake" }], can_buy: false }));
     render(<HallaPhonePanel token="t" connected />);
     expect(await screen.findByText("+1 (919) 371-5609")).toBeInTheDocument();
-    expect(screen.getByText(/Trial plan until/)).toBeInTheDocument();
+    expect(screen.getByText(/Trial plan until 26 Oct 2026\./)).toBeInTheDocument(); // a real date, never "just now" for a time in the future
     expect(screen.getByText(/call this number from another phone/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Search numbers/ })).toBeNull();
   });
