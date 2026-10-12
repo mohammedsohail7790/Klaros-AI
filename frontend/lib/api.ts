@@ -5762,3 +5762,45 @@ export function changePassword(accessToken: string, current_password: string, ne
 export function sendContactMessage(body: { name: string; email: string; message: string; website?: string }) {
   return request<{ message: string }>("/api/v1/public/contact", { method: "POST", body: JSON.stringify(body) });
 }
+
+// --- Commission desk (backend mt_commission.py) ---
+export interface DeskCommission {
+  id: string;
+  lead_id: string | null;
+  provider_name: string | null;
+  provider_referral_id: string | null;
+  basis: string;
+  commission_percentage: string | null;
+  flat_amount: string | null;
+  computed_amount: string | null;
+  currency: string;
+  status: CommissionStatus;
+  qualifying_outcome: string;
+  outcome: string | null;
+  outcome_evidence: string | null;
+  status_note: string | null;
+}
+
+export interface AwaitingCommission {
+  referral_id: string;
+  lead_id: string;
+  provider_name: string | null;
+  outcome: string;
+  outcome_evidence: string | null;
+}
+
+export function getCommissionDesk(token: string) {
+  return request<{ commissions: DeskCommission[]; awaiting: AwaitingCommission[] }>(`${MTR}/commissions`, { headers: authHeaders(token) });
+}
+
+export function createProviderCommission(
+  token: string,
+  referralId: string,
+  body: { currency: string; basis: "FLAT" | "PERCENTAGE"; flat_amount?: string; commission_percentage?: string; reference_amount?: string; qualifying_outcome: string }
+) {
+  return post<{ commission: DeskCommission }>(token, `${MTR}/referrals/${referralId}/commission`, body);
+}
+
+export function transitionCommission(token: string, commissionId: string, status: CommissionStatus, note?: string) {
+  return post<{ commission: DeskCommission }>(token, `${MTR}/commissions/${commissionId}/transition`, { status, note });
+}

@@ -192,7 +192,13 @@ const PILOT_GROUPS: { label: string; items: NavItem[] }[] = [
       { href: "/contracts", label: "Agreements", icon: FileSignature },
     ],
   },
-  { label: "Money", items: [{ href: "/medical-tourism/revenue", label: "Revenue", icon: HandCoins }] },
+  {
+    label: "Money",
+    items: [
+      { href: "/medical-tourism/referrals", label: "Commissions", icon: Receipt },
+      { href: "/medical-tourism/revenue", label: "Revenue", icon: HandCoins },
+    ],
+  },
   {
     label: "Business",
     items: [

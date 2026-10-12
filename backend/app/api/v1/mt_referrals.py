@@ -204,6 +204,12 @@ async def post_commission(referral_id: uuid.UUID, body: dict, u: CurrentUser = D
     return {"commission": mt_commission.commission_to_dict(c)}
 
 
+@router.get("/commissions")
+async def get_commission_desk(u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    _read(u)
+    return await mt_commission.commission_desk(async_session_maker, u.tenant_id)
+
+
 @router.post("/commissions/{commission_id}/transition")
 async def post_commission_transition(commission_id: uuid.UUID, body: dict, u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
     _manage(u)
