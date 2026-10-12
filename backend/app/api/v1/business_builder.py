@@ -117,18 +117,12 @@ async def get_workflow(
 async def get_workforce_setup(
     current_user: CurrentUser = Depends(require_permission(Permission.READ_BUSINESS_JOURNEY)),
     builder: BusinessBuilderService = Depends(get_business_builder_service),
-    journeys: BusinessJourneyService = Depends(get_business_journey_service),
     workforce: BusinessWorkforceService = Depends(get_business_workforce_service),
     halla: HallaIntegrationService = Depends(get_halla_integration_service),
 ) -> dict[str, Any]:
     """Halla's status exactly as its adapter reports it, plus the business context Klaros
     would hand to it, the setup steps and what each AI team member could do."""
-    journey = await journeys.get_current(current_user.tenant_id)
-    if journey is None:
-        history = await journeys.list_journeys(current_user.tenant_id)
-        journey = history[0] if history else None
-    overview = await builder.get_overview(current_user.tenant_id, journey=_journey_to_dict(journey) if journey is not None else None)
-    result = await workforce.setup(current_user.tenant_id, overview.get("business") or {})
+    result = await workforce.setup(current_user.tenant_id, await builder.get_business_summary(current_user.tenant_id))
     if halla_enabled():
         result["halla"] = await halla.connection_info(current_user.tenant_id)
     return result

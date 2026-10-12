@@ -21,7 +21,7 @@ const CURRENCIES = ["USD", "EUR", "GBP", "AED", "SAR", "INR", "TRY"];
  * What each clinic really offers. A treatment estimate belongs to a clinic and a procedure; it is optional, and it is only ever a price the clinic has approved:
  * Klaros never fills one in. Offers are what the matching step and the patient conversation draw on.
  */
-export function ClinicOffers({ token }: { token: string }) {
+export function ClinicOffers({ token, refreshKey = 0 }: { token: string; refreshKey?: number }) {
   const [offers, setOffers] = useState<MedicalTourismOffering[]>([]);
   const [providers, setProviders] = useState<MedicalTourismProvider[]>([]);
   const [procedures, setProcedures] = useState<MedicalTourismProcedure[]>([]);
@@ -47,9 +47,11 @@ export function ClinicOffers({ token }: { token: string }) {
     }
   }, [token]);
 
+  // `refreshKey` changes when the page around this adds a procedure, so the
+  // "Add an offer" button and its lists pick it up without a page reload.
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const providerName = useMemo(() => Object.fromEntries(providers.map((p) => [p.id, p.name])), [providers]);
   const procedureName = useMemo(() => Object.fromEntries(procedures.map((p) => [p.id, p.name])), [procedures]);

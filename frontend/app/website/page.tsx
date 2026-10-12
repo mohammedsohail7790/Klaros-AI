@@ -41,7 +41,7 @@ import {
   updateWebsiteTheme,
 } from "@/lib/api";
 import { BuilderContextBar } from "@/components/business/BuilderContextBar";
-import { COMPONENT_TYPES, SectionPropsForm, defaultDataSourceFor, defaultPropsFor } from "@/components/website/SectionEditor";
+import { COMPONENT_TYPES, SECTION_LABELS, SectionPropsForm, defaultDataSourceFor, defaultPropsFor } from "@/components/website/SectionEditor";
 
 export default function WebsitePage() {
   const { token, user } = useAuth();
@@ -106,11 +106,14 @@ export default function WebsitePage() {
         />
         <header className="mb-6 flex items-center justify-between">
           <h1 className="font-display text-2xl text-foreground">Website</h1>
-          {website && (
-            <a href={`/w/${user?.tenant_id}`} target="_blank" rel="noreferrer" className="text-sm text-accent underline">
-              View public site
-            </a>
-          )}
+          {website &&
+            (website.current_published_version_id ? (
+              <a href={`/w/${user?.tenant_id}`} target="_blank" rel="noreferrer" className="text-sm text-accent underline">
+                View public site
+              </a>
+            ) : (
+              <span className="text-sm text-muted-foreground">Not published yet — there is no public site.</span>
+            ))}
         </header>
 
         {error && (
@@ -324,7 +327,15 @@ function VersionEditor({
         <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <a
+          href={`/website/preview?version=${version.id}`}
+          target="_blank"
+          rel="noreferrer"
+          className="klaros-btn-secondary inline-flex items-center px-4 py-2 text-sm"
+        >
+          Preview this version
+        </a>
         {isDraft ? (
           <Button onClick={handlePublish} disabled={busy}>
             Publish this version
@@ -372,7 +383,7 @@ function VersionEditor({
           {editSections.map((section, i) => (
             <div key={i} className="rounded-md border border-border p-4">
               <div className="mb-2 flex items-center justify-between">
-                <Badge>{section.component_type}</Badge>
+                <Badge>{SECTION_LABELS[section.component_type] ?? section.component_type}</Badge>
                 {isDraft && (
                   <div className="flex gap-1">
                     <Button variant="ghost" size="sm" disabled={i === 0} onClick={() => {
@@ -435,7 +446,7 @@ function AddSectionControl({ onAdd }: { onAdd: (s: WebsiteSection) => void }) {
       <select className="klaros-input" value={type} onChange={(e) => setType(e.target.value as WebsiteSection["component_type"])}>
         {COMPONENT_TYPES.map((t) => (
           <option key={t} value={t}>
-            {t}
+            {SECTION_LABELS[t] ?? t}
           </option>
         ))}
       </select>

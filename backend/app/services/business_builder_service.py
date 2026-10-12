@@ -56,7 +56,7 @@ from app.services.capability_vocabulary import (
     canonical_key,
     describe,
 )
-from app.services.recommendation_service import RecommendationService, _provider_serves
+from app.services.recommendation_service import RecommendationService, _provider_serves, provider_fits_business
 from app.services.vertical_extension_service import VerticalExtensionService
 from app.services.website_data_providers import resolve_data_source
 from app.services.website_service import WebsiteService
@@ -76,7 +76,7 @@ LANE_CUSTOMER, LANE_FRONT, LANE_CORE, LANE_OPERATIONS, LANE_GROWTH, LANE_SYSTEMS
 _FRONT_GROUPS = {"Customer-facing"}
 # Capability groups shown in the "Money & growth" lane; everything else that is
 # not customer-facing is "Operations". Keyed on the vocabulary's own group labels.
-_GROWTH_GROUPS = {"Finance", "Marketing", "Data & insight", "Other"}
+_GROWTH_GROUPS = {"Finance", "Marketing", "Data & insight"}  # an unrecognised ("Other") capability sits with Operations, not money
 
 # Display cap for system nodes per capability, so the map stays legible.
 _MAX_SYSTEMS_PER_CAPABILITY = 2
@@ -775,19 +775,26 @@ def derive_progress(inp: BuilderInputs, requirements: list[dict[str, Any]], laun
     return rows
 
 
+def _business_summary(organization_name: str | None, sections: dict[str, dict], claims: list[dict[str, Any]]) -> dict[str, Any]:
+    def text(key: BlueprintSectionKey) -> str | None:
+        return _section_text(sections.get(key.value)) or _claim_text(claims, key.value)
+
+    return {
+        "name": organization_name or _section_text(sections.get(BlueprintSectionKey.IDENTITY.value)),
+        "summary": text(BlueprintSectionKey.IDENTITY),
+        "industry": text(BlueprintSectionKey.INDUSTRY),
+        "business_model": text(BlueprintSectionKey.BUSINESS_MODEL),
+        "customers": text(BlueprintSectionKey.CUSTOMERS),
+    }
+
+
 def derive_overview(inp: BuilderInputs) -> dict[str, Any]:
     requirements = derive_requirements(inp) if inp.blueprint else []
     launch = derive_launch(inp, requirements)
     return {
         "journey": inp.journey,
         "blueprint": inp.blueprint,
-        "business": {
-            "name": inp.organization_name or _section_text(inp.sections.get(BlueprintSectionKey.IDENTITY.value)),
-            "summary": _section_or_claim_text(inp, BlueprintSectionKey.IDENTITY),
-            "industry": _section_or_claim_text(inp, BlueprintSectionKey.INDUSTRY),
-            "business_model": _section_or_claim_text(inp, BlueprintSectionKey.BUSINESS_MODEL),
-            "customers": _section_or_claim_text(inp, BlueprintSectionKey.CUSTOMERS),
-        },
+        "business": _business_summary(inp.organization_name, inp.sections, inp.claims),
         "requirements": requirements,
         "business_map": derive_business_map(inp, requirements) if requirements else {"nodes": [], "edges": [], "lanes": []},
         "next_actions": derive_next_actions(inp, requirements) if inp.blueprint else [],
@@ -849,6 +856,21 @@ class BusinessBuilderService:
 
     async def get_overview(self, tenant_id: uuid.UUID, *, journey: dict[str, Any] | None) -> dict[str, Any]:
         return derive_overview(await self.load_inputs(tenant_id, journey=journey))
+
+    async def get_business_summary(self, tenant_id: uuid.UUID) -> dict[str, Any]:
+        """Just the overview's `business` block. Callers that only need to know
+        what the business is (the workforce setup view) use this rather than
+        paying for the whole overview — requirements, catalog, website, pilots."""
+        blueprint = await self._blueprints.get_active(tenant_id)
+        sections: dict[str, dict] = {}
+        claims: list[dict[str, Any]] = []
+        if blueprint is not None:
+            sections = {s.section_key: (s.data or {}) for s in await self._blueprints.list_sections(tenant_id, blueprint.id)}
+            claims = [
+                {"id": str(c.id), "section_key": c.section_key, "key": c.key, "value": c.value, "status": c.status}
+                for c in await self._blueprints.list_claims(tenant_id, blueprint.id)
+            ]
+        return _business_summary(await self._organization_name(tenant_id), sections, claims)
 
     async def get_workforce(self, tenant_id: uuid.UUID) -> dict[str, Any]:
         return workforce_view(await get_workforce_integration().get_status(tenant_id))
@@ -917,9 +939,12 @@ class BusinessBuilderService:
                 ).scalars()
             }
         enabled_ids = {l.vertical_extension_id for l in await self._verticals.list_enabled_for_organization(tenant_id)}
+        enabled_keys = {v.key for v in registry if v.id in enabled_ids}
         providers = [
             ProviderInfo(p.provider_key, p.display_name, p.implementation_status, list(p.capabilities or []), conns.get(p.provider_key))
             for p in catalog
+            # An integration the business already connected is always listed.
+            if p.provider_key in conns or provider_fits_business(p.recommended_for_verticals, enabled_keys)
         ]
         verticals = [
             VerticalInfo(v.key, v.name, v.description, v.status, [c for c in (v.capabilities or []) if isinstance(c, str)], v.id in enabled_ids)

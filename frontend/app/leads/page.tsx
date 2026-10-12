@@ -35,16 +35,19 @@ export default function LeadsPage() {
   const [total, setTotal] = useState(0);
   const [status, setStatus] = useState("ALL");
   const [source, setSource] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
   // Deep links from the operating console ("/leads?status=NEW"). Read once on the client.
   useEffect(() => {
-    const wanted = new URLSearchParams(window.location.search).get("status");
+    const params = new URLSearchParams(window.location.search);
+    const wanted = params.get("status");
     if (wanted && LEAD_STATUS_ORDER.includes(wanted)) setStatus(wanted);
+    // "Add patient" / "New lead" links elsewhere land here with the form already open.
+    if (params.get("new") === "1") setShowCreate(true);
   }, []);
   const [q, setQ] = useState("");
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const limit = 20;
 
@@ -248,7 +251,8 @@ function CreateLeadModal({
   onCreated: () => void;
 }) {
   const [name, setName] = useState("");
-  const [source, setSource] = useState("WEB");
+  // Typed in by a person, so not "Website": that source means the public form.
+  const [source, setSource] = useState("PHONE");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [serviceRequested, setServiceRequested] = useState("");
@@ -297,10 +301,10 @@ function CreateLeadModal({
           onChange={(e) => setName(e.target.value)}
           className="klaros-input"
         />
-        <select value={source} onChange={(e) => setSource(e.target.value)} className="klaros-input">
-          {["PHONE", "WEB", "CHAT", "TEXT", "DM", "MARKETPLACE", "REFERRAL", "WALK_IN"].map((s) => (
+        <select value={source} onChange={(e) => setSource(e.target.value)} className="klaros-input" aria-label="How they got in touch">
+          {SOURCES.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {sourceLabel(s)}
             </option>
           ))}
         </select>
@@ -322,10 +326,10 @@ function CreateLeadModal({
           onChange={(e) => setServiceRequested(e.target.value)}
           className="klaros-input"
         />
-        <select value={urgency} onChange={(e) => setUrgency(e.target.value)} className="klaros-input">
+        <select value={urgency} onChange={(e) => setUrgency(e.target.value)} className="klaros-input" aria-label="Priority">
           {["LOW", "MEDIUM", "HIGH", "EMERGENCY"].map((u) => (
             <option key={u} value={u}>
-              {u}
+              {priority(u).label} priority
             </option>
           ))}
         </select>

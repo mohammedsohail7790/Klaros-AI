@@ -232,6 +232,24 @@ describe("Discovery page", () => {
     expect(screen.getByRole("button", { name: "That's enough — build my Blueprint" })).toBeInTheDocument();
   });
 
+  it("never strands the user when the very first question could not be prepared (provider failure on the opening idea)", async () => {
+    getCurrentBusinessJourneyMock.mockResolvedValue(journey("DISCOVERY_ACTIVE"));
+    getDiscoverySessionMock.mockResolvedValue({
+      session: { id: "d1", blueprint_id: null, status: "ACTIVE", business_idea: "A bakery", questions_asked: 0, max_questions: 8, created_at: "x", updated_at: "x" },
+      turns: [{ id: "t0", sequence: 0, kind: "INITIAL_DESCRIPTION", question: null, answer: "A bakery", extraction_error: "rate_limit: 429", created_at: "x" }],
+    });
+    finishDiscoverySessionMock.mockResolvedValue({ session: {} });
+    completeDiscoveryJourneyStepMock.mockResolvedValue(journey("BLUEPRINT_REVIEW"));
+    render(<DiscoveryPage />);
+
+    expect(await screen.findByText(/couldn't prepare a question/i)).toBeInTheDocument();
+    expect(screen.queryByText("Getting your next question ready…")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to my Blueprint" }));
+    await waitFor(() => expect(finishDiscoverySessionMock).toHaveBeenCalledWith("test-token", "d1"));
+    await waitFor(() => expect(completeDiscoveryJourneyStepMock).toHaveBeenCalledWith("test-token", "j1"));
+  });
+
   it("shows what has been said so far, pairing each answer with the question it answered", async () => {
     getCurrentBusinessJourneyMock.mockResolvedValue(journey("DISCOVERY_ACTIVE"));
     getDiscoverySessionMock.mockResolvedValue({

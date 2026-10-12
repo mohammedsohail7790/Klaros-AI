@@ -187,8 +187,8 @@ export function ClinicVerification({ token, provider, onClose, onSaved }: { toke
             <input aria-label="Note" value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5" />
           </label>
         </div>
-        <p className={`mt-2 text-xs ${note_.ok ? "text-success" : "text-muted-foreground"}`}>{note_.text}</p>
-        {!ready && status === "VERIFIED" && <p className="mt-1 text-xs text-warning">Add a credential and record that you checked it before this can be saved as Verified.</p>}
+        {(ready || status !== "VERIFIED") && <p className={`mt-2 text-xs ${note_.ok ? "text-success" : "text-muted-foreground"}`}>{note_.text}</p>}
+        {!ready && status === "VERIFIED" && <p className="mt-2 text-xs text-warning">Add a credential and record that you checked it before this can be saved as Verified.</p>}
       </section>
 
       <div className="mt-4 flex justify-end gap-2">

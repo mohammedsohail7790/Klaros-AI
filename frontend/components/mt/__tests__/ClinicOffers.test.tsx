@@ -69,4 +69,14 @@ describe("What clinics offer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add offer" }));
     await waitFor(() => expect(create).toHaveBeenCalledWith("t", { provider_id: "P1", procedure_id: "X1", estimated_price: "1800", currency: "USD" }));
   });
+
+  it("enables adding an offer as soon as the page reports a new procedure, without a reload", async () => {
+    procedures.mockResolvedValue({ procedures: [] });
+    const { rerender } = render(<ClinicOffers token="t" refreshKey={0} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add an offer" })).toBeDisabled());
+
+    procedures.mockResolvedValue({ procedures: [{ id: "X1", name: "Dental implants" }] });
+    rerender(<ClinicOffers token="t" refreshKey={1} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add an offer" })).toBeEnabled());
+  });
 });

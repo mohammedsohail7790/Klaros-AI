@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarCheck } from "lucide-react";
 import AppShell from "@/components/AppShell";
@@ -89,7 +90,7 @@ export default function MedicalTourismConsultationsPage() {
       <div className="px-8 py-8">
         <PageHeader
           title={`Consultations (${total})`}
-          description="Medical Tourism provider consultations — a Medical Tourism extension of the tenant's Appointments."
+          description="Consultations booked between a patient and a clinic, and how each one went."
           icon={CalendarCheck}
           actions={
             <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">
@@ -161,7 +162,7 @@ export default function MedicalTourismConsultationsPage() {
                             onClick={() => handleStatusChange(c.id, next)}
                             className="rounded-full border border-border-strong px-2 py-0.5 text-xs text-muted hover:border-foreground hover:text-foreground disabled:opacity-50"
                           >
-                            {next.replace("_", " ")}
+                            {next.replace("_", " ").toLowerCase()}
                           </button>
                         ))}
                       </div>
@@ -193,6 +194,7 @@ function CreateConsultationModal({
   onCreated: () => void;
 }) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loadedAppointments, setLoadedAppointments] = useState(false);
   const [procedures, setProcedures] = useState<MedicalTourismProcedure[]>([]);
   const [appointmentId, setAppointmentId] = useState("");
   const [providerId, setProviderId] = useState("");
@@ -228,7 +230,8 @@ function CreateConsultationModal({
       .catch(() => {
         setAppointments([]);
         setProcedures([]);
-      });
+      })
+      .finally(() => setLoadedAppointments(true));
   }, [token]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -258,8 +261,18 @@ function CreateConsultationModal({
   return (
     <Modal title="New consultation" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
+        {loadedAppointments && appointments.length === 0 && (
+          <div className="rounded-md border border-warning/30 bg-warning/[0.06] p-3 text-sm text-foreground">
+            <p className="font-medium">Book the appointment first.</p>
+            <p className="mt-1 text-muted">
+              A consultation is attached to a booked appointment, and none was found in the last or next 90 days. Add the patient under{" "}
+              <Link href="/customers" className="underline">Customers</Link>, book the time in{" "}
+              <Link href="/calendar" className="underline">Calendar</Link>, then come back here.
+            </p>
+          </div>
+        )}
         <select required value={appointmentId} onChange={(e) => setAppointmentId(e.target.value)} className="klaros-input">
-          <option value="">Select appointment (next 90 days)...</option>
+          <option value="">Select appointment (last or next 90 days)…</option>
           {appointments.map((a) => (
             <option key={a.id} value={a.id}>
               {a.title} — {new Date(a.start_time).toLocaleString()}
@@ -288,7 +301,7 @@ function CreateConsultationModal({
           <button type="button" onClick={onClose} className="klaros-btn-secondary">
             Cancel
           </button>
-          <button type="submit" disabled={submitting} className="klaros-btn-primary">
+          <button type="submit" disabled={submitting || appointments.length === 0} className="klaros-btn-primary">
             {submitting ? "Creating..." : "Create consultation"}
           </button>
         </div>

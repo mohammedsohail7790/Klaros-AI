@@ -86,3 +86,12 @@ def test_a_flag_claim_naming_two_capabilities_yields_both_and_a_single_key_is_ke
     single = SimpleNamespace(value=True, key="customer_management")
     assert keys(single) == ["customer_management"]  # structured keys are never rewritten
     assert keys(SimpleNamespace(value=["Payments"], key="x")) == ["payments"]
+
+
+def test_clinic_and_patient_pipeline_phrases_resolve_to_built_in_capabilities() -> None:
+    """Seen live: "Clinic directory with verification" and "Patient lead
+    pipeline with consent" were reported as Planned / "no module", next to the
+    built-in provider directory and lead capture that already cover them."""
+    assert canonical_key("Clinic directory with verification") == "provider_directory"
+    assert canonical_key("Patient lead pipeline with consent") == "lead_capture"
+    assert canonical_key("some_module.provider_offerings") == "service_catalog"

@@ -35,6 +35,7 @@ from app.models.website import WebsiteVersion, WebsiteVersionStatus
 from app.services.business_builder_service import integration_state
 from app.services.capability_vocabulary import canonical_key
 from app.services.operations_providers import get_operations_provider
+from app.services.recommendation_service import provider_fits_business
 from app.services.vertical_extension_service import VerticalExtensionService
 
 QUALIFIED_STATUSES = ("QUALIFIED", "BOOKED", "CONVERTED")
@@ -258,8 +259,11 @@ class BusinessOperationsService:
 
         # --- integrations ---------------------------------------------------------
         integrations = []
+        enabled_vertical_keys = set(await self._enabled_vertical_keys(tenant_id))
         for p in catalog:
             conn = conns.get(p.provider_key)
+            if conn is None and not provider_fits_business(p.recommended_for_verticals, enabled_vertical_keys):
+                continue  # an industry-specific provider for an industry this business is not in
             state = integration_state(p.implementation_status, conn.status if conn is not None else None)
             if state == "NOT_CONNECTED":
                 state = "AVAILABLE"  # a real adapter exists; the tenant has not connected it

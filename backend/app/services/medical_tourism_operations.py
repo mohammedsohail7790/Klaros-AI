@@ -260,7 +260,10 @@ async def _operations(tenant_id: uuid.UUID) -> dict[str, Any]:
         providers = await count(Provider, Provider.status == ProviderStatus.ACTIVE)
         procedures = await count(Procedure, Procedure.status == ProcedureStatus.ACTIVE)
         offerings = await count(ProviderProcedure, ProviderProcedure.status == ProviderProcedureStatus.ACTIVE)
-        patients = await count(PatientLead)
+        # Every lead is a patient enquiry here — the same population the patient
+        # board lists (mt_pipeline.build_pipeline). Counting only leads that have
+        # an intake record made this figure disagree with the board.
+        patients = await count(Lead)
         commissions = await count(ReferralCommission)
         consult_rows = (
             await session.execute(

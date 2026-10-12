@@ -291,15 +291,28 @@ export default function DiscoveryPage() {
             </>
           ) : (
             <div className="space-y-3" aria-live="polite">
+              {/* Reached only when the session is loaded and there is no
+                  pending question. That is never a "still loading" state, so
+                  it always offers a way forward instead of a spinner-like
+                  message the user can do nothing about. */}
               <p className="text-sm text-muted">
-                {answered.length > 0
-                  ? "We don't have another question ready. If you've told us enough, you can move on and fill in or correct anything on the next screen."
-                  : "Getting your next question ready…"}
+                {!session
+                  ? "Getting your next question ready…"
+                  : answered.length > 0
+                    ? "We don't have another question ready. If you've told us enough, you can move on and fill in or correct anything on the next screen."
+                    : "We couldn't prepare a question just now. You can try again, or carry on and fill in the details yourself on the next screen."}
               </p>
-              {answered.length > 0 && (
-                <Button onClick={handleFinishEarly} disabled={busy}>
-                  {busy ? "Working…" : "That's enough — build my Blueprint"}
-                </Button>
+              {session && (
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={handleFinishEarly} disabled={busy}>
+                    {busy ? "Working…" : answered.length > 0 ? "That's enough — build my Blueprint" : "Continue to my Blueprint"}
+                  </Button>
+                  {answered.length === 0 && (
+                    <Button variant="secondary" onClick={() => load()} disabled={busy}>
+                      Try again
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           )}

@@ -340,6 +340,7 @@ export default function PatientCasePage() {
           token={token}
           id={openReferral}
           providerName={providerName}
+          onChanged={load}
           onClose={() => {
             setOpenReferral(null);
             load();

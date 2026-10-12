@@ -186,7 +186,7 @@ function PipelineBody() {
                 {toggle("board", LayoutGrid, "Board")}
                 {toggle("list", List, "List")}
               </div>
-              <Link href="/leads" className="inline-flex items-center rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
+              <Link href="/leads?new=1" className="inline-flex items-center rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
                 Add patient
               </Link>
               <Button size="sm" variant="secondary" onClick={() => load()}>
