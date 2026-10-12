@@ -92,6 +92,8 @@ def _credential_to_dict(c) -> dict[str, Any]:
         "credential_type": c.credential_type,
         "issuing_authority": c.issuing_authority,
         "credential_number": c.credential_number,
+        "issued_date": c.issued_date.isoformat() if c.issued_date else None,
+        "expiry_date": c.expiry_date.isoformat() if c.expiry_date else None,
         "status": c.status,
         "verified_at": c.verified_at.isoformat() if c.verified_at else None,
     }

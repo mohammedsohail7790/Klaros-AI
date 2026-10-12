@@ -310,6 +310,8 @@ export interface CreateLeadPayload {
   urgency?: string;
   estimated_value?: number;
   idempotency_key?: string;
+  /** Required by a consent-gated (Medical Tourism) workspace: what the patient agreed to, as told to the person entering them. */
+  consent?: { scopes: string[]; wording_version: string };
 }
 
 export function createLead(token: string, payload: CreateLeadPayload) {
@@ -4722,6 +4724,8 @@ export interface MedicalTourismProviderCredential {
   credential_type: string;
   issuing_authority: string | null;
   credential_number: string | null;
+  issued_date?: string | null;
+  expiry_date?: string | null;
   status: string;
   verified_at: string | null;
 }
@@ -4741,6 +4745,14 @@ export function addProviderCredential(
   return request<{ credential: MedicalTourismProviderCredential }>(
     `/api/v1/medical-tourism/providers/${providerId}/credentials`,
     { method: "POST", headers: authHeaders(token), body: JSON.stringify(payload) }
+  );
+}
+
+/** A person records that they checked this credential with the issuing authority. Only a checked, unexpired credential lets a clinic be marked Verified. */
+export function verifyProviderCredential(token: string, providerId: string, credentialId: string) {
+  return request<{ credential: MedicalTourismProviderCredential }>(
+    `/api/v1/medical-tourism/providers/${providerId}/credentials/${credentialId}/verify`,
+    { method: "POST", headers: authHeaders(token) }
   );
 }
 
