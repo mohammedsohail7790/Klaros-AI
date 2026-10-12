@@ -167,6 +167,20 @@ class HallaIntegrationService:
         data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
         return data
 
+    async def refresh_receptionist(self, tenant_id: uuid.UUID) -> dict[str, Any]:
+        """Have Halla roll its current agent template out to this business's receptionist, so a fix to what the AI says reaches a business that
+        already exists. Nothing but the agents' instructions changes on Halla's side; a business already up to date is left alone."""
+        self._adapter()
+        settings = get_settings()
+        secret = (settings.HALLA_PROVISIONING_SECRET or "").strip()
+        if not secret:
+            raise HallaProvisioningUnavailableError("Updating the receptionist is not available on this deployment.")
+        from app.integrations.workforce.halla_client import HallaClient, provisioning_endpoint
+
+        client = HallaClient(provisioning_endpoint(settings), secret, timeout=settings.HALLA_HEALTH_TIMEOUT_SECONDS, max_retries=0)
+        raw = await client.refresh({"klarosTenantId": str(tenant_id)})
+        return raw.get("data") if isinstance(raw.get("data"), dict) else raw
+
     async def disconnect(self, tenant_id: uuid.UUID) -> WorkforceStatusReport:
         adapter = self._adapter()
         try:

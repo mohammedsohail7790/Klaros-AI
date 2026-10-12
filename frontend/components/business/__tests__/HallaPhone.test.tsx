@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const api = { getHallaPhone: vi.fn(), searchHallaPhone: vi.fn(), buyHallaPhone: vi.fn(), setHallaBusinessNumber: vi.fn() };
+const api = { getHallaPhone: vi.fn(), searchHallaPhone: vi.fn(), buyHallaPhone: vi.fn(), setHallaBusinessNumber: vi.fn(), refreshHallaReceptionist: vi.fn() };
 let failNext: Error | null = null;
 const maybeFail = <T,>(fn: (...a: unknown[]) => T) => (...a: unknown[]) => (failNext ? new Promise<never>((_, rej) => setTimeout(() => rej(failNext), 0)) : fn(...a));
 vi.mock("@/lib/api", () => ({
@@ -10,6 +10,7 @@ vi.mock("@/lib/api", () => ({
   searchHallaPhone: (...a: unknown[]) => maybeFail(api.searchHallaPhone)(...a),
   buyHallaPhone: (...a: unknown[]) => maybeFail(api.buyHallaPhone)(...a),
   setHallaBusinessNumber: (...a: unknown[]) => maybeFail(api.setHallaBusinessNumber)(...a),
+  refreshHallaReceptionist: (...a: unknown[]) => maybeFail(api.refreshHallaReceptionist)(...a),
 }));
 import { HallaPhonePanel, formatPhone, shortDate } from "@/components/business/HallaPhone";
 import { ApiError, type HallaPhoneStatus } from "@/lib/api";
@@ -29,6 +30,38 @@ describe("formatPhone", () => {
     expect(formatPhone("+19193715609")).toBe("+1 (919) 371-5609");
     expect(formatPhone("+971501234567")).toBe("+971501234567");
     expect(formatPhone(null)).toBe("");
+  });
+});
+
+describe("updating the receptionist", () => {
+  it("offers the update only when Halla has a newer version, and does it in one click", async () => {
+    api.getHallaPhone.mockResolvedValue(status({ template_outdated: true }));
+    api.refreshHallaReceptionist.mockResolvedValue({ updated: true, template_version: "2026-10-12.1", configured: true });
+    render(<HallaPhonePanel token="t" connected />);
+    expect(await screen.findByText(/newer version of your AI receptionist is ready/)).toBeInTheDocument();
+    api.getHallaPhone.mockResolvedValue(status({ template_outdated: false }));
+    fireEvent.click(screen.getByRole("button", { name: "Update receptionist" }));
+    await waitFor(() => expect(api.refreshHallaReceptionist).toHaveBeenCalledWith("t"));
+    await screen.findByText(/updated and your business details were sent to it again/);
+    await waitFor(() => expect(screen.queryByText(/newer version of your AI receptionist is ready/)).toBeNull());
+  });
+
+  it("says plainly when the business details did not follow, and when an update fails", async () => {
+    api.getHallaPhone.mockResolvedValue(status({ template_outdated: true }));
+    api.refreshHallaReceptionist.mockResolvedValue({ updated: true, template_version: "x", configured: false });
+    render(<HallaPhonePanel token="t" connected />);
+    fireEvent.click(await screen.findByRole("button", { name: "Update receptionist" }));
+    await screen.findByText(/business details did not reach it/);
+    api.refreshHallaReceptionist.mockRejectedValue(new ApiError(502, "We couldn't update the receptionist just now. Nothing was changed. Please try again."));
+    fireEvent.click(await screen.findByRole("button", { name: "Update receptionist" }));
+    await screen.findByText(/Nothing was changed/);
+  });
+
+  it("shows no notice for a receptionist that is up to date", async () => {
+    api.getHallaPhone.mockResolvedValue(status({ template_outdated: false }));
+    render(<HallaPhonePanel token="t" connected />);
+    await screen.findByText(/Get a phone number for your AI receptionist/);
+    expect(screen.queryByRole("button", { name: "Update receptionist" })).toBeNull();
   });
 });
 
