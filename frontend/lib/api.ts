@@ -5305,6 +5305,8 @@ export interface HallaConnectionInfo {
   last_verified_at: string | null;
   last_error: string | null;
   webhook_url: string | null;
+  /** True when this deployment can have Halla create the receptionist, so the owner enters no credential. */
+  provisioning_available?: boolean;
 }
 
 export interface HallaStatusResult {
@@ -5320,6 +5322,11 @@ const HALLA = "/api/v1/business-builder/workforce/halla";
 /** The credential is sent once, over TLS, to the Klaros backend — which encrypts it at once and never returns it. */
 export function connectHalla(token: string, body: { halla_tenant_id: string; api_key: string; signing_secret: string }) {
   return request<HallaStatusResult>(`${HALLA}/connection`, { method: "PUT", headers: authHeaders(token), body: JSON.stringify(body) });
+}
+
+/** Klaros asks Halla to create this business's receptionist. No credential is sent or returned: the backend keeps what Halla gives it, encrypted. */
+export function provisionHalla(token: string) {
+  return request<HallaStatusResult & { configured: boolean }>(`${HALLA}/provision`, { method: "POST", headers: authHeaders(token) });
 }
 
 export function disconnectHalla(token: string) {
