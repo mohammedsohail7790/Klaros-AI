@@ -1,5 +1,6 @@
 "use client";
 
+import { plainDetail, statusLabel } from "@/lib/integrationLabels";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
@@ -105,8 +106,8 @@ function getActiveAIRow(aiRows: IntegrationStatusRow[]): IntegrationStatusRow | 
 // clients now (see their dedicated sections below).
 const PLANNED_OAUTH_PROVIDERS = [
   { provider: "gmail_oauth", name: "Gmail (OAuth)", category: "Communications" },
-  { provider: "google_ads_oauth", name: "Google Ads (per-tenant)", category: "Marketing" },
-  { provider: "meta_ads_oauth", name: "Meta Ads (per-tenant)", category: "Marketing" },
+  { provider: "google_ads_oauth", name: "Google Ads", category: "Marketing" },
+  { provider: "meta_ads_oauth", name: "Meta Ads", category: "Marketing" },
 ];
 
 export default function IntegrationsPage() {
@@ -370,7 +371,7 @@ function IntegrationsPageInner() {
           <div>
             <h1 className="font-display text-2xl text-foreground">Integrations</h1>
             <p className="mt-1 text-sm text-muted">
-              Every status here is checked live against the real provider — nothing is fabricated.
+              The accounts Klaros connects to. Each status is checked live with the provider, so what you see is what is really working.
               {rows && ` ${connectedCount} of ${visibleRows.length} connected.`}
             </p>
           </div>
@@ -410,13 +411,13 @@ function IntegrationsPageInner() {
                             : "No AI engine configured — Klaros falls back to deterministic (non-AI) behavior."}
                         </div>
                       </div>
-                      <Badge status={active?.status ?? "NOT_CONNECTED"}>{active?.status ?? "NOT_CONNECTED"}</Badge>
+                      <Badge status={active?.status ?? "NOT_CONNECTED"}>{statusLabel(active?.status ?? "NOT_CONNECTED")}</Badge>
                     </div>
                   </div>
                   {user?.role === "OWNER" && (
                     <details className="mt-2 text-xs">
                       <summary className="cursor-pointer text-muted hover:text-foreground">
-                        Show all {categoryRows.length} AI engines (owner-only diagnostics)
+                        Show all {categoryRows.length} AI engines (technical details)
                       </summary>
                       <p className="mb-2 mt-2 text-muted-foreground">
                         Klaros picks ONE of these automatically (Anthropic &gt; OpenAI &gt; Groq &gt; DeepSeek &gt;
@@ -430,9 +431,9 @@ function IntegrationsPageInner() {
                               <div className="text-sm font-medium text-foreground">
                                 {DISPLAY_NAME[row.provider] ?? row.provider}
                               </div>
-                              <div className="mt-0.5 text-xs text-muted">{row.detail}</div>
+                              <div className="mt-0.5 text-xs text-muted">{plainDetail(row.status, row.detail)}</div>
                             </div>
-                            <Badge status={row.status}>{row.status}</Badge>
+                            <Badge status={row.status}>{statusLabel(row.status)}</Badge>
                           </div>
                         ))}
                       </div>
@@ -453,9 +454,9 @@ function IntegrationsPageInner() {
                         <div className="text-sm font-medium text-foreground">
                           {DISPLAY_NAME[row.provider] ?? row.provider}
                         </div>
-                        <div className="mt-0.5 text-xs text-muted">{row.detail}</div>
+                        <div className="mt-0.5 text-xs text-muted">{plainDetail(row.status, row.detail)}</div>
                       </div>
-                      <Badge status={row.status}>{row.status}</Badge>
+                      <Badge status={row.status}>{statusLabel(row.status)}</Badge>
                     </div>
                   ))}
                 </div>
@@ -496,12 +497,10 @@ function IntegrationsPageInner() {
         {rows && (
           <div className="mb-6">
             <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-              Your Own Stripe Account (Phase 12F)
+              Connect your Stripe account
             </h2>
             <p className="mb-2 text-xs text-muted">
-              Optional — connect your OWN Stripe secret key to use it instead of the platform-shared
-              key above for your checkout links. Verified with a real, live API call the moment you
-              connect. The key is encrypted at rest and never shown again after submission.
+              Optional. Connect your own Stripe account so payment links pay into it. Klaros checks the key with Stripe the moment you connect it, stores it encrypted, and never shows it again.
             </p>
             <div className="rounded border border-border px-4 py-3">
               {(() => {
@@ -519,7 +518,7 @@ function IntegrationsPageInner() {
                                 : "Not yet verified")}
                           </div>
                         </div>
-                        <Badge status={stripeConnection.status}>{stripeConnection.status}</Badge>
+                        <Badge status={stripeConnection.status}>{statusLabel(stripeConnection.status)}</Badge>
                       </div>
                     )}
 
@@ -590,7 +589,7 @@ function IntegrationsPageInner() {
         {rows && (
           <div className="mb-6">
             <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-              Your Own QuickBooks Company (Phase 13)
+              Connect QuickBooks
             </h2>
             <p className="mb-2 text-xs text-muted">
               Connect your own QuickBooks Online company to sync approved invoices there. Uses a real
@@ -616,7 +615,7 @@ function IntegrationsPageInner() {
                                 : "Not yet verified")}
                           </div>
                         </div>
-                        <Badge status={qbConnection.status}>{qbConnection.status}</Badge>
+                        <Badge status={qbConnection.status}>{statusLabel(qbConnection.status)}</Badge>
                       </div>
                     )}
 
@@ -719,7 +718,7 @@ function IntegrationsPageInner() {
         {rows && (
           <div className="mb-6">
             <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-              Your Own Google Calendar (Phase 14)
+              Connect Google Calendar
             </h2>
             <p className="mb-2 text-xs text-muted">
               Connect your own Google Calendar to sync confirmed Klaros appointments there. Uses a
@@ -743,7 +742,7 @@ function IntegrationsPageInner() {
                                 : "Not yet verified")}
                           </div>
                         </div>
-                        <Badge status={gcalConnection.status}>{gcalConnection.status}</Badge>
+                        <Badge status={gcalConnection.status}>{statusLabel(gcalConnection.status)}</Badge>
                       </div>
                     )}
 
@@ -828,11 +827,10 @@ function IntegrationsPageInner() {
         {rows && (
           <div className="mb-6">
             <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-              Tenant-Owned Connections (OAuth)
+              Coming soon
             </h2>
             <p className="mb-2 text-xs text-muted">
-              Unlike the providers above (one shared credential for the whole platform), each business
-              would connect their OWN account for these — real OAuth is not built yet for any of them.
+              Connections we have not built yet. They are listed so you can see what is planned, and none of them is connected.
             </p>
             <div className="divide-y divide-border rounded border border-border">
               {PLANNED_OAUTH_PROVIDERS.map((p) => {
@@ -843,10 +841,10 @@ function IntegrationsPageInner() {
                     <div>
                       <div className="text-sm font-medium text-foreground">{p.name}</div>
                       <div className="mt-0.5 text-xs text-muted">
-                        {existing?.last_error ?? "No real OAuth client implemented for this provider yet."}
+                        {existing?.last_error ? plainDetail("ERROR", existing.last_error) : "Not available yet."}
                       </div>
                     </div>
-                    <Badge status={status}>{status}</Badge>
+                    <Badge status={status}>{statusLabel(status)}</Badge>
                   </div>
                 );
               })}
@@ -859,12 +857,10 @@ function IntegrationsPageInner() {
         )}
 
         <div className="mt-8 rounded border border-border bg-surface px-4 py-3 text-xs text-muted">
-          CONNECTED means the configured credential was just verified against the provider&apos;s real
-          API (a live, read-only call). NOT_CONNECTED means no credential is configured. ERROR means a
-          credential is configured but was rejected, or a required companion setting (e.g. a verified
-          sender email/number) is missing — see the detail message above. NOT_IMPLEMENTED (below) means
-          the tenant-scoped connection API exists and enforces real tenant isolation, but no real OAuth
-          client has been built for that provider yet — see INTEGRATIONS.md.
+          <strong className="font-medium text-foreground">Connected</strong> means Klaros just tested the connection with the provider and it worked.{" "}
+          <strong className="font-medium text-foreground">Not connected</strong> means nothing is set up yet.{" "}
+          <strong className="font-medium text-foreground">Needs attention</strong> means a connection is saved but the provider rejected it or something it needs is missing.{" "}
+          <strong className="font-medium text-foreground">Coming soon</strong> means we have not built it yet.
         </div>
       </div>
     </AppShell>
