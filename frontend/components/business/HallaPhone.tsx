@@ -13,9 +13,14 @@ import {
 } from "@/lib/api";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { when } from "@/lib/opsLabels";
 
 const fail = (err: unknown, fallback: string) => (err instanceof ApiError ? err.message : fallback);
+
+/** A calendar date for something in the future ("26 Oct 2026"); the relative "x ago" helper reads a future time as "just now". Empty if unreadable. */
+export function shortDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+}
 
 /** "+19193715609" -> "+1 (919) 371-5609"; anything else is shown as it is. */
 export function formatPhone(n: string | null | undefined): string {
@@ -129,7 +134,7 @@ export function HallaPhonePanel({ token, connected }: { token: string | null; co
                 <p className="flex items-center gap-2 text-2xl text-foreground"><Phone className="h-5 w-5" aria-hidden="true" /> {formatPhone(aiNumber)}</p>
                 <p className="mt-1 text-sm text-muted">Answered by {status.numbers[0]?.agent ?? "your AI receptionist"}. It says it is an AI and asks permission before it takes any detail.</p>
                 {status.plan?.status === "trialing" && (
-                  <p className="mt-2 text-xs text-muted">Trial plan{status.plan.trial_expires_at ? ` until ${when(status.plan.trial_expires_at)}` : ""}. It is capped while you test.</p>
+                  <p className="mt-2 text-xs text-muted">Trial plan{status.plan.trial_expires_at ? ` until ${shortDate(status.plan.trial_expires_at)}` : ""}. It is capped while you test.</p>
                 )}
                 <p className="mt-2 text-sm text-foreground">To try it, call this number from another phone.</p>
               </div>
