@@ -200,7 +200,7 @@ export default function TodayPage() {
                           {(
                             [
                               ["Potential", by.PENDING],
-                              ["Confirmed", by.CONFIRMED],
+                              ["Earned", by.CONFIRMED],
                               ["Invoiced", by.INVOICED],
                               ["Paid", by.PAID],
                             ] as const

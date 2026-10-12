@@ -28,7 +28,7 @@ from app.models.crm import Lead, QualificationStatus
 from app.models.halla_consent import HallaConsentEvidence
 from app.models.medical_tourism_referral import HandoffTask, ProviderReferral, ReferralStatus, TaskStatus
 from app.services import halla_consent
-from app.models.medical_tourism import PatientLead, Provider
+from app.models.medical_tourism import PatientLead, Provider, ReferralCommission
 from app.services.consent_gate import STORE_MEDICAL, STORE_PERSONAL
 
 STAGES = ("NEW_ENQUIRY", "CONSENT", "QUALIFICATION", "PROVIDER_OPTIONS", "PATIENT_APPROVAL", "REFERRED", "CLINIC_RESPONSE", "OUTCOME")
@@ -81,6 +81,7 @@ async def build_pipeline(session_factory, tenant_id: uuid.UUID, *, limit: int = 
         tasks = list((await s.execute(select(HandoffTask).where(HandoffTask.tenant_id == tenant_id, HandoffTask.status.in_((TaskStatus.OPEN, TaskStatus.ACCEPTED))))).scalars())
         intake_rows = {p.lead_id: p for p in (await s.execute(select(PatientLead).where(PatientLead.tenant_id == tenant_id))).scalars()}
         provider_names = {p.id: p.name for p in (await s.execute(select(Provider).where(Provider.tenant_id == tenant_id))).scalars()}
+        commission_of = {c.provider_referral_id: c.status for c in (await s.execute(select(ReferralCommission).where(ReferralCommission.tenant_id == tenant_id, ReferralCommission.provider_referral_id.is_not(None)))).scalars()}
     by_lead: dict[uuid.UUID, list] = defaultdict(list)
     by_halla: dict[str, list] = defaultdict(list)
     for r in evidence:
@@ -125,6 +126,7 @@ async def build_pipeline(session_factory, tenant_id: uuid.UUID, *, limit: int = 
                     "sent_at": r.sent_at.isoformat() if r.sent_at else None,
                     "clinic_response_at": r.clinic_response_at.isoformat() if r.clinic_response_at else None,
                     "outcome_reported_at": r.outcome_reported_at.isoformat() if r.outcome_reported_at else None,
+                    "commission_status": commission_of.get(r.id),  # None until a commission is set up
                 }
                 for r in mine
             ],

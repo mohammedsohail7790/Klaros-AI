@@ -322,3 +322,24 @@ async def test_a_treatment_typed_in_by_hand_shows_only_with_health_consent(clien
     rows = {x["lead_id"]: x for x in (await client.get(f"{BASE}/pipeline", headers=_h(token))).json()["leads"]}
     assert rows[with_health]["intake"]["procedure"] == "Dental implants"
     assert rows[no_health]["intake"]["procedure"] is None
+
+
+async def test_the_pipeline_row_says_what_stage_the_commission_is_in(client, halla) -> None:  # noqa: F811
+    token, tid = await _gated(client, "Comm Status Co", "commstatus@example.com")
+    provider = await _provider(client, token, name="Status Clinic")
+    lead = await _patient(client, token)
+    ref = await _approved(client, token, lead, provider["id"])
+    await _send(client, token, ref)
+    await client.post(f"{BASE}/referrals/{ref}/clinic-response", json={"accepted": True}, headers=_h(token))
+    await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "TREATMENT_COMPLETED", "evidence": "clinic email"}, headers=_h(token))
+
+    async def status():
+        row = next(x for x in (await client.get(f"{BASE}/pipeline", headers=_h(token))).json()["leads"] if x["lead_id"] == lead)
+        return row["referrals"][0]["commission_status"]
+
+    assert await status() is None  # nothing set up yet: the owner has something to do
+    c = (await client.post(f"{BASE}/referrals/{ref}/commission", json={"currency": "usd", "basis": "FLAT", "flat_amount": "500"}, headers=_h(token))).json()["commission"]
+    assert await status() == "PENDING"
+    for step in ("CONFIRMED", "INVOICED", "PAID"):
+        await client.post(f"{BASE}/commissions/{c['id']}/transition", json={"status": step}, headers=_h(token))
+    assert await status() == "PAID"
