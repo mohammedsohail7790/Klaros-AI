@@ -5342,10 +5342,17 @@ export interface HallaPhoneStatus {
   plan: { plan: string; status: string; trial_expires_at: string | null; trial_minutes_used: number } | null;
   can_buy: boolean;
   monthly_cost_usd: number | null;
+  /** True when Halla has a newer version of the receptionist than the one this business is running. */
+  template_outdated?: boolean;
 }
 
 export function getHallaPhone(token: string) {
   return request<HallaPhoneStatus>(`${HALLA}/phone`, { headers: authHeaders(token) });
+}
+
+/** Rolls Halla's current receptionist version out to this business (the agents' instructions only), then re-sends the business context. */
+export function refreshHallaReceptionist(token: string) {
+  return request<{ updated: boolean; template_version: string | null; configured: boolean }>(`${HALLA}/refresh`, { method: "POST", headers: authHeaders(token) });
 }
 
 export function searchHallaPhone(token: string, area_code: string) {

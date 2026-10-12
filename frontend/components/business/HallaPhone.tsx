@@ -8,14 +8,20 @@ import {
   HallaPhoneStatus,
   buyHallaPhone,
   getHallaPhone,
+  refreshHallaReceptionist,
   searchHallaPhone,
   setHallaBusinessNumber,
 } from "@/lib/api";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { when } from "@/lib/opsLabels";
 
 const fail = (err: unknown, fallback: string) => (err instanceof ApiError ? err.message : fallback);
+
+/** A calendar date for something in the future ("26 Oct 2026"); the relative "x ago" helper reads a future time as "just now". Empty if unreadable. */
+export function shortDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+}
 
 /** "+19193715609" -> "+1 (919) 371-5609"; anything else is shown as it is. */
 export function formatPhone(n: string | null | undefined): string {
@@ -70,6 +76,24 @@ export function HallaPhonePanel({ token, connected }: { token: string | null; co
     }
   }
 
+  const update = () =>
+    run("update", async () => {
+      try {
+        const r = await refreshHallaReceptionist(token as string);
+        setNotice({
+          kind: "success",
+          text: !r.updated
+            ? "Your AI receptionist is already up to date."
+            : r.configured
+              ? "Your AI receptionist is updated and your business details were sent to it again."
+              : "Your AI receptionist is updated, but your business details did not reach it. Use “Send business context to Halla” above.",
+        });
+      } catch (err) {
+        setNotice({ kind: "danger", text: fail(err, "We couldn't update the receptionist. Nothing was changed.") });
+      }
+      await load();
+    });
+
   const search = () =>
     run("search", async () => {
       try {
@@ -121,6 +145,13 @@ export function HallaPhonePanel({ token, connected }: { token: string | null; co
         {loadError && <Alert variant="danger">{loadError}</Alert>}
         {!status && !loadError && <p className="text-sm text-muted">Loading…</p>}
 
+        {status?.template_outdated && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-muted/70 p-3">
+            <p className="text-sm text-foreground">A newer version of your AI receptionist is ready. It includes improvements to what it says about medical questions.</p>
+            <Button variant="secondary" size="sm" onClick={update} disabled={busy !== null}>{busy === "update" ? "Updating…" : "Update receptionist"}</Button>
+          </div>
+        )}
+
         {status && (
           <>
             {aiNumber ? (
@@ -129,7 +160,7 @@ export function HallaPhonePanel({ token, connected }: { token: string | null; co
                 <p className="flex items-center gap-2 text-2xl text-foreground"><Phone className="h-5 w-5" aria-hidden="true" /> {formatPhone(aiNumber)}</p>
                 <p className="mt-1 text-sm text-muted">Answered by {status.numbers[0]?.agent ?? "your AI receptionist"}. It says it is an AI and asks permission before it takes any detail.</p>
                 {status.plan?.status === "trialing" && (
-                  <p className="mt-2 text-xs text-muted">Trial plan{status.plan.trial_expires_at ? ` until ${when(status.plan.trial_expires_at)}` : ""}. It is capped while you test.</p>
+                  <p className="mt-2 text-xs text-muted">Trial plan{status.plan.trial_expires_at ? ` until ${shortDate(status.plan.trial_expires_at)}` : ""}. It is capped while you test.</p>
                 )}
                 <p className="mt-2 text-sm text-foreground">To try it, call this number from another phone.</p>
               </div>

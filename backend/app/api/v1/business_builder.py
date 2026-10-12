@@ -220,7 +220,8 @@ _PHONE_MESSAGES = {
     "not_available": (status.HTTP_503_SERVICE_UNAVAILABLE, "Phone numbers aren't available right now. Please try again later."),
     "search_failed": (status.HTTP_502_BAD_GATEWAY, "We couldn't search for numbers just now. Please try again."),
     "is_halla_line": (status.HTTP_422_UNPROCESSABLE_ENTITY, "That is already one of our lines. Enter the business's own phone number."),
-    "no_receptionist": (status.HTTP_409_CONFLICT, "Create your AI receptionist first, then add a phone number."),
+    "no_receptionist": (status.HTTP_409_CONFLICT, "Create your AI receptionist first."),
+    "refresh_failed": (status.HTTP_502_BAD_GATEWAY, "We couldn't update the receptionist just now. Nothing was changed. Please try again."),
 }
 
 
@@ -258,7 +259,38 @@ async def get_halla_phone(
         "plan": None if plan is None else {"plan": plan.get("plan"), "status": plan.get("status"), "trial_expires_at": plan.get("trialExpiresAt"), "trial_minutes_used": plan.get("trialMinutesUsed")},
         "can_buy": bool(d.get("canBuy")),
         "monthly_cost_usd": d.get("monthlyCostUsd"),
+        "template_outdated": bool((d.get("template") or {}).get("outdated")),
     }
+
+
+@router.post("/workforce/halla/refresh")
+async def refresh_halla_receptionist(
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_INTEGRATIONS)),
+    builder: BusinessBuilderService = Depends(get_business_builder_service),
+    journeys: BusinessJourneyService = Depends(get_business_journey_service),
+    workforce: BusinessWorkforceService = Depends(get_business_workforce_service),
+    halla: HallaIntegrationService = Depends(get_halla_integration_service),
+) -> dict[str, Any]:
+    """Update this business's AI receptionist to Halla's current version (for example after a fix to what it says about medical questions).
+    Halla rewrites only the agents' instructions; Klaros then sends the business context across again, because the template resets the questions."""
+    try:
+        d = await halla.refresh_receptionist(current_user.tenant_id)
+    except _PHONE_ERRORS as exc:
+        raise _phone_error(exc) from exc
+    configured = False
+    if d.get("updated"):
+        try:
+            journey = await journeys.get_current(current_user.tenant_id)
+            if journey is None:
+                history = await journeys.list_journeys(current_user.tenant_id)
+                journey = history[0] if history else None
+            overview = await builder.get_overview(current_user.tenant_id, journey=_journey_to_dict(journey) if journey is not None else None)
+            pack = await workforce.context_pack(current_user.tenant_id, overview.get("business") or {})
+            await halla.configure(current_user.tenant_id, pack.as_dict())
+            configured = True
+        except _HALLA_ERRORS:
+            configured = False
+    return {"updated": bool(d.get("updated")), "template_version": d.get("templateVersion"), "configured": configured}
 
 
 @router.post("/workforce/halla/phone/search")

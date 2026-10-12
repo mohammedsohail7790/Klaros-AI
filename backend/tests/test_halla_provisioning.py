@@ -27,6 +27,7 @@ class FakeProvisioner(FakeHalla):
     def __init__(self) -> None:
         super().__init__()
         self.reply: httpx.Response | None = None
+        self.refresh_reply: httpx.Response | None = None
         self.phone_replies: dict[str, httpx.Response] = {}  # per action; an action with no entry gets the default answer below
 
     def _phone(self, request: httpx.Request) -> httpx.Response:
@@ -38,6 +39,7 @@ class FakeProvisioner(FakeHalla):
             return self.phone_replies[action]
         data: dict = {
             "status": {"numbers": [], "businessNumber": None, "humanHandoff": False, "canBuy": True, "monthlyCostUsd": 1.15,
+                       "template": {"templateVersion": "2026-10-12.1", "currentVersion": "2026-10-12.1", "outdated": False},
                        "plan": {"plan": "professional", "status": "trialing", "trialExpiresAt": "2026-10-26T00:00:00Z", "trialMinutesUsed": 0}},
             "search": {"numbers": [{"phoneNumber": "+14155550123", "friendlyName": "(415) 555-0123"}], "monthlyCostUsd": 1.15},
             "buy": {"phoneNumber": body.get("phoneNumber"), "monthlyCostUsd": 1.15, "receptionistPinned": True},
@@ -49,7 +51,16 @@ class FakeProvisioner(FakeHalla):
     def phone_calls(self) -> list[httpx.Request]:
         return self.sent("POST", "/platform/klaros/phone")
 
+    @property
+    def refresh_calls(self) -> list[httpx.Request]:
+        return self.sent("POST", "/platform/klaros/refresh")
+
     def __call__(self, request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/platform/klaros/refresh"):
+            self.requests.append(request)
+            if self.refresh_reply is not None:
+                return self.refresh_reply
+            return httpx.Response(200, json={"success": True, "data": {"updated": True, "templateVersion": "2026-10-12.1", "previousVersion": "unknown"}})
         if request.url.path.endswith("/platform/klaros/phone"):
             self.requests.append(request)
             return self._phone(request)
