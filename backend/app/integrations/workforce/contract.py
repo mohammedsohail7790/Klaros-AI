@@ -37,12 +37,13 @@ class WorkforceUnavailableError(Exception):
     trying again later can help (network/5xx/429) or not (a 4xx that will not change)."""
 
     def __init__(
-        self, message: str, *, status_code: int | None = None, retryable: bool = False, retry_after: int | None = None
+        self, message: str, *, status_code: int | None = None, retryable: bool = False, retry_after: int | None = None, code: str | None = None
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.retryable = retryable
         self.retry_after = retry_after  # seconds Halla asked us to wait (429), when it said so
+        self.code = code  # a short machine code from Halla's own fixed vocabulary (never free text), when it sent one
 
 
 class WorkforceStatus(StrEnum):

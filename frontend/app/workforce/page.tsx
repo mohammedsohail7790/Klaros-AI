@@ -25,6 +25,7 @@ import { useOperations } from "@/components/business/useOperations";
 import { actionLabel, agentStatusLabel, autonomyLabel, when } from "@/lib/opsLabels";
 import { BuilderContextBar } from "@/components/business/BuilderContextBar";
 import { HallaConnectionPanel } from "@/components/business/HallaConnection";
+import { HallaPhonePanel } from "@/components/business/HallaPhone";
 import { workforceLabel } from "@/components/business/homeModel";
 import { cn } from "@/lib/cn";
 
@@ -148,6 +149,9 @@ export default function WorkforcePage() {
 
             {/* CONNECT (only where the real Halla adapter is enabled) */}
             <HallaConnectionPanel token={token} setup={setup} onChanged={load} />
+
+            {/* PHONE NUMBER (a number for the AI receptionist, and the business's own hand-off number) */}
+            <HallaPhonePanel token={token} connected={setup.status.status === "CONNECTED" && Boolean(setup.halla?.provisioning_available)} />
 
             {/* WORKFORCE MEMBERS */}
             <section aria-labelledby="wf-members" className="mb-8">
