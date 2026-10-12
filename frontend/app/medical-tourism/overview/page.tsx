@@ -1,47 +1,80 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, CalendarCheck, CheckCircle2, ClipboardList, Hourglass, LayoutDashboard, ShieldCheck, Users } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
-import { ApiError, MedicalTourismFunnel, getMedicalTourismFunnel } from "@/lib/api";
+import {
+  ApiError,
+  HandoffTask,
+  MedicalTourismFunnel,
+  MedicalTourismPipeline,
+  RevenueSummary,
+  getMedicalTourismFunnel,
+  getMedicalTourismPipeline,
+  getMedicalTourismRevenue,
+  listHandoffTasks,
+} from "@/lib/api";
+import { buildNeedsYou, todaySummary, waitingOnOthers } from "@/lib/mtCase";
+import { STAGE_LABEL, STAGE_ORDER } from "@/lib/mtLabels";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { StatCard } from "@/components/ui/StatCard";
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-8">
-      <h2 className="font-display text-lg text-foreground">{title}</h2>
-      {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">{children}</div>
-    </section>
-  );
+const PRIORITY_STYLE: Record<number, string> = {
+  1: "border-l-danger",
+  2: "border-l-warning",
+  3: "border-l-border-strong",
+};
+const PRIORITY_WORD: Record<number, string> = { 1: "Urgent", 2: "Today", 3: "When you can" };
+
+function greeting(now: Date): string {
+  const h = now.getHours();
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const money = (amount: string, currency: string) => {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(Number(amount));
+  } catch {
+    return `${amount} ${currency}`;
+  }
+};
 
 /**
- * The pilot coordinator's front page: what the AI receptionist has handed over, what is waiting for a person, and whether the connection is healthy.
- * Counts only, straight from the backend funnel (mt_funnel.py); nothing is derived or invented in the browser, and no patient is named here.
+ * Today: the owner's first screen. It answers "what needs me right now?" with a prioritised list of named patients and one clear action each, then shows where
+ * everyone is and what the business has earned. Everything is read from facts the backend already derived (pipeline, tasks, revenue); the browser invents nothing.
  */
-export default function MedicalTourismOverviewPage() {
+export default function TodayPage() {
   const { token, user, loading: authLoading } = useAuth();
+  const [pipeline, setPipeline] = useState<MedicalTourismPipeline | null>(null);
+  const [tasks, setTasks] = useState<HandoffTask[]>([]);
+  const [revenue, setRevenue] = useState<RevenueSummary | null>(null);
   const [funnel, setFunnel] = useState<MedicalTourismFunnel | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The date and greeting depend on the viewer's clock and locale, so they are set after mount; rendering them on the server would not match the browser.
+  const [clock, setClock] = useState<Date | null>(null);
+  useEffect(() => setClock(new Date()), []);
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      setFunnel(await getMedicalTourismFunnel(token));
+      const [p, t, r, f] = await Promise.all([
+        getMedicalTourismPipeline(token),
+        listHandoffTasks(token, { status: "OPEN" }),
+        getMedicalTourismRevenue(token),
+        getMedicalTourismFunnel(token),
+      ]);
+      setPipeline(p);
+      setTasks(t.tasks);
+      setRevenue(r);
+      setFunnel(f);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Unable to load the overview.");
+      setError(err instanceof ApiError ? err.message : "Unable to load Today.");
     } finally {
       setLoading(false);
     }
@@ -51,102 +84,160 @@ export default function MedicalTourismOverviewPage() {
     load();
   }, [load]);
 
-  const f = funnel;
-  const failed = f ? f.delivery.halla_events_failed + f.delivery.halla_events_stuck_past_lease : 0;
-  const escalations = f ? f.escalations_requested.halla + f.escalations_requested.klaros_safety_screen : 0;
+  const now = clock?.getTime() ?? Date.now();
+  const needs = useMemo(() => (pipeline ? buildNeedsYou(pipeline.leads, tasks, now) : []), [pipeline, tasks, now]);
+  const waiting = useMemo(() => (pipeline ? waitingOnOthers(pipeline.leads, now) : []), [pipeline, now]);
+  const firstName = user?.full_name?.split(" ")[0];
+  const failedMessages = funnel ? funnel.delivery.halla_events_failed + funnel.delivery.halla_events_stuck_past_lease : 0;
+  const total = pipeline?.leads.length ?? 0;
+  const currencies = revenue ? Object.entries(revenue.by_currency) : [];
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
-        <PageHeader
-          title="Overview"
-          description="What the AI receptionist has handed to your team, what is waiting for a person, and whether the connection is healthy."
-          icon={LayoutDashboard}
-          actions={
-            <Button size="sm" variant="secondary" onClick={() => load()}>
-              Refresh
-            </Button>
-          }
-        />
+      <div className="mx-auto max-w-5xl px-6 py-8 sm:px-8">
+        <header className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="min-h-5 text-sm text-muted">{clock ? clock.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }) : ""}</p>
+            <h1 className="font-display text-3xl text-foreground">
+              {clock ? greeting(clock) : "Welcome"}
+              {firstName ? `, ${firstName}` : ""}
+            </h1>
+            {pipeline && <p className="mt-1 text-base text-muted">{todaySummary(needs)}</p>}
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => load()}>
+            Refresh
+          </Button>
+        </header>
 
-        {authLoading || (loading && !f) ? (
-          <Skeleton />
+        {authLoading || (loading && !pipeline) ? (
+          <div className="mt-8">
+            <Skeleton />
+          </div>
         ) : error ? (
-          <Alert variant="danger" action={<Button size="sm" variant="secondary" onClick={() => load()}>Try again</Button>}>
-            {error}
-          </Alert>
-        ) : f ? (
+          <div className="mt-8">
+            <Alert variant="danger" action={<Button size="sm" variant="secondary" onClick={() => load()}>Try again</Button>}>
+              {error}
+            </Alert>
+          </div>
+        ) : pipeline ? (
           <>
-            <div className="space-y-2" aria-label="Needs attention">
-              {failed > 0 && (
+            {failedMessages > 0 && (
+              <div className="mt-6">
                 <Alert variant="danger">
-                  {plural(failed, "message", "messages")} from the AI receptionist did not finish arriving ({f.delivery.halla_events_failed} failed, {f.delivery.halla_events_stuck_past_lease} stuck). Some
-                  enquiries may be missing or out of date until this is resolved.
+                  {failedMessages} {failedMessages === 1 ? "message" : "messages"} from the AI receptionist did not finish arriving, so some enquiries may be missing or out of date.
                 </Alert>
+              </div>
+            )}
+
+            <section aria-label="Needs you" className="mt-8">
+              <h2 className="font-display text-xl text-foreground">Needs you</h2>
+              {needs.length === 0 ? (
+                <div className="klaros-card mt-3 flex items-center gap-3 p-5 text-sm text-muted">
+                  <CheckCircle2 className="h-5 w-5 text-success" aria-hidden="true" />
+                  {total === 0 ? "No patient enquiries yet. They appear here as soon as the AI receptionist or your website records one." : "Every patient is either moving along or waiting on a clinic."}
+                </div>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {needs.map((n) => (
+                    <li key={n.leadId} className={`klaros-card flex flex-col gap-3 border-l-4 p-4 sm:flex-row sm:items-center sm:justify-between ${PRIORITY_STYLE[n.priority]}`}>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-foreground">{n.patient}</span>
+                          {n.context && <span className="text-sm text-muted">· {n.context}</span>}
+                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs text-muted">{PRIORITY_WORD[n.priority]}</span>
+                          {n.openTasks > 1 && <span className="text-xs text-muted-foreground">{n.openTasks} tasks</span>}
+                        </div>
+                        <p className="mt-1 text-sm text-muted">{n.headline}</p>
+                      </div>
+                      <Link
+                        href={n.href}
+                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover"
+                      >
+                        {n.cta}
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               )}
-              {f.qualification.held_for_person > 0 && (
-                <Alert
-                  variant="warning"
-                  action={
-                    <Link href="/medical-tourism/leads" className="underline">
-                      Open patient enquiries
-                    </Link>
-                  }
-                >
-                  {plural(f.qualification.held_for_person, "enquiry is", "enquiries are")} held for a person. The AI does not decide these.
-                </Alert>
-              )}
-              {escalations > 0 && (
-                <Alert variant="warning">
-                  {plural(escalations, "escalation was", "escalations were")} requested. This means a person was asked to act, not that anyone has yet.
-                </Alert>
-              )}
-              {f.delivery.outbound_blocked_by_consent > 0 && (
-                <Alert variant="info">
-                  {plural(f.delivery.outbound_blocked_by_consent, "outbound message was", "outbound messages were")} blocked because the patient has not agreed to be contacted.
-                </Alert>
-              )}
-              {failed === 0 && f.qualification.held_for_person === 0 && escalations === 0 && f.delivery.outbound_blocked_by_consent === 0 && (
-                <Alert variant="success">Nothing needs attention right now.</Alert>
-              )}
+            </section>
+
+            <div className="mt-10 grid gap-8 lg:grid-cols-2">
+              <section aria-label="Where your patients are">
+                <h2 className="font-display text-xl text-foreground">Where your patients are</h2>
+                <ul className="mt-3 space-y-1.5">
+                  {STAGE_ORDER.map((s, i) => {
+                    const n = pipeline.counts[s] ?? 0;
+                    return (
+                      <li key={s}>
+                        <Link href={`/medical-tourism/pipeline?stage=${s}`} className="group flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-muted">
+                          <span className="w-5 text-right text-xs text-muted-foreground">{i + 1}</span>
+                          <span className="w-36 shrink-0 text-foreground">{STAGE_LABEL[s]}</span>
+                          <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-muted">
+                            <span className="block h-full rounded-full bg-accent" style={{ width: total > 0 ? `${Math.max(n > 0 ? 6 : 0, (n / total) * 100)}%` : "0%" }} />
+                          </span>
+                          <span className="w-6 text-right tabular-nums text-muted">{n}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <Link href="/medical-tourism/pipeline" className="mt-2 inline-block text-sm text-accent hover:text-accent-hover">
+                  Open the patient board
+                </Link>
+              </section>
+
+              <div className="space-y-8">
+                <section aria-label="Money">
+                  <h2 className="font-display text-xl text-foreground">Money</h2>
+                  {currencies.length === 0 ? (
+                    <p className="mt-3 text-sm text-muted">No commission is on record yet. A commission only counts once a clinic's outcome is confirmed with evidence.</p>
+                  ) : (
+                    currencies.map(([cur, by]) => (
+                      <div key={cur} className="klaros-card mt-3 p-4">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">{cur}</div>
+                        <dl className="mt-2 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                          {(
+                            [
+                              ["Potential", by.PENDING],
+                              ["Confirmed", by.CONFIRMED],
+                              ["Invoiced", by.INVOICED],
+                              ["Paid", by.PAID],
+                            ] as const
+                          ).map(([label, v]) => (
+                            <div key={label}>
+                              <dt className="text-muted">{label}</dt>
+                              <dd className="mt-0.5 text-lg text-foreground">{money(v?.amount ?? "0", cur)}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    ))
+                  )}
+                  <p className="mt-2 text-xs text-muted-foreground">Potential is not earned: it becomes revenue only when confirmed.</p>
+                </section>
+
+                {waiting.length > 0 && (
+                  <section aria-label="Waiting on clinics">
+                    <h2 className="font-display text-xl text-foreground">Waiting on clinics</h2>
+                    <ul className="mt-3 space-y-1.5 text-sm">
+                      {waiting.map((w) => (
+                        <li key={w.leadId} className="flex items-center gap-2 text-muted">
+                          <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          <Link href={`/medical-tourism/patients/${w.leadId}`} className="text-foreground hover:underline">
+                            {w.patient}
+                          </Link>
+                          <span>
+                            · with {w.clinic}
+                            {w.sentAgo ? `, sent ${w.sentAgo}` : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+              </div>
             </div>
-
-            <Section title="Enquiries" hint="Everything the AI receptionist has recorded for this business.">
-              <StatCard label="Received" value={f.received} icon={Users} />
-              <StatCard label="Qualified" value={f.qualification.qualified} icon={CheckCircle2} tone="success" note="A decision recorded by the AI or a person." />
-              <StatCard label="Held for a person" value={f.qualification.held_for_person} icon={AlertTriangle} tone={f.qualification.held_for_person > 0 ? "warning" : "neutral"} />
-              <StatCard label="Awaiting review" value={f.qualification.pending} icon={Hourglass} />
-            </Section>
-
-            <Section title="Consent" hint="What each patient has agreed to, using their most recent answer.">
-              <StatCard label="May be contacted" value={f.consent.contact_granted} icon={ShieldCheck} tone="success" />
-              <StatCard label="Details may be kept" value={f.consent.store_personal_data_granted} icon={ShieldCheck} tone="success" />
-              <StatCard label="Health information may be kept" value={f.consent.store_medical_information_granted} icon={ShieldCheck} tone="success" />
-              <StatCard
-                label="Details withheld"
-                value={f.consent.frozen}
-                icon={ShieldCheck}
-                tone={f.consent.frozen > 0 ? "warning" : "neutral"}
-                note="Declined or withdrawn: personal details are not kept."
-              />
-              <StatCard label="No consent record" value={f.consent.no_evidence} icon={ClipboardList} tone={f.consent.no_evidence > 0 ? "warning" : "neutral"} />
-            </Section>
-
-            <Section title="Appointments" hint="Counted by their own status.">
-              <StatCard label="Confirmed" value={f.appointments.confirmed} icon={CalendarCheck} tone="success" />
-              <StatCard label="Requested, not booked" value={f.appointments.tentative_not_a_booking} icon={Hourglass} note="A request is not a booking." />
-              <StatCard label="Completed" value={f.appointments.completed} icon={CheckCircle2} />
-              <StatCard label="Cancelled or no-show" value={f.appointments.cancelled + f.appointments.no_show} icon={AlertTriangle} />
-            </Section>
-
-            <Section title="Connection to the AI receptionist" hint="Messages received from Halla AI.">
-              <StatCard label="Processed" value={f.delivery.halla_events_processed} icon={CheckCircle2} tone="success" />
-              <StatCard label="In progress" value={f.delivery.halla_events_in_flight} icon={Hourglass} />
-              <StatCard label="Failed" value={f.delivery.halla_events_failed} icon={AlertTriangle} tone={f.delivery.halla_events_failed > 0 ? "danger" : "neutral"} />
-              <StatCard label="Stuck" value={f.delivery.halla_events_stuck_past_lease} icon={AlertTriangle} tone={f.delivery.halla_events_stuck_past_lease > 0 ? "danger" : "neutral"} />
-            </Section>
-
-            <p className="mt-8 max-w-3xl text-xs text-muted-foreground">{f.definitions}</p>
           </>
         ) : null}
       </div>

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const push = vi.fn();
 let search = "";
 const loginMock = vi.fn();
+const modeMock = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }), useSearchParams: () => new URLSearchParams(search) }));
 vi.mock("@/lib/api", () => ({
   ApiError: class ApiError extends Error {
@@ -18,6 +19,7 @@ vi.mock("@/lib/api", () => ({
     }
   },
   login: (...a: unknown[]) => loginMock(...a),
+  getMedicalTourismMode: (...a: unknown[]) => modeMock(...a),
 }));
 import LoginPage from "@/app/login/page";
 import { ApiError } from "@/lib/api";
@@ -25,6 +27,8 @@ import { ApiError } from "@/lib/api";
 beforeEach(() => {
   push.mockReset();
   loginMock.mockReset();
+  modeMock.mockReset();
+  modeMock.mockResolvedValue({ pilot_console: false });
   search = "";
   localStorage.clear();
   sessionStorage.clear();
@@ -112,5 +116,25 @@ describe("Sign in on a sleeping server", () => {
     await vi.advanceTimersByTimeAsync(8000);
     expect(screen.getByRole("status")).toHaveTextContent("waking up");
     vi.useRealTimers();
+  });
+});
+
+describe("Where sign-in lands", () => {
+  it("opens Today for a Medical Tourism organisation and the builder for everyone else", async () => {
+    loginMock.mockResolvedValue({ access_token: "A", refresh_token: "R", token_type: "bearer" });
+    modeMock.mockResolvedValue({ pilot_console: true });
+    render(<LoginPage />);
+    fill();
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/medical-tourism/overview"));
+  });
+
+  it("still signs in when the mode cannot be read", async () => {
+    loginMock.mockResolvedValue({ access_token: "A", refresh_token: "R", token_type: "bearer" });
+    modeMock.mockRejectedValue(new Error("down"));
+    render(<LoginPage />);
+    fill();
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/business"));
   });
 });
