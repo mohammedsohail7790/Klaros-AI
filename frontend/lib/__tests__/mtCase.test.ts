@@ -129,3 +129,25 @@ describe("integration wording", () => {
     expect(plainDetail("NOT_CONNECTED", "SOME_UNKNOWN_FLAG missing")).toBe("Not connected.");
   });
 });
+
+describe("after the outcome: the commission decides what is left to do", () => {
+  const outcomeLead = (commission: string | null) =>
+    lead({ stage: "OUTCOME", referrals: [ref("OUTCOME_REPORTED", { commission_status: commission })] });
+
+  it("asks the owner to set the commission up until one exists", () => {
+    expect(nextStepFor(outcomeLead(null), NOW)).toMatchObject({ cta: "Set up the commission", priority: 2 });
+  });
+
+  it("walks potential, earned, invoiced and disputed to the right next step", () => {
+    expect(nextStepFor(outcomeLead("PENDING"), NOW).cta).toBe("Check the commission");
+    expect(nextStepFor(outcomeLead("CONFIRMED"), NOW).cta).toBe("Invoice the clinic");
+    expect(nextStepFor(outcomeLead("INVOICED"), NOW).cta).toBe("Check for payment");
+    expect(nextStepFor(outcomeLead("DISPUTED"), NOW).cta).toBe("Resolve the dispute");
+  });
+
+  it("a paid or cancelled commission leaves nothing for the owner to do, so Today does not list the patient", () => {
+    expect(nextStepFor(outcomeLead("PAID"), NOW)).toMatchObject({ cta: null, priority: 4 });
+    expect(nextStepFor(outcomeLead("CANCELLED"), NOW).cta).toBeNull();
+    expect(buildNeedsYou([outcomeLead("PAID")], [], NOW)).toEqual([]);
+  });
+});

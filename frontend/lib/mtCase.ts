@@ -71,8 +71,22 @@ export function nextStepFor(l: PipelineLead, now: number = Date.now()): NextStep
       return ref?.status === "DECLINED"
         ? { cta: "Choose another clinic", hint: `${clinic} declined. The patient can be referred somewhere else if they agree.`, priority: 2 }
         : { cta: "Record the outcome", hint: `${clinic} accepted. Record what they report once the consultation has happened.`, priority: 3 };
-    case "OUTCOME":
-      return { cta: "Check the commission", hint: "The clinic reported an outcome. A commission is earned only once it is confirmed with evidence.", priority: 3 };
+    case "OUTCOME": {
+      switch (ref?.commission_status ?? null) {
+        case null:
+          return { cta: "Set up the commission", hint: "The clinic reported an outcome. Record the commission you agreed; it counts as earned only once the agreed outcome is confirmed with evidence.", priority: 2 };
+        case "PENDING":
+          return { cta: "Check the commission", hint: "The commission is potential until the outcome your agreement names is on record with evidence.", priority: 3 };
+        case "CONFIRMED":
+          return { cta: "Invoice the clinic", hint: "The commission is earned. Send the clinic an invoice, then mark it invoiced.", priority: 2 };
+        case "INVOICED":
+          return { cta: "Check for payment", hint: "Invoiced. Mark it paid when the money arrives.", priority: 3 };
+        case "DISPUTED":
+          return { cta: "Resolve the dispute", hint: "The commission is disputed. Settle it, then return it to earned or invoiced.", priority: 2 };
+        default:
+          return { cta: null, hint: ref?.commission_status === "PAID" ? "Done. The commission was paid." : "Done. No commission will be earned.", priority: 4 };
+      }
+    }
   }
 }
 
