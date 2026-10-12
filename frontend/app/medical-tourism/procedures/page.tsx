@@ -30,6 +30,7 @@ export default function MedicalTourismProceduresPage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
+  const [offersRefresh, setOffersRefresh] = useState(0);
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
@@ -133,11 +134,18 @@ export default function MedicalTourismProceduresPage() {
           </div>
         )}
 
-        {token && <ClinicOffers token={token} />}
+        {token && <ClinicOffers token={token} refreshKey={offersRefresh} />}
       </div>
 
       {showCreate && token && (
-        <CreateProcedureModal token={token} onClose={() => setShowCreate(false)} onCreated={load} />
+        <CreateProcedureModal
+          token={token}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => {
+            load();
+            setOffersRefresh((n) => n + 1);
+          }}
+        />
       )}
     </AppShell>
   );

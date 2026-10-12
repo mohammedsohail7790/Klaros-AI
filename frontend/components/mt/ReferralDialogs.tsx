@@ -62,7 +62,7 @@ export function NewReferral({ token, patients, providers, initialLeadId, onClose
   );
 }
 
-export function ReferralDetail({ token, id, providerName, onClose }: { token: string; id: string; providerName: Record<string, string>; onClose: () => void }) {
+export function ReferralDetail({ token, id, providerName, onClose, onChanged }: { token: string; id: string; providerName: Record<string, string>; onClose: () => void; onChanged?: () => void }) {
   const [d, setD] = useState<ProviderReferralDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -93,6 +93,7 @@ export function ReferralDetail({ token, id, providerName, onClose }: { token: st
     try {
       await fn();
       setMessage(done);
+      onChanged?.(); // the page behind (stage, next step) is now out of date
     } catch (err) {
       setError(err instanceof ApiError ? (err.code && gateReason(err.code)) || err.message : "That did not work.");
     } finally {
