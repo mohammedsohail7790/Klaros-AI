@@ -152,6 +152,21 @@ class HallaIntegrationService:
         logger.info("halla_provisioned", tenant_id=str(tenant_id), operation="provision")
         return await self.connect(tenant_id, user_id, halla_tenant_id=halla_tenant_id, api_key=api_key, signing_secret=signing_secret)
 
+    async def phone(self, tenant_id: uuid.UUID, action: str, **fields: Any) -> dict[str, Any]:
+        """Phone-number actions for this business's receptionist, asked of Halla with the platform secret. The business must already have been
+        provisioned there (Halla answers `no_receptionist` otherwise). Nothing here needs, or ever returns, a credential."""
+        self._adapter()
+        settings = get_settings()
+        secret = (settings.HALLA_PROVISIONING_SECRET or "").strip()
+        if not secret:
+            raise HallaProvisioningUnavailableError("Phone numbers are not available on this deployment.")
+        from app.integrations.workforce.halla_client import HallaClient, provisioning_endpoint
+
+        client = HallaClient(provisioning_endpoint(settings), secret, timeout=settings.HALLA_HEALTH_TIMEOUT_SECONDS, max_retries=0)
+        raw = await client.phone({"klarosTenantId": str(tenant_id), "action": action, **fields})
+        data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+        return data
+
     async def disconnect(self, tenant_id: uuid.UUID) -> WorkforceStatusReport:
         adapter = self._adapter()
         try:

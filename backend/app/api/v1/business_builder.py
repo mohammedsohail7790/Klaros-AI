@@ -209,6 +209,115 @@ async def provision_halla(
     return {**_status_view(report), "configured": configured, "halla": await halla.connection_info(current_user.tenant_id)}
 
 
+# --- Phone numbers for the receptionist: a new number (bought through Halla, with the price shown and accepted) or the business's own existing one. ---
+
+_PHONE_MESSAGES = {
+    "cost_not_accepted": (status.HTTP_422_UNPROCESSABLE_ENTITY, "Please accept the monthly cost to continue."),
+    "already_has_number": (status.HTTP_409_CONFLICT, "This business already has a phone number."),
+    "purchase_in_progress": (status.HTTP_409_CONFLICT, "A purchase is already in progress. Give it a moment."),
+    "monthly_cap_reached": (status.HTTP_429_TOO_MANY_REQUESTS, "The monthly limit for new phone numbers has been reached. Please contact support."),
+    "number_unavailable": (status.HTTP_409_CONFLICT, "That number was just taken. Search again for another."),
+    "not_available": (status.HTTP_503_SERVICE_UNAVAILABLE, "Phone numbers aren't available right now. Please try again later."),
+    "search_failed": (status.HTTP_502_BAD_GATEWAY, "We couldn't search for numbers just now. Please try again."),
+    "is_halla_line": (status.HTTP_422_UNPROCESSABLE_ENTITY, "That is already one of our lines. Enter the business's own phone number."),
+    "no_receptionist": (status.HTTP_409_CONFLICT, "Create your AI receptionist first, then add a phone number."),
+}
+
+
+def _phone_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, HallaProvisioningUnavailableError):
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Phone numbers are not available on this deployment.")
+    if isinstance(exc, HallaNotEnabledError):
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="The Halla integration is not enabled.")
+    if isinstance(exc, WorkforceUnavailableError):
+        mapped = _PHONE_MESSAGES.get(getattr(exc, "code", None) or "")
+        if mapped:
+            return HTTPException(status_code=mapped[0], detail=mapped[1])
+        return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="We couldn't reach the phone service just now. Please try again.")
+    raise exc
+
+
+_PHONE_ERRORS = (HallaProvisioningUnavailableError, HallaNotEnabledError, WorkforceUnavailableError)
+
+
+@router.get("/workforce/halla/phone")
+async def get_halla_phone(
+    current_user: CurrentUser = Depends(require_permission(Permission.READ_BUSINESS_JOURNEY)),
+    halla: HallaIntegrationService = Depends(get_halla_integration_service),
+) -> dict[str, Any]:
+    """The business's phone numbers, the hand-off number, the trial plan and whether a new number can be bought."""
+    try:
+        d = await halla.phone(current_user.tenant_id, "status")
+    except _PHONE_ERRORS as exc:
+        raise _phone_error(exc) from exc
+    plan = d.get("plan") or None
+    return {
+        "numbers": [{"phone_number": n.get("phoneNumber"), "status": n.get("status"), "agent": n.get("agent")} for n in d.get("numbers") or []],
+        "business_number": d.get("businessNumber"),
+        "human_handoff": bool(d.get("humanHandoff")),
+        "plan": None if plan is None else {"plan": plan.get("plan"), "status": plan.get("status"), "trial_expires_at": plan.get("trialExpiresAt"), "trial_minutes_used": plan.get("trialMinutesUsed")},
+        "can_buy": bool(d.get("canBuy")),
+        "monthly_cost_usd": d.get("monthlyCostUsd"),
+    }
+
+
+@router.post("/workforce/halla/phone/search")
+async def search_halla_phone(
+    body: dict[str, Any],
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_INTEGRATIONS)),
+    halla: HallaIntegrationService = Depends(get_halla_integration_service),
+) -> dict[str, Any]:
+    area = "".join(c for c in str(body.get("area_code") or "") if c.isdigit())
+    if len(area) != 3:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a 3-digit area code.")
+    try:
+        d = await halla.phone(current_user.tenant_id, "search", areaCode=area)
+    except _PHONE_ERRORS as exc:
+        raise _phone_error(exc) from exc
+    return {"numbers": [{"phone_number": n.get("phoneNumber"), "friendly_name": n.get("friendlyName")} for n in d.get("numbers") or []], "monthly_cost_usd": d.get("monthlyCostUsd")}
+
+
+@router.post("/workforce/halla/phone/buy")
+async def buy_halla_phone(
+    body: dict[str, Any],
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_INTEGRATIONS)),
+    halla: HallaIntegrationService = Depends(get_halla_integration_service),
+) -> dict[str, Any]:
+    """Buys the chosen number through Halla. This spends money, so the owner must send back the monthly cost they were shown."""
+    number = str(body.get("phone_number") or "").strip()
+    cost = body.get("accepted_monthly_cost_usd")
+    if not number:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Choose a number from the list.")
+    try:
+        d = await halla.phone(
+            current_user.tenant_id, "buy", phoneNumber=number,
+            acceptedMonthlyCostUsd=float(cost) if isinstance(cost, (int, float)) and not isinstance(cost, bool) else None,
+        )
+    except _PHONE_ERRORS as exc:
+        raise _phone_error(exc) from exc
+    return {"phone_number": d.get("phoneNumber"), "monthly_cost_usd": d.get("monthlyCostUsd"), "receptionist_pinned": bool(d.get("receptionistPinned"))}
+
+
+@router.put("/workforce/halla/phone/business-number")
+async def set_halla_business_number(
+    body: dict[str, Any],
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_INTEGRATIONS)),
+    halla: HallaIntegrationService = Depends(get_halla_integration_service),
+) -> dict[str, Any]:
+    """The business's own existing number: where hard cases are handed to a person, and the line to forward to the AI number. Empty removes it."""
+    raw = body.get("business_number")
+    value = str(raw).strip() if raw is not None else ""
+    try:
+        d = await halla.phone(current_user.tenant_id, "set_business_number", businessNumber=value or None)
+    except HTTPException:
+        raise
+    except _PHONE_ERRORS as exc:
+        if isinstance(exc, WorkforceUnavailableError) and exc.status_code == status.HTTP_400_BAD_REQUEST:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter the business number with its country code, for example +14155550123.") from exc
+        raise _phone_error(exc) from exc
+    return {"business_number": d.get("businessNumber"), "human_handoff": bool(d.get("humanHandoff"))}
+
+
 @router.delete("/workforce/halla/connection")
 async def disconnect_halla(
     current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_INTEGRATIONS)),

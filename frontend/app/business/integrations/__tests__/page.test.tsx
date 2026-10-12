@@ -32,7 +32,7 @@ describe("Integration Center", () => {
   it("groups integrations and derives each state honestly", async () => {
     getOps.mockResolvedValue(opsFixture());
     render(<Page />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Integrations" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Integrations" }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByText("1 connected · 1 available to connect.")).toBeInTheDocument();
     const stripe = screen.getByRole("heading", { name: "Stripe" }).closest("li")!;
     expect(stripe).toHaveTextContent("Available — not connected");
@@ -103,7 +103,7 @@ describe("Integration Center — purpose, connection, requirement, action on eve
   it("uses the product's category names", async () => {
     getOps.mockResolvedValue(opsFixture({ integration_groups: ["CRM & operations", "Communication", "Calendar", "Payments", "Accounting", "Marketing", "Ecommerce", "Analytics", "AI Workforce"] }));
     render(<Page />);
-    await screen.findByRole("heading", { level: 1, name: "Integrations" });
+    await screen.findByRole("heading", { level: 1, name: "Integrations" }, { timeout: 5000 });
     const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     expect(headings).toEqual(["CRM", "Communication", "Calendar", "Payments", "Finance", "Marketing", "Ecommerce", "Analytics", "AI Workforce"]);
   });

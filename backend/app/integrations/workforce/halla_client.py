@@ -19,6 +19,7 @@ credential is never logged.
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -137,6 +138,11 @@ class HallaClient:
         business, but a lost answer is better re-asked by the owner than silently repeated."""
         return await self._request("POST", "/platform/klaros/provision", operation="provision", json=body)
 
+    async def phone(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Phone-number actions for one provisioned business (status, search, buy, set_business_number), with the same platform secret as
+        `provision`. Never retried: a buy spends money."""
+        return await self._request("POST", "/platform/klaros/phone", operation="phone", json=body)
+
     # ----------------------------------------------------------------- plumbing
 
     def _headers(self) -> dict[str, str]:
@@ -186,16 +192,16 @@ class HallaClient:
         if code == 404:
             raise WorkforceUnavailableError("Halla does not know that resource", status_code=code)
         if code == 409:
-            raise WorkforceUnavailableError("Halla reported a conflict", status_code=code)
+            raise WorkforceUnavailableError("Halla reported a conflict", status_code=code, code=_error_code(response))
         if code == 429:
             raise WorkforceUnavailableError(
                 "Halla is rate limiting Klaros", status_code=code, retryable=True,
-                retry_after=_retry_after_seconds(response.headers.get("retry-after")),
+                retry_after=_retry_after_seconds(response.headers.get("retry-after")), code=_error_code(response),
             )
         if code >= 500:
-            raise WorkforceUnavailableError("Halla had an internal error", status_code=code, retryable=True)
+            raise WorkforceUnavailableError("Halla had an internal error", status_code=code, retryable=True, code=_error_code(response))
         if code >= 400:
-            raise WorkforceUnavailableError("Halla rejected the request", status_code=code)
+            raise WorkforceUnavailableError("Halla rejected the request", status_code=code, code=_error_code(response))
         if not response.content:
             return {}
         try:
@@ -213,6 +219,19 @@ class HallaClient:
         # Operation, status, latency and Retry-After only — never the credential, a body or a header value.
         logger.info("halla_request", operation=operation, status_code=status, ok=ok, attempt=attempt + 1,
                     latency_ms=int((time.monotonic() - started) * 1000), retry_after=retry_after)
+
+
+_CODE_RE = re.compile(r"^[a-z_]{3,40}$")
+
+
+def _error_code(response: httpx.Response) -> str | None:
+    """Only Halla's short machine `code` (a fixed vocabulary) is read from an error body: free text is never carried, because it may hold PII."""
+    try:
+        data = response.json()
+    except ValueError:
+        return None
+    value = data.get("code") if isinstance(data, dict) else None
+    return value if isinstance(value, str) and _CODE_RE.match(value) else None
 
 
 def _retry_after_seconds(value: str | None) -> int | None:

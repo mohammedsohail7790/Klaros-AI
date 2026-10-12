@@ -5329,6 +5329,38 @@ export function provisionHalla(token: string) {
   return request<HallaStatusResult & { configured: boolean }>(`${HALLA}/provision`, { method: "POST", headers: authHeaders(token) });
 }
 
+export interface HallaPhoneOption {
+  phone_number: string;
+  friendly_name: string | null;
+}
+
+export interface HallaPhoneStatus {
+  numbers: { phone_number: string; status: string; agent: string | null }[];
+  /** The business's own existing number: where hard cases are handed to a person. */
+  business_number: string | null;
+  human_handoff: boolean;
+  plan: { plan: string; status: string; trial_expires_at: string | null; trial_minutes_used: number } | null;
+  can_buy: boolean;
+  monthly_cost_usd: number | null;
+}
+
+export function getHallaPhone(token: string) {
+  return request<HallaPhoneStatus>(`${HALLA}/phone`, { headers: authHeaders(token) });
+}
+
+export function searchHallaPhone(token: string, area_code: string) {
+  return request<{ numbers: HallaPhoneOption[]; monthly_cost_usd: number | null }>(`${HALLA}/phone/search`, { method: "POST", headers: authHeaders(token), body: JSON.stringify({ area_code }) });
+}
+
+/** Spends money: the backend refuses unless the monthly cost the owner was shown is sent back as accepted. */
+export function buyHallaPhone(token: string, body: { phone_number: string; accepted_monthly_cost_usd: number }) {
+  return request<{ phone_number: string; monthly_cost_usd: number | null; receptionist_pinned: boolean }>(`${HALLA}/phone/buy`, { method: "POST", headers: authHeaders(token), body: JSON.stringify(body) });
+}
+
+export function setHallaBusinessNumber(token: string, business_number: string) {
+  return request<{ business_number: string | null; human_handoff: boolean }>(`${HALLA}/phone/business-number`, { method: "PUT", headers: authHeaders(token), body: JSON.stringify({ business_number }) });
+}
+
 export function disconnectHalla(token: string) {
   return request<HallaStatusResult>(`${HALLA}/connection`, { method: "DELETE", headers: authHeaders(token) });
 }
