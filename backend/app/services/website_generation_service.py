@@ -48,6 +48,7 @@ tests/test_website_no_vertical_hardcoding.py.
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from dataclasses import dataclass, field
 
@@ -62,6 +63,7 @@ from app.schemas.website_specification import (
     ContactFormProps,
     CtaProps,
     DataSourceRef,
+    FaqProps,
     FeatureGridProps,
     FooterProps,
     HeroProps,
@@ -70,7 +72,9 @@ from app.schemas.website_specification import (
     ProviderDirectoryProps,
     SeoMetadata,
     SectionSpec,
+    StepsProps,
     TextProps,
+    TrustBarProps,
     UnsafeContentError,
     WebsiteSpecification,
     reject_unsafe_text,
@@ -79,6 +83,8 @@ from app.services.ai_boundary import bound_ai_provider, bound_embedding_provider
 from app.services.ai_invocation_log_service import record_ai_invocation
 from app.services.ai_provider import AIProvider, get_ai_provider
 from app.services.business_blueprint_service import BusinessBlueprintService
+from app.services.consent_gate import tenant_requires_consent
+from app.services.website_brand import split_steps, theme_for
 from app.services.vertical_extension_service import VerticalExtensionService
 from app.services.website_data_providers import get_website_data_provider
 
@@ -134,6 +140,51 @@ def _sentence(text: str | None) -> str | None:
         return None
     t = t[0].upper() + t[1:]
     return t if t[-1] in ".!?" else t + "."
+
+
+def _journey_steps(journey: dict) -> list[dict[str, str]]:
+    """The customer journey as ordered steps, from exactly what the Blueprint holds: a list of {title, description} (or plain strings), or one block of
+    text split into its steps. Anything unsafe is dropped, never repaired. Fewer than two steps is not a process, so it returns nothing."""
+    raw = journey.get("steps")
+    out: list[dict[str, str]] = []
+    if isinstance(raw, list):
+        for entry in raw:
+            title = description = None
+            if isinstance(entry, str):
+                title = entry
+            elif isinstance(entry, dict):
+                title, description = entry.get("title"), entry.get("description")
+            if isinstance(title, str) and title.strip():
+                step: dict[str, str] = {"title": title.strip()[:200]}
+                if isinstance(description, str) and description.strip():
+                    step["description"] = description.strip()[:1000]
+                out.append(step)
+    else:
+        text = _first_any_string(journey)
+        out = [{"title": part} for part in split_steps(text)] if text else []
+    safe: list[dict[str, str]] = []
+    for step in out[:8]:
+        try:
+            reject_unsafe_text(step["title"], max_length=200)
+            if "description" in step:
+                reject_unsafe_text(step["description"])
+        except UnsafeContentError:
+            continue
+        safe.append(step)
+    return safe if len(safe) >= 2 else []
+
+
+def _is_safe(value: str) -> bool:
+    try:
+        reject_unsafe_text(value, max_length=200)
+        return True
+    except UnsafeContentError:
+        return False
+
+
+def _phone_ok(value: str | None) -> bool:
+    """A stated phone number that can safely sit in a tel: link (digits, spaces, + - ( ) only)."""
+    return bool(value) and bool(re.fullmatch(r"\+?[0-9][0-9 ()\-]{4,30}", value or ""))
 
 
 def _safe_or_default(value: str | None, default: str) -> tuple[str, str]:
@@ -268,18 +319,55 @@ class WebsiteGenerationService:
 
         data_source_by_capability = await self._resolve_vertical_data_sources(tenant_id)
 
+        # --- what the Blueprint says about the journey and the places served: shown only when it actually says it ---
+        steps = _journey_steps(by_key.get(BlueprintSectionKey.CUSTOMER_JOURNEY.value, {}))
+        provenance["how_it_works"] = "USER_STATED" if steps else "SYSTEM_DEFAULT"
+        highlights = [
+            h for h in _first_list_of_strings(by_key.get(BlueprintSectionKey.GEOGRAPHY.value, {}), ("highlights",))
+            if _is_safe(h)
+        ][:6]
+        consent_required = await tenant_requires_consent(self._session_factory, tenant_id)
+        brand = theme_for(business_name, texts=(description, target_customer))
+        provenance["brand"] = "SYSTEM_DEFAULT"
+
+        cta_url = ("mailto:" + contact_email) if contact_email else (("tel:" + contact_phone) if _phone_ok(contact_phone) else None)
+
+        def cta_section() -> list[SectionSpec]:
+            # A button that goes nowhere is worse than none: with no stated email or phone, the enquiry form on the Contact page is the way in.
+            if cta_url is None:
+                return []
+            return [
+                SectionSpec(
+                    component_type=ComponentType.CTA,
+                    props=CtaProps(heading="Ready to get started?", button_text="Get in touch", button_url=cta_url).model_dump(),
+                )
+            ]
+
+        footer = SectionSpec(
+            component_type=ComponentType.FOOTER,
+            props=FooterProps(
+                business_name=business_name,
+                contact_email=contact_email or None,
+                contact_phone=contact_phone or None,
+            ).model_dump(),
+        )
+
+        hero_props = HeroProps(
+            headline=hero_headline,
+            subheadline=hero_subheadline,
+            cta_text="Contact us" if cta_url and cta_url.startswith("mailto:") else ("Call us" if cta_url else None),
+            cta_url=cta_url,
+            secondary_cta_text="Call us" if (contact_email and _phone_ok(contact_phone)) else None,
+            secondary_cta_url=("tel:" + contact_phone) if (contact_email and _phone_ok(contact_phone)) else None,
+            highlights_title="How it works" if steps else None,
+            highlights=[st["title"] for st in steps[:4]],
+        )
         home_sections: list[SectionSpec] = [
-            SectionSpec(
-                component_type=ComponentType.HERO,
-                props=HeroProps(
-                    headline=hero_headline,
-                    subheadline=hero_subheadline,
-                    cta_text="Contact us",
-                    cta_url="mailto:" + contact_email if contact_email else None,
-                ).model_dump(exclude_none=False),
-            ),
+            SectionSpec(component_type=ComponentType.HERO, props=hero_props.model_dump(exclude_none=False)),
         ]
-        # A section is only generated when the Blueprint actually supplied its content —
+        if highlights:
+            home_sections.append(SectionSpec(component_type=ComponentType.TRUST_BAR, props=TrustBarProps(items=highlights).model_dump()))
+        # A section is only generated when the Blueprint actually supplied its content -
         # a published site must never show "Our services" / "Everyone who needs what we
         # offer" filler just to look complete.
         if service_names:
@@ -291,6 +379,10 @@ class WebsiteGenerationService:
                         items=[{"title": name[:200], "icon_key": "check"} for name in service_names],
                     ).model_dump(),
                 )
+            )
+        if steps:
+            home_sections.append(
+                SectionSpec(component_type=ComponentType.STEPS, props=StepsProps(title="How it works", items=steps).model_dump())
             )
         if provenance.get("target_customer") != "SYSTEM_DEFAULT":
             home_sections.append(
@@ -314,16 +406,24 @@ class WebsiteGenerationService:
                 )
             )
 
-        home_sections.append(
-            SectionSpec(
-                component_type=ComponentType.CTA,
-                props=CtaProps(
-                    heading="Ready to get started?",
-                    button_text="Get in touch",
-                    button_url=("mailto:" + contact_email) if contact_email else "tel:0000000000",
-                ).model_dump(),
-            )
-        )
+        faq_items: list[dict[str, str]] = []
+        if steps:
+            faq_items.append({"question": "How does it work?", "answer": " ".join(f"{i}. {st['title'].rstrip('.')}." for i, st in enumerate(steps, 1))[:4000]})
+        if consent_required:
+            faq_items.append({
+                "question": "What happens to the details I send?",
+                "answer": "Nothing is kept until you agree. The exact wording you are agreeing to is shown on the enquiry form, above the Send button.",
+            })
+        faq_items.append({
+            "question": "How can I get in touch?",
+            "answer": "Use the enquiry form on the Contact page"
+            + (f", email {contact_email}" if contact_email else "")
+            + (f" or call {contact_phone}" if _phone_ok(contact_phone) else "")
+            + ".",
+        })
+        if len(faq_items) >= 2:
+            home_sections.append(SectionSpec(component_type=ComponentType.FAQ, props=FaqProps(title="Questions", items=faq_items).model_dump()))
+        home_sections.extend(cta_section())
 
         contact_page = PageSpec(
             slug="contact",
@@ -334,14 +434,7 @@ class WebsiteGenerationService:
                     component_type=ComponentType.CONTACT_FORM,
                     props=ContactFormProps(title="Get in touch").model_dump(),
                 ),
-                SectionSpec(
-                    component_type=ComponentType.FOOTER,
-                    props=FooterProps(
-                        business_name=business_name,
-                        contact_email=contact_email or None,
-                        contact_phone=contact_phone or None,
-                    ).model_dump(),
-                ),
+                footer,
             ],
         )
 
@@ -349,31 +442,13 @@ class WebsiteGenerationService:
             slug="home",
             title=business_name,
             seo=SeoMetadata(title=business_name[:200], description=description[:4000]),
-            sections=home_sections
-            + [
-                SectionSpec(
-                    component_type=ComponentType.FOOTER,
-                    props=FooterProps(
-                        business_name=business_name,
-                        contact_email=contact_email or None,
-                        contact_phone=contact_phone or None,
-                    ).model_dump(),
-                )
-            ],
+            sections=home_sections + [footer],
         )
 
         # Requirement-driven pages: a dedicated page for every vertical data
         # source the business actually has (never a fixed page list), and a
         # "How it works" page when the Blueprint describes the customer
         # journey. Each is generated only from data present in this tenant.
-        footer = SectionSpec(
-            component_type=ComponentType.FOOTER,
-            props=FooterProps(
-                business_name=business_name,
-                contact_email=contact_email or None,
-                contact_phone=contact_phone or None,
-            ).model_dump(),
-        )
         extra_pages: list[PageSpec] = []
         nav_items: list[dict[str, str]] = [{"label": "Home", "page_slug": "home"}]
         used_slugs = {"home", "contact"}
@@ -397,14 +472,7 @@ class WebsiteGenerationService:
                             props=props_model.model_dump(),
                             data_source=DataSourceRef(provider_key=provider_key, params={"limit": 50}),
                         ),
-                        SectionSpec(
-                            component_type=ComponentType.CTA,
-                            props=CtaProps(
-                                heading="Ready to get started?",
-                                button_text="Get in touch",
-                                button_url=("mailto:" + contact_email) if contact_email else "tel:0000000000",
-                            ).model_dump(),
-                        ),
+                        *cta_section(),
                         footer,
                     ],
                 )
@@ -412,28 +480,33 @@ class WebsiteGenerationService:
             nav_items.append({"label": title, "page_slug": slug})
 
         journey_text = _first_any_string(by_key.get(BlueprintSectionKey.CUSTOMER_JOURNEY.value, {}))
-        if journey_text and "how-it-works" not in used_slugs:
-            safe_text, journey_prov = _safe_or_default(journey_text, "")
-            if safe_text:
-                provenance["how_it_works"] = journey_prov
+        if "how-it-works" not in used_slugs and (steps or journey_text):
+            journey_section: SectionSpec | None = None
+            if steps:
+                journey_section = SectionSpec(
+                    component_type=ComponentType.STEPS, props=StepsProps(title="How it works", items=steps).model_dump()
+                )
+            else:
+                safe_text, journey_prov = _safe_or_default(journey_text, "")
+                if safe_text:
+                    provenance["how_it_works"] = journey_prov
+                    journey_section = SectionSpec(
+                        component_type=ComponentType.TEXT, props=TextProps(heading="How it works", body=safe_text).model_dump()
+                    )
+            if journey_section is not None:
                 extra_pages.append(
                     PageSpec(
                         slug="how-it-works",
                         title="How it works",
                         seo=SeoMetadata(title=f"How it works — {business_name}"[:200], description=description[:4000]),
-                        sections=[
-                            SectionSpec(
-                                component_type=ComponentType.TEXT,
-                                props=TextProps(heading="How it works", body=safe_text).model_dump(),
-                            ),
-                            footer,
-                        ],
+                        sections=[journey_section, footer],
                     )
                 )
                 nav_items.append({"label": "How it works", "page_slug": "how-it-works"})
         nav_items.append({"label": "Contact", "page_slug": "contact"})
 
         spec = WebsiteSpecification(
+            theme=brand,
             navigation={"items": nav_items},
             seo_defaults={"title": business_name[:200], "description": description[:4000]},
             pages=[home_page, *extra_pages, contact_page],

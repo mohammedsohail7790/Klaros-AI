@@ -1,21 +1,16 @@
 "use client";
 
 /**
- * Phase 12 (PHASE_12_WEBSITE_BUILDER_PRODUCTIZATION_IMPLEMENTATION_LOG.md
- * §5): the frontend half of the "no second renderer" rule. This module is
- * the ONLY place a `component_type` string coming out of the backend's
- * render tree (backend/app/services/website_renderer.py) is turned into
- * anything that actually renders. It is a closed, explicit switch over the
- * same 8-value `ComponentType` enum the backend's
- * `app/schemas/website_specification.py` validates against — an unknown
- * `component_type` renders nothing (a visible "unsupported" placeholder in
- * dev, silently skipped in prod-shaped output), never a dynamic import,
- * `eval`, or `dangerouslySetInnerHTML`. Every string from the spec is
- * rendered as plain React children (JSX text), which React escapes the
- * same way it escapes any other text node — there is no HTML-from-string
- * path anywhere in this file.
+ * The frontend half of the "no second renderer" rule. This module is the ONLY place a `component_type` string coming out of the backend's render tree
+ * (backend/app/services/website_renderer.py) is turned into anything that renders. It is a closed, explicit switch over the same `ComponentType` enum
+ * the backend's `app/schemas/website_specification.py` validates against: an unknown `component_type` renders nothing, never a dynamic import, `eval`,
+ * or `dangerouslySetInnerHTML`. Every string from the spec is rendered as plain React children (escaped like any other text node), and every link
+ * target is re-checked here against http(s)/mailto/tel even though the backend already enforces the same allowlist.
+ *
+ * Each block renders its own full-width band (`klaros-site-band`) so SiteView can alternate tints; styles live in ./site.css.
  */
 
+import { Check, ChevronDown, Clock, Globe, Heart, MapPin, Phone, ShieldCheck, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { PublicConsentState, RenderedSection } from "@/lib/api";
 import { ApiError, getPublicConsent, submitPublicWebsiteLead } from "@/lib/api";
@@ -32,55 +27,175 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
-function Hero({ props }: { props: Item }) {
+function strs(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim() !== "") : [];
+}
+
+/** Only web, mail and phone links are ever rendered as links. */
+function safeHref(v: unknown): string | undefined {
+  const url = str(v).trim();
+  return /^(https?:\/\/|mailto:|tel:)/i.test(url) ? url : undefined;
+}
+
+type Tone = "base" | "alt";
+
+function Band({ tone, className, children }: { tone: string; className?: string; children: React.ReactNode }) {
   return (
-    <section className="klaros-site-hero">
-      <h1>{str(props.headline)}</h1>
-      {props.subheadline ? <p>{str(props.subheadline)}</p> : null}
-      {props.cta_text && props.cta_url ? (
-        <a className="klaros-site-cta" href={str(props.cta_url)}>
-          {str(props.cta_text)}
-        </a>
-      ) : null}
+    <section className={`klaros-site-band ${className ?? ""}`.trim()} data-tone={tone}>
+      <div className="klaros-site-inner">{children}</div>
     </section>
   );
 }
 
-function Text({ props }: { props: Item }) {
+function Hero({ props }: { props: Item }) {
+  const route = strs(props.highlights);
+  const cta = safeHref(props.cta_url);
+  const second = safeHref(props.secondary_cta_url);
   return (
-    <section className="klaros-site-text">
-      {props.heading ? <h2>{str(props.heading)}</h2> : null}
-      <p>{str(props.body)}</p>
-    </section>
+    <Band tone="hero" className="klaros-site-hero">
+      <div className="klaros-site-hero-grid" data-has-route={route.length > 0}>
+        <div>
+          <h1>{str(props.headline)}</h1>
+          {props.subheadline ? <p className="klaros-site-lead">{str(props.subheadline)}</p> : <div style={{ height: "1.5rem" }} />}
+          {(props.cta_text && cta) || (props.secondary_cta_text && second) ? (
+            <div className="klaros-site-actions">
+              {props.cta_text && cta ? (
+                <a className="klaros-site-btn" href={cta}>
+                  {str(props.cta_text)}
+                </a>
+              ) : null}
+              {props.secondary_cta_text && second ? (
+                <a className="klaros-site-btn klaros-site-btn-secondary" href={second}>
+                  {str(props.secondary_cta_text)}
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        {route.length > 0 ? (
+          <aside className="klaros-site-route" aria-label={str(props.highlights_title) || "How it works"}>
+            <h2>{str(props.highlights_title) || "How it works"}</h2>
+            <ol>
+              {route.map((r, i) => (
+                <li key={i}>{r}</li>
+              ))}
+            </ol>
+          </aside>
+        ) : null}
+      </div>
+    </Band>
+  );
+}
+
+function TrustBar({ props }: { props: Item }) {
+  const items = strs(props.items);
+  if (items.length === 0) return null;
+  return (
+    <Band tone="trust">
+      <ul className="klaros-site-trust">
+        {items.map((t, i) => (
+          <li key={i}>
+            <Check size={18} aria-hidden="true" />
+            {t}
+          </li>
+        ))}
+      </ul>
+    </Band>
+  );
+}
+
+function Text({ props, tone }: { props: Item; tone: Tone }) {
+  return (
+    <Band tone={tone}>
+      {props.heading ? <h2 className="klaros-site-section-title">{str(props.heading)}</h2> : null}
+      <p className="klaros-site-text-body">{str(props.body)}</p>
+    </Band>
   );
 }
 
 function Cta({ props }: { props: Item }) {
+  const href = safeHref(props.button_url);
   return (
-    <section className="klaros-site-cta-block">
-      <h2>{str(props.heading)}</h2>
-      {props.body ? <p>{str(props.body)}</p> : null}
-      <a className="klaros-site-cta" href={str(props.button_url)}>
-        {str(props.button_text)}
-      </a>
-    </section>
+    <Band tone="primary">
+      <div className="klaros-site-cta-block">
+        <div>
+          <h2>{str(props.heading)}</h2>
+          {props.body ? <p>{str(props.body)}</p> : null}
+        </div>
+        {href ? (
+          <a className="klaros-site-btn" href={href}>
+            {str(props.button_text)}
+          </a>
+        ) : null}
+      </div>
+    </Band>
   );
 }
 
-function FeatureGrid({ props }: { props: Item }) {
+const ICONS = { check: Check, star: Star, shield: ShieldCheck, heart: Heart, globe: Globe, clock: Clock, phone: Phone, "map-pin": MapPin } as const;
+
+function FeatureGrid({ props, tone }: { props: Item; tone: Tone }) {
   const items = Array.isArray(props.items) ? (props.items as Item[]) : [];
   return (
-    <section className="klaros-site-features">
-      {props.title ? <h2>{str(props.title)}</h2> : null}
+    <Band tone={tone}>
+      {props.title ? <h2 className="klaros-site-section-title">{str(props.title)}</h2> : null}
       <div className="klaros-site-feature-grid">
+        {items.map((item, i) => {
+          const Icon = ICONS[str(item.icon_key) as keyof typeof ICONS];
+          return (
+            <div key={i} className="klaros-site-feature">
+              {Icon ? (
+                <span className="klaros-site-feature-icon">
+                  <Icon size={20} aria-hidden="true" />
+                </span>
+              ) : null}
+              <h3>{str(item.title)}</h3>
+              {item.description ? <p>{str(item.description)}</p> : null}
+            </div>
+          );
+        })}
+      </div>
+    </Band>
+  );
+}
+
+function Steps({ props, tone }: { props: Item; tone: Tone }) {
+  const items = Array.isArray(props.items) ? (props.items as Item[]) : [];
+  if (items.length === 0) return null;
+  return (
+    <Band tone={tone}>
+      {props.title ? <h2 className="klaros-site-section-title">{str(props.title)}</h2> : null}
+      {props.intro ? <p className="klaros-site-steps-intro">{str(props.intro)}</p> : null}
+      <ol className="klaros-site-steps" data-count={items.length} style={{ "--klaros-site-step-count": items.length } as React.CSSProperties}>
         {items.map((item, i) => (
-          <div key={i} className="klaros-site-feature">
+          <li key={i} className="klaros-site-step">
             <h3>{str(item.title)}</h3>
             {item.description ? <p>{str(item.description)}</p> : null}
-          </div>
+          </li>
+        ))}
+      </ol>
+    </Band>
+  );
+}
+
+function Faq({ props, tone }: { props: Item; tone: Tone }) {
+  const items = (Array.isArray(props.items) ? (props.items as Item[]) : []).filter((i) => str(i.question));
+  if (items.length === 0) return null;
+  return (
+    <Band tone={tone}>
+      {props.title ? <h2 className="klaros-site-section-title">{str(props.title)}</h2> : null}
+      <div className="klaros-site-faq">
+        {items.map((item, i) => (
+          <details key={i}>
+            <summary>
+              {str(item.question)}
+              <ChevronDown size={20} aria-hidden="true" />
+            </summary>
+            <p className="klaros-site-faq-answer">{str(item.answer)}</p>
+          </details>
         ))}
       </div>
-    </section>
+    </Band>
   );
 }
 
@@ -112,11 +227,11 @@ function ItemCard({ item }: { item: Item }) {
   );
 }
 
-function ItemList({ props, data }: { props: Item; data: unknown }) {
+function ItemList({ props, data, tone }: { props: Item; data: unknown; tone: Tone }) {
   const items = asItems(data);
   return (
-    <section className="klaros-site-items">
-      {props.title ? <h2>{str(props.title)}</h2> : null}
+    <Band tone={tone}>
+      {props.title ? <h2 className="klaros-site-section-title">{str(props.title)}</h2> : null}
       {items.length === 0 ? (
         <p className="klaros-site-empty">{str(props.empty_state_text) || "Nothing to show yet."}</p>
       ) : (
@@ -126,7 +241,7 @@ function ItemList({ props, data }: { props: Item; data: unknown }) {
           ))}
         </div>
       )}
-    </section>
+    </Band>
   );
 }
 
@@ -137,7 +252,7 @@ const CONTACT_FIELD_LABELS: Record<string, string> = {
   MESSAGE: "Message",
 };
 
-function ContactForm({ props, tenantId, preview = false }: { props: Item; tenantId: string; preview?: boolean }) {
+function ContactForm({ props, tenantId, preview = false, tone }: { props: Item; tenantId: string; preview?: boolean; tone: Tone }) {
   const fields = Array.isArray(props.fields) && props.fields.length > 0 ? (props.fields as string[]) : ["NAME", "EMAIL", "MESSAGE"];
   const [values, setValues] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -195,33 +310,33 @@ function ContactForm({ props, tenantId, preview = false }: { props: Item; tenant
 
   if (status === "sent") {
     return (
-      <section className="klaros-site-contact">
-        {props.title ? <h2>{str(props.title)}</h2> : null}
-        <p>Thanks — we received your message and will be in touch.</p>
-      </section>
+      <Band tone={tone}>
+        {props.title ? <h2 className="klaros-site-section-title">{str(props.title)}</h2> : null}
+        <p className="klaros-site-text-body">Thanks — we received your message and will be in touch.</p>
+      </Band>
     );
   }
 
   if (consentFailed) {
     return (
-      <section className="klaros-site-contact">
-        {props.title ? <h2>{str(props.title)}</h2> : null}
+      <Band tone={tone}>
+        {props.title ? <h2 className="klaros-site-section-title">{str(props.title)}</h2> : null}
         <p className="klaros-site-empty">We can&apos;t take enquiries through this page right now. Please try again later.</p>
-      </section>
+      </Band>
     );
   }
   if (consent && consent.required && !consent.open) {
     return (
-      <section className="klaros-site-contact">
-        {props.title ? <h2>{str(props.title)}</h2> : null}
+      <Band tone={tone}>
+        {props.title ? <h2 className="klaros-site-section-title">{str(props.title)}</h2> : null}
         <p className="klaros-site-empty">We&apos;re not taking enquiries through this page yet. Please contact us directly.</p>
-      </section>
+      </Band>
     );
   }
 
   return (
-    <section className="klaros-site-contact">
-      {props.title ? <h2>{str(props.title)}</h2> : null}
+    <Band tone={tone}>
+      {props.title ? <h2 className="klaros-site-section-title">{str(props.title)}</h2> : null}
       <form onSubmit={handleSubmit} className="klaros-site-contact-form">
         {fields.map((f) => (
           <label key={f} className="klaros-site-contact-field">
@@ -266,59 +381,75 @@ function ContactForm({ props, tenantId, preview = false }: { props: Item; tenant
           {status === "sending" ? "Sending..." : str(props.submit_label) || "Send"}
         </button>
       </form>
-    </section>
+    </Band>
   );
 }
 
 function Footer({ props }: { props: Item }) {
   const links = Array.isArray(props.links) ? (props.links as Item[]) : [];
   return (
-    <footer className="klaros-site-footer">
-      <div>{str(props.business_name)}</div>
-      {props.contact_email ? <div>{str(props.contact_email)}</div> : null}
-      {props.contact_phone ? <div>{str(props.contact_phone)}</div> : null}
-      {links.length > 0 ? (
-        <nav>
-          {links.map((l, i) => (
-            <a key={i} href={str(l.url)}>
-              {str(l.label)}
-            </a>
-          ))}
-        </nav>
-      ) : null}
+    <footer className="klaros-site-band" data-tone="footer">
+      <div className="klaros-site-inner klaros-site-footer">
+        <div className="klaros-site-footer-name">{str(props.business_name)}</div>
+        {props.contact_email || props.contact_phone ? (
+          <div className="klaros-site-footer-contact">
+            {props.contact_email ? <span>{str(props.contact_email)}</span> : null}
+            {props.contact_phone ? <span>{str(props.contact_phone)}</span> : null}
+          </div>
+        ) : null}
+        {links.length > 0 ? (
+          <nav aria-label="Footer">
+            {links.map((l, i) => {
+              const href = safeHref(l.url);
+              return href ? (
+                <a key={i} href={href}>
+                  {str(l.label)}
+                </a>
+              ) : null;
+            })}
+          </nav>
+        ) : null}
+      </div>
     </footer>
   );
 }
 
 /**
- * The single entry point. `section.component_type` is whatever the
- * backend's already-validated render tree contains — this function still
- * treats it as untrusted-shaped: any value outside the known 8 renders
- * nothing rather than guessing.
+ * The single entry point. `section.component_type` is whatever the backend's already-validated render tree contains — this function still treats it
+ * as untrusted-shaped: any value outside the known set renders nothing rather than guessing. `alt` says whether this block sits on the tinted band
+ * (SiteView alternates them so neighbouring blocks read as separate).
  */
-export function RenderSection({ section, tenantId, preview = false }: { section: RenderedSection; tenantId: string; preview?: boolean }) {
+export function RenderSection({ section, tenantId, preview = false, alt = false }: { section: RenderedSection; tenantId: string; preview?: boolean; alt?: boolean }) {
   const props = (section.props ?? {}) as Item;
+  const tone: Tone = alt ? "alt" : "base";
   switch (section.component_type) {
     case "HERO":
       return <Hero props={props} />;
+    case "TRUST_BAR":
+      return <TrustBar props={props} />;
     case "TEXT":
-      return <Text props={props} />;
+      return <Text props={props} tone={tone} />;
     case "CTA":
       return <Cta props={props} />;
     case "FEATURE_GRID":
-      return <FeatureGrid props={props} />;
+      return <FeatureGrid props={props} tone={tone} />;
+    case "STEPS":
+      return <Steps props={props} tone={tone} />;
+    case "FAQ":
+      return <Faq props={props} tone={tone} />;
     case "PROVIDER_DIRECTORY":
     case "PROCEDURE_LIST":
-      return <ItemList props={props} data={section.data} />;
+      return <ItemList props={props} data={section.data} tone={tone} />;
     case "CONTACT_FORM":
-      return <ContactForm props={props} tenantId={tenantId} preview={preview} />;
+      return <ContactForm props={props} tenantId={tenantId} preview={preview} tone={tone} />;
     case "FOOTER":
       return <Footer props={props} />;
     default:
-      // Unknown component_type: render nothing. This is defense in depth —
-      // backend/app/schemas/website_specification.py already rejects any
-      // component_type outside the closed enum before a section can ever
-      // be persisted, so this branch should be unreachable in practice.
+      // Unknown component_type: render nothing. Defense in depth — the backend already rejects any component_type outside the closed enum
+      // before a section can ever be persisted, so this branch should be unreachable in practice.
       return null;
   }
 }
+
+/** Blocks that carry their own colour (hero, trust bar, call to action, footer) do not take part in the light/tinted alternation. */
+export const SELF_TONED = new Set(["HERO", "TRUST_BAR", "CTA", "FOOTER"]);
