@@ -21,7 +21,7 @@ from typing import Any
 from sqlalchemy import select
 
 from app.db.session import set_tenant_context
-from app.models.medical_tourism import ReferralCommission, ReferralCommissionBasis, ReferralCommissionStatus as S
+from app.models.medical_tourism import Provider, ReferralCommission, ReferralCommissionBasis, ReferralCommissionStatus as S
 from app.models.medical_tourism_referral import ProviderReferral, ReferralOutcome, ReferralStatus
 from app.services.mt_referrals import ReferralError, _audit
 
@@ -125,3 +125,25 @@ def commission_to_dict(c: ReferralCommission) -> dict[str, Any]:
         "currency": c.currency, "status": c.status, "qualifying_outcome": c.qualifying_outcome,
         "invoiced_at": c.invoiced_at.isoformat() if c.invoiced_at else None, "paid_at": c.paid_at.isoformat() if c.paid_at else None, "status_note": c.status_note,
     }
+
+
+async def commission_desk(session_factory, tenant_id: uuid.UUID) -> dict[str, Any]:
+    """What the owner needs on one screen: every commission with the patient (by lead id), the clinic and the outcome it rests on, and the referrals whose clinic has
+    reported an outcome but which have no commission yet. Patient names are NOT resolved here: the caller shows them only where consent allows."""
+    async with session_factory() as session:
+        await set_tenant_context(session, tenant_id)
+        commissions = list((await session.execute(select(ReferralCommission).where(ReferralCommission.tenant_id == tenant_id, ReferralCommission.provider_referral_id.is_not(None)).order_by(ReferralCommission.created_at.desc()))).scalars())
+        referrals = {r.id: r for r in (await session.execute(select(ProviderReferral).where(ProviderReferral.tenant_id == tenant_id))).scalars()}
+        providers = {p.id: p.name for p in (await session.execute(select(Provider).where(Provider.tenant_id == tenant_id))).scalars()}
+    have = {c.provider_referral_id for c in commissions}
+    rows = []
+    for c in commissions:
+        r = referrals.get(c.provider_referral_id)
+        d = commission_to_dict(c)
+        d.update({"lead_id": str(r.lead_id) if r else None, "provider_name": providers.get(c.provider_id), "outcome": r.outcome if r else None, "outcome_evidence": r.outcome_evidence if r else None})
+        rows.append(d)
+    awaiting = [
+        {"referral_id": str(r.id), "lead_id": str(r.lead_id), "provider_name": providers.get(r.provider_id), "outcome": r.outcome, "outcome_evidence": r.outcome_evidence}
+        for r in referrals.values() if r.outcome and r.id not in have and r.status != ReferralStatus.CANCELLED
+    ]
+    return {"commissions": rows, "awaiting": awaiting}
