@@ -100,7 +100,13 @@ async def approved_wording_versions(session_factory, tenant_id: uuid.UUID) -> li
         conn = (await session.execute(select(IntegrationConnection).where(IntegrationConnection.tenant_id == tenant_id, IntegrationConnection.provider == "halla"))).scalar_one_or_none()
     meta = conn.connection_metadata if conn is not None and isinstance(conn.connection_metadata, dict) else {}
     versions = meta.get("approved_wording_versions")
-    return [v for v in versions if isinstance(v, str) and v] if isinstance(versions, list) else []
+    legacy = [v for v in versions if isinstance(v, str) and v] if isinstance(versions, list) else []
+    from app.models.consent_wording import ConsentWording
+
+    async with session_factory() as session:
+        await set_tenant_context(session, tenant_id)
+        approved = list((await session.execute(select(ConsentWording.version).where(ConsentWording.tenant_id == tenant_id))).scalars().all())
+    return legacy + [v for v in approved if v not in legacy]
 
 
 def check_create(claim: ConsentClaim | None, *, has_medical_fields: bool) -> None:

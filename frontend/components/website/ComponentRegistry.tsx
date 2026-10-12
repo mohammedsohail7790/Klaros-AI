@@ -16,9 +16,9 @@
  * path anywhere in this file.
  */
 
-import { useState } from "react";
-import type { RenderedSection } from "@/lib/api";
-import { ApiError, submitPublicWebsiteLead } from "@/lib/api";
+import { useEffect, useState } from "react";
+import type { PublicConsentState, RenderedSection } from "@/lib/api";
+import { ApiError, getPublicConsent, submitPublicWebsiteLead } from "@/lib/api";
 
 type Item = Record<string, unknown>;
 
@@ -142,10 +142,29 @@ function ContactForm({ props, tenantId, preview = false }: { props: Item; tenant
   const [values, setValues] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  // Whether this business must collect consent, and the exact approved words to show. Unknown (still loading, or it failed) never lets the form send.
+  const [consent, setConsent] = useState<PublicConsentState | null>(null);
+  const [consentFailed, setConsentFailed] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    getPublicConsent(tenantId)
+      .then((c) => alive && setConsent(c))
+      .catch(() => alive && setConsentFailed(true));
+    return () => {
+      alive = false;
+    };
+  }, [tenantId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (status === "sending") return;
+    if (!consent || !consent.open || (consent.required && !agreed)) {
+      setStatus("error");
+      setError(consent?.required ? "Please tick the box to agree before you send your enquiry." : "This form isn't ready yet. Please try again in a moment.");
+      return;
+    }
     if (preview) {
       // A draft preview is not live: nothing is sent and no lead is created.
       setStatus("error");
@@ -164,6 +183,7 @@ function ContactForm({ props, tenantId, preview = false }: { props: Item; tenant
         phone: values.PHONE || undefined,
         description: values.MESSAGE || undefined,
         website: values._hp || "",
+        consent: consent.required ? { scopes: ["contact", "store_personal_data"], wording_version: consent.version ?? "" } : undefined,
       });
       setStatus("sent");
       setValues({});
@@ -178,6 +198,23 @@ function ContactForm({ props, tenantId, preview = false }: { props: Item; tenant
       <section className="klaros-site-contact">
         {props.title ? <h2>{str(props.title)}</h2> : null}
         <p>Thanks — we received your message and will be in touch.</p>
+      </section>
+    );
+  }
+
+  if (consentFailed) {
+    return (
+      <section className="klaros-site-contact">
+        {props.title ? <h2>{str(props.title)}</h2> : null}
+        <p className="klaros-site-empty">We can&apos;t take enquiries through this page right now. Please try again later.</p>
+      </section>
+    );
+  }
+  if (consent && consent.required && !consent.open) {
+    return (
+      <section className="klaros-site-contact">
+        {props.title ? <h2>{str(props.title)}</h2> : null}
+        <p className="klaros-site-empty">We&apos;re not taking enquiries through this page yet. Please contact us directly.</p>
       </section>
     );
   }
@@ -215,8 +252,17 @@ function ContactForm({ props, tenantId, preview = false }: { props: Item; tenant
           value={values._hp ?? ""}
           onChange={(e) => setValues((v) => ({ ...v, _hp: e.target.value }))}
         />
-        {error ? <div className="klaros-site-form-error">{error}</div> : null}
-        <button type="submit" disabled={status === "sending"}>
+        {consent?.required && consent.text ? (
+          <div className="klaros-site-consent" dir={consent.language === "ar" ? "rtl" : "ltr"}>
+            <p className="klaros-site-consent-text">{consent.text}</p>
+            <label className="klaros-site-consent-check">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+              <span>{consent.language === "ar" ? "قرأت ما سبق وأوافق عليه" : "I have read this and I agree"}</span>
+            </label>
+          </div>
+        ) : null}
+        {error ? <div className="klaros-site-form-error" role="alert">{error}</div> : null}
+        <button type="submit" disabled={status === "sending" || !consent || (consent.required && !agreed)}>
           {status === "sending" ? "Sending..." : str(props.submit_label) || "Send"}
         </button>
       </form>

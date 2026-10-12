@@ -28,6 +28,22 @@ router = APIRouter(prefix="/public/websites", tags=["public-websites"])
 _service = WebsiteService(async_session_maker)
 
 
+@router.get("/{tenant_id}/consent")
+async def get_public_consent(tenant_id: uuid.UUID) -> dict[str, Any]:
+    """What a published form needs to collect consent honestly: whether this business must collect it, and the exact wording to display (latest approved version).
+    `open` is false until the owner approves a wording: the form then stays closed rather than collecting anything."""
+    from app.services import consent_gate
+    from app.services.consent_wording_service import latest_wording
+
+    if not await consent_gate.tenant_requires_consent(async_session_maker, tenant_id):
+        return {"required": False, "open": True}
+    latest = await latest_wording(async_session_maker, tenant_id)
+    if latest is None:
+        # A wording approved before the owner screens existed lives only as a label in the connection; the form has no text to show for it, so it stays closed.
+        return {"required": True, "open": False}
+    return {"required": True, "open": True, "version": latest["version"], "text": latest["text"], "language": latest["language"]}
+
+
 @router.get("/{tenant_id}")
 async def get_public_website(tenant_id: uuid.UUID) -> dict[str, Any]:
     website = await _service.get_website(tenant_id)
