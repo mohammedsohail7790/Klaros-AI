@@ -311,6 +311,9 @@ class BusinessWorkforceService:
             )
         return {"leads": rows, "total": total, "limit": limit, "offset": offset}
 
+    async def enabled_vertical_keys(self, tenant_id: uuid.UUID) -> list[str]:
+        return await self._enabled_vertical_keys(tenant_id)
+
     async def _enabled_vertical_keys(self, tenant_id: uuid.UUID) -> list[str]:
         links = await self._verticals.list_enabled_for_organization(tenant_id)
         if not links:

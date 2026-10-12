@@ -41,6 +41,7 @@ from app.integrations.workforce.events import HallaEventType, InvalidWorkforceEv
 from app.services.business_workforce_service import BusinessWorkforceService, LeadNotFoundError
 from app.services.halla_integration_service import (
     HallaIntegrationService,
+    HallaProvisioningUnavailableError,
     HallaNotEnabledError,
     InvalidHallaCredentialError,
     LeadNotCallableError,
@@ -150,6 +151,8 @@ def _halla_error(exc: Exception) -> HTTPException:
         return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
     if isinstance(exc, InvalidHallaCredentialError):
         return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+    if isinstance(exc, HallaProvisioningUnavailableError):
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     if isinstance(exc, (HallaLeadNotFoundError,)):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
     if isinstance(exc, (LeadNotCallableError, LeadNotSyncableError)):
@@ -157,7 +160,7 @@ def _halla_error(exc: Exception) -> HTTPException:
     raise exc
 
 
-_HALLA_ERRORS = (HallaNotEnabledError, WorkforceNotConnectedError, WorkforceUnavailableError, InvalidHallaCredentialError, HallaLeadNotFoundError, LeadNotCallableError, LeadNotSyncableError)
+_HALLA_ERRORS = (HallaProvisioningUnavailableError, HallaNotEnabledError, WorkforceNotConnectedError, WorkforceUnavailableError, InvalidHallaCredentialError, HallaLeadNotFoundError, LeadNotCallableError, LeadNotSyncableError)
 
 
 @router.put("/workforce/halla/connection")
@@ -177,6 +180,39 @@ async def connect_halla(
     except _HALLA_ERRORS as exc:
         raise _halla_error(exc) from exc
     return {**_status_view(report), "halla": await halla.connection_info(current_user.tenant_id)}
+
+
+@router.post("/workforce/halla/provision")
+async def provision_halla(
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_INTEGRATIONS)),
+    builder: BusinessBuilderService = Depends(get_business_builder_service),
+    journeys: BusinessJourneyService = Depends(get_business_journey_service),
+    workforce: BusinessWorkforceService = Depends(get_business_workforce_service),
+    halla: HallaIntegrationService = Depends(get_halla_integration_service),
+) -> dict[str, Any]:
+    """Create this business's AI receptionist in Halla from what Klaros already knows about the business. The owner enters no credential:
+    Klaros asks Halla with its own platform secret and keeps what Halla returns, encrypted. Nothing is switched on for patients here."""
+    journey = await journeys.get_current(current_user.tenant_id)
+    if journey is None:
+        history = await journeys.list_journeys(current_user.tenant_id)
+        journey = history[0] if history else None
+    overview = await builder.get_overview(current_user.tenant_id, journey=_journey_to_dict(journey) if journey is not None else None)
+    pack = await workforce.context_pack(current_user.tenant_id, overview.get("business") or {})
+    verticals = await workforce.enabled_vertical_keys(current_user.tenant_id)
+    if not verticals:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Set up your business first, so Klaros knows what kind of receptionist to create.")
+    configured = False
+    try:
+        report = await halla.provision(current_user.tenant_id, current_user.id, business_name=str(pack.as_dict().get("business_name") or ""), vertical=verticals[0])
+        if report.status.value == "CONNECTED":
+            try:  # the business context goes across at once; a failure here is reported, never hidden
+                await halla.configure(current_user.tenant_id, pack.as_dict())
+                configured = True
+            except _HALLA_ERRORS:
+                configured = False
+    except _HALLA_ERRORS as exc:
+        raise _halla_error(exc) from exc
+    return {**_status_view(report), "configured": configured, "halla": await halla.connection_info(current_user.tenant_id)}
 
 
 @router.delete("/workforce/halla/connection")
