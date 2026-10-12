@@ -31,6 +31,7 @@ REAL; the AI workforce is reported exactly as its adapter reports itself.
 
 from __future__ import annotations
 
+import asyncio
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -875,39 +876,57 @@ class BusinessBuilderService:
     async def get_workforce(self, tenant_id: uuid.UUID) -> dict[str, Any]:
         return workforce_view(await get_workforce_integration().get_status(tenant_id))
 
-    async def load_inputs(self, tenant_id: uuid.UUID, *, journey: dict[str, Any] | None) -> BuilderInputs:
-        blueprint = await self._blueprints.get_active(tenant_id)
-        sections: dict[str, dict] = {}
-        claims: list[dict[str, Any]] = []
-        requirements: list[Any] = []
-        recs: list[dict[str, Any]] = []
-        blueprint_view = None
-        if blueprint is not None:
-            blueprint_view = {"id": str(blueprint.id), "version": blueprint.version, "status": blueprint.status}
-            sections = {s.section_key: (s.data or {}) for s in await self._blueprints.list_sections(tenant_id, blueprint.id)}
-            claims = [
-                {"id": str(c.id), "section_key": c.section_key, "key": c.key, "value": c.value, "status": c.status}
-                for c in await self._blueprints.list_claims(tenant_id, blueprint.id)
-            ]
-            requirements, _ = await self._recommendations.collect_capability_requirements(tenant_id, blueprint)
-            recs = [
-                {
-                    "id": str(r.id),
-                    "type": r.type,
-                    "capability_key": r.capability_key,
-                    "status": r.status,
-                    "run_id": str(r.run_id),
-                }
-                for r in await self._recommendations.list_recommendations(tenant_id, blueprint_id=blueprint.id)
-                if r.status != "SUPERSEDED"
-            ]
+    async def _together(self, *coros):
+        """Run independent reads at once on a real database, one after another otherwise.
 
-        providers, verticals_all = await self._load_catalog_and_connections(tenant_id)
+        Every read here opens its own session, so on PostgreSQL they can share
+        the wall-clock time instead of queueing — the overview was a dozen
+        sequential round-trip chains, which is what made Home take many seconds
+        against a remote database. In-memory SQLite (tests) has one shared
+        connection, where concurrent sessions would corrupt each other, so
+        there they still run in order."""
+        bind = self._session_factory.kw.get("bind")
+        if bind is not None and bind.dialect.name == "postgresql":
+            return await asyncio.gather(*coros)
+        return [await c for c in coros]
+
+    async def load_inputs(self, tenant_id: uuid.UUID, *, journey: dict[str, Any] | None) -> BuilderInputs:
+        async def empty() -> list:
+            return []
+
+        async def no_requirements() -> tuple[list, list]:
+            return [], []
+
+        # Wave 1: nothing here depends on anything else.
+        blueprint, (providers, verticals_all), website, lead_count, workforce, organization_name = await self._together(
+            self._blueprints.get_active(tenant_id),
+            self._load_catalog_and_connections(tenant_id),
+            self._load_website(tenant_id),
+            self._count_leads(tenant_id),
+            get_workforce_integration().get_status(tenant_id),
+            self._organization_name(tenant_id),
+        )
         enabled_keys = {v.key for v in verticals_all if v.enabled}
-        website = await self._load_website(tenant_id)
-        lead_count = await self._count_leads(tenant_id)
-        module_counts = await self._module_counts(tenant_id, [v for v in verticals_all if v.key in enabled_keys])
-        workforce = await get_workforce_integration().get_status(tenant_id)
+
+        # Wave 2: needs the blueprint and the enabled modules from wave 1.
+        has_blueprint = blueprint is not None
+        section_rows, claim_rows, (requirements, _), rec_rows, module_counts = await self._together(
+            self._blueprints.list_sections(tenant_id, blueprint.id) if has_blueprint else empty(),
+            self._blueprints.list_claims(tenant_id, blueprint.id) if has_blueprint else empty(),
+            self._recommendations.collect_capability_requirements(tenant_id, blueprint) if has_blueprint else no_requirements(),
+            self._recommendations.list_recommendations(tenant_id, blueprint_id=blueprint.id) if has_blueprint else empty(),
+            self._module_counts(tenant_id, [v for v in verticals_all if v.key in enabled_keys]),
+        )
+        blueprint_view = {"id": str(blueprint.id), "version": blueprint.version, "status": blueprint.status} if has_blueprint else None
+        sections: dict[str, dict] = {s.section_key: (s.data or {}) for s in section_rows}
+        claims: list[dict[str, Any]] = [
+            {"id": str(c.id), "section_key": c.section_key, "key": c.key, "value": c.value, "status": c.status} for c in claim_rows
+        ]
+        recs: list[dict[str, Any]] = [
+            {"id": str(r.id), "type": r.type, "capability_key": r.capability_key, "status": r.status, "run_id": str(r.run_id)}
+            for r in rec_rows
+            if r.status != "SUPERSEDED"
+        ]
         return BuilderInputs(
             journey=journey,
             blueprint=blueprint_view,
@@ -921,7 +940,7 @@ class BusinessBuilderService:
             workforce=workforce,
             lead_count=lead_count,
             module_counts=module_counts,
-            organization_name=await self._organization_name(tenant_id),
+            organization_name=organization_name,
         )
 
     async def _load_catalog_and_connections(self, tenant_id: uuid.UUID) -> tuple[list[ProviderInfo], list[VerticalInfo]]:
