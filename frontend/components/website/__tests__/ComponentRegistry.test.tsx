@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RenderedSection } from "@/lib/api";
 
 const submitPublicWebsiteLeadMock = vi.fn();
+const getPublicConsentMock = vi.fn();
 vi.mock("@/lib/api", () => ({
   ApiError: class ApiError extends Error {
     status: number;
@@ -12,6 +13,7 @@ vi.mock("@/lib/api", () => ({
     }
   },
   submitPublicWebsiteLead: (...args: unknown[]) => submitPublicWebsiteLeadMock(...args),
+  getPublicConsent: (...args: unknown[]) => getPublicConsentMock(...args),
 }));
 
 import { RenderSection } from "@/components/website/ComponentRegistry";
@@ -71,6 +73,7 @@ describe("RenderSection — the closed component_type -> React component registr
 
   it("CONTACT_FORM submits to the public lead endpoint scoped to this tenant only, never a tenant_id from anywhere else", async () => {
     submitPublicWebsiteLeadMock.mockResolvedValue({ received: true, lead_id: "lead-1" });
+    getPublicConsentMock.mockResolvedValue({ required: false, open: true });
     const { getByText, getByLabelText } = render(
       <RenderSection section={section("CONTACT_FORM", { title: "Contact us", fields: ["NAME", "EMAIL", "MESSAGE"] })} tenantId="tenant-abc" />
     );
@@ -81,5 +84,68 @@ describe("RenderSection — the closed component_type -> React component registr
     // covered by the ContactForm's own logic); this test's primary
     // assertion is the closed rendering contract above.
     expect(submitPublicWebsiteLeadMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("CONTACT_FORM — consent for a business that must collect it", () => {
+  const form = () => <RenderSection section={section("CONTACT_FORM", { title: "Enquire", fields: ["NAME", "EMAIL", "MESSAGE"] })} tenantId="tenant-abc" />;
+  const fill = () => {
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Amira Test" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "amira@example.com" } });
+  };
+  beforeEach(() => {
+    submitPublicWebsiteLeadMock.mockReset();
+    getPublicConsentMock.mockReset();
+  });
+
+  it("a business that does not need consent gets the plain form and sends no consent", async () => {
+    getPublicConsentMock.mockResolvedValue({ required: false, open: true });
+    submitPublicWebsiteLeadMock.mockResolvedValue({ received: true, lead_id: "l1" });
+    render(form());
+    await screen.findByLabelText("Name");
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    fill();
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(submitPublicWebsiteLeadMock).toHaveBeenCalled());
+    expect(submitPublicWebsiteLeadMock.mock.calls[0][1].consent).toBeUndefined();
+  });
+
+  it("shows the exact approved wording, will not send until it is ticked, and files the version the visitor saw", async () => {
+    getPublicConsentMock.mockResolvedValue({ required: true, open: true, version: "WEB-v2", text: "I agree Gate Clinic may keep my details.", language: "en" });
+    submitPublicWebsiteLeadMock.mockResolvedValue({ received: true, lead_id: "l1" });
+    render(form());
+    expect(await screen.findByText("I agree Gate Clinic may keep my details.")).toBeInTheDocument();
+    fill();
+    const send = screen.getByRole("button", { name: "Send" });
+    expect(send).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(send).toBeEnabled();
+    fireEvent.click(send);
+    await waitFor(() => expect(submitPublicWebsiteLeadMock).toHaveBeenCalledTimes(1));
+    expect(submitPublicWebsiteLeadMock.mock.calls[0][0]).toBe("tenant-abc");
+    expect(submitPublicWebsiteLeadMock.mock.calls[0][1].consent).toEqual({ scopes: ["contact", "store_personal_data"], wording_version: "WEB-v2" });
+    await screen.findByText(/we received your message/i);
+  });
+
+  it("is closed, with no form at all, until the owner has approved a wording", async () => {
+    getPublicConsentMock.mockResolvedValue({ required: true, open: false });
+    render(form());
+    await screen.findByText(/not taking enquiries through this page yet/);
+    expect(screen.queryByLabelText("Name")).toBeNull();
+    expect(submitPublicWebsiteLeadMock).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the consent state cannot be loaded", async () => {
+    getPublicConsentMock.mockRejectedValue(new Error("down"));
+    render(form());
+    await screen.findByText(/can't take enquiries through this page right now/);
+    expect(screen.queryByLabelText("Name")).toBeNull();
+  });
+
+  it("shows right-to-left wording for an Arabic wording", async () => {
+    getPublicConsentMock.mockResolvedValue({ required: true, open: true, version: "WEB-v1", text: "أوافق على حفظ بياناتي", language: "ar" });
+    render(form());
+    const text = await screen.findByText("أوافق على حفظ بياناتي");
+    expect(text.closest("[dir]")).toHaveAttribute("dir", "rtl");
   });
 });

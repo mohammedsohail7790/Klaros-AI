@@ -5,12 +5,14 @@ const getTypes = vi.fn();
 const getSetup = vi.fn();
 const submit = vi.fn();
 const confirm = vi.fn();
+const listWordings = vi.fn().mockResolvedValue({ wordings: [], suggested_text: "A draft wording that is long enough to be approved by the owner.", min_length: 40, max_length: 2000 });
 vi.mock("@/lib/useAuth", () => ({ useAuth: () => ({ token: "t", user: { id: "u" }, loading: false }) }));
 vi.mock("@/components/AppShell", () => ({ default: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
 vi.mock("@/lib/api", () => ({
   ApiError: class ApiError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } },
   getBusinessTypes: (...a: unknown[]) => getTypes(...a), getMedicalTourismSetup: (...a: unknown[]) => getSetup(...a),
   submitMedicalTourismSetup: (...a: unknown[]) => submit(...a), confirmSetupItem: (...a: unknown[]) => confirm(...a),
+  listConsentWordings: (...a: unknown[]) => listWordings(...a), approveConsentWording: vi.fn(),
 }));
 import Page from "@/app/setup/page";
 

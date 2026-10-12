@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/useAuth";
 import { ApiError, BusinessType, MedicalTourismSetup, confirmSetupItem, getBusinessTypes, getMedicalTourismSetup, submitMedicalTourismSetup } from "@/lib/api";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { ConsentWordingCard } from "@/components/mt/ConsentWordingCard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -192,6 +193,8 @@ export default function SetupPage() {
                 ))}
               </ul>
             </section>
+
+            <ConsentWordingCard token={token} onChanged={async () => { if (token) setSetup(await getMedicalTourismSetup(token)); }} />
 
             <section aria-label="Drafts">
               <h2 className="font-display text-lg text-foreground">Drafts for your approval</h2>

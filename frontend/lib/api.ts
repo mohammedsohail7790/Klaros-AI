@@ -4030,6 +4030,44 @@ export interface PublicLeadFormInput {
   phone?: string;
   description?: string;
   website?: string; // honeypot field — always left empty by a real visitor
+  /** The visitor's own answers, and the version of the wording they saw. Required by a business that must collect consent. */
+  consent?: { scopes: string[]; wording_version: string };
+}
+
+export interface ConsentWording {
+  version: string;
+  text: string;
+  language: string;
+  approved_at: string | null;
+}
+
+export interface ConsentWordingList {
+  wordings: ConsentWording[];
+  suggested_text: string;
+  min_length: number;
+  max_length: number;
+}
+
+export function listConsentWordings(token: string) {
+  return request<ConsentWordingList>(`/api/v1/consent-wordings`, { headers: authHeaders(token) });
+}
+
+/** Approving creates the next numbered version; a wording is never edited. */
+export function approveConsentWording(token: string, body: { text: string; language: "en" | "ar" }) {
+  return request<ConsentWording>(`/api/v1/consent-wordings`, { method: "POST", headers: authHeaders(token), body: JSON.stringify(body) });
+}
+
+export interface PublicConsentState {
+  required: boolean;
+  open: boolean;
+  version?: string;
+  text?: string;
+  language?: string;
+}
+
+/** What a published form needs to collect consent: whether the business must, and the exact wording to show. Public: no sign-in. */
+export function getPublicConsent(tenantId: string) {
+  return request<PublicConsentState>(`/api/v1/public/websites/${tenantId}/consent`);
 }
 
 export function submitPublicWebsiteLead(tenantId: string, body: PublicLeadFormInput) {

@@ -17,6 +17,7 @@ vi.mock("@/lib/api", () => ({
   },
   getPublicWebsite: (...args: unknown[]) => getPublicWebsiteMock(...args),
   submitPublicWebsiteLead: vi.fn(),
+  getPublicConsent: () => Promise.resolve({ required: false, open: true }),
 }));
 
 import { ApiError } from "@/lib/api";
