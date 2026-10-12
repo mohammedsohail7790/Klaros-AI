@@ -27,8 +27,32 @@ class FakeProvisioner(FakeHalla):
     def __init__(self) -> None:
         super().__init__()
         self.reply: httpx.Response | None = None
+        self.phone_replies: dict[str, httpx.Response] = {}  # per action; an action with no entry gets the default answer below
+
+    def _phone(self, request: httpx.Request) -> httpx.Response:
+        import json as _json
+
+        body = _json.loads(request.content)
+        action = body.get("action")
+        if action in self.phone_replies:
+            return self.phone_replies[action]
+        data: dict = {
+            "status": {"numbers": [], "businessNumber": None, "humanHandoff": False, "canBuy": True, "monthlyCostUsd": 1.15,
+                       "plan": {"plan": "professional", "status": "trialing", "trialExpiresAt": "2026-10-26T00:00:00Z", "trialMinutesUsed": 0}},
+            "search": {"numbers": [{"phoneNumber": "+14155550123", "friendlyName": "(415) 555-0123"}], "monthlyCostUsd": 1.15},
+            "buy": {"phoneNumber": body.get("phoneNumber"), "monthlyCostUsd": 1.15, "receptionistPinned": True},
+            "set_business_number": {"businessNumber": body.get("businessNumber"), "humanHandoff": bool(body.get("businessNumber"))},
+        }[action]
+        return httpx.Response(200, json={"success": True, "data": data})
+
+    @property
+    def phone_calls(self) -> list[httpx.Request]:
+        return self.sent("POST", "/platform/klaros/phone")
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/platform/klaros/phone"):
+            self.requests.append(request)
+            return self._phone(request)
         if request.url.path.endswith("/platform/klaros/provision"):
             self.requests.append(request)
             if self.reply is not None:
