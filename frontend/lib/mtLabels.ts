@@ -130,3 +130,26 @@ export function missingConsentSentence(scopes: unknown): string {
   const list = Array.isArray(scopes) ? scopes.map((s) => SCOPE_WORDS[String(s)] ?? String(s)) : [];
   return list.length === 0 ? "record their consent" : list.join(" and ");
 }
+
+export const COMMISSION_STATUS_LABEL: Record<string, string> = { PENDING: "Potential", CONFIRMED: "Earned", INVOICED: "Invoiced", PAID: "Paid", DISPUTED: "Disputed", CANCELLED: "Cancelled" };
+
+export const COMMISSION_STATUS_HELP: Record<string, string> = {
+  PENDING: "Not earned yet. It becomes earned only when the clinic has reported the outcome your agreement names, with evidence.",
+  CONFIRMED: "Earned. Send the clinic an invoice, then mark it invoiced.",
+  INVOICED: "Invoice sent. Mark it paid when the money arrives.",
+  PAID: "Payment received.",
+  DISPUTED: "Under dispute. Return it to earned or invoiced once it is settled.",
+  CANCELLED: "Will not be earned.",
+};
+
+/** Why a commission step was refused, in words. The backend sends a closed code. */
+export const COMMISSION_REASON: Record<string, string> = {
+  no_outcome_evidence: "The clinic has not reported the outcome your agreement names, with evidence, so this cannot be marked earned yet.",
+  invalid_transition: "That step is not allowed from the commission's current status.",
+  commission_exists: "This referral already has a commission.",
+  currency_required: "Choose a currency.",
+  commission_percentage_required: "Enter the commission percentage.",
+  flat_amount_required: "Enter the fixed fee.",
+  referral_cancelled: "This referral was cancelled.",
+  unknown_outcome: "Choose the outcome your agreement names.",
+};

@@ -308,3 +308,17 @@ async def test_the_pipeline_row_carries_the_enquiry_details_only_while_consent_a
         await s.commit()
     row2 = next(x for x in (await client.get(f"{BASE}/pipeline", headers=_h(token))).json()["leads"] if x["lead_id"] == lead2)
     assert row2["intake"]["procedure"] is None and row2["intake"]["destination"] == "Turkey"
+
+
+async def test_a_treatment_typed_in_by_hand_shows_only_with_health_consent(client, halla) -> None:  # noqa: F811
+    token, tid = await _gated(client, "Manual Tx Co", "manualtx@example.com")
+    with_health = await _patient(client, token)
+    no_health = await _patient(client, token, scopes=["contact", "store_personal_data"])
+    async with async_session_maker() as s:
+        await set_tenant_context(s, tid)
+        for lid in (with_health, no_health):
+            (await s.get(Lead, uuid.UUID(lid))).service_requested = "Dental implants"
+        await s.commit()
+    rows = {x["lead_id"]: x for x in (await client.get(f"{BASE}/pipeline", headers=_h(token))).json()["leads"]}
+    assert rows[with_health]["intake"]["procedure"] == "Dental implants"
+    assert rows[no_health]["intake"]["procedure"] is None

@@ -436,3 +436,22 @@ async def test_a_clinic_is_verified_through_credentials_an_owner_can_add_and_che
     assert ok.status_code == 200
     listed = (await client.get(f"{BASE}/providers/{p['id']}/credentials", headers=_h(token))).json()["credentials"]
     assert [x["expiry_date"] for x in listed] == [expiry]
+
+
+async def test_the_commission_desk_lists_commissions_and_referrals_still_waiting_for_one(client, halla) -> None:  # noqa: F811
+    token, tid = await _gated(client, "Desk Co", "deskco@example.com")
+    provider = await _provider(client, token, "Desk Clinic")
+    lead = await _patient(client, token)
+    ref = await _approved(client, token, lead, provider["id"])
+    await _send(client, token, ref)
+    await client.post(f"{BASE}/referrals/{ref}/clinic-response", json={"accepted": True}, headers=_h(token))
+    desk = (await client.get(f"{BASE}/commissions", headers=_h(token))).json()
+    assert desk == {"commissions": [], "awaiting": []}  # no outcome yet: nothing is waiting for a commission
+    await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "TREATMENT_COMPLETED", "evidence": "clinic email"}, headers=_h(token))
+    desk = (await client.get(f"{BASE}/commissions", headers=_h(token))).json()
+    assert [(a["referral_id"], a["provider_name"], a["outcome_evidence"]) for a in desk["awaiting"]] == [(ref, "Desk Clinic", "clinic email")] and desk["commissions"] == []
+    made = (await client.post(f"{BASE}/referrals/{ref}/commission", json={"currency": "usd", "basis": "FLAT", "flat_amount": "500"}, headers=_h(token))).json()["commission"]
+    desk = (await client.get(f"{BASE}/commissions", headers=_h(token))).json()
+    assert desk["awaiting"] == [] and [(c["id"], c["status"], c["lead_id"], c["provider_name"], c["outcome"]) for c in desk["commissions"]] == [(made["id"], "PENDING", lead, "Desk Clinic", "TREATMENT_COMPLETED")]
+    other, _ = await _gated(client, "Desk Other", "deskother@example.com")
+    assert (await client.get(f"{BASE}/commissions", headers=_h(other))).json() == {"commissions": [], "awaiting": []}  # tenant scoped

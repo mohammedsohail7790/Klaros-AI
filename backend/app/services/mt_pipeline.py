@@ -113,7 +113,7 @@ async def build_pipeline(session_factory, tenant_id: uuid.UUID, *, limit: int = 
             "consent_frozen": state.has_evidence and not state.allows(STORE_PERSONAL),
             # What the enquiry is about, shown only while the patient's consent allows it (details need store_personal_data, the treatment also needs store_medical_information).
             "intake": {
-                "procedure": pl.procedure_text if pl is not None and personal_ok and state.allows(STORE_MEDICAL) else None,
+                "procedure": ((pl.procedure_text if pl is not None else None) or lead.service_requested) if personal_ok and state.allows(STORE_MEDICAL) else None,  # a treatment typed in by hand counts too
                 "destination": pl.destination_text if pl is not None and personal_ok else None,
                 "timeframe": pl.timeframe if pl is not None and personal_ok else None,
                 "language": pl.preferred_language if pl is not None and personal_ok else None,

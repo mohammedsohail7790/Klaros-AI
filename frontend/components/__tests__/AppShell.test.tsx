@@ -86,7 +86,7 @@ describe("AppShell navigation", () => {
       expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual([
         "Today", "Patients", "Tasks3", "Referrals", "Consultations",
         "Providers", "Procedures & offers", "Agreements",
-        "Revenue",
+        "Commissions", "Revenue",
         "Business setup", "Website", "Marketing", "AI receptionist",
         "Team", "Account & security", "Privacy & consent",
       ]);
