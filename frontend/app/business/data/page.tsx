@@ -18,22 +18,22 @@ import { ConsoleSection } from "@/components/business/console";
 import { StatusPill } from "@/components/business/StatusPill";
 
 function Row({ label, count, route, text, hint }: { label: string; count?: number; route?: string | null; text?: string; hint?: string }) {
-  const inner = (
-    <>
-      <span className="min-w-0">
-        <span className="block text-sm text-foreground">{label}</span>
-        {hint && <span className="block text-xs text-muted">{hint}</span>}
-      </span>
-      <span className="flex shrink-0 items-center gap-3">
-        <span className={text ? "text-sm font-medium text-foreground" : "text-2xl font-semibold tracking-tight text-foreground"}>{text ?? count}</span>
-        {count === 0 && <span className="text-xs text-muted-foreground">nothing yet</span>}
-      </span>
-    </>
+  const body = (
+    <div className="flex h-full flex-col justify-between rounded-3xl bg-surface-muted p-6 transition-all duration-500 ease-apple hover:bg-surface hover:shadow-raised">
+      <div>
+        <p className="text-[15px] font-medium text-foreground">{label}</p>
+        {hint && <p className="mt-1 text-[13px] leading-snug text-muted">{hint}</p>}
+      </div>
+      <div className="mt-6 flex items-end justify-between gap-3">
+        <span className={text ? "text-[17px] font-semibold tracking-tight text-foreground" : "font-display text-[2.5rem] font-semibold leading-none tracking-[-0.035em] text-foreground"}>{text ?? count}</span>
+        {count === 0 && <span className="text-[13px] text-muted-foreground">nothing yet</span>}
+      </div>
+    </div>
   );
   return route ? (
-    <Link href={route} className="klaros-card klaros-card-interactive flex items-center justify-between p-4">{inner}</Link>
+    <Link href={route} className="block">{body}</Link>
   ) : (
-    <div className="klaros-card flex items-center justify-between p-4">{inner}</div>
+    body
   );
 }
 
@@ -46,7 +46,7 @@ export default function DataCenterPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
+      <div className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader icon={Database} title="Data" description="The records your business runs on. Counts come straight from your data." />
         {error && <div className="mb-4"><Alert variant="danger" action={<Button size="sm" variant="secondary" onClick={() => reload()}>Try again</Button>}>{error}</Alert></div>}
         {!ops && !error && <Skeleton rows={4} />}

@@ -90,13 +90,13 @@ function nextStep(w: OpsWorkflow): string {
 export function WorkflowList({ workflows, token = null }: { workflows: OpsWorkflow[]; token?: string | null }) {
   if (workflows.length === 0) return <p className="text-sm text-muted">No workflows yet.</p>;
   return (
-    <ul className="space-y-3" aria-label="Workflows">
+    <ul className="space-y-4" aria-label="Workflows">
       {workflows.map((w) => {
         const failing = w.last_run?.status === "FAILED";
         return (
-          <li key={w.id} className="klaros-card p-4">
+          <li key={w.id} className="klaros-card p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-foreground">{w.name}</p>
+              <p className="text-[17px] font-semibold tracking-tight text-foreground">{w.name}</p>
               <div className="flex items-center gap-2">
                 {failing && <span className="inline-flex items-center rounded-full border border-danger/25 bg-danger/[0.06] px-2 py-0.5 text-xs font-medium text-danger">Last run failed</span>}
                 <StatusPill state={w.status === "ENABLED" ? "READY" : "CONFIGURATION_REQUIRED"} />
@@ -104,7 +104,7 @@ export function WorkflowList({ workflows, token = null }: { workflows: OpsWorkfl
             </div>
             {w.description && <p className="mt-0.5 text-xs text-muted">{w.description}</p>}
             <ol className="mt-3 flex flex-wrap items-center gap-2 text-xs" aria-label={`Steps of ${w.name}`}>
-              <li className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-accent-hover"><CircleDot className="h-3 w-3" aria-hidden="true" />{triggerLabel(w.trigger_event)}</li>
+              <li className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-accent-hover"><CircleDot className="h-3 w-3" aria-hidden="true" />{triggerLabel(w.trigger_event)}</li>
               {w.actions.map((a, i) => (
                 <li key={a + i} className="inline-flex items-center gap-2"><span aria-hidden="true" className="text-muted-foreground">→</span><span className="rounded-full border border-border px-2.5 py-1 text-foreground">{actionLabel(a)}</span></li>
               ))}

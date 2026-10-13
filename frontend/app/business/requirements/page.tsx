@@ -139,27 +139,27 @@ export default function RequirementsPage() {
             action={<Button variant="secondary" onClick={() => router.push("/business/blueprint")}>Open Blueprint</Button>}
           />
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-12">
             {groups.map(([group, items]) => (
               <section key={group} aria-labelledby={`g-${group}`}>
-                <h2 id={`g-${group}`} className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground"><span aria-hidden="true" className="h-4 w-1 rounded-full bg-accent" />{group}<span className="text-xs font-normal text-muted-foreground">{items.length}</span></h2>
+                <h2 id={`g-${group}`} className="mb-4 flex items-center gap-2 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">{group}<span className="text-xs font-normal text-muted-foreground">{items.length}</span></h2>
                 <ul className="grid gap-3 md:grid-cols-2">
                   {items.map((r) => (
-                    <li key={r.key} className="klaros-card klaros-card-interactive flex flex-col p-5">
+                    <li key={r.key} className="klaros-card klaros-card-interactive flex flex-col p-6">
                       <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                        <h3 className="text-[15px] font-semibold tracking-tight text-foreground">{r.label}</h3>
+                        <h3 className="text-[17px] font-semibold tracking-tight text-foreground">{r.label}</h3>
                         <span className={r.required ? "rounded-xl bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-hover" : "rounded-xl border border-border px-2 py-0.5 text-xs text-muted"}>
                           {r.required ? "Required" : "Suggested"}
                         </span>
                       </div>
                       <p className="text-sm text-muted">{r.description}</p>
-                      <p className="mt-3 rounded-xl bg-surface-muted/70 px-3 py-2 text-sm leading-relaxed text-foreground"><span className="klaros-label mr-1.5">Why</span>{r.why}</p>
+                      <p className="mt-4 rounded-2xl bg-surface px-4 py-3 text-[14px] leading-relaxed text-foreground"><span className="klaros-label mr-1.5">Why</span>{r.why}</p>
                       {r.evidence.filter((e) => e.statement && !r.why.includes(e.statement)).slice(0, 1).map((e, i) => (
                         <blockquote key={e.claim_id ?? `${e.kind}-${i}`} className="mt-2 flex gap-1.5 border-l-2 border-accent/50 pl-2 text-xs italic text-muted">
                           <Quote className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />“{e.statement}”
                         </blockquote>
                       ))}
-                      <div className="mt-auto border-t border-border pt-3 mt-4">
+                      <div className="mt-auto border-t border-border/70 pt-4 mt-5">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="klaros-label">Status</span>
                           <StatusPill state={r.readiness} />
