@@ -200,7 +200,7 @@ export default function AgentDetailPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-3xl space-y-6 px-6 py-10">
+      <div className="mx-auto w-full max-w-4xl space-y-8 px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader
           icon={Bot}
           title={agent.name}
@@ -310,7 +310,7 @@ function IdentitySection({
 
   return (
     <section className="klaros-card p-5">
-      <h2 className="mb-3 text-sm font-semibold text-foreground">Identity &amp; purpose</h2>
+      <h2 className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Identity &amp; purpose</h2>
       {error && (
         <div className="mb-3">
           <Alert variant="danger">{error}</Alert>
@@ -347,7 +347,7 @@ function RoleAutonomySection({ agent }: { agent: Agent }) {
   const editable = agent.status === "DRAFT";
   return (
     <section className="klaros-card p-5">
-      <h2 className="mb-3 text-sm font-semibold text-foreground">Role &amp; autonomy</h2>
+      <h2 className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Role &amp; autonomy</h2>
       <dl className="mb-4 text-sm">
         <dt className="text-xs font-medium text-muted-foreground">Acting role</dt>
         <dd className="mt-0.5 text-foreground">{agent.acting_role}</dd>
@@ -426,7 +426,7 @@ function ToolPermissionsSection({
 
   return (
     <section className="klaros-card p-5">
-      <h2 className="text-sm font-semibold text-foreground">Tool permissions</h2>
+      <h2 className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Tool permissions</h2>
       <p className="mt-1 text-xs text-muted">
         Live, deny-by-default grants for this agent. Only granted tools can ever be called through it, and only when
         this business's own permissions/approval policy for that tool allows it. A new version freezes a copy of
@@ -594,7 +594,7 @@ function VersionsSection({
   return (
     <section className="klaros-card p-5">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground">Versions</h2>
+        <h2 className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Versions</h2>
         {!showForm && (
           <Button size="sm" variant="secondary" onClick={() => setShowForm(true)}>
             Create new version
@@ -793,7 +793,7 @@ function ExecutionsSection({
 
   return (
     <section className="klaros-card p-5">
-      <h2 className="mb-3 text-sm font-semibold text-foreground">Recent executions</h2>
+      <h2 className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Recent executions</h2>
       {sorted.length === 0 ? (
         <p className="text-sm text-muted">No executions yet.</p>
       ) : (
@@ -948,14 +948,14 @@ function RunAgentButton({
           <div className="mb-3 flex gap-2 text-xs">
             <button
               type="button"
-              className={`rounded-full border px-3 py-1 ${mode === "goal" ? "border-accent bg-accent-soft text-accent" : "border-border text-muted"}`}
+              className={`klaros-filter-tab ${mode === "goal" ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}
               onClick={() => setMode("goal")}
             >
               Give it a goal
             </button>
             <button
               type="button"
-              className={`rounded-full border px-3 py-1 ${mode === "tool" ? "border-accent bg-accent-soft text-accent" : "border-border text-muted"}`}
+              className={`klaros-filter-tab ${mode === "tool" ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}
               onClick={() => setMode("tool")}
             >
               Run one granted tool

@@ -80,7 +80,7 @@ export default function AgentsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-12">
+      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader
           icon={Bot}
           title="Agents"
@@ -100,7 +100,7 @@ export default function AgentsPage() {
         )}
 
         {agents.length > 0 && (
-          <div className="mb-4 relative max-w-xs">
+          <div className="relative mb-8 max-w-xs">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" strokeWidth={2} />
             <input
               type="text"
@@ -108,7 +108,7 @@ export default function AgentsPage() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search agents..."
               aria-label="Search agents"
-              className="klaros-input pl-8"
+              className="klaros-input !rounded-full pl-9"
             />
           </div>
         )}
@@ -126,34 +126,32 @@ export default function AgentsPage() {
         ) : filtered.length === 0 ? (
           <EmptyState compact title={`No agents match "${query}".`} />
         ) : (
-          <div className="klaros-card divide-y divide-border">
+          <ul className="grid gap-4 sm:grid-cols-2" aria-label="Agents">
             {filtered.map((agent) => (
-              <button
-                key={agent.id}
-                type="button"
-                onClick={() => router.push(`/agents/${agent.id}`)}
-                className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left hover:bg-surface-muted"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium text-foreground">{agent.name}</span>
+              <li key={agent.id}>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/agents/${agent.id}`)}
+                  className="group flex h-full w-full flex-col rounded-3xl bg-surface-muted p-6 text-left transition-all duration-500 ease-apple hover:-translate-y-0.5 hover:bg-surface hover:shadow-raised"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surface text-accent">
+                      <Bot className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+                    </span>
                     <Badge status={agent.status}>{agent.status}</Badge>
                   </div>
-                  <p className="mt-0.5 truncate text-xs text-muted">
-                    {agent.purpose || "No description provided."}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1 text-right">
-                  <span className="text-xs text-muted-foreground">
-                    {AUTONOMY_LABELS[agent.autonomy_tier] ?? agent.autonomy_tier}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {agent.current_version_id ? "Has published version" : "No published version"}
-                  </span>
-                </div>
-              </button>
+                  <span className="mt-5 text-[19px] font-semibold tracking-tight text-foreground">{agent.name}</span>
+                  <p className="mt-1.5 flex-1 text-[14px] leading-snug text-muted">{agent.purpose || "No description provided."}</p>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-muted">{AUTONOMY_LABELS[agent.autonomy_tier] ?? agent.autonomy_tier}</span>
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${agent.current_version_id ? "bg-success/10 text-success" : "bg-surface text-muted"}`}>
+                      {agent.current_version_id ? "Has published version" : "No published version"}
+                    </span>
+                  </div>
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
     </AppShell>
