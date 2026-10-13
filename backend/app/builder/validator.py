@@ -78,6 +78,9 @@ class _Page(HTMLParser):
         self.labels_for: set[str] = set()
         self.ids: set[str] = set()
         self.main = 0
+        self.label_depth = 0
+        self.inline_styles = 0
+        self.external_css: list[str] = []
         self.headings: list[int] = []
         self.inline_handlers = 0
         self.depth_stack: list[str] = []
@@ -107,6 +110,10 @@ class _Page(HTMLParser):
             self.links.append(a["href"])
         if tag == "link" and a.get("href"):
             self.assets.append(("link", a["href"]))
+            if "stylesheet" in (a.get("rel") or "").lower() and a["href"].lower().startswith(("https://", "http://", "//")):
+                self.external_css.append(a["href"])
+        if "style" in a:
+            self.inline_styles += 1
         if tag == "img":
             if a.get("src"):
                 self.assets.append(("img", a["src"]))
@@ -115,9 +122,11 @@ class _Page(HTMLParser):
         if tag == "script":
             self.scripts.append((a.get("src") or "", not a.get("src")))
         if tag in ("input", "textarea", "select"):
-            self.inputs.append(a)
-        if tag == "label" and a.get("for"):
-            self.labels_for.add(a["for"])
+            self.inputs.append({**a, "_in_label": self.label_depth > 0})
+        if tag == "label":
+            self.label_depth += 1
+            if a.get("for"):
+                self.labels_for.add(a["for"])
         if a.get("id"):
             self.ids.add(a["id"])
         if any(k.lower().startswith("on") for k in a):
@@ -128,6 +137,8 @@ class _Page(HTMLParser):
     def handle_endtag(self, tag):
         if tag in self._VOID:
             return
+        if tag == "label" and self.label_depth:
+            self.label_depth -= 1
         if not self.depth_stack:
             self.errors.append(f"stray </{tag}>")
             return
@@ -237,11 +248,17 @@ def validate_project(ws: Workspace, spec: ProjectSpec | None = None, *, check_js
             t = (a.get("type") or "text").lower()
             if t in ("hidden", "submit", "button") or a.get("aria-hidden") == "true":
                 continue
-            if not (a.get("id") in p.labels_for or a.get("aria-label")):
+            if not (a.get("id") in p.labels_for or a.get("aria-label") or a.get("_in_label")):
                 a11y_ok = False
                 rep.add("error", "input_label", path, f"form field {a.get('name') or a.get('id')!r} has no label")
         if p.headings and p.headings[0] != 1 and 1 in p.headings:
             rep.add("warning", "heading_order", path, "the first heading is not the h1")
+        if p.inline_styles:
+            scripts_ok = False
+            rep.add("error", "inline_style", path, f"{p.inline_styles} inline style attribute(s): the page's content security policy blocks them, so they would silently do nothing. Use a class in the stylesheet")
+        for href in p.external_css:
+            scripts_ok = False
+            rep.add("error", "external_stylesheet", path, f"stylesheet {href[:70]!r} is loaded from another site, which the content security policy blocks. Put the CSS in assets/styles.css (system fonts avoid a font download)")
         if p.inline_handlers:
             scripts_ok = False
             rep.add("error", "inline_handler", path, "inline event handlers (onclick=...) are not allowed; use assets/app.js")

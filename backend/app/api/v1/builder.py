@@ -72,6 +72,11 @@ class CreateProject(BaseModel):
     name: str | None = Field(default=None, max_length=80)
 
 
+class ImportBody(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    files: dict[str, str] = Field(min_length=1, max_length=400)
+
+
 class Message(BaseModel):
     message: str = Field(min_length=2, max_length=3000)
 
@@ -96,6 +101,16 @@ async def create_project(body: CreateProject, user: CurrentUser = Depends(requir
     except BuilderError as exc:
         raise _err(exc) from exc
     return {"project": _project(await o.store.get_project(user.tenant_id, project.id)), "run": _run(run)}
+
+
+@router.post("/projects/import", status_code=status.HTTP_201_CREATED, dependencies=[Depends(_limit)])
+async def import_project(body: ImportBody, user: CurrentUser = Depends(require_permission(Permission.MANAGE_WEBSITE)), o: BuilderOrchestrator = Depends(get_orchestrator)) -> dict[str, Any]:
+    """Load an existing static site. It must pass exactly the checks generated sites pass; a rejection says which file and why."""
+    try:
+        project, version, report = await o.import_project(user.tenant_id, user.id, body.name.strip(), body.files)
+    except BuilderError as exc:
+        raise _err(exc) from exc
+    return {"project": _project(project), "version": _version(version), "validation": report.as_dict()}
 
 
 @router.get("/projects")
@@ -267,7 +282,7 @@ async def export(project_id: uuid.UUID, version_id: uuid.UUID | None = None, use
 
 
 # ---------------------------------------------------------------- unauthenticated static serving
-async def _serve(tenant_id: uuid.UUID, project_id: uuid.UUID, version_id: uuid.UUID, raw_path: str, *, preview: bool, endpoint: str | None) -> Response:
+async def _serve(tenant_id: uuid.UUID, project_id: uuid.UUID, version_id: uuid.UUID, raw_path: str, *, preview: bool, endpoint: str | None, api_base: str | None = None) -> Response:
     o = get_orchestrator()
     path = pv.resolve_request_path(raw_path)
     headers = pv.security_headers(preview=preview, enquiry_origin=_origin(endpoint))
@@ -282,6 +297,7 @@ async def _serve(tenant_id: uuid.UUID, project_id: uuid.UUID, version_id: uuid.U
         content, path, status_code = missing, "404.html", 404
     if path.endswith(".html"):
         content = pv.inject_enquiry(content, endpoint)
+        content = pv.inject_context(content, api_base=api_base, tenant_id=tenant_id if api_base else None)
     return Response(content=content, status_code=status_code, media_type=pv.mime_for(path), headers=headers)
 
 
@@ -310,4 +326,4 @@ async def serve_published(tenant_id: uuid.UUID, slug: str, request: Request, pat
     if project is None or project.published_version_id is None:
         return Response("Not found", status_code=404, media_type="text/plain", headers={"Cache-Control": "no-store"})
     base = (get_settings().BUILDER_PUBLIC_BASE_URL or str(request.base_url)).rstrip("/")
-    return await _serve(tenant_id, project.id, project.published_version_id, path, preview=False, endpoint=f"{base}/api/v1/public/leads/{tenant_id}")
+    return await _serve(tenant_id, project.id, project.published_version_id, path, preview=False, endpoint=f"{base}/api/v1/public/leads/{tenant_id}", api_base=base)

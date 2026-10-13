@@ -5,10 +5,10 @@
  * preview. The number of pages comes from the request, not from a template.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, FileCode2, Globe, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { ArrowRight, FileCode2, Globe, Loader2, Sparkles, Trash2, Upload } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { Button } from "@/components/ui/Button";
@@ -19,6 +19,8 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError, BuilderProject, builderApi } from "@/lib/api";
 import { EXAMPLE_PROMPTS, timeAgo } from "@/components/builder/labels";
 
+const TEXT_FILE = /\.(html|css|js|json|svg|txt|md|xml|webmanifest)$/i;
+
 export default function BuilderHome() {
   const { token, user } = useAuth();
   const router = useRouter();
@@ -28,6 +30,9 @@ export default function BuilderHome() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -54,6 +59,31 @@ export default function BuilderHome() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "We couldn't start that. Please try again.");
       setBusy(false);
+    }
+  }
+
+  async function importFiles(list: FileList | null) {
+    if (!token || !list || list.length === 0 || importing) return;
+    setImporting(true);
+    setImportError(null);
+    try {
+      const picked = Array.from(list);
+      const files: Record<string, string> = {};
+      let skipped = 0;
+      for (const f of picked) {
+        if (!TEXT_FILE.test(f.name)) { skipped++; continue; }
+        files[(f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name] = await f.text();
+      }
+      if (Object.keys(files).length === 0) throw new ApiError(422, "No website files were found. Choose index.html with its CSS and JavaScript, or the whole site folder.");
+      const title = name.trim() || "Imported site";
+      const { project } = await builderApi.importSite(token, title, files);
+      if (skipped) toast.success(`Imported. ${skipped} file${skipped === 1 ? " was" : "s were"} skipped because only text files can be imported.`);
+      router.push(`/builder/${project.id}`);
+    } catch (err) {
+      setImportError(err instanceof ApiError ? err.message : "We couldn't import those files. Please try again.");
+      setImporting(false);
+    } finally {
+      if (fileInput.current) fileInput.current.value = "";
     }
   }
 
@@ -115,6 +145,31 @@ export default function BuilderHome() {
           <p className="mt-5 max-w-3xl text-xs text-muted-foreground">
             Projects are static websites (HTML, CSS and JavaScript). Things that need a server — sign-in, payments, a database — are listed as not possible instead of being faked.
           </p>
+        </div>
+
+        <div className="klaros-card mb-10 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-2xl">
+            <h2 className="text-base font-semibold text-foreground">Already have a website?</h2>
+            <p className="mt-1 text-sm text-muted">
+              Import its files (index.html, CSS, JavaScript, or the whole folder). Klaros checks them for safety, shows a preview and lets you publish. It does not rewrite or review your content. Give it a name in the box above first if you like.
+            </p>
+            {importError && <div className="mt-3"><Alert variant="danger">{importError}</Alert></div>}
+          </div>
+          <div>
+            <input
+              ref={fileInput}
+              id="builder-import"
+              type="file"
+              multiple
+              className="sr-only"
+              onChange={(e) => importFiles(e.target.files)}
+              {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+            />
+            <Button type="button" variant="secondary" disabled={importing || !token} onClick={() => fileInput.current?.click()}>
+              {importing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Upload className="h-4 w-4" aria-hidden="true" />}
+              {importing ? "Importing…" : "Choose site folder"}
+            </Button>
+          </div>
         </div>
 
         <h2 className="mb-3 text-lg font-semibold tracking-tight text-foreground">Your projects</h2>

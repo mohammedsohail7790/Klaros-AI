@@ -254,6 +254,9 @@ a:hover {{ text-decoration-thickness: 2px; }}
 .toolbar {{ display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); margin-bottom: 1.5rem; }}
 .toolbar input[type=search] {{ grid-column: 1 / -1; }}
 .section.tight + .section {{ padding-top: 2.25rem; }}
+.section.page-head {{ padding-bottom: 0; }}
+.section.page-head .section-head {{ margin-bottom: 0; }}
+.foot-lead {{ font-size: 1rem; margin-top: .9rem; }}
 .result-count {{ color: var(--muted); font-size: .92rem; margin-bottom: 1rem; }}
 .empty {{ padding: 3rem 1rem; text-align: center; color: var(--muted); border: 1px dashed var(--border); border-radius: var(--radius-lg); }}
 .fav {{ position: absolute; top: .7rem; right: .7rem; border: 0; border-radius: 999px; background: var(--bg); color: var(--text); width: 2.4rem; height: 2.4rem; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.2); font-size: 1.1rem; }}

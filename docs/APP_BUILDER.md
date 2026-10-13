@@ -66,3 +66,12 @@ Files are stored as text rows because the only object store wired is a local dis
 - A live model run: no provider key was available while building; the AI path is covered by fake-provider tests only.
 - Cost in currency: tokens and models are recorded per run; no price table.
 - Run execution is in-process (asyncio). A crash marks runs failed (heartbeat/stale sweep) and the last version is intact, but runs are not resumed. Temporal exists in the repo but needs a server.
+
+## Importing an existing static site
+
+`POST /api/v1/builder/projects/import` (`{name, files: {path: text}}`) loads a site you already have. A wrapping folder is stripped, a flat `styles.css` / `script.js` is moved to `assets/` with the page links rewritten, and an unsafe path (`..`, absolute) is refused. The files then get exactly the checks a generated site gets (no inline script/style/handlers, no external CSS/JS, no `eval`/`innerHTML`, links, assets, accessibility, JS syntax), and a rejection names the file and the reason. Nothing is rewritten for you beyond the move above.
+
+- Imported projects can be previewed, hand-edited file by file, published and exported. Chat edits need an AI provider (there is no spec to regenerate from).
+- Published pages get two `<meta>` values filled in when they contain the empty placeholders `klaros-api` and `klaros-tenant`, so a form can reach the right business. Previews never get them.
+- **Consent-gated businesses (Medical Tourism).** `GET /api/v1/public/leads/{tenant}/consent` returns `{required, wording}`: the newest wording the owner approved, or `wording: null` while none is approved (the form must stay closed). The lead endpoint still enforces the consent itself; the procedure and notes count as health information, so a form that sends them must send the `store_medical_information` scope and show wording that covers it.
+- Klaros checks an import for safety. It does not review the content: prices, savings, accreditation counts and named people on an imported site are the owner's claims.
