@@ -343,10 +343,12 @@ async def _voice_media_stream_openai_realtime(websocket: WebSocket) -> None:
                 continue
 
             if event == "start":
-                start_info = payload
-                if start_info.tenant_id is None or start_info.call_session_id is None:
-                    logger.error("voice_realtime_missing_tenant_or_call_id", call_sid=start_info.call_sid)
+                if payload.tenant_id is None or payload.call_session_id is None:
+                    # Nothing real to tell apart or end: leave `start_info` unset, so the after-loop and disconnect handlers do not call
+                    # end_call() with a missing tenant and call id (the cascaded loop above only sets `state` once a start is valid, too).
+                    logger.error("voice_realtime_missing_tenant_or_call_id", call_sid=payload.call_sid)
                     break
+                start_info = payload
                 logger.info(
                     "voice_realtime_started", tenant_id=str(start_info.tenant_id),
                     call_session_id=str(start_info.call_session_id), stream_sid=start_info.stream_sid,
