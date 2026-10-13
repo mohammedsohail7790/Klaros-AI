@@ -112,6 +112,15 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("klaros_in_process_event_worker_started")
 
     try:
+        from app.api.v1.builder import get_orchestrator
+
+        recovered = await get_orchestrator().store.recover_stale_runs()
+        if recovered:
+            logger.info("builder_runs_recovered", count=recovered)
+    except Exception:  # noqa: BLE001 - a sweep problem must never stop the API starting
+        logger.warning("builder_recovery_sweep_failed")
+
+    try:
         yield
     finally:
         if worker_task is not None:
@@ -224,6 +233,15 @@ async def health() -> dict[str, str]:
     failing /ready — those are different failure responses, so this must
     stay a genuinely separate, dependency-free check."""
     return {"status": "ok", "env": settings.ENV}
+
+
+@app.get("/version")
+async def version() -> dict[str, str]:
+    """The commit and branch this process was deployed from, so a deploy can be
+    verified from outside. Dependency-free like /health, and carries no secret."""
+    from app.core.version import deployed_version
+
+    return deployed_version()
 
 
 @app.get("/ready")

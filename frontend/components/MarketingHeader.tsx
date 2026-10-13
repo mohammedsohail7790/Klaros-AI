@@ -3,17 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ExternalLink, Menu, X } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { BuildCta } from "@/components/marketing/BuildCta";
 
 export default function MarketingHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="klaros-glass sticky top-0 z-40 mx-auto max-w-6xl rounded-b-2xl px-6 py-4">
+    <header className="sticky top-3 z-40 mx-auto mt-3 max-w-6xl rounded-2xl border border-border bg-surface/80 px-5 py-3 shadow-card backdrop-blur-xl">
       <div className="flex items-center justify-between">
-        <Link href="/" className="font-display text-xl italic tracking-tight text-foreground">
-          Klaros AI
-        </Link>
+        <Logo />
         <nav className="hidden items-center gap-8 text-sm font-medium text-muted sm:flex">
           <Link href="/#how-it-works" className="transition-colors hover:text-foreground">
             How it works

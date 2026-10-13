@@ -98,7 +98,7 @@ export default function TodayPage() {
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="min-h-5 text-sm text-muted">{clock ? clock.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }) : ""}</p>
-            <h1 className="font-display text-3xl text-foreground">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
               {clock ? greeting(clock) : "Welcome"}
               {firstName ? `, ${firstName}` : ""}
             </h1>
@@ -130,7 +130,7 @@ export default function TodayPage() {
             )}
 
             <section aria-label="Needs you" className="mt-8">
-              <h2 className="font-display text-xl text-foreground">Needs you</h2>
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">Needs you</h2>
               {needs.length === 0 ? (
                 <div className="klaros-card mt-3 flex items-center gap-3 p-5 text-sm text-muted">
                   <CheckCircle2 className="h-5 w-5 text-success" aria-hidden="true" />
@@ -164,7 +164,7 @@ export default function TodayPage() {
 
             <div className="mt-10 grid gap-8 lg:grid-cols-2">
               <section aria-label="Where your patients are">
-                <h2 className="font-display text-xl text-foreground">Where your patients are</h2>
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">Where your patients are</h2>
                 <ul className="mt-3 space-y-1.5">
                   {STAGE_ORDER.map((s, i) => {
                     const n = pipeline.counts[s] ?? 0;
@@ -189,7 +189,7 @@ export default function TodayPage() {
 
               <div className="space-y-8">
                 <section aria-label="Money">
-                  <h2 className="font-display text-xl text-foreground">Money</h2>
+                  <h2 className="text-xl font-semibold tracking-tight text-foreground">Money</h2>
                   {currencies.length === 0 ? (
                     <p className="mt-3 text-sm text-muted">No commission is on record yet. A commission only counts once a clinic's outcome is confirmed with evidence.</p>
                   ) : (
@@ -219,7 +219,7 @@ export default function TodayPage() {
 
                 {waiting.length > 0 && (
                   <section aria-label="Waiting on clinics">
-                    <h2 className="font-display text-xl text-foreground">Waiting on clinics</h2>
+                    <h2 className="text-xl font-semibold tracking-tight text-foreground">Waiting on clinics</h2>
                     <ul className="mt-3 space-y-1.5 text-sm">
                       {waiting.map((w) => (
                         <li key={w.leadId} className="flex items-center gap-2 text-muted">

@@ -49,7 +49,9 @@ const DISCOVERY_STAGES: BuilderStage[] = [
   { key: "recommendations", label: "Recommendations", state: "todo", route: "/business/recommendations" },
   { key: "map", label: "Business Map", state: "todo", route: "/business/map" },
   { key: "website", label: "Website", state: "todo", route: "/website" },
-  { key: "launch", label: "Launch", state: "todo", route: "/business/home" },
+  { key: "workforce", label: "AI workforce", state: "todo", route: "/workforce" },
+  { key: "launch", label: "Launch", state: "todo", route: "/business/home#launch" },
+  { key: "operate", label: "Operate", state: "todo", route: "/business/home" },
 ];
 
 export default function DiscoveryPage() {
@@ -206,7 +208,7 @@ export default function DiscoveryPage() {
   if (journey === undefined) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
           <Skeleton />
         </div>
       </AppShell>

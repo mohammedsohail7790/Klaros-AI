@@ -121,10 +121,10 @@ export default function VendorsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <header className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="font-display text-2xl text-foreground">Vendors</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Vendors</h1>
             <p className="mt-1 text-sm text-muted">
               Subcontractors and suppliers — a bill linked to a job feeds real job costing automatically.
             </p>
@@ -152,7 +152,7 @@ export default function VendorsPage() {
           />
         ) : (
           <>
-            <h2 className="mb-3 font-medium">Vendors</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight">Vendors</h2>
             <div className="mb-8 klaros-table-wrap">
               <table className="klaros-table">
                 <thead className="bg-surface text-muted">
@@ -219,7 +219,7 @@ export default function VendorsPage() {
                 <button
                   type="submit"
                   disabled={billBusy || !billAmount || !billDueDate}
-                  className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                 >
                   {billBusy ? "Recording..." : "Record bill"}
                 </button>
@@ -233,7 +233,7 @@ export default function VendorsPage() {
               </form>
             )}
 
-            <h2 className="mb-3 font-medium">Bills</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight">Bills</h2>
             {bills.length === 0 ? (
               <p className="text-sm text-muted">No vendor bills recorded yet.</p>
             ) : (

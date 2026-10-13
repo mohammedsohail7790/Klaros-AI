@@ -165,7 +165,7 @@ describe("Recommendations page", () => {
     getBuilderOverviewMock.mockResolvedValue(overview("RECOMMENDATIONS_READY", [stubReq]));
     listRecommendationsMock.mockResolvedValue([capRec(), rec({ provider_implementation_status: "STUB" })]);
     render(<RecommendationsPage />);
-    expect(await screen.findByText(/Integration adapter required/)).toBeInTheDocument();
+    expect(await screen.findByText(/Not available yet/)).toBeInTheDocument();
     expect(screen.getByText("Integration required")).toBeInTheDocument();
     // No fake action: nothing links to Integrations for a provider that cannot be connected.
     expect(screen.queryByRole("link", { name: /Connect/ })).not.toBeInTheDocument();

@@ -174,8 +174,8 @@ export default function ReferralsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-6">Referrals</h1>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-6">Referrals</h1>
 
         {authLoading || loading ? (
           <Skeleton />
@@ -194,7 +194,7 @@ export default function ReferralsPage() {
               <StatCard label="Collected revenue" value={`$${revenue.toFixed(2)}`} icon={Gift} tone="accent" />
             </div>
 
-            <h2 className="mb-3 text-sm font-medium text-muted">Programs</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Programs</h2>
             <div className="mb-4 flex flex-wrap items-end gap-2">
               <div>
                 <label className="block text-xs text-muted">Program name</label>
@@ -212,7 +212,7 @@ export default function ReferralsPage() {
                   className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 />
               </div>
-              <button disabled={busy || !newProgramName.trim()} onClick={handleCreateProgram} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
+              <button disabled={busy || !newProgramName.trim()} onClick={handleCreateProgram} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
                 Create program
               </button>
             </div>
@@ -245,7 +245,7 @@ export default function ReferralsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-sm font-medium text-muted">Referral codes</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Referral codes</h2>
             <div className="mb-4 flex flex-wrap items-end gap-2">
               <div>
                 <label className="block text-xs text-muted">Program ID</label>
@@ -266,7 +266,7 @@ export default function ReferralsPage() {
               <button
                 disabled={busy || !codeProgramId.trim() || !codeCustomerId.trim()}
                 onClick={handleGenerateCode}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Get or create code
               </button>
@@ -279,7 +279,7 @@ export default function ReferralsPage() {
                 <button
                   disabled={busy}
                   onClick={handleCreateReferral}
-                  className="mt-2 rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="mt-2 klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                 >
                   Create referral from this code
                 </button>
@@ -311,7 +311,7 @@ export default function ReferralsPage() {
                   <button
                     disabled={busy || !leadName.trim()}
                     onClick={handleConvertToLead}
-                    className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                    className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                   >
                     Convert to lead
                   </button>
@@ -319,7 +319,7 @@ export default function ReferralsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-sm font-medium text-muted">Referrals</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Referrals</h2>
             {referrals.length === 0 ? (
               <div className="mb-8">
                 <EmptyState icon={Users} title="No referrals yet." />
@@ -349,7 +349,7 @@ export default function ReferralsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-sm font-medium text-muted">Rewards</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Rewards</h2>
             {rewards.length === 0 ? (
               <EmptyState icon={Award} title="No referral rewards yet." />
             ) : (

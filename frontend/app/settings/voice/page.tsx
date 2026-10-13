@@ -92,8 +92,8 @@ export default function VoiceReceptionistPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-2">AI Voice Receptionist</h1>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-2">AI Voice Receptionist</h1>
         <p className="mb-6 max-w-2xl text-sm text-muted">
           A real, governed AI phone receptionist — every action it takes (creating a lead, answering a
           knowledge question, escalating to a human) goes through the same permission/policy/audit
@@ -162,14 +162,14 @@ export default function VoiceReceptionistPage() {
               <button
                 onClick={handleSaveText}
                 disabled={saving}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Save
               </button>
             </div>
 
             <div>
-              <h2 className="mb-3 font-medium">Recent calls</h2>
+              <h2 className="mb-3 text-base font-semibold tracking-tight">Recent calls</h2>
               {!calls || calls.length === 0 ? (
                 <EmptyState icon={Phone} title="No calls yet." />
               ) : (

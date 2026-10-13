@@ -93,7 +93,7 @@ export default function CampaignDetailPage() {
   if (error && !campaign) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
           <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         </div>
       </AppShell>
@@ -105,9 +105,9 @@ export default function CampaignDetailPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">{campaign.name}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{campaign.name}</h1>
           <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{campaign.status}</span>
         </div>
 
@@ -161,19 +161,19 @@ export default function CampaignDetailPage() {
             <button
               type="submit"
               disabled={busy || !spendAmount}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
             >
               Record spend
             </button>
           </form>
 
           {campaign.status === "DRAFT" && (
-            <button disabled={busy} onClick={() => handleToggleStatus("ACTIVE")} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
+            <button disabled={busy} onClick={() => handleToggleStatus("ACTIVE")} className="klaros-btn-secondary !px-3 !py-1.5">
               Activate
             </button>
           )}
           {campaign.status === "ACTIVE" && (
-            <button disabled={busy} onClick={() => handleToggleStatus("PAUSED")} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
+            <button disabled={busy} onClick={() => handleToggleStatus("PAUSED")} className="klaros-btn-secondary !px-3 !py-1.5">
               Pause
             </button>
           )}

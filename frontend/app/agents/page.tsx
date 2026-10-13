@@ -57,7 +57,7 @@ export default function AgentsPage() {
   if (authLoading || (agents === null && !error)) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
           <Skeleton rows={4} stats={0} />
         </div>
       </AppShell>

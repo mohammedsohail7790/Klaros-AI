@@ -62,7 +62,7 @@ describe("Requirements page", () => {
     expect(screen.getByText("Ready")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Label." })).toHaveAttribute("href", "/leads");
     // PLANNED: plain text, no link — never a fake action.
-    const text = screen.getByText(/Integration adapter required/);
+    const text = screen.getByText(/Not available yet/);
     expect(text.closest("a")).toBeNull();
     expect(screen.getAllByText("Planned").length).toBeGreaterThan(0);
   });

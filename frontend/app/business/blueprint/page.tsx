@@ -40,6 +40,7 @@ import {
   updateBlueprintSection,
 } from "@/lib/api";
 import { getJourneyDestination } from "@/lib/businessJourneyController";
+import { CAPABILITY_OPTIONS, SECTION_PROMPTS, friendlyCapability, hasLine, toggleLine } from "@/lib/blueprintPrompts";
 import { StageTracker } from "@/components/business/StageTracker";
 import type { BuilderStage } from "@/lib/api";
 
@@ -71,7 +72,9 @@ const BLUEPRINT_STAGES: BuilderStage[] = [
   { key: "recommendations", label: "Recommendations", state: "todo", route: "/business/recommendations" },
   { key: "map", label: "Business Map", state: "todo", route: "/business/map" },
   { key: "website", label: "Website", state: "todo", route: "/website" },
-  { key: "launch", label: "Launch", state: "todo", route: "/business/home" },
+  { key: "workforce", label: "AI workforce", state: "todo", route: "/workforce" },
+  { key: "launch", label: "Launch", state: "todo", route: "/business/home#launch" },
+  { key: "operate", label: "Operate", state: "todo", route: "/business/home" },
 ];
 
 // Activation needs these four sections filled (the backend enforces it); naming them
@@ -270,6 +273,13 @@ export default function BlueprintPage() {
         />
 
         {error && <div className="mb-4"><Alert variant="danger">{error}</Alert></div>}
+        {!awaitingConfirm && (
+          <div className="mb-4">
+            <Alert variant="info">
+              Anything marked “Missing” can still be filled in — use “Edit” on a section. Each change saves a new version of your Blueprint, and Requirements follow it.
+            </Alert>
+          </div>
+        )}
         {missingRequired.length > 0 && toConfirm === 0 && (
           <div className="mb-4">
             <Alert variant="warning">
@@ -292,7 +302,7 @@ export default function BlueprintPage() {
         <div className="space-y-10">
           {GROUPS.map((g) => (
             <section key={g.title} aria-labelledby={`bp-${g.title}`}>
-              <h2 id={`bp-${g.title}`} className="font-display text-xl text-foreground">{g.title}</h2>
+              <h2 id={`bp-${g.title}`} className="text-xl font-semibold tracking-tight text-foreground">{g.title}</h2>
               <p className="mb-3 text-sm text-muted">{g.blurb}</p>
               <div className="space-y-3">
                 {g.keys.map((k) => {
@@ -303,7 +313,7 @@ export default function BlueprintPage() {
                       key={section.id}
                       section={section}
                       claims={claimsBySection[k] ?? []}
-                      editable={isDraft}
+                      editable={data.blueprint.status !== "SUPERSEDED"}
                       busy={busy}
                       onSave={(next) => handleSectionSave(section, next)}
                       onClaimDecision={handleClaimDecision}
@@ -315,7 +325,7 @@ export default function BlueprintPage() {
           ))}
 
           <section aria-labelledby="bp-unknowns">
-            <h2 id="bp-unknowns" className="flex items-center gap-2 font-display text-xl text-foreground">
+            <h2 id="bp-unknowns" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
               <HelpCircle className="h-5 w-5 text-warning" aria-hidden="true" /> Still unresolved
             </h2>
             {unknowns.length === 0 && assumptions.length === 0 ? (
@@ -354,6 +364,8 @@ function SectionCard({
 }) {
   const label = BLUEPRINT_SECTION_LABELS[section.section_key as BlueprintSectionKey] ?? humanize(section.section_key);
   const [editing, setEditing] = useState(false);
+  const prompt = SECTION_PROMPTS[section.section_key];
+  const isCapabilities = section.section_key === "REQUIRED_CAPABILITIES";
   const entries = Object.entries(section.data ?? {});
   const [fields, setFields] = useState<Record<string, string>>({});
   const [newKey, setNewKey] = useState("");
@@ -365,6 +377,8 @@ function SectionCard({
     const initial = Object.fromEntries(entries.map(([k, v]) => [k, Array.isArray(v) ? v.map(show).join("\n") : typeof v === "object" && v !== null ? JSON.stringify(v) : String(v)]));
     // The capability list is what Requirements are derived from, so it is always offered.
     if (section.section_key === "REQUIRED_CAPABILITIES" && !("capabilities" in initial)) initial.capabilities = "";
+    // A section with a plain-language question always offers its answer box, even when it is still Missing.
+    if (prompt && !(prompt.key in initial)) initial[prompt.key] = "";
     setFields(initial);
     setNewKey("");
     setNewValue("");
@@ -382,7 +396,7 @@ function SectionCard({
       } else if (Array.isArray(orig)) next[k] = v.split("\n").map((x) => x.trim()).filter(Boolean);
       else if (orig !== null && typeof orig === "object") {
         try { next[k] = JSON.parse(v); } catch { next[k] = orig; }
-      } else next[k] = v;
+      } else if (orig !== undefined || v.trim() !== "") next[k] = v;
     }
     if (newKey.trim() && newValue.trim()) next[newKey.trim().toLowerCase().replace(/\s+/g, "_")] = newValue.trim();
     onSave(next);
@@ -402,24 +416,47 @@ function SectionCard({
 
       {editing ? (
         <div className="space-y-3">
-          {Object.keys(fields).map((k) => (
-            <div key={k}>
-              <label htmlFor={`${section.id}-${k}`} className="klaros-label">
-                {humanize(k)}
-                {section.section_key === "REQUIRED_CAPABILITIES" && k === "capabilities" ? " — one per line (these become your requirements)" : ""}
-              </label>
-              <textarea
-                id={`${section.id}-${k}`}
-                className="klaros-input min-h-[60px]"
-                value={fields[k]}
-                onChange={(e) => setFields((f) => ({ ...f, [k]: e.target.value }))}
-              />
+          {isCapabilities && (
+            <fieldset>
+              <legend className="klaros-label">What the business needs — tick everything that applies</legend>
+              <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2">
+                {CAPABILITY_OPTIONS.map((opt) => (
+                  <label key={opt} className="flex items-center gap-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={hasLine(fields.capabilities ?? "", opt)}
+                      onChange={(e) => setFields((f) => ({ ...f, capabilities: toggleLine(f.capabilities ?? "", opt, e.target.checked) }))}
+                    />
+                    {opt}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          {Object.keys(fields).map((k) => {
+            const asked = prompt && k === prompt.key;
+            return (
+              <div key={k}>
+                <label htmlFor={`${section.id}-${k}`} className="klaros-label">
+                  {asked ? prompt.question : isCapabilities && k === "capabilities" ? "Anything else the business needs (one per line)" : humanize(k)}
+                </label>
+                <textarea
+                  id={`${section.id}-${k}`}
+                  className="klaros-input min-h-[60px]"
+                  value={fields[k]}
+                  placeholder={asked ? prompt.placeholder : undefined}
+                  onChange={(e) => setFields((f) => ({ ...f, [k]: e.target.value }))}
+                />
+              </div>
+            );
+          })}
+          <details className="text-sm">
+            <summary className="cursor-pointer text-muted">Add another detail (optional)</summary>
+            <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_2fr]">
+              <input className="klaros-input" placeholder="What is it about? (for example: Opening hours)" value={newKey} onChange={(e) => setNewKey(e.target.value)} aria-label="New detail name" />
+              <input className="klaros-input" placeholder="Your answer" value={newValue} onChange={(e) => setNewValue(e.target.value)} aria-label="New detail value" />
             </div>
-          ))}
-          <div className="grid gap-2 sm:grid-cols-[1fr_2fr]">
-            <input className="klaros-input" placeholder="Add a detail (name)" value={newKey} onChange={(e) => setNewKey(e.target.value)} aria-label="New detail name" />
-            <input className="klaros-input" placeholder="Value" value={newValue} onChange={(e) => setNewValue(e.target.value)} aria-label="New detail value" />
-          </div>
+          </details>
           <div className="flex gap-2">
             <Button size="sm" onClick={save} disabled={busy}>Save</Button>
             <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
@@ -436,7 +473,7 @@ function SectionCard({
           {entries.map(([k, v]) => (
             <div key={k}>
               <dt className="klaros-label">{humanize(k)}</dt>
-              <dd className="text-foreground">{show(v)}</dd>
+              <dd className="text-foreground">{isCapabilities && k === "capabilities" && Array.isArray(v) ? v.map((x) => friendlyCapability(String(x))).join(", ") : show(v)}</dd>
             </div>
           ))}
         </dl>

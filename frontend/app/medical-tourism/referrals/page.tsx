@@ -114,7 +114,7 @@ export default function CommissionDeskPage() {
           <>
             {awaiting.length > 0 && (
               <section aria-label="Ready for a commission" className="mb-8">
-                <h2 className="font-display text-xl text-foreground">Ready for a commission</h2>
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">Ready for a commission</h2>
                 <p className="mt-0.5 text-sm text-muted">The clinic has reported an outcome for these referrals. Record the commission you agreed.</p>
                 <ul className="mt-3 space-y-2">
                   {awaiting.map((a) => (
@@ -139,7 +139,7 @@ export default function CommissionDeskPage() {
             )}
 
             <section aria-label="Commissions">
-              <h2 className="font-display text-xl text-foreground">Commissions</h2>
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">Commissions</h2>
               {commissions.length === 0 ? (
                 <p className="mt-2 text-sm text-muted">
                   No commissions yet. Once a clinic reports an outcome for a referral, it appears above so you can record the commission.

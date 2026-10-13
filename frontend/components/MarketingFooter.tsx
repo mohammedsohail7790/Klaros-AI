@@ -1,12 +1,13 @@
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 
 export default function MarketingFooter() {
   return (
     <footer className="border-t border-border px-6 py-12">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 sm:flex-row">
         <div>
-          <div className="font-display text-lg italic text-foreground">Klaros AI</div>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <Logo />
+          <p className="mt-3 text-xs text-muted-foreground">
             © {new Date().getFullYear()} Klaros AI. Build and operate your business with AI.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">

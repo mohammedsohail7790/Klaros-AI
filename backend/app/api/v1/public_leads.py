@@ -107,6 +107,22 @@ def _lead_service(bus: EventBus) -> LeadService:
     return LeadService(async_session_maker, bus)
 
 
+@router.get("/{tenant_id}/consent", dependencies=[Depends(_rate_limit_dependency)])
+async def public_consent_wording(tenant_id: uuid.UUID) -> dict[str, Any]:
+    """The words the owner approved for this tenant's public forms, so a published form can show exactly what the visitor agrees to.
+
+    Returns `required: false` for tenants that do not need consent evidence. No other tenant data is exposed.
+    """
+    if not await tenant_requires_consent(async_session_maker, tenant_id):
+        return {"required": False, "wording": None}
+    from app.services import consent_wording_service as wording_svc
+
+    latest = await wording_svc.latest_wording(async_session_maker, tenant_id)
+    if latest is None:
+        return {"required": True, "wording": None}
+    return {"required": True, "wording": {"version": latest["version"], "text": latest["text"], "language": latest.get("language", "en")}}
+
+
 @router.post("/{tenant_id}", status_code=status.HTTP_201_CREATED, dependencies=[Depends(_rate_limit_dependency)])
 async def submit_public_lead(
     tenant_id: uuid.UUID, body: PublicLeadRequest, bus: EventBus = Depends(get_wired_event_bus)

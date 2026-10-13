@@ -95,7 +95,7 @@ export default function InvoiceDetailPage() {
   if (error && !invoice) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
           <Alert variant="danger">{error}</Alert>
         </div>
       </AppShell>
@@ -216,9 +216,9 @@ export default function InvoiceDetailPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Invoice {invoice.invoice_number}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Invoice {invoice.invoice_number}</h1>
           <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{invoice.status}</span>
         </div>
 
@@ -266,14 +266,14 @@ export default function InvoiceDetailPage() {
               <button
                 disabled={busy}
                 onClick={startEditItems}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Edit line items
               </button>
               <button
                 disabled={busy}
                 onClick={() => runAction(() => requestInvoiceApproval(token!, invoice.id), "Approval requested.")}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Request approval
               </button>
@@ -284,7 +284,7 @@ export default function InvoiceDetailPage() {
               <button
                 disabled={busy}
                 onClick={() => runAction(() => approveInvoice(token!, invoice.id), "Invoice approved.")}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Approve
               </button>
@@ -301,7 +301,7 @@ export default function InvoiceDetailPage() {
             <button
               disabled={busy}
               onClick={() => runAction(() => sendInvoice(token!, invoice.id), "Invoice sent.")}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
             >
               Send
             </button>
@@ -320,7 +320,7 @@ export default function InvoiceDetailPage() {
                   "Test payment recorded."
                 )
               }
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
             >
               Record test payment (${invoice.amount_due})
             </button>
@@ -329,7 +329,7 @@ export default function InvoiceDetailPage() {
             <button
               disabled={checkoutBusy}
               onClick={handleGenerateCheckoutLink}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
             >
               {checkoutBusy ? "Generating..." : "Generate payment link"}
             </button>
@@ -338,7 +338,7 @@ export default function InvoiceDetailPage() {
             <button
               disabled={qbSyncBusy}
               onClick={handleSyncToQuickBooks}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
             >
               {qbSyncBusy ? "Syncing..." : "Sync to QuickBooks"}
             </button>
@@ -357,14 +357,14 @@ export default function InvoiceDetailPage() {
               <button
                 disabled={busy}
                 onClick={() => setShowWriteOffForm((v) => !v)}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Request write-off
               </button>
               <button
                 disabled={busy}
                 onClick={() => setShowCreditNoteForm((v) => !v)}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Request credit note
               </button>
@@ -411,7 +411,7 @@ export default function InvoiceDetailPage() {
               + Add line item
             </button>
             <div className="flex gap-2 pt-2">
-              <button type="submit" disabled={editBusy} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
+              <button type="submit" disabled={editBusy} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
                 {editBusy ? "Saving..." : "Save line items"}
               </button>
               <button type="button" onClick={() => setShowEditItems(false)} className="text-sm text-muted hover:underline">
@@ -445,7 +445,7 @@ export default function InvoiceDetailPage() {
             <button
               type="submit"
               disabled={busy}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
             >
               Submit
             </button>
@@ -476,7 +476,7 @@ export default function InvoiceDetailPage() {
             <button
               type="submit"
               disabled={busy}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
             >
               Submit
             </button>

@@ -10,6 +10,7 @@
  * that cannot do anything: a button that does nothing would be a lie.
  */
 
+import { plainLanguage } from "@/lib/plainLanguage";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Bot, CalendarClock, Check, CircleDashed, ExternalLink, Lock, MessageSquareReply, PhoneCall } from "lucide-react";
@@ -177,7 +178,7 @@ export default function WorkforcePage() {
 
             {/* SETUP */}
             <section aria-labelledby="wf-setup" className="mb-8">
-              <h2 id="wf-setup" className="klaros-label mb-1">Set up your AI workforce</h2>
+              <h2 id="wf-setup" className="mb-1 text-lg font-semibold tracking-tight text-foreground">Set up your AI workforce</h2>
               <p className="mb-3 text-xs text-muted">Klaros prepares the business side now. The steps that need Halla stay locked until it is connected.</p>
               <ol className="klaros-card divide-y divide-border">
                 {setup.steps.map((st, i) => (
@@ -187,9 +188,9 @@ export default function WorkforcePage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground">{st.label}</p>
-                      <p className="text-xs text-muted">{st.detail}</p>
+                      <p className="text-xs text-muted">{plainLanguage(st.detail)}</p>
                     </div>
-                    <span className="shrink-0 text-xs text-muted-foreground">{st.state === "DONE" ? "Done" : st.state === "READY" ? "Prepared" : "Locked"}</span>
+                    <span className={cn("shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium", st.state === "DONE" ? "bg-success/10 text-success" : st.state === "READY" ? "bg-accent-soft text-accent-hover" : "bg-surface-muted text-muted")}>{st.state === "DONE" ? "Done" : st.state === "READY" ? "Prepared" : "Locked"}</span>
                   </li>
                 ))}
               </ol>

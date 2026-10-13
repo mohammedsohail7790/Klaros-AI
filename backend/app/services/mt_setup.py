@@ -79,6 +79,43 @@ def validate(body: dict[str, Any]) -> dict[str, Any]:
             "destinations": _countries(body.get("destinations"), "destinations_required"), "procedures": list(seen.values())}
 
 
+_CURRENCY_RE = re.compile(r"^[A-Za-z]{3}$")
+
+
+def validate_extras(body: dict[str, Any]) -> dict[str, Any]:
+    """Optional answers that fill Blueprint sections the one-form setup would otherwise leave Missing (how patients find the business, the currencies it
+    quotes in, what it is aiming for). Only what the owner typed is kept; nothing is invented, and an empty answer simply leaves the section alone."""
+    extras: dict[str, Any] = {}
+    channels = body.get("channels")
+    if channels not in (None, [], ""):
+        if not isinstance(channels, list) or len(channels) > 10:
+            raise ReferralError("channels_invalid", "List up to 10 ways patients find you.", status=422)
+        extras["channels"] = list(dict.fromkeys(_clean(c, 2, 80, "channels_invalid") for c in channels if str(c).strip()))
+    currencies = body.get("currencies")
+    if currencies not in (None, [], ""):
+        if not isinstance(currencies, list) or len(currencies) > 8:
+            raise ReferralError("currencies_invalid", "List up to 8 currencies as three-letter codes, such as AED or USD.", status=422)
+        codes = []
+        for c in currencies:
+            code = str(c).strip()
+            if not code:
+                continue
+            if not _CURRENCY_RE.match(code):
+                raise ReferralError("currencies_invalid", f"'{code[:20]}' is not a three-letter currency code, such as AED or USD.", status=422)
+            if code.upper() not in codes:
+                codes.append(code.upper())
+        if codes:
+            extras["currencies"] = codes
+    goals = body.get("goals")
+    if goals not in (None, ""):
+        text = str(goals).strip()
+        if len(text) > 500:
+            raise ReferralError("goals_too_long", "Keep goals under 500 characters.", status=422)
+        if text:
+            extras["goals"] = text
+    return extras
+
+
 def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60]
 
@@ -88,6 +125,7 @@ MODULE_KEY = "medical_tourism"
 
 async def apply_setup(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID, body: dict[str, Any]) -> dict[str, Any]:
     data = validate(body)
+    extras = validate_extras(body)
     verticals = VerticalExtensionService(session_factory)
     try:
         await verticals.enable_for_organization(tenant_id, "medical_tourism", enabled_by=user_id)
@@ -109,7 +147,7 @@ async def apply_setup(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID,
         session.add(AuditLog(tenant_id=tenant_id, actor_type=ActorType.USER, actor_id=user_id, action="mt.setup.applied", entity_type="medical_tourism_setup", entity_id=row.id,
                              input_summary={"procedures": len(data["procedures"]), "markets": data["patient_markets"], "destinations": data["destinations"], "model": data["business_model"]}, result="success"))
         await session.commit()
-    await _seed_blueprint(session_factory, tenant_id, user_id, data)
+    await _seed_blueprint(session_factory, tenant_id, user_id, data, extras)
     return await get_setup(session_factory, tenant_id)
 
 
@@ -117,7 +155,21 @@ def _join(names: list[str]) -> str:
     return ", ".join(names[:-1]) + (" and " if len(names) > 1 else "") + names[-1] if names else ""
 
 
-async def _seed_blueprint(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID, data: dict[str, Any]) -> None:
+def _extra_sections(extras: dict[str, Any]) -> dict[Any, dict[str, Any]]:
+    """Blueprint sections for the optional setup answers (only the ones the owner gave)."""
+    from app.models.business_blueprint import BlueprintSectionKey
+
+    out: dict[Any, dict[str, Any]] = {}
+    if extras.get("channels"):
+        out[BlueprintSectionKey.CHANNELS] = {"channels": list(extras["channels"])}
+    if extras.get("currencies"):
+        out[BlueprintSectionKey.FINANCE] = {"currencies": list(extras["currencies"])}
+    if extras.get("goals"):
+        out[BlueprintSectionKey.GOALS] = {"goals": [extras["goals"]]}
+    return out
+
+
+async def _seed_blueprint(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID, data: dict[str, Any], extras: dict[str, Any] | None = None) -> None:
     """Record the owner's setup answers as their Business Blueprint, using ONLY what they stated, and activate it, so the website builder, recommendations and
     the business map work for a business that used the one-form setup. An existing Blueprint (one the owner built or edited) is never touched."""
     from app.data.vertical_extension_seed import SEED_VERTICALS
@@ -155,6 +207,7 @@ async def _seed_blueprint(session_factory, tenant_id: uuid.UUID, user_id: uuid.U
             {"title": "The clinic confirms with you", "description": "A consultation is only confirmed once the clinic has agreed it with you."},
         ]},
     }
+    sections.update(_extra_sections(extras or {}))
     for key, section in sections.items():
         await blueprints.update_section(tenant_id, draft.id, section_key=key.value, data=section, updated_by=user_id)
     try:

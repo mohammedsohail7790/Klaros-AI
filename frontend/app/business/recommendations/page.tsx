@@ -10,6 +10,7 @@
  * still required.
  */
 
+import { plainLanguage } from "@/lib/plainLanguage";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -31,6 +32,7 @@ import {
   rejectRecommendation,
 } from "@/lib/api";
 import { getJourneyDestination, isJourneyAtStage } from "@/lib/businessJourneyController";
+import { dedupeRecommendations } from "@/lib/recommendationDedupe";
 import { StageTracker } from "@/components/business/StageTracker";
 import { StatusPill } from "@/components/business/StatusPill";
 import { actionLabel } from "@/lib/opsLabels";
@@ -47,7 +49,7 @@ function availability(
     if (!real) {
       return {
         state: "INTEGRATION_REQUIRED",
-        text: "Integration adapter required — Klaros can't connect this yet.",
+        text: "Not available yet — Klaros can't connect this yet.",
         next: { text: "Nothing to connect today." },
       };
     }
@@ -75,7 +77,7 @@ export default function RecommendationsPage() {
   const loadRecs = useCallback(async () => {
     if (!token || !overview?.journey) return;
     try {
-      setRecs(await listRecommendations(token, overview.journey.blueprint_id ? { blueprintId: overview.journey.blueprint_id } : undefined));
+      setRecs(dedupeRecommendations(await listRecommendations(token, overview.journey.blueprint_id ? { blueprintId: overview.journey.blueprint_id } : undefined)));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "We couldn't load your recommendations. Please try again.");
     }
@@ -110,14 +112,17 @@ export default function RecommendationsPage() {
     const order = new Map((overview?.requirements ?? []).map((r, i) => [r.key, i]));
     return [...groups.entries()]
       .sort(([a], [b]) => (order.get(a) ?? 1e6) - (order.get(b) ?? 1e6))
-      .map(([key, g]) => ({
-        key,
-        requirement: g.requirement,
-        cap: g.cap,
-        capRecs: g.items.filter((i) => i.type === "CAPABILITY"),
-        integrations: g.items.filter((i) => i.type === "INTEGRATION"),
-        tools: g.items.filter((i) => i.type === "TOOL"),
-      }));
+      .map(([key, g]) => {
+        const items = dedupeRecommendations(g.items, true);
+        return {
+          key,
+          requirement: g.requirement,
+          cap: g.cap,
+          capRecs: items.filter((i) => i.type === "CAPABILITY"),
+          integrations: items.filter((i) => i.type === "INTEGRATION"),
+          tools: items.filter((i) => i.type === "TOOL"),
+        };
+      });
   }, [recs, overview]);
 
   async function decide(rec: Recommendation, decision: "accept" | "reject") {
@@ -178,26 +183,26 @@ export default function RecommendationsPage() {
         {sections.length === 0 ? (
           <EmptyState title="No recommendations were generated. Your Blueprint may not list any required capabilities yet." />
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-5">
             {sections.map(({ key, requirement, cap, capRecs, integrations, tools }) => {
               const optionalCap = requirement ? requirement.required === false : capRecs.some((c) => !c.required);
               return (
-                <section key={key} aria-labelledby={`rec-${key}`}>
+                <section key={key} aria-labelledby={`rec-${key}`} className="klaros-card p-5 sm:p-6">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <h2 id={`rec-${key}`} className="text-base font-semibold text-foreground">{requirement?.label ?? label(cap)}</h2>
+                    <h2 id={`rec-${key}`} className="text-base font-semibold tracking-tight text-foreground">{requirement?.label ?? label(cap)}</h2>
                     {requirement && <StatusPill state={requirement.readiness} />}
-                    <span className="text-xs text-muted-foreground">{optionalCap ? "Suggested" : "Required"}</span>
+                    <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${optionalCap ? "border border-border text-muted" : "bg-accent-soft text-accent-hover"}`}>{optionalCap ? "Suggested" : "Required"}</span>
                   </div>
                   {requirement && (
                     <p className="mb-3 text-sm text-muted">
-                      {requirement.why} {requirement.readiness_detail}
+                      {requirement.why} {plainLanguage(requirement.readiness_detail)}
                     </p>
                   )}
                   {optionalCap && capRecs.slice(0, 1).map((c) => (
                     <Card key={c.id} rec={c} busy={busyId === c.id} onDecide={decide} requirement={requirement} />
                   ))}
                   {integrations.length > 0 && (
-                    <div className="mt-3 border-l-2 border-border pl-4">
+                    <div className="mt-4 rounded-xl bg-surface-muted/60 p-3 sm:p-4">
                       <p className="klaros-label mb-2">Integrations that could cover it</p>
                       <div className="space-y-3">
                         {integrations.map((o) => (
@@ -296,7 +301,7 @@ function Card({
       {altNames.length > 0 && <p className="mt-1 text-xs text-muted"><span className="klaros-label mr-1.5">Alternatives</span>{altNames.join(", ")}</p>}
       {!decided && (
         <div className="mt-3 flex gap-2">
-          <Button size="sm" disabled={busy} onClick={() => onDecide(rec, "accept")}>{busy ? "Saving…" : "Accept"}<span className="sr-only"> {what}</span></Button>
+          <Button size="sm" disabled={busy} onClick={() => onDecide(rec, "accept")}>{busy ? "Saving…" : rec.provider_implementation_status === "STUB" ? "Keep on my list" : "Accept"}<span className="sr-only"> {what}</span></Button>
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDecide(rec, "reject")}>Not for me<span className="sr-only"> — {what}</span></Button>
         </div>
       )}

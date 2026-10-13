@@ -12,7 +12,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
       <div role="alert" className="max-w-md text-center">
-        <h1 className="font-display text-2xl text-foreground">Something went wrong on our side</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Something went wrong on our side</h1>
         <p className="mt-2 text-sm text-muted">
           The page hit an unexpected problem. Your data is safe. Try again, and if it keeps happening please let us know.
         </p>

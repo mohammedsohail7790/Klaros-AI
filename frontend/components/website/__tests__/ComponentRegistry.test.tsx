@@ -74,10 +74,10 @@ describe("RenderSection — the closed component_type -> React component registr
   it("CONTACT_FORM submits to the public lead endpoint scoped to this tenant only, never a tenant_id from anywhere else", async () => {
     submitPublicWebsiteLeadMock.mockResolvedValue({ received: true, lead_id: "lead-1" });
     getPublicConsentMock.mockResolvedValue({ required: false, open: true });
-    const { getByText, getByLabelText } = render(
+    const { getByText, findByLabelText } = render(
       <RenderSection section={section("CONTACT_FORM", { title: "Contact us", fields: ["NAME", "EMAIL", "MESSAGE"] })} tenantId="tenant-abc" />
     );
-    const nameInput = getByLabelText("Name") as HTMLInputElement;
+    const nameInput = (await findByLabelText("Name")) as HTMLInputElement; // the fields appear once the form knows it may open
     nameInput.value = "Jane";
     getByText("Contact us");
     // Submitting isn't exercised with full userEvent here (form internals
@@ -147,5 +147,88 @@ describe("CONTACT_FORM — consent for a business that must collect it", () => {
     render(form());
     const text = await screen.findByText("أوافق على حفظ بياناتي");
     expect(text.closest("[dir]")).toHaveAttribute("dir", "rtl");
+  });
+});
+
+describe("CONTACT_FORM — while it finds out whether it may open", () => {
+  const form = () => <RenderSection section={section("CONTACT_FORM", { title: "Enquire", fields: ["NAME", "EMAIL", "MESSAGE"] })} tenantId="tenant-abc" />;
+  beforeEach(() => {
+    submitPublicWebsiteLeadMock.mockReset();
+    getPublicConsentMock.mockReset();
+  });
+
+  it("shows a placeholder, not the fields, until the answer arrives", async () => {
+    let answer!: (v: unknown) => void;
+    getPublicConsentMock.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    render(form());
+    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText("Loading the form…")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Enquire" })).toBeInTheDocument(); // the section keeps its heading, so nothing around it moves
+    expect(screen.queryByLabelText("Name")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Send" })).toBeNull();
+    answer({ required: false, open: true });
+    expect(await screen.findByLabelText("Name")).toBeInTheDocument();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("a business that has not approved a wording never shows the fields at any point", async () => {
+    let answer!: (v: unknown) => void;
+    getPublicConsentMock.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    render(form());
+    expect(screen.queryByLabelText("Name")).toBeNull();
+    answer({ required: true, open: false });
+    await screen.findByText(/not taking enquiries through this page yet/);
+    expect(screen.queryByLabelText("Name")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("replaces the placeholder with the failure message if the lookup fails", async () => {
+    getPublicConsentMock.mockRejectedValue(new Error("down"));
+    render(form());
+    await screen.findByText(/can't take enquiries through this page right now/);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("renders SHOWCASE cards with a designed tile when there is no picture, and only https pictures otherwise", () => {
+    const { container } = render(
+      <RenderSection
+        section={section("SHOWCASE", {
+          title: "What we offer",
+          items: [
+            { title: "standing desk mats", description: "Soft underfoot.", badge: "New" },
+            { title: "monitor risers", image_url: "https://example.com/riser.jpg" },
+            { title: "laptop stands", image_url: "javascript:alert(1)" },
+          ],
+        })}
+        tenantId="t1"
+      />
+    );
+    expect(screen.getByText("standing desk mats")).toBeInTheDocument();
+    expect(screen.getByText("Soft underfoot.")).toBeInTheDocument();
+    expect(screen.getByText("New")).toBeInTheDocument();
+    const imgs = container.querySelectorAll("img");
+    expect(imgs).toHaveLength(1);
+    expect(imgs[0].getAttribute("src")).toBe("https://example.com/riser.jpg");
+    // The unsafe address is never put in the page; that card falls back to the drawn tile.
+    expect(container.innerHTML).not.toContain("javascript:");
+    expect(container.querySelectorAll(".klaros-site-art").length).toBe(3);
+  });
+
+  it("renders SPLIT with its key points and falls back to the contact page for the button", () => {
+    render(
+      <RenderSection
+        section={section("SPLIT", { heading: "About us", body: "We curate desk gear.", bullets: ["Curated range"], cta_text: "Talk to us" })}
+        tenantId="t1"
+        contactHref="/w/t1?page=contact"
+      />
+    );
+    expect(screen.getByRole("heading", { name: "About us" })).toBeInTheDocument();
+    expect(screen.getByText("Curated range")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Talk to us" })).toHaveAttribute("href", "/w/t1?page=contact");
+  });
+
+  it("shows the HERO eyebrow", () => {
+    render(<RenderSection section={section("HERO", { headline: "Desk gear", eyebrow: "Home-office essentials" })} tenantId="t1" />);
+    expect(screen.getAllByText("Home-office essentials").length).toBeGreaterThan(0);
   });
 });
