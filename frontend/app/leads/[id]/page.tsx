@@ -10,6 +10,7 @@ import { useParams, useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ProgressRing } from "@/components/ui/layout";
 import {
   AIQualifyLeadAdvisory,
   ApiError,
@@ -195,22 +196,27 @@ export default function LeadDetailPage() {
             <section className="lg:col-span-2 space-y-6">
               {/* HEADER + CONTACT + BUSINESS CONTEXT */}
               <div className="rounded-3xl bg-surface-muted p-5 sm:p-6">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{lead.name}</h1>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-                      <span>{sourceLabel(lead.source)}</span>
-                      <span>Priority: <span className="text-foreground">{titleCase(lead.urgency.toLowerCase())}</span></span>
-                      <span>Received {when(lead.created_at)}</span>
-                      {lead.assigned_user_id && <span>Assigned to a team member</span>}
-                    </p>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-5">
+                    <span aria-hidden="true" className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-accent font-display text-2xl font-semibold text-white">
+                      {lead.name.trim().charAt(0).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <h1 className="text-balance font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-foreground sm:text-[2.25rem]">{lead.name}</h1>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-muted">{sourceLabel(lead.source)}</span>
+                        <span className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-muted">Priority: <span className="text-foreground">{titleCase(lead.urgency.toLowerCase())}</span></span>
+                        <span className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-muted">Received {when(lead.created_at)}</span>
+                        {lead.assigned_user_id && <span className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent-hover">Assigned to a team member</span>}
+                      </div>
+                    </div>
                   </div>
                   <label className="text-sm">
                     <span className="sr-only">Status</span>
                     <select
                       value={lead.status}
                       onChange={(e) => handleStatusChange(e.target.value)}
-                      className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                      className="rounded-full bg-surface px-4 py-1.5 text-sm"
                     >
                       {STATUS_OPTIONS.map((s) => (
                         <option key={s} value={s}>
@@ -221,23 +227,13 @@ export default function LeadDetailPage() {
                   </label>
                 </div>
 
-                <div className="mt-5 grid gap-6 sm:grid-cols-2">
-                  <div>
-                    <h2 className="klaros-label mb-2">Contact</h2>
-                    <dl className="space-y-1.5 text-sm">
-                      <div><dt className="sr-only">Phone</dt><dd>{lead.phone ? <a href={`tel:${lead.phone}`} className="text-foreground hover:underline">{lead.phone}</a> : <span className="text-muted">No phone</span>}</dd></div>
-                      <div><dt className="sr-only">Email</dt><dd className="break-all">{lead.email ? <a href={`mailto:${lead.email}`} className="text-foreground hover:underline">{lead.email}</a> : <span className="text-muted">No email</span>}</dd></div>
-                      <div><dt className="sr-only">Location</dt><dd className="text-foreground">{lead.location ?? <span className="text-muted">No location</span>}</dd></div>
-                    </dl>
-                  </div>
-                  <div>
-                    <h2 className="klaros-label mb-2">Business context</h2>
-                    <dl className="space-y-1.5 text-sm">
-                      <div className="flex gap-2"><dt className="text-muted">Requested</dt><dd className="text-foreground">{lead.service_requested ?? "—"}</dd></div>
-                      <div className="flex gap-2"><dt className="text-muted">Budget</dt><dd className="text-foreground">{lead.estimated_value != null ? `$${lead.estimated_value.toLocaleString()}` : "Not given"}</dd></div>
-                    </dl>
-                  </div>
-                </div>
+                <dl className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="rounded-2xl bg-surface px-5 py-4"><dt className="text-[13px] font-medium text-muted">Phone</dt><dd className="mt-1 text-[15px] font-medium">{lead.phone ? <a href={`tel:${lead.phone}`} className="text-foreground hover:underline">{lead.phone}</a> : <span className="text-muted-foreground">No phone</span>}</dd></div>
+                  <div className="rounded-2xl bg-surface px-5 py-4"><dt className="text-[13px] font-medium text-muted">Email</dt><dd className="mt-1 break-all text-[15px] font-medium">{lead.email ? <a href={`mailto:${lead.email}`} className="text-foreground hover:underline">{lead.email}</a> : <span className="text-muted-foreground">No email</span>}</dd></div>
+                  <div className="rounded-2xl bg-surface px-5 py-4"><dt className="text-[13px] font-medium text-muted">Location</dt><dd className="mt-1 text-[15px] font-medium text-foreground">{lead.location ?? <span className="text-muted-foreground">No location</span>}</dd></div>
+                  <div className="rounded-2xl bg-surface px-5 py-4"><dt className="text-[13px] font-medium text-muted">Requested</dt><dd className="mt-1 text-[15px] font-medium text-foreground">{lead.service_requested ?? "—"}</dd></div>
+                  <div className="rounded-2xl bg-surface px-5 py-4"><dt className="text-[13px] font-medium text-muted">Budget</dt><dd className="mt-1 text-[15px] font-medium text-foreground">{lead.estimated_value != null ? `$${lead.estimated_value.toLocaleString()}` : <span className="text-muted-foreground">Not given</span>}</dd></div>
+                </dl>
               </div>
 
               {/* AI INTERACTION */}
@@ -361,7 +357,10 @@ export default function LeadDetailPage() {
                   Status: <span className="text-foreground">{lead.qualification_status}</span>
                 </p>
                 {lead.lead_score != null && (
-                  <p className="mt-1 text-2xl font-semibold">{lead.lead_score}/100</p>
+                  <div className="mt-4 flex items-center gap-4">
+                    <ProgressRing done={lead.lead_score} total={100} />
+                    <p className="text-[13px] leading-snug text-muted">Lead score out of 100</p>
+                  </div>
                 )}
                 {lead.score_reason && (
                   <p className="mt-2 text-xs text-muted">{lead.score_reason}</p>

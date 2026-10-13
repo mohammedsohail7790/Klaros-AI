@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/useAuth";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Alert } from "@/components/ui/Alert";
+import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import {
   ApiError,
@@ -179,9 +180,12 @@ export default function QuoteDetailPage() {
   return (
     <AppShell user={user}>
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Quote {quote.quote_number}</h1>
-          <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{quote.status}</span>
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="mb-2 text-[15px] font-medium text-muted-foreground">Quote</p>
+            <h1 className="font-display text-[2.25rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[3rem]">{quote.quote_number}</h1>
+          </div>
+          <Badge status={quote.status}>{quote.status.replace(/_/g, " ")}</Badge>
         </div>
 
         {error && <Alert variant="danger" className="mb-4">{error}</Alert>}

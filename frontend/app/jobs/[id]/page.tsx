@@ -489,14 +489,17 @@ export default function JobDetailPage() {
                   </form>
                 ) : (
                   <>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                          {job.job_number} — {job.title}
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="mb-1 text-[15px] font-medium text-muted-foreground">{job.job_number}</p>
+                        <h1 className="text-balance font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-foreground sm:text-[2.25rem]">
+                          {job.title}
                         </h1>
-                        <p className="text-sm text-muted">
-                          {job.status} · {job.priority} · {job.service_type ?? "no service type"}
-                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-foreground">{job.status.replace(/_/g, " ")}</span>
+                          <span className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-muted">Priority: {job.priority}</span>
+                          <span className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-muted">{job.service_type ?? "no service type"}</span>
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         {nextActions.map((a) => (
