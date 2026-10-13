@@ -115,23 +115,23 @@ export default function RiskSignalsPage() {
             ) : (
               <div className="mb-8 klaros-table-wrap">
                 <table className="klaros-table">
-                  <thead className="bg-surface text-muted">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-2">Type</th>
-                      <th className="px-4 py-2">Severity</th>
-                      <th className="px-4 py-2">Description</th>
-                      <th className="px-4 py-2">Detected</th>
+                      <th className="px-5 py-4">Type</th>
+                      <th className="px-5 py-4">Severity</th>
+                      <th className="px-5 py-4">Description</th>
+                      <th className="px-5 py-4">Detected</th>
                     </tr>
                   </thead>
                   <tbody>
                     {signals.map((s) => (
                       <tr key={s.id} className="border-t border-border">
-                        <td className="px-4 py-2">{s.signal_type.replaceAll("_", " ")}</td>
-                        <td className="px-4 py-2">
+                        <td className="px-5 py-4">{s.signal_type.replaceAll("_", " ")}</td>
+                        <td className="px-5 py-4">
                           <Badge status={s.severity}>{s.severity}</Badge>
                         </td>
-                        <td className="px-4 py-2 text-muted">{s.description}</td>
-                        <td className="px-4 py-2 text-muted">{new Date(s.detected_at).toLocaleDateString()}</td>
+                        <td className="px-5 py-4 text-muted">{s.description}</td>
+                        <td className="px-5 py-4 text-muted">{new Date(s.detected_at).toLocaleDateString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -145,23 +145,23 @@ export default function RiskSignalsPage() {
             ) : (
               <div className="klaros-table-wrap">
                 <table className="klaros-table">
-                  <thead className="bg-surface text-muted">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-2">Reason</th>
-                      <th className="px-4 py-2">Signals</th>
-                      <th className="px-4 py-2">Priority</th>
-                      <th className="px-4 py-2">Identified</th>
+                      <th className="px-5 py-4">Reason</th>
+                      <th className="px-5 py-4">Signals</th>
+                      <th className="px-5 py-4">Priority</th>
+                      <th className="px-5 py-4">Identified</th>
                     </tr>
                   </thead>
                   <tbody>
                     {candidates.map((c) => (
                       <tr key={c.id} className="border-t border-border">
-                        <td className="px-4 py-2 text-muted">{c.reason}</td>
-                        <td className="px-4 py-2 text-muted">{c.signals.join(", ")}</td>
-                        <td className="px-4 py-2">
+                        <td className="px-5 py-4 text-muted">{c.reason}</td>
+                        <td className="px-5 py-4 text-muted">{c.signals.join(", ")}</td>
+                        <td className="px-5 py-4">
                           <Badge status={c.priority}>{c.priority}</Badge>
                         </td>
-                        <td className="px-4 py-2 text-muted">{new Date(c.identified_at).toLocaleDateString()}</td>
+                        <td className="px-5 py-4 text-muted">{new Date(c.identified_at).toLocaleDateString()}</td>
                       </tr>
                     ))}
                   </tbody>

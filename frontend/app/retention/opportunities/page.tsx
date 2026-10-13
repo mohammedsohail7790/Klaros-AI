@@ -78,27 +78,27 @@ export default function OpportunitiesPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Type</th>
-                  <th className="px-4 py-2">Reason</th>
-                  <th className="px-4 py-2">Priority</th>
-                  <th className="px-4 py-2">Detected</th>
-                  <th className="px-4 py-2">Recommended action</th>
-                  <th className="px-4 py-2"></th>
+                  <th className="px-5 py-4">Type</th>
+                  <th className="px-5 py-4">Reason</th>
+                  <th className="px-5 py-4">Priority</th>
+                  <th className="px-5 py-4">Detected</th>
+                  <th className="px-5 py-4">Recommended action</th>
+                  <th className="px-5 py-4"></th>
                 </tr>
               </thead>
               <tbody>
                 {opportunities.map((o) => (
                   <tr key={o.id} className="border-t border-border">
-                    <td className="px-4 py-2 text-muted">{o.type}</td>
-                    <td className="max-w-sm px-4 py-2 text-muted">{o.reason}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4 text-muted">{o.type}</td>
+                    <td className="max-w-sm px-5 py-4 text-muted">{o.reason}</td>
+                    <td className="px-5 py-4">
                       <Badge status={o.priority}>{o.priority}</Badge>
                     </td>
-                    <td className="px-4 py-2 text-muted">{new Date(o.detected_at).toLocaleDateString()}</td>
-                    <td className="px-4 py-2 text-muted">{o.recommended_action}</td>
-                    <td className="px-4 py-2 space-x-2">
+                    <td className="px-5 py-4 text-muted">{new Date(o.detected_at).toLocaleDateString()}</td>
+                    <td className="px-5 py-4 text-muted">{o.recommended_action}</td>
+                    <td className="px-5 py-4 space-x-2">
                       {status === "OPEN" && (
                         <>
                           <button disabled={busy} onClick={() => handleUpdate(o.id, "CONTACTED")} className="text-xs underline text-muted hover:text-foreground">Contact</button>

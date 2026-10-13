@@ -69,18 +69,18 @@ export default function MedicalTourismRevenuePage() {
                 <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">{cur}</h2>
                 <div className="klaros-table-wrap mt-2">
                   <table className="klaros-table">
-                    <thead className="bg-surface text-muted">
-                      <tr><th className="px-4 py-2">Stage</th><th className="px-4 py-2">Count</th><th className="px-4 py-2">Amount</th><th className="px-4 py-2">Meaning</th></tr>
+                    <thead>
+                      <tr><th className="px-5 py-4">Stage</th><th className="px-5 py-4">Count</th><th className="px-5 py-4">Amount</th><th className="px-5 py-4">Meaning</th></tr>
                     </thead>
                     <tbody>
                       {ROWS.map((r) => {
                         const slot = data!.by_currency[cur][r.key] ?? { count: 0, amount: "0.00" };
                         return (
                           <tr key={r.key} className="border-t border-border">
-                            <td className="px-4 py-2 font-medium text-foreground">{r.label}</td>
-                            <td className="px-4 py-2">{slot.count}</td>
+                            <td className="px-5 py-4 font-medium text-foreground">{r.label}</td>
+                            <td className="px-5 py-4">{slot.count}</td>
                             <td className={`px-4 py-2 ${r.earned && slot.count > 0 ? "font-medium text-success" : "text-muted"}`}>{slot.amount} {cur}</td>
-                            <td className="px-4 py-2 text-muted">{r.note}</td>
+                            <td className="px-5 py-4 text-muted">{r.note}</td>
                           </tr>
                         );
                       })}

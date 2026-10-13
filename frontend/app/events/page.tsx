@@ -138,21 +138,21 @@ export default function EventsPage() {
                 <h2 className="mb-3 text-sm font-medium text-danger">Dead-lettered events ({deadLetters.length})</h2>
                 <div className="overflow-x-auto rounded-xl border border-danger/25">
                   <table className="klaros-table">
-                    <thead className="bg-surface text-muted">
+                    <thead>
                       <tr>
-                        <th className="px-4 py-2">Event type</th>
-                        <th className="px-4 py-2">Handler</th>
-                        <th className="px-4 py-2">Reason</th>
-                        <th className="px-4 py-2"></th>
+                        <th className="px-5 py-4">Event type</th>
+                        <th className="px-5 py-4">Handler</th>
+                        <th className="px-5 py-4">Reason</th>
+                        <th className="px-5 py-4"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {deadLetters.map((d) => (
                         <tr key={d.dead_letter_id} className="border-t border-border">
-                          <td className="px-4 py-2">{d.event_type}</td>
-                          <td className="px-4 py-2 text-muted">{d.handler_name}</td>
-                          <td className="max-w-sm truncate px-4 py-2 text-muted">{d.reason}</td>
-                          <td className="px-4 py-2">
+                          <td className="px-5 py-4">{d.event_type}</td>
+                          <td className="px-5 py-4 text-muted">{d.handler_name}</td>
+                          <td className="max-w-sm truncate px-5 py-4 text-muted">{d.reason}</td>
+                          <td className="px-5 py-4">
                             <button
                               disabled={busy}
                               onClick={() => handleReplay(d.dead_letter_id)}
@@ -186,13 +186,13 @@ export default function EventsPage() {
             ) : (
               <div className="klaros-table-wrap">
                 <table className="klaros-table">
-                  <thead className="bg-surface text-muted">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-2">Type</th>
-                      <th className="px-4 py-2">Status</th>
-                      <th className="px-4 py-2">Retries</th>
-                      <th className="px-4 py-2">Entity</th>
-                      <th className="px-4 py-2">Created</th>
+                      <th className="px-5 py-4">Type</th>
+                      <th className="px-5 py-4">Status</th>
+                      <th className="px-5 py-4">Retries</th>
+                      <th className="px-5 py-4">Entity</th>
+                      <th className="px-5 py-4">Created</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -202,17 +202,17 @@ export default function EventsPage() {
                           onClick={() => handleToggleDetail(e.event_id)}
                           className="cursor-pointer border-t border-border hover:bg-surface-muted"
                         >
-                          <td className="px-4 py-2">{e.event_type}</td>
-                          <td className="px-4 py-2">
+                          <td className="px-5 py-4">{e.event_type}</td>
+                          <td className="px-5 py-4">
                             <Badge status={e.status}>{e.status}</Badge>
                           </td>
-                          <td className="px-4 py-2 text-muted">{e.retry_count}</td>
-                          <td className="px-4 py-2 text-muted">{e.entity_type ?? "—"}</td>
-                          <td className="px-4 py-2 text-muted">{new Date(e.created_at).toLocaleString()}</td>
+                          <td className="px-5 py-4 text-muted">{e.retry_count}</td>
+                          <td className="px-5 py-4 text-muted">{e.entity_type ?? "—"}</td>
+                          <td className="px-5 py-4 text-muted">{new Date(e.created_at).toLocaleString()}</td>
                         </tr>
                         {expandedId === e.event_id && (
                           <tr className="border-t border-border bg-surface-muted">
-                            <td colSpan={5} className="px-4 py-3">
+                            <td colSpan={5} className="px-5 py-4">
                               {detailLoading ? (
                                 <Skeleton />
                               ) : detailError ? (

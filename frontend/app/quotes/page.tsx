@@ -121,27 +121,27 @@ export default function QuotesPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Number</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Valid until</th>
-                  <th className="px-4 py-2">Total</th>
+                  <th className="px-5 py-4">Number</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4">Valid until</th>
+                  <th className="px-5 py-4">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {quotes.map((q) => (
                   <tr key={q.id} className="border-t border-border">
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       <Link href={`/quotes/${q.id}`} className="underline hover:text-foreground">
                         {q.quote_number}
                       </Link>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       <Badge status={q.status}>{q.status}</Badge>
                     </td>
-                    <td className="px-4 py-2 text-muted">{q.valid_until ?? "—"}</td>
-                    <td className="px-4 py-2">${q.total}</td>
+                    <td className="px-5 py-4 text-muted">{q.valid_until ?? "—"}</td>
+                    <td className="px-5 py-4">${q.total}</td>
                   </tr>
                 ))}
               </tbody>

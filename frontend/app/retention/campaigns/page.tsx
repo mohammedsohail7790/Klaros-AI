@@ -211,21 +211,21 @@ export default function RetentionCampaignsPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Name</th>
-                  <th className="px-4 py-2">Type</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2"></th>
+                  <th className="px-5 py-4">Name</th>
+                  <th className="px-5 py-4">Type</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4"></th>
                 </tr>
               </thead>
               <tbody>
                 {campaigns.map((c) => (
                   <Fragment key={c.id}>
                     <tr className="border-t border-border">
-                      <td className="px-4 py-2">{c.name}</td>
-                      <td className="px-4 py-2 text-muted">{c.type}</td>
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4">{c.name}</td>
+                      <td className="px-5 py-4 text-muted">{c.type}</td>
+                      <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                           <Badge status={c.status}>{c.status}</Badge>
                           <select
@@ -242,7 +242,7 @@ export default function RetentionCampaignsPage() {
                           </select>
                         </div>
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4">
                         <button
                           onClick={() => {
                             setEnrollingCampaignId(enrollingCampaignId === c.id ? null : c.id);
@@ -257,7 +257,7 @@ export default function RetentionCampaignsPage() {
                     </tr>
                     {enrollingCampaignId === c.id && (
                       <tr className="border-t border-border bg-surface-muted">
-                        <td colSpan={4} className="px-4 py-3">
+                        <td colSpan={4} className="px-5 py-4">
                           <div className="relative max-w-sm">
                             <input
                               value={customerQuery}

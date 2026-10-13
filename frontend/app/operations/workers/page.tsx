@@ -163,26 +163,26 @@ export default function WorkersPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Name</th>
-                  <th className="px-4 py-2">Role</th>
-                  <th className="px-4 py-2">Contact</th>
-                  <th className="px-4 py-2">Service types</th>
-                  <th className="px-4 py-2">Status</th>
+                  <th className="px-5 py-4">Name</th>
+                  <th className="px-5 py-4">Role</th>
+                  <th className="px-5 py-4">Contact</th>
+                  <th className="px-5 py-4">Service types</th>
+                  <th className="px-5 py-4">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {workers.map((w) => (
                   <tr key={w.id} className="border-t border-border">
-                    <td className="px-4 py-2 font-medium">{w.name}</td>
-                    <td className="px-4 py-2 text-muted">{w.role ?? "—"}</td>
-                    <td className="px-4 py-2 text-muted">
+                    <td className="px-5 py-4 font-medium">{w.name}</td>
+                    <td className="px-5 py-4 text-muted">{w.role ?? "—"}</td>
+                    <td className="px-5 py-4 text-muted">
                       {w.email ?? "—"}
                       {w.phone && ` · ${w.phone}`}
                     </td>
-                    <td className="px-4 py-2 text-muted">{w.service_types.join(", ") || "—"}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4 text-muted">{w.service_types.join(", ") || "—"}</td>
+                    <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         <Badge status={w.status}>{w.status}</Badge>
                         <select

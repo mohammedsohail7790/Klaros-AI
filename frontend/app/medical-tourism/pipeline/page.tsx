@@ -90,11 +90,11 @@ function ListView({ rows }: { rows: PipelineLead[] }) {
       <table className="klaros-table">
         <thead>
           <tr>
-            <th className="px-4 py-2">Patient</th>
-            <th className="px-4 py-2">Stage</th>
-            <th className="px-4 py-2">Next step</th>
-            <th className="px-4 py-2">Clinic</th>
-            <th className="px-4 py-2">Referral</th>
+            <th className="px-5 py-4">Patient</th>
+            <th className="px-5 py-4">Stage</th>
+            <th className="px-5 py-4">Next step</th>
+            <th className="px-5 py-4">Clinic</th>
+            <th className="px-5 py-4">Referral</th>
           </tr>
         </thead>
         <tbody>
@@ -102,7 +102,7 @@ function ListView({ rows }: { rows: PipelineLead[] }) {
             const step = nextStepFor(l);
             return (
               <tr key={l.lead_id} className="border-t border-border hover:bg-surface">
-                <td className="px-4 py-2">
+                <td className="px-5 py-4">
                   <Link href={caseHref(l.lead_id)} className={`font-medium underline-offset-2 hover:underline ${l.name ? "text-foreground" : "italic text-muted"}`}>
                     {patientName(l)}
                   </Link>
@@ -113,15 +113,15 @@ function ListView({ rows }: { rows: PipelineLead[] }) {
                     </span>
                   )}
                 </td>
-                <td className="whitespace-nowrap px-4 py-2">
+                <td className="whitespace-nowrap px-5 py-4">
                   {l.stage_number}. {STAGE_LABEL[l.stage]}
                 </td>
-                <td className="px-4 py-2 text-muted">
+                <td className="px-5 py-4 text-muted">
                   {step.cta ? <span className="font-medium text-accent">{step.cta}</span> : <span>Nothing to do now</span>}
                   <div className="text-xs">{step.hint}</div>
                 </td>
-                <td className="px-4 py-2 text-muted">{clinicOf(l) ?? "—"}</td>
-                <td className="px-4 py-2">{l.referrals.length === 0 ? <span className="text-muted">—</span> : l.referrals.map((r) => <Badge key={r.id} status={r.status}>{r.status.replace("_", " ")}</Badge>)}</td>
+                <td className="px-5 py-4 text-muted">{clinicOf(l) ?? "—"}</td>
+                <td className="px-5 py-4">{l.referrals.length === 0 ? <span className="text-muted">—</span> : l.referrals.map((r) => <Badge key={r.id} status={r.status}>{r.status.replace("_", " ")}</Badge>)}</td>
               </tr>
             );
           })}

@@ -148,25 +148,25 @@ export default function ARPage() {
             ) : (
               <div className="klaros-table-wrap">
                 <table className="klaros-table">
-                  <thead className="bg-surface text-muted">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-2">Invoice</th>
-                      <th className="px-4 py-2">Action</th>
-                      <th className="px-4 py-2">Scheduled for</th>
-                      <th className="px-4 py-2">Status</th>
-                      <th className="px-4 py-2">Attempt</th>
+                      <th className="px-5 py-4">Invoice</th>
+                      <th className="px-5 py-4">Action</th>
+                      <th className="px-5 py-4">Scheduled for</th>
+                      <th className="px-5 py-4">Status</th>
+                      <th className="px-5 py-4">Attempt</th>
                     </tr>
                   </thead>
                   <tbody>
                     {actions.map((a) => (
                       <tr key={a.id} className="border-t border-border">
-                        <td className="px-4 py-2">{a.invoice_number}</td>
-                        <td className="px-4 py-2 text-muted">{a.action_type}</td>
-                        <td className="px-4 py-2 text-muted">{new Date(a.scheduled_for).toLocaleString()}</td>
-                        <td className="px-4 py-2">
+                        <td className="px-5 py-4">{a.invoice_number}</td>
+                        <td className="px-5 py-4 text-muted">{a.action_type}</td>
+                        <td className="px-5 py-4 text-muted">{new Date(a.scheduled_for).toLocaleString()}</td>
+                        <td className="px-5 py-4">
                           <Badge status={a.status}>{a.status}</Badge>
                         </td>
-                        <td className="px-4 py-2 text-muted">{a.attempt}</td>
+                        <td className="px-5 py-4 text-muted">{a.attempt}</td>
                       </tr>
                     ))}
                   </tbody>

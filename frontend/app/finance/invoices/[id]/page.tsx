@@ -239,21 +239,21 @@ export default function InvoiceDetailPage() {
 
         <div className="mb-6 klaros-table-wrap">
           <table className="klaros-table">
-            <thead className="bg-surface text-muted">
+            <thead>
               <tr>
-                <th className="px-4 py-2">Description</th>
-                <th className="px-4 py-2">Qty</th>
-                <th className="px-4 py-2">Unit price</th>
-                <th className="px-4 py-2">Line total</th>
+                <th className="px-5 py-4">Description</th>
+                <th className="px-5 py-4">Qty</th>
+                <th className="px-5 py-4">Unit price</th>
+                <th className="px-5 py-4">Line total</th>
               </tr>
             </thead>
             <tbody>
               {invoice.line_items.map((li) => (
                 <tr key={li.id} className="border-t border-border">
-                  <td className="px-4 py-2">{li.description}</td>
-                  <td className="px-4 py-2">{li.quantity}</td>
-                  <td className="px-4 py-2">${li.unit_price}</td>
-                  <td className="px-4 py-2">${li.line_total}</td>
+                  <td className="px-5 py-4">{li.description}</td>
+                  <td className="px-5 py-4">{li.quantity}</td>
+                  <td className="px-5 py-4">${li.unit_price}</td>
+                  <td className="px-5 py-4">${li.line_total}</td>
                 </tr>
               ))}
             </tbody>

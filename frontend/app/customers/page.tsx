@@ -76,7 +76,7 @@ export default function CustomersPage() {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name or email..."
           aria-label="Search customers"
-          className="klaros-input mb-4 w-full max-w-sm"
+          className="klaros-input mb-6 w-full max-w-sm !rounded-full"
         />
 
         {authLoading || loading ? (
@@ -107,35 +107,20 @@ export default function CustomersPage() {
             }
           />
         ) : (
-          <div className="klaros-table-wrap">
-            <table className="klaros-table">
-              <thead className="bg-surface text-muted">
-                <tr>
-                  <th className="px-4 py-2">Name</th>
-                  <th className="px-4 py-2">Email</th>
-                  <th className="px-4 py-2">Phone</th>
-                  <th className="px-4 py-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((c) => (
-                  <tr key={c.id} className="border-t border-border hover:bg-surface">
-                    <td className="px-4 py-2">
-                      <Link href={`/customers/${c.id}`} className="flex items-center gap-3 font-medium text-foreground hover:underline">
-                        <Avatar name={c.name} />
-                        {c.name}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2 text-muted">{c.email ?? "—"}</td>
-                    <td className="px-4 py-2 text-muted">{c.phone ?? "—"}</td>
-                    <td className="px-4 py-2">
-                      <Badge status={c.status}>{c.status}</Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted" aria-label="Customers">
+            {customers.map((c) => (
+              <li key={c.id} className="group relative flex items-center gap-4 px-6 py-4 transition-colors duration-300 hover:bg-black/[0.03]">
+                <Avatar name={c.name} />
+                <div className="min-w-0 flex-1">
+                  <Link href={`/customers/${c.id}`} className="text-[17px] font-semibold tracking-tight text-foreground after:absolute after:inset-0 after:content-['']">
+                    {c.name}
+                  </Link>
+                  <p className="mt-0.5 truncate text-[14px] text-muted">{[c.email, c.phone].filter(Boolean).join(" · ") || "No contact details"}</p>
+                </div>
+                <Badge status={c.status}>{c.status}</Badge>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 

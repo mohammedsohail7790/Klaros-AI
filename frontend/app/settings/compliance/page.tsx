@@ -176,27 +176,27 @@ export default function CompliancePage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Name</th>
-                  <th className="px-4 py-2">Type</th>
-                  <th className="px-4 py-2">Holder</th>
-                  <th className="px-4 py-2">Expiry</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2"></th>
+                  <th className="px-5 py-4">Name</th>
+                  <th className="px-5 py-4">Type</th>
+                  <th className="px-5 py-4">Holder</th>
+                  <th className="px-5 py-4">Expiry</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4"></th>
                 </tr>
               </thead>
               <tbody>
                 {licenses.map((lic) => (
                   <tr key={lic.id} className="border-t border-border">
-                    <td className="px-4 py-2">{lic.name}</td>
-                    <td className="px-4 py-2 text-muted">{lic.type.replaceAll("_", " ")}</td>
-                    <td className="px-4 py-2 text-muted">{lic.holder_name ?? "Business"}</td>
-                    <td className="px-4 py-2 text-muted">{lic.expiry_date}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">{lic.name}</td>
+                    <td className="px-5 py-4 text-muted">{lic.type.replaceAll("_", " ")}</td>
+                    <td className="px-5 py-4 text-muted">{lic.holder_name ?? "Business"}</td>
+                    <td className="px-5 py-4 text-muted">{lic.expiry_date}</td>
+                    <td className="px-5 py-4">
                       <Badge status={lic.status}>{lic.status.replaceAll("_", " ")}</Badge>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       <button
                         onClick={() => {
                           setRenewingId(renewingId === lic.id ? null : lic.id);

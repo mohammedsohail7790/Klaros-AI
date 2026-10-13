@@ -155,25 +155,25 @@ export default function VendorsPage() {
             <h2 className="mb-3 text-base font-semibold tracking-tight">Vendors</h2>
             <div className="mb-8 klaros-table-wrap">
               <table className="klaros-table">
-                <thead className="bg-surface text-muted">
+                <thead>
                   <tr>
-                    <th className="px-4 py-2">Name</th>
-                    <th className="px-4 py-2">Email</th>
-                    <th className="px-4 py-2">Phone</th>
-                    <th className="px-4 py-2">Status</th>
-                    <th className="px-4 py-2"></th>
+                    <th className="px-5 py-4">Name</th>
+                    <th className="px-5 py-4">Email</th>
+                    <th className="px-5 py-4">Phone</th>
+                    <th className="px-5 py-4">Status</th>
+                    <th className="px-5 py-4"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {vendors.map((v) => (
                     <tr key={v.id} className="border-t border-border">
-                      <td className="px-4 py-2">{v.name}</td>
-                      <td className="px-4 py-2 text-muted">{v.email ?? "—"}</td>
-                      <td className="px-4 py-2 text-muted">{v.phone ?? "—"}</td>
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4">{v.name}</td>
+                      <td className="px-5 py-4 text-muted">{v.email ?? "—"}</td>
+                      <td className="px-5 py-4 text-muted">{v.phone ?? "—"}</td>
+                      <td className="px-5 py-4">
                         <Badge status={v.status}>{v.status}</Badge>
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4">
                         <button
                           onClick={() => setBillVendorId(billVendorId === v.id ? null : v.id)}
                           className="text-xs underline text-muted hover:text-foreground"
@@ -239,25 +239,25 @@ export default function VendorsPage() {
             ) : (
               <div className="klaros-table-wrap">
                 <table className="klaros-table">
-                  <thead className="bg-surface text-muted">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-2">Vendor</th>
-                      <th className="px-4 py-2">Amount</th>
-                      <th className="px-4 py-2">Due date</th>
-                      <th className="px-4 py-2">Status</th>
-                      <th className="px-4 py-2"></th>
+                      <th className="px-5 py-4">Vendor</th>
+                      <th className="px-5 py-4">Amount</th>
+                      <th className="px-5 py-4">Due date</th>
+                      <th className="px-5 py-4">Status</th>
+                      <th className="px-5 py-4"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {bills.map((b) => (
                       <tr key={b.id} className="border-t border-border">
-                        <td className="px-4 py-2">{vendorName(b.vendor_id)}</td>
-                        <td className="px-4 py-2">${b.amount}</td>
-                        <td className="px-4 py-2 text-muted">{b.due_date}</td>
-                        <td className="px-4 py-2">
+                        <td className="px-5 py-4">{vendorName(b.vendor_id)}</td>
+                        <td className="px-5 py-4">${b.amount}</td>
+                        <td className="px-5 py-4 text-muted">{b.due_date}</td>
+                        <td className="px-5 py-4">
                           <Badge status={b.status}>{b.status}</Badge>
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-5 py-4">
                           {b.status !== "PAID" && (
                             <button
                               onClick={() => handlePayout(b)}

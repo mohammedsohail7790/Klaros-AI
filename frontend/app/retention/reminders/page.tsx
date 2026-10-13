@@ -84,25 +84,25 @@ export default function RemindersPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Service</th>
-                  <th className="px-4 py-2">Due date</th>
-                  <th className="px-4 py-2">Reason</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2"></th>
+                  <th className="px-5 py-4">Service</th>
+                  <th className="px-5 py-4">Due date</th>
+                  <th className="px-5 py-4">Reason</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4"></th>
                 </tr>
               </thead>
               <tbody>
                 {reminders.map((r) => (
                   <tr key={r.id} className="border-t border-border">
-                    <td className="px-4 py-2">{r.service_type || "—"}</td>
-                    <td className="px-4 py-2 text-muted">{r.reminder_date}</td>
-                    <td className="px-4 py-2 text-muted">{r.reason}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">{r.service_type || "—"}</td>
+                    <td className="px-5 py-4 text-muted">{r.reminder_date}</td>
+                    <td className="px-5 py-4 text-muted">{r.reason}</td>
+                    <td className="px-5 py-4">
                       <Badge status={r.status}>{r.status}</Badge>
                     </td>
-                    <td className="px-4 py-2 space-x-2">
+                    <td className="px-5 py-4 space-x-2">
                       {(r.status === "SCHEDULED" || r.status === "DUE") && (
                         <>
                           <button disabled={busy} onClick={() => handleStatus(r.id, "SENT")} className="text-xs underline text-muted hover:text-foreground">Send</button>

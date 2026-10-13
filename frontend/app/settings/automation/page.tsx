@@ -187,22 +187,22 @@ export default function AutomationSettingsPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-surface text-left text-xs text-muted">
                       <tr>
-                        <th className="px-3 py-2">Action</th>
-                        <th className="px-3 py-2">Current Policy</th>
-                        <th className="px-3 py-2">Default</th>
-                        <th className="px-3 py-2">Last Changed</th>
-                        <th className="px-3 py-2">Set to</th>
-                        <th className="px-3 py-2" />
+                        <th className="px-5 py-3.5">Action</th>
+                        <th className="px-5 py-3.5">Current Policy</th>
+                        <th className="px-5 py-3.5">Default</th>
+                        <th className="px-5 py-3.5">Last Changed</th>
+                        <th className="px-5 py-3.5">Set to</th>
+                        <th className="px-5 py-3.5" />
                       </tr>
                     </thead>
                     <tbody>
                       {policies.map((p) => (
                         <tr key={p.tool_name} className="border-t border-border">
-                          <td className="px-3 py-2">
+                          <td className="px-5 py-3.5">
                             <div>{friendlyToolName(p.tool_name)}</div>
                             <div className="text-xs text-muted-foreground">{p.tool_name}</div>
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-5 py-3.5">
                             <span
                               className={`rounded-full border px-2 py-0.5 text-xs ${
                                 POLICY_COLOR[p.current_policy] ?? "border-border-strong"
@@ -211,11 +211,11 @@ export default function AutomationSettingsPage() {
                               {p.system_blocked ? "PLATFORM BLOCKED" : p.current_policy}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-muted">{p.default_policy}</td>
-                          <td className="px-3 py-2 text-muted">
+                          <td className="px-5 py-3.5 text-muted">{p.default_policy}</td>
+                          <td className="px-5 py-3.5 text-muted">
                             {p.updated_at ? new Date(p.updated_at).toLocaleString() : "—"}
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-5 py-3.5">
                             {p.system_blocked ? (
                               <span className="text-xs text-muted-foreground">not configurable</span>
                             ) : (
@@ -237,7 +237,7 @@ export default function AutomationSettingsPage() {
                               </div>
                             )}
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-5 py-3.5">
                             {p.has_override && !p.system_blocked && (
                               <button
                                 disabled={busyKey === p.tool_name}
@@ -267,21 +267,21 @@ export default function AutomationSettingsPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-surface text-left text-xs text-muted">
                     <tr>
-                      <th className="px-3 py-2">Notification</th>
-                      <th className="px-3 py-2">In-app</th>
-                      <th className="px-3 py-2">Email</th>
-                      <th className="px-3 py-2">SMS</th>
+                      <th className="px-5 py-3.5">Notification</th>
+                      <th className="px-5 py-3.5">In-app</th>
+                      <th className="px-5 py-3.5">Email</th>
+                      <th className="px-5 py-3.5">SMS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {NOTIFICATION_TYPES.map((type) => (
                       <tr key={type} className="border-t border-border">
-                        <td className="px-3 py-2">{friendlyType(type)}</td>
+                        <td className="px-5 py-3.5">{friendlyType(type)}</td>
                         {(["IN_APP", "EMAIL", "SMS"] as const).map((channel) => {
                           const locked = channel === "IN_APP" && ALWAYS_IN_APP.has(type);
                           const key = `${type}:${channel}`;
                           return (
-                            <td key={channel} className="px-3 py-2">
+                            <td key={channel} className="px-5 py-3.5">
                               <input
                                 type="checkbox"
                                 checked={locked || prefFor(type, channel)}

@@ -257,26 +257,26 @@ export default function SEOPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Service</th>
-                  <th className="px-4 py-2">Location</th>
-                  <th className="px-4 py-2">Title</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2"></th>
+                  <th className="px-5 py-4">Service</th>
+                  <th className="px-5 py-4">Location</th>
+                  <th className="px-5 py-4">Title</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4"></th>
                 </tr>
               </thead>
               <tbody>
                 {pages.map((p) => (
                   <tr key={p.id} className="border-t border-border">
-                    <td className="px-4 py-2">{p.service}</td>
-                    <td className="px-4 py-2 text-muted">{p.location}</td>
-                    <td className="px-4 py-2 text-muted">{p.title}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">{p.service}</td>
+                    <td className="px-5 py-4 text-muted">{p.location}</td>
+                    <td className="px-5 py-4 text-muted">{p.title}</td>
+                    <td className="px-5 py-4">
                       <Badge status={p.status}>{p.status}</Badge>
                       {p.ai_generated && <span className="ml-2 text-xs text-muted">AI GENERATED</span>}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       {p.status === "DRAFT" && (
                         <button disabled={busy} onClick={() => handlePublish(p.id)} className="text-xs underline text-muted hover:text-foreground">
                           Publish

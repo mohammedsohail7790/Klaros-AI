@@ -170,29 +170,29 @@ export default function InvoicesPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Number</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Due date</th>
-                  <th className="px-4 py-2">Total</th>
-                  <th className="px-4 py-2">Amount due</th>
+                  <th className="px-5 py-4">Number</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4">Due date</th>
+                  <th className="px-5 py-4">Total</th>
+                  <th className="px-5 py-4">Amount due</th>
                 </tr>
               </thead>
               <tbody>
                 {invoices.map((inv) => (
                   <tr key={inv.id} className="border-t border-border">
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       <Link href={`/finance/invoices/${inv.id}`} className="underline hover:text-foreground">
                         {inv.invoice_number}
                       </Link>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       <Badge status={inv.status}>{inv.status}</Badge>
                     </td>
-                    <td className="px-4 py-2 text-muted">{inv.due_date}</td>
-                    <td className="px-4 py-2">${inv.total}</td>
-                    <td className="px-4 py-2 text-muted">${inv.amount_due}</td>
+                    <td className="px-5 py-4 text-muted">{inv.due_date}</td>
+                    <td className="px-5 py-4">${inv.total}</td>
+                    <td className="px-5 py-4 text-muted">${inv.amount_due}</td>
                   </tr>
                 ))}
               </tbody>

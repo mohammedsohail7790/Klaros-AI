@@ -81,19 +81,19 @@ export function ClinicOffers({ token, refreshKey = 0 }: { token: string; refresh
       ) : offers.length > 0 ? (
         <div className="klaros-table-wrap mt-3">
           <table className="klaros-table">
-            <thead className="bg-surface text-muted">
+            <thead>
               <tr>
-                <th className="px-4 py-2">Clinic</th>
-                <th className="px-4 py-2">Procedure</th>
-                <th className="px-4 py-2">Approved price</th>
+                <th className="px-5 py-4">Clinic</th>
+                <th className="px-5 py-4">Procedure</th>
+                <th className="px-5 py-4">Approved price</th>
               </tr>
             </thead>
             <tbody>
               {offers.map((o) => (
                 <tr key={o.id} className="border-t border-border">
-                  <td className="px-4 py-2 text-foreground">{providerName[o.provider_id] ?? "Clinic"}</td>
-                  <td className="px-4 py-2 text-muted">{procedureName[o.procedure_id] ?? "Procedure"}</td>
-                  <td className="px-4 py-2 text-muted">{o.estimated_price ? `${o.estimated_price} ${o.currency ?? ""}`.trim() : "Not given"}</td>
+                  <td className="px-5 py-4 text-foreground">{providerName[o.provider_id] ?? "Clinic"}</td>
+                  <td className="px-5 py-4 text-muted">{procedureName[o.procedure_id] ?? "Procedure"}</td>
+                  <td className="px-5 py-4 text-muted">{o.estimated_price ? `${o.estimated_price} ${o.currency ?? ""}`.trim() : "Not given"}</td>
                 </tr>
               ))}
             </tbody>

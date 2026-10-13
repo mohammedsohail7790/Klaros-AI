@@ -79,29 +79,29 @@ export default function ExceptionsPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Severity</th>
-                  <th className="px-4 py-2">Type</th>
-                  <th className="px-4 py-2">Entity</th>
-                  <th className="px-4 py-2">Description</th>
-                  <th className="px-4 py-2">Created</th>
-                  <th className="px-4 py-2"></th>
+                  <th className="px-5 py-4">Severity</th>
+                  <th className="px-5 py-4">Type</th>
+                  <th className="px-5 py-4">Entity</th>
+                  <th className="px-5 py-4">Description</th>
+                  <th className="px-5 py-4">Created</th>
+                  <th className="px-5 py-4"></th>
                 </tr>
               </thead>
               <tbody>
                 {exceptions.map((e) => (
                   <tr key={e.id} className="border-t border-border">
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       <Badge status={e.severity}>{e.severity}</Badge>
                     </td>
-                    <td className="px-4 py-2 text-muted">{e.type}</td>
-                    <td className="px-4 py-2 text-muted">
+                    <td className="px-5 py-4 text-muted">{e.type}</td>
+                    <td className="px-5 py-4 text-muted">
                       {e.entity_type}/{e.entity_id.slice(0, 8)}
                     </td>
-                    <td className="px-4 py-2">{e.description}</td>
-                    <td className="px-4 py-2 text-muted">{new Date(e.created_at).toLocaleString()}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">{e.description}</td>
+                    <td className="px-5 py-4 text-muted">{new Date(e.created_at).toLocaleString()}</td>
+                    <td className="px-5 py-4">
                       {status === "OPEN" && (
                         <button onClick={() => handleResolve(e.id)} className="text-xs underline text-muted hover:text-foreground">
                           Resolve

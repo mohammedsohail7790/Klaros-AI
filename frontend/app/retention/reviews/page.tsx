@@ -202,23 +202,23 @@ export default function ReviewsPage() {
             ) : (
               <div className="mb-6 klaros-table-wrap">
                 <table className="klaros-table">
-                  <thead className="bg-surface text-muted">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-2">Status</th>
-                      <th className="px-4 py-2">Channel</th>
-                      <th className="px-4 py-2">Requested at</th>
-                      <th className="px-4 py-2"></th>
+                      <th className="px-5 py-4">Status</th>
+                      <th className="px-5 py-4">Channel</th>
+                      <th className="px-5 py-4">Requested at</th>
+                      <th className="px-5 py-4"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {requests.map((r) => (
                       <tr key={r.id} className="border-t border-border">
-                        <td className="px-4 py-2">
+                        <td className="px-5 py-4">
                           <Badge status={r.status}>{r.status}</Badge>
                         </td>
-                        <td className="px-4 py-2 text-muted">{r.channel}</td>
-                        <td className="px-4 py-2 text-muted">{r.requested_at ? new Date(r.requested_at).toLocaleString() : "—"}</td>
-                        <td className="px-4 py-2">
+                        <td className="px-5 py-4 text-muted">{r.channel}</td>
+                        <td className="px-5 py-4 text-muted">{r.requested_at ? new Date(r.requested_at).toLocaleString() : "—"}</td>
+                        <td className="px-5 py-4">
                           {r.status === "ELIGIBLE" && (
                             <button disabled={busy} onClick={() => handleSend(r.id)} className="text-xs underline text-muted hover:text-foreground">
                               Send

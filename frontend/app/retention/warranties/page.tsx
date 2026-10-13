@@ -168,27 +168,27 @@ export default function WarrantiesPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Item</th>
-                  <th className="px-4 py-2">Expiry</th>
-                  <th className="px-4 py-2">Last check-in</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2"></th>
+                  <th className="px-5 py-4">Item</th>
+                  <th className="px-5 py-4">Expiry</th>
+                  <th className="px-5 py-4">Last check-in</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4"></th>
                 </tr>
               </thead>
               <tbody>
                 {warranties.map((w) => (
                   <tr key={w.id} className="border-t border-border">
-                    <td className="px-4 py-2">{w.item_description}</td>
-                    <td className="px-4 py-2 text-muted">{w.expiry_date}</td>
-                    <td className="px-4 py-2 text-muted">
+                    <td className="px-5 py-4">{w.item_description}</td>
+                    <td className="px-5 py-4 text-muted">{w.expiry_date}</td>
+                    <td className="px-5 py-4 text-muted">
                       {w.last_checked_in_at ? new Date(w.last_checked_in_at).toLocaleDateString() : "—"}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       <Badge status={w.status}>{w.status.replaceAll("_", " ")}</Badge>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       {w.status !== "CLAIMED" && (
                         <button
                           disabled={checkInBusy === w.id}

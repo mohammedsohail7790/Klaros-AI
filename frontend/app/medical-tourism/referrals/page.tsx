@@ -147,19 +147,19 @@ export default function CommissionDeskPage() {
               ) : (
                 <div className="klaros-table-wrap mt-3">
                   <table className="klaros-table">
-                    <thead className="bg-surface text-muted">
+                    <thead>
                       <tr>
-                        <th className="px-4 py-2">Patient and clinic</th>
-                        <th className="px-4 py-2">Outcome</th>
-                        <th className="px-4 py-2">Amount</th>
-                        <th className="px-4 py-2">Status</th>
-                        <th className="px-4 py-2" />
+                        <th className="px-5 py-4">Patient and clinic</th>
+                        <th className="px-5 py-4">Outcome</th>
+                        <th className="px-5 py-4">Amount</th>
+                        <th className="px-5 py-4">Status</th>
+                        <th className="px-5 py-4" />
                       </tr>
                     </thead>
                     <tbody>
                       {commissions.map((c) => (
                         <tr key={c.id} className="border-t border-border align-top">
-                          <td className="px-4 py-2">
+                          <td className="px-5 py-4">
                             {c.lead_id ? (
                               <Link href={caseHref(c.lead_id)} className="font-medium text-foreground hover:underline">
                                 {who(c.lead_id)}
@@ -169,17 +169,17 @@ export default function CommissionDeskPage() {
                             )}
                             <div className="text-xs text-muted">{c.provider_name ?? "Clinic"}</div>
                           </td>
-                          <td className="px-4 py-2 text-muted">
+                          <td className="px-5 py-4 text-muted">
                             {c.outcome ? OUTCOME_LABEL[c.outcome] ?? c.outcome : "Not reported"}
                             {c.outcome_evidence && <div className="text-xs">{c.outcome_evidence}</div>}
                             <div className="text-xs text-muted-foreground">Agreement needs: {OUTCOME_LABEL[c.qualifying_outcome] ?? c.qualifying_outcome}</div>
                           </td>
-                          <td className="px-4 py-2 text-foreground">{amountOf(c)}</td>
-                          <td className="px-4 py-2">
+                          <td className="px-5 py-4 text-foreground">{amountOf(c)}</td>
+                          <td className="px-5 py-4">
                             <Badge status={c.status}>{COMMISSION_STATUS_LABEL[c.status] ?? c.status}</Badge>
                             <div className="mt-1 max-w-xs text-xs text-muted-foreground">{COMMISSION_STATUS_HELP[c.status]}</div>
                           </td>
-                          <td className="px-4 py-2 text-right">
+                          <td className="px-5 py-4 text-right">
                             <div className="flex flex-wrap justify-end gap-1.5">
                               {(STEPS[c.status] ?? []).map((s) => (
                                 <Button key={s.to} size="sm" variant={s.primary ? "primary" : "secondary"} onClick={() => setStep({ c, to: s.to, label: s.label })}>

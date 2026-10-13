@@ -105,29 +105,29 @@ export default function ContractsPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Number</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Sent</th>
-                  <th className="px-4 py-2">Viewed</th>
-                  <th className="px-4 py-2">Signed</th>
+                  <th className="px-5 py-4">Number</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4">Sent</th>
+                  <th className="px-5 py-4">Viewed</th>
+                  <th className="px-5 py-4">Signed</th>
                 </tr>
               </thead>
               <tbody>
                 {contracts.map((c) => (
                   <tr key={c.id} className="border-t border-border">
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       <Link href={`/contracts/${c.id}`} className="underline hover:text-foreground">
                         {c.contract_number}
                       </Link>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       <Badge status={c.status}>{c.status}</Badge>
                     </td>
-                    <td className="px-4 py-2 text-muted">{c.sent_at ? "Yes" : "—"}</td>
-                    <td className="px-4 py-2 text-muted">{c.viewed_at ? "Yes" : "—"}</td>
-                    <td className="px-4 py-2 text-muted">{c.signer_name ?? "—"}</td>
+                    <td className="px-5 py-4 text-muted">{c.sent_at ? "Yes" : "—"}</td>
+                    <td className="px-5 py-4 text-muted">{c.viewed_at ? "Yes" : "—"}</td>
+                    <td className="px-5 py-4 text-muted">{c.signer_name ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

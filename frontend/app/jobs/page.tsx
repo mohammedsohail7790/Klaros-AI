@@ -100,29 +100,29 @@ export default function JobsPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Job #</th>
-                  <th className="px-4 py-2">Title</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Priority</th>
-                  <th className="px-4 py-2">Scheduled</th>
+                  <th className="px-5 py-4">Job #</th>
+                  <th className="px-5 py-4">Title</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4">Priority</th>
+                  <th className="px-5 py-4">Scheduled</th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((j) => (
                   <tr key={j.id} className="border-t border-border hover:bg-surface">
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">
                       <Link href={`/jobs/${j.id}`} className="hover:underline">
                         {j.job_number}
                       </Link>
                     </td>
-                    <td className="px-4 py-2">{j.title}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-5 py-4">{j.title}</td>
+                    <td className="px-5 py-4">
                       <Badge status={j.status}>{j.status}</Badge>
                     </td>
-                    <td className="px-4 py-2 text-muted">{j.priority}</td>
-                    <td className="px-4 py-2 text-muted">
+                    <td className="px-5 py-4 text-muted">{j.priority}</td>
+                    <td className="px-5 py-4 text-muted">
                       {j.scheduled_start ? new Date(j.scheduled_start).toLocaleString() : "—"}
                     </td>
                   </tr>

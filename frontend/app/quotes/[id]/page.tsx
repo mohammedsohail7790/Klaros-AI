@@ -270,39 +270,39 @@ export default function QuoteDetailPage() {
           <div className="mb-6 space-y-3">
             <div className="klaros-table-wrap">
               <table className="klaros-table">
-                <thead className="bg-surface text-muted">
+                <thead>
                   <tr>
-                    <th className="px-4 py-2">Description</th>
-                    <th className="px-4 py-2">Qty</th>
-                    <th className="px-4 py-2">Unit price</th>
-                    <th className="px-4 py-2"></th>
+                    <th className="px-5 py-4">Description</th>
+                    <th className="px-5 py-4">Qty</th>
+                    <th className="px-5 py-4">Unit price</th>
+                    <th className="px-5 py-4"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {draftItems.map((li, i) => (
                     <tr key={i} className="border-t border-border">
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4">
                         <input
                           value={li.description}
                           onChange={(e) => updateDraftItem(i, "description", e.target.value)}
                           className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                         />
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4">
                         <input
                           value={li.quantity}
                           onChange={(e) => updateDraftItem(i, "quantity", e.target.value)}
                           className="w-20 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                         />
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4">
                         <input
                           value={li.unit_price}
                           onChange={(e) => updateDraftItem(i, "unit_price", e.target.value)}
                           className="w-24 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                         />
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4">
                         <button
                           onClick={() => removeDraftItem(i)}
                           className="text-xs text-danger hover:underline"
@@ -383,21 +383,21 @@ export default function QuoteDetailPage() {
         ) : (
           <div className="mb-6 klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Description</th>
-                  <th className="px-4 py-2">Qty</th>
-                  <th className="px-4 py-2">Unit price</th>
-                  <th className="px-4 py-2">Line total</th>
+                  <th className="px-5 py-4">Description</th>
+                  <th className="px-5 py-4">Qty</th>
+                  <th className="px-5 py-4">Unit price</th>
+                  <th className="px-5 py-4">Line total</th>
                 </tr>
               </thead>
               <tbody>
                 {quote.line_items.map((li) => (
                   <tr key={li.id} className="border-t border-border">
-                    <td className="px-4 py-2">{li.description}</td>
-                    <td className="px-4 py-2">{li.quantity}</td>
-                    <td className="px-4 py-2">${li.unit_price}</td>
-                    <td className="px-4 py-2">${li.line_total}</td>
+                    <td className="px-5 py-4">{li.description}</td>
+                    <td className="px-5 py-4">{li.quantity}</td>
+                    <td className="px-5 py-4">${li.unit_price}</td>
+                    <td className="px-5 py-4">${li.line_total}</td>
                   </tr>
                 ))}
               </tbody>

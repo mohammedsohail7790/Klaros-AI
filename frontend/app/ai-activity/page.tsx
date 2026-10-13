@@ -65,35 +65,35 @@ export default function AIActivityPage() {
             <table className="w-full text-sm">
               <thead className="bg-surface text-left text-xs text-muted">
                 <tr>
-                  <th className="px-3 py-2">When</th>
-                  <th className="px-3 py-2">Actor</th>
-                  <th className="px-3 py-2">Action</th>
-                  <th className="px-3 py-2">Tool</th>
-                  <th className="px-3 py-2">Entity</th>
-                  <th className="px-3 py-2">Result</th>
-                  <th className="px-3 py-2">Approval</th>
+                  <th className="px-5 py-3.5">When</th>
+                  <th className="px-5 py-3.5">Actor</th>
+                  <th className="px-5 py-3.5">Action</th>
+                  <th className="px-5 py-3.5">Tool</th>
+                  <th className="px-5 py-3.5">Entity</th>
+                  <th className="px-5 py-3.5">Result</th>
+                  <th className="px-5 py-3.5">Approval</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id} className="border-t border-border">
-                    <td className="px-3 py-2 text-muted">{new Date(r.created_at).toLocaleString()}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-5 py-3.5 text-muted">{new Date(r.created_at).toLocaleString()}</td>
+                    <td className="px-5 py-3.5">
                       <Badge status={r.actor_type} className="text-xs">
                         {r.actor_type}
                       </Badge>
                     </td>
-                    <td className="px-3 py-2">{r.action}</td>
-                    <td className="px-3 py-2 text-muted">{r.tool ?? "—"}</td>
-                    <td className="px-3 py-2 text-muted">
+                    <td className="px-5 py-3.5">{r.action}</td>
+                    <td className="px-5 py-3.5 text-muted">{r.tool ?? "—"}</td>
+                    <td className="px-5 py-3.5 text-muted">
                       {r.entity_type ? `${r.entity_type}${r.entity_id ? ` #${r.entity_id.slice(0, 8)}` : ""}` : "—"}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-5 py-3.5">
                       <Badge status={r.result} className="text-xs">
                         {r.result}
                       </Badge>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-5 py-3.5">
                       {r.approval_id ? (
                         <Link href="/approvals" className="text-xs underline">
                           view

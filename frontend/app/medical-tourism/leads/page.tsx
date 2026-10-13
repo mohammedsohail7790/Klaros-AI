@@ -92,32 +92,32 @@ export default function MedicalTourismPatientLeadsPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Patient</th>
-                  <th className="px-4 py-2">Destination</th>
-                  <th className="px-4 py-2">Travel window</th>
-                  <th className="px-4 py-2">Insurance</th>
-                  <th className="px-4 py-2">Created</th>
+                  <th className="px-5 py-4">Patient</th>
+                  <th className="px-5 py-4">Destination</th>
+                  <th className="px-5 py-4">Travel window</th>
+                  <th className="px-5 py-4">Insurance</th>
+                  <th className="px-5 py-4">Created</th>
                 </tr>
               </thead>
               <tbody>
                 {patientLeads.map((pl) => (
                   <tr key={pl.id} className="border-t border-border hover:bg-surface">
-                    <td className="px-4 py-2 text-foreground">
+                    <td className="px-5 py-4 text-foreground">
                       <Link href={`/leads/${pl.lead_id}`} className="font-medium underline-offset-2 hover:underline">
                         {leadNames[pl.lead_id] ?? "Patient enquiry"}
                       </Link>
                     </td>
-                    <td className="px-4 py-2 text-muted">{pl.preferred_destination_country || "—"}</td>
-                    <td className="px-4 py-2 text-muted">
+                    <td className="px-5 py-4 text-muted">{pl.preferred_destination_country || "—"}</td>
+                    <td className="px-5 py-4 text-muted">
                       {pl.travel_start_date ? new Date(pl.travel_start_date).toLocaleDateString() : "—"}
                       {pl.travel_end_date ? ` – ${new Date(pl.travel_end_date).toLocaleDateString()}` : ""}
                     </td>
-                    <td className="px-4 py-2 text-muted">
+                    <td className="px-5 py-4 text-muted">
                       {pl.has_insurance === null ? "—" : pl.has_insurance ? "Yes" : "No"}
                     </td>
-                    <td className="px-4 py-2 text-muted">{new Date(pl.created_at).toLocaleDateString()}</td>
+                    <td className="px-5 py-4 text-muted">{new Date(pl.created_at).toLocaleDateString()}</td>
                   </tr>
                 ))}
               </tbody>

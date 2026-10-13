@@ -151,23 +151,23 @@ export default function TeamSettingsPage() {
             <h2 className="mb-3 text-base font-semibold tracking-tight">Members</h2>
             <div className="mb-8 klaros-table-wrap">
               <table className="klaros-table">
-                <thead className="bg-surface text-muted">
+                <thead>
                   <tr>
-                    <th className="px-4 py-2">Name</th>
-                    <th className="px-4 py-2">Email</th>
-                    <th className="px-4 py-2">Role</th>
-                    <th className="px-4 py-2">Status</th>
-                    <th className="px-4 py-2"></th>
+                    <th className="px-5 py-4">Name</th>
+                    <th className="px-5 py-4">Email</th>
+                    <th className="px-5 py-4">Role</th>
+                    <th className="px-5 py-4">Status</th>
+                    <th className="px-5 py-4"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {members?.map((m) => (
                     <tr key={m.id} className="border-t border-border">
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4">
                         {m.full_name} {m.id === user?.id && <span className="text-xs text-muted">(you)</span>}
                       </td>
-                      <td className="px-4 py-2 text-muted">{m.email}</td>
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4 text-muted">{m.email}</td>
+                      <td className="px-5 py-4">
                         <select
                           value={m.role}
                           disabled={busyMemberId === m.id}
@@ -181,12 +181,12 @@ export default function TeamSettingsPage() {
                           ))}
                         </select>
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4">
                         <span className={m.is_active ? "text-success" : "text-muted"}>
                           {m.is_active ? "Active" : "Deactivated"}
                         </span>
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-5 py-4">
                         <button
                           onClick={() => handleToggleActive(m.id, m.is_active)}
                           disabled={busyMemberId === m.id}
@@ -206,21 +206,21 @@ export default function TeamSettingsPage() {
                 <h2 className="mb-3 text-base font-semibold tracking-tight">Pending invites</h2>
                 <div className="klaros-table-wrap">
                   <table className="klaros-table">
-                    <thead className="bg-surface text-muted">
+                    <thead>
                       <tr>
-                        <th className="px-4 py-2">Email</th>
-                        <th className="px-4 py-2">Role</th>
-                        <th className="px-4 py-2">Expires</th>
-                        <th className="px-4 py-2"></th>
+                        <th className="px-5 py-4">Email</th>
+                        <th className="px-5 py-4">Role</th>
+                        <th className="px-5 py-4">Expires</th>
+                        <th className="px-5 py-4"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {invites.map((i) => (
                         <tr key={i.id} className="border-t border-border">
-                          <td className="px-4 py-2">{i.email}</td>
-                          <td className="px-4 py-2 text-muted">{i.role}</td>
-                          <td className="px-4 py-2 text-muted">{new Date(i.expires_at).toLocaleDateString()}</td>
-                          <td className="px-4 py-2">
+                          <td className="px-5 py-4">{i.email}</td>
+                          <td className="px-5 py-4 text-muted">{i.role}</td>
+                          <td className="px-5 py-4 text-muted">{new Date(i.expires_at).toLocaleDateString()}</td>
+                          <td className="px-5 py-4">
                             <button
                               onClick={() => handleRevoke(i.id)}
                               className="text-xs text-danger underline hover:text-danger"

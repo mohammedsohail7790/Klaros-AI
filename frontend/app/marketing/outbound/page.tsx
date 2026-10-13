@@ -231,21 +231,21 @@ export default function OutboundPage() {
         ) : (
           <div className="klaros-table-wrap">
             <table className="klaros-table">
-              <thead className="bg-surface text-muted">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2">Company</th>
-                  <th className="px-4 py-2">Email</th>
-                  <th className="px-4 py-2">Source</th>
-                  <th className="px-4 py-2">Enrichment</th>
+                  <th className="px-5 py-4">Company</th>
+                  <th className="px-5 py-4">Email</th>
+                  <th className="px-5 py-4">Source</th>
+                  <th className="px-5 py-4">Enrichment</th>
                 </tr>
               </thead>
               <tbody>
                 {contacts.map((c) => (
                   <tr key={c.id} className="border-t border-border">
-                    <td className="px-4 py-2">{c.company || "—"}</td>
-                    <td className="px-4 py-2 text-muted">{c.email}</td>
-                    <td className="px-4 py-2 text-muted">{c.source}</td>
-                    <td className="px-4 py-2 text-muted">{c.enrichment_status}</td>
+                    <td className="px-5 py-4">{c.company || "—"}</td>
+                    <td className="px-5 py-4 text-muted">{c.email}</td>
+                    <td className="px-5 py-4 text-muted">{c.source}</td>
+                    <td className="px-5 py-4 text-muted">{c.enrichment_status}</td>
                   </tr>
                 ))}
               </tbody>

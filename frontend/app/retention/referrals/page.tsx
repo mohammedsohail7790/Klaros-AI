@@ -223,19 +223,19 @@ export default function ReferralsPage() {
             ) : (
               <div className="mb-8 klaros-table-wrap">
                 <table className="klaros-table">
-                  <thead className="bg-surface text-muted">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-2">Name</th>
-                      <th className="px-4 py-2">Reward</th>
-                      <th className="px-4 py-2">Status</th>
+                      <th className="px-5 py-4">Name</th>
+                      <th className="px-5 py-4">Reward</th>
+                      <th className="px-5 py-4">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {programs.map((p) => (
                       <tr key={p.id} className="border-t border-border">
-                        <td className="px-4 py-2">{p.name}</td>
-                        <td className="px-4 py-2 text-muted">{p.reward_amount ? `$${p.reward_amount} ${p.reward_type}` : p.reward_type}</td>
-                        <td className="px-4 py-2">
+                        <td className="px-5 py-4">{p.name}</td>
+                        <td className="px-5 py-4 text-muted">{p.reward_amount ? `$${p.reward_amount} ${p.reward_type}` : p.reward_type}</td>
+                        <td className="px-5 py-4">
                           <Badge status={p.status}>{p.status}</Badge>
                         </td>
                       </tr>
@@ -327,21 +327,21 @@ export default function ReferralsPage() {
             ) : (
               <div className="mb-8 klaros-table-wrap">
                 <table className="klaros-table">
-                  <thead className="bg-surface text-muted">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-2">Status</th>
-                      <th className="px-4 py-2">Revenue</th>
-                      <th className="px-4 py-2">Collected</th>
+                      <th className="px-5 py-4">Status</th>
+                      <th className="px-5 py-4">Revenue</th>
+                      <th className="px-5 py-4">Collected</th>
                     </tr>
                   </thead>
                   <tbody>
                     {referrals.map((r) => (
                       <tr key={r.id} className="border-t border-border">
-                        <td className="px-4 py-2">
+                        <td className="px-5 py-4">
                           <Badge status={r.status}>{r.status}</Badge>
                         </td>
-                        <td className="px-4 py-2 text-muted">{r.revenue_amount ? `$${r.revenue_amount}` : "—"}</td>
-                        <td className="px-4 py-2 text-muted">{r.collected_amount ? `$${r.collected_amount}` : "—"}</td>
+                        <td className="px-5 py-4 text-muted">{r.revenue_amount ? `$${r.revenue_amount}` : "—"}</td>
+                        <td className="px-5 py-4 text-muted">{r.collected_amount ? `$${r.collected_amount}` : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -355,21 +355,21 @@ export default function ReferralsPage() {
             ) : (
               <div className="klaros-table-wrap">
                 <table className="klaros-table">
-                  <thead className="bg-surface text-muted">
+                  <thead>
                     <tr>
-                      <th className="px-4 py-2">Amount</th>
-                      <th className="px-4 py-2">Status</th>
-                      <th className="px-4 py-2"></th>
+                      <th className="px-5 py-4">Amount</th>
+                      <th className="px-5 py-4">Status</th>
+                      <th className="px-5 py-4"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {rewards.map((rw) => (
                       <tr key={rw.id} className="border-t border-border">
-                        <td className="px-4 py-2">${rw.amount}</td>
-                        <td className="px-4 py-2">
+                        <td className="px-5 py-4">${rw.amount}</td>
+                        <td className="px-5 py-4">
                           <Badge status={rw.status}>{rw.status}</Badge>
                         </td>
-                        <td className="px-4 py-2 space-x-2">
+                        <td className="px-5 py-4 space-x-2">
                           {rw.status === "PENDING" && (
                             <>
                               <button disabled={busy} onClick={() => handleApprove(rw.id, true)} className="text-xs underline text-success hover:text-foreground">Approve</button>

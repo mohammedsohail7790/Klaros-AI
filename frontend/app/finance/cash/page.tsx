@@ -81,27 +81,27 @@ export default function CashForecastPage() {
 
             <div className="klaros-table-wrap">
               <table className="klaros-table">
-                <thead className="bg-surface text-muted">
+                <thead>
                   <tr>
-                    <th className="px-4 py-2">Week of</th>
-                    <th className="px-4 py-2">Inflow</th>
-                    <th className="px-4 py-2">Outflow</th>
-                    <th className="px-4 py-2">Net</th>
-                    <th className="px-4 py-2">Projected balance</th>
-                    <th className="px-4 py-2">Items</th>
+                    <th className="px-5 py-4">Week of</th>
+                    <th className="px-5 py-4">Inflow</th>
+                    <th className="px-5 py-4">Outflow</th>
+                    <th className="px-5 py-4">Net</th>
+                    <th className="px-5 py-4">Projected balance</th>
+                    <th className="px-5 py-4">Items</th>
                   </tr>
                 </thead>
                 <tbody>
                   {forecast.weeks.map((w) => (
                     <tr key={w.week_start} className="border-t border-border">
-                      <td className="px-4 py-2">{w.week_start}</td>
-                      <td className="px-4 py-2 text-success">${w.inflow}</td>
-                      <td className="px-4 py-2 text-danger">${w.outflow}</td>
-                      <td className="px-4 py-2">${w.net}</td>
-                      <td className="px-4 py-2 font-semibold">
+                      <td className="px-5 py-4">{w.week_start}</td>
+                      <td className="px-5 py-4 text-success">${w.inflow}</td>
+                      <td className="px-5 py-4 text-danger">${w.outflow}</td>
+                      <td className="px-5 py-4">${w.net}</td>
+                      <td className="px-5 py-4 font-semibold">
                         {w.projected_balance === "NOT_CONNECTED" ? "Not connected" : `$${w.projected_balance}`}
                       </td>
-                      <td className="px-4 py-2 text-xs text-muted">
+                      <td className="px-5 py-4 text-xs text-muted">
                         {w.items.length === 0
                           ? "—"
                           : w.items.map((i) => `${i.source} (${confidenceLabel(i.confidence)})`).join(", ")}
