@@ -386,19 +386,19 @@ export default function InvoiceDetailPage() {
                   placeholder="Description"
                   value={li.description}
                   onChange={(e) => updateEditItem(i, "description", e.target.value)}
-                  className="min-w-[10rem] flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="min-w-[10rem] flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
                 <input
                   placeholder="Qty"
                   value={li.quantity}
                   onChange={(e) => updateEditItem(i, "quantity", e.target.value)}
-                  className="w-16 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="w-16 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
                 <input
                   placeholder="Unit price"
                   value={li.unit_price}
                   onChange={(e) => updateEditItem(i, "unit_price", e.target.value)}
-                  className="w-24 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="w-24 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
                 {editItems.length > 1 && (
                   <button type="button" onClick={() => removeEditItem(i)} className="text-xs text-danger hover:underline">
@@ -430,7 +430,7 @@ export default function InvoiceDetailPage() {
                 onChange={(e) => setWriteOffAmount(e.target.value)}
                 placeholder={invoice.amount_due}
                 required
-                className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-28 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
             </div>
             <div className="flex-1">
@@ -439,7 +439,7 @@ export default function InvoiceDetailPage() {
                 value={writeOffReason}
                 onChange={(e) => setWriteOffReason(e.target.value)}
                 required
-                className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
             </div>
             <button
@@ -461,7 +461,7 @@ export default function InvoiceDetailPage() {
                 onChange={(e) => setCreditNoteAmount(e.target.value)}
                 placeholder={invoice.total}
                 required
-                className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-28 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
             </div>
             <div className="flex-1">
@@ -470,7 +470,7 @@ export default function InvoiceDetailPage() {
                 value={creditNoteReason}
                 onChange={(e) => setCreditNoteReason(e.target.value)}
                 required
-                className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
             </div>
             <button

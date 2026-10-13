@@ -194,13 +194,13 @@ export default function ContentDetailPage() {
               )}
 
               <form onSubmit={handleAddVariant} className="mt-4 space-y-2 border-t border-border pt-4">
-                <div className="flex items-end gap-2">
+                <div className="flex flex-wrap items-end gap-3">
                   <div>
                     <label className="block text-xs text-muted">Channel</label>
                     <select
                       value={channel}
                       onChange={(e) => setChannel(e.target.value)}
-                      className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                     >
                       {CHANNELS.map((c) => (
                         <option key={c} value={c}>
@@ -222,7 +222,7 @@ export default function ContentDetailPage() {
                   onChange={(e) => setBodyText(e.target.value)}
                   placeholder="Variant copy (optional)"
                   rows={3}
-                  className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
               </form>
             </div>

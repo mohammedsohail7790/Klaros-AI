@@ -289,21 +289,21 @@ export default function QuoteDetailPage() {
                         <input
                           value={li.description}
                           onChange={(e) => updateDraftItem(i, "description", e.target.value)}
-                          className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                          className="w-full rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                         />
                       </td>
                       <td className="px-5 py-4">
                         <input
                           value={li.quantity}
                           onChange={(e) => updateDraftItem(i, "quantity", e.target.value)}
-                          className="w-20 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                          className="w-20 rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                         />
                       </td>
                       <td className="px-5 py-4">
                         <input
                           value={li.unit_price}
                           onChange={(e) => updateDraftItem(i, "unit_price", e.target.value)}
-                          className="w-24 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                          className="w-24 rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                         />
                       </td>
                       <td className="px-5 py-4">
@@ -332,7 +332,7 @@ export default function QuoteDetailPage() {
                 value={draftNotes}
                 onChange={(e) => setDraftNotes(e.target.value)}
                 rows={2}
-                className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
             </div>
             <div>
@@ -341,7 +341,7 @@ export default function QuoteDetailPage() {
                 value={draftTerms}
                 onChange={(e) => setDraftTerms(e.target.value)}
                 rows={2}
-                className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
             </div>
 
@@ -351,7 +351,7 @@ export default function QuoteDetailPage() {
                 <select
                   value={draftDepositType}
                   onChange={(e) => setDraftDepositType(e.target.value as "" | "FIXED" | "PERCENTAGE")}
-                  className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 >
                   <option value="">No deposit required</option>
                   <option value="FIXED">Fixed amount</option>
@@ -362,7 +362,7 @@ export default function QuoteDetailPage() {
                     placeholder={draftDepositType === "PERCENTAGE" ? "e.g. 25" : "e.g. 200"}
                     value={draftDepositValue}
                     onChange={(e) => setDraftDepositValue(e.target.value)}
-                    className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="w-28 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                   />
                 )}
               </div>
@@ -385,28 +385,24 @@ export default function QuoteDetailPage() {
             </div>
           </div>
         ) : (
-          <div className="mb-6 klaros-table-wrap">
-            <table className="klaros-table">
-              <thead>
-                <tr>
-                  <th className="px-5 py-4">Description</th>
-                  <th className="px-5 py-4">Qty</th>
-                  <th className="px-5 py-4">Unit price</th>
-                  <th className="px-5 py-4">Line total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quote.line_items.map((li) => (
-                  <tr key={li.id} className="border-t border-border">
-                    <td className="px-5 py-4">{li.description}</td>
-                    <td className="px-5 py-4">{li.quantity}</td>
-                    <td className="px-5 py-4">${li.unit_price}</td>
-                    <td className="px-5 py-4">${li.line_total}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <section aria-label="Line items" className="mb-8 rounded-3xl bg-surface-muted p-6 sm:p-8">
+            <h2 className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Line items</h2>
+            <ul className="divide-y divide-border/70">
+              {quote.line_items.map((li) => (
+                <li key={li.id} className="flex items-baseline justify-between gap-4 py-3.5">
+                  <div className="min-w-0">
+                    <p className="text-[16px] font-medium text-foreground">{li.description}</p>
+                    <p className="text-[13px] text-muted">{li.quantity} × ${li.unit_price}</p>
+                  </div>
+                  <p className="shrink-0 font-display text-lg font-semibold tabular-nums text-foreground">${li.line_total}</p>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 flex items-baseline justify-between border-t border-border pt-4">
+              <p className="text-[15px] font-medium text-muted">Total</p>
+              <p className="font-display text-2xl font-semibold tabular-nums tracking-tight text-foreground">${quote.total}</p>
+            </div>
+          </section>
         )}
 
         <div className="flex flex-wrap gap-2">

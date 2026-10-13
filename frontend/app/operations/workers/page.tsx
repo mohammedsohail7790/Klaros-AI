@@ -101,7 +101,7 @@ export default function WorkersPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Worker name"
-              className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
             />
           </div>
           <div>
@@ -109,7 +109,7 @@ export default function WorkersPage() {
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
             />
           </div>
           <div>
@@ -117,7 +117,7 @@ export default function WorkersPage() {
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
             />
           </div>
           <div>
@@ -126,7 +126,7 @@ export default function WorkersPage() {
               value={role}
               onChange={(e) => setRole(e.target.value)}
               placeholder="e.g. HVAC Technician"
-              className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
             />
           </div>
           <div>
@@ -135,7 +135,7 @@ export default function WorkersPage() {
               value={serviceTypes}
               onChange={(e) => setServiceTypes(e.target.value)}
               placeholder="HVAC, PLUMBING"
-              className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
             />
           </div>
           <button
@@ -189,7 +189,7 @@ export default function WorkersPage() {
                           value={w.status}
                           disabled={busy}
                           onChange={(e) => handleStatusChange(w.id, e.target.value)}
-                          className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-xs disabled:opacity-50"
+                          className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-xs disabled:opacity-50"
                         >
                           {STATUSES.map((s) => (
                             <option key={s} value={s}>

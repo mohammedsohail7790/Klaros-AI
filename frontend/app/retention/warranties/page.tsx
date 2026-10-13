@@ -214,7 +214,7 @@ export default function WarrantiesPage() {
         <Modal title="New warranty" onClose={() => setShowCreate(false)}>
           <form onSubmit={handleCreate} className="space-y-3">
             {selectedCustomer ? (
-              <div className="flex items-center justify-between rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm">
+              <div className="flex items-center justify-between rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm">
                 <span>{selectedCustomer.name}</span>
                 <button type="button" onClick={() => setSelectedCustomer(null)} className="text-xs text-muted underline">
                   Change

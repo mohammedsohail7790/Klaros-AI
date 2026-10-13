@@ -228,7 +228,7 @@ export default function KnowledgePage() {
                 value={queryDraft}
                 onChange={(e) => setQueryDraft(e.target.value)}
                 placeholder="e.g. what is our plumbing hourly rate?"
-                className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
               <button
@@ -290,7 +290,7 @@ export default function KnowledgePage() {
                   value={newPath}
                   onChange={(e) => setNewPath(e.target.value)}
                   placeholder="category/new-file.md"
-                  className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
                 <button
                   onClick={handleCreate}

@@ -201,7 +201,7 @@ export default function CompanyMemoryPage() {
                 <select
                   value={form.memory_type}
                   onChange={(e) => setForm((f) => ({ ...f, memory_type: e.target.value as typeof form.memory_type }))}
-                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 >
                   {MEMORY_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -213,24 +213,24 @@ export default function CompanyMemoryPage() {
                   value={form.key}
                   onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))}
                   placeholder="preferred_appointment_time"
-                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
                 <input
                   value={form.value}
                   onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
                   placeholder="morning"
-                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
                 <input
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   placeholder="Description (optional)"
-                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
                 <button
                   onClick={handleCreate}
                   disabled={busy || !form.key || !form.value}
-                  className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
                 >
                   Save preference
                 </button>

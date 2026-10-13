@@ -435,7 +435,7 @@ export default function JobDetailPage() {
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
                         required
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                     </div>
                     <div>
@@ -444,7 +444,7 @@ export default function JobDetailPage() {
                         value={editDescription}
                         onChange={(e) => setEditDescription(e.target.value)}
                         rows={2}
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                     </div>
                     <div>
@@ -452,7 +452,7 @@ export default function JobDetailPage() {
                       <select
                         value={editPriority}
                         onChange={(e) => setEditPriority(e.target.value)}
-                        className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       >
                         {JOB_PRIORITIES.map((p) => (
                           <option key={p} value={p}>
@@ -467,7 +467,7 @@ export default function JobDetailPage() {
                         value={editInternalNotes}
                         onChange={(e) => setEditInternalNotes(e.target.value)}
                         rows={2}
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                     </div>
                     <div className="flex gap-2 pt-1">
@@ -557,14 +557,14 @@ export default function JobDetailPage() {
                     </dl>
 
                     {job.status === "DRAFT" && (
-                      <form onSubmit={handleSchedule} className="mt-4 flex items-end gap-2">
+                      <form onSubmit={handleSchedule} className="mt-4 flex flex-wrap items-end gap-3">
                         <div>
                           <label className="block text-xs text-muted">Start</label>
-                          <input name="start" type="datetime-local" required className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                          <input name="start" type="datetime-local" required className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm" />
                         </div>
                         <div>
                           <label className="block text-xs text-muted">End</label>
-                          <input name="end" type="datetime-local" required className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                          <input name="end" type="datetime-local" required className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm" />
                         </div>
                         <button type="submit" className="klaros-btn-secondary !px-3 !py-1.5">
                           Schedule
@@ -575,14 +575,14 @@ export default function JobDetailPage() {
                     {job.status !== "DRAFT" && job.status !== "CLOSED" && job.status !== "CANCELLED" && (
                       <div className="mt-4">
                         {reschedulingJob ? (
-                          <form onSubmit={handleReschedule} className="flex items-end gap-2">
+                          <form onSubmit={handleReschedule} className="flex flex-wrap items-end gap-3">
                             <div>
                               <label className="block text-xs text-muted">New start</label>
-                              <input name="start" type="datetime-local" required className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                              <input name="start" type="datetime-local" required className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm" />
                             </div>
                             <div>
                               <label className="block text-xs text-muted">New end</label>
-                              <input name="end" type="datetime-local" required className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                              <input name="end" type="datetime-local" required className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm" />
                             </div>
                             <button type="submit" className="klaros-btn-secondary !px-3 !py-1.5">
                               Save
@@ -611,7 +611,7 @@ export default function JobDetailPage() {
                         <select
                           onChange={(e) => handleAssign(e.target.value)}
                           defaultValue=""
-                          className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                          className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                         >
                           <option value="" disabled>
                             {job.assigned_user_id ? "Reassign worker..." : "Assign worker..."}
@@ -635,7 +635,7 @@ export default function JobDetailPage() {
                         value={blockReason}
                         onChange={(e) => setBlockReason(e.target.value)}
                         placeholder="Why is this job blocked?"
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                     </div>
                     <button
@@ -655,7 +655,7 @@ export default function JobDetailPage() {
                       <select
                         value={unblockTarget}
                         onChange={(e) => setUnblockTarget(e.target.value)}
-                        className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       >
                         {UNBLOCK_TARGETS.map((s) => (
                           <option key={s} value={s}>
@@ -732,7 +732,7 @@ export default function JobDetailPage() {
                       <input
                         value={poSupplier}
                         onChange={(e) => setPoSupplier(e.target.value)}
-                        className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                     </div>
                     <button
@@ -850,26 +850,26 @@ export default function JobDetailPage() {
                       value={scopeDescription}
                       onChange={(e) => setScopeDescription(e.target.value)}
                       placeholder="What changed?"
-                      className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                     />
                     <input
                       value={scopeReason}
                       onChange={(e) => setScopeReason(e.target.value)}
                       placeholder="Reason (optional)"
-                      className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                     />
                     <div className="flex gap-2">
                       <input
                         value={scopeCost}
                         onChange={(e) => setScopeCost(e.target.value)}
                         placeholder="Est. cost"
-                        className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-28 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                       <input
                         value={scopeRevenue}
                         onChange={(e) => setScopeRevenue(e.target.value)}
                         placeholder="Est. revenue"
-                        className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-28 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                       <button
                         type="submit"
@@ -890,14 +890,14 @@ export default function JobDetailPage() {
                     Internal record only — not a legally binding e-signature.
                   </p>
                   {signoffNotice && <p className="mb-2 text-sm text-success">{signoffNotice}</p>}
-                  <form onSubmit={handleSignoff} className="flex items-end gap-2">
+                  <form onSubmit={handleSignoff} className="flex flex-wrap items-end gap-3">
                     <div className="flex-1">
                       <label className="block text-xs text-muted">Signed by</label>
                       <input
                         value={signedBy}
                         onChange={(e) => setSignedBy(e.target.value)}
                         placeholder="Customer name"
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                     </div>
                     <button
@@ -1112,7 +1112,7 @@ function RecordJobCostForm({ token, jobId, onRecorded }: { token: string; jobId:
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+          className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
         >
           {["LABOR", "MATERIAL", "SUBCONTRACTOR", "TRAVEL", "EQUIPMENT", "OTHER"].map((c) => (
             <option key={c} value={c}>
@@ -1126,7 +1126,7 @@ function RecordJobCostForm({ token, jobId, onRecorded }: { token: string; jobId:
         <input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+          className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
         />
       </div>
       <div>
@@ -1136,7 +1136,7 @@ function RecordJobCostForm({ token, jobId, onRecorded }: { token: string; jobId:
           value={unitCost}
           onChange={(e) => setUnitCost(e.target.value)}
           placeholder="0.00"
-          className="w-24 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+          className="w-24 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
         />
       </div>
       <button

@@ -532,7 +532,7 @@ export default function AutomationsPage() {
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   disabled={mode === "edit"}
-                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm disabled:opacity-60"
+                  className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm disabled:opacity-60"
                   placeholder="New Lead Follow-up"
                 />
               </div>
@@ -541,7 +541,7 @@ export default function AutomationsPage() {
                 <input
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                   placeholder="Optional"
                 />
               </div>
@@ -569,7 +569,7 @@ export default function AutomationsPage() {
                   <input
                     value={form.eventType}
                     onChange={(e) => setForm((f) => ({ ...f, eventType: e.target.value }))}
-                    className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                     placeholder="lead.created"
                   />
                 </div>
@@ -601,7 +601,7 @@ export default function AutomationsPage() {
                       type="time"
                       value={form.scheduleTime}
                       onChange={(e) => setForm((f) => ({ ...f, scheduleTime: e.target.value }))}
-                      className="w-40 rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
+                      className="w-40 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                     />
                   </div>
                   {form.scheduleFrequency === "WEEKLY" && (
@@ -651,7 +651,7 @@ export default function AutomationsPage() {
                     type="number"
                     value={form.waitSeconds}
                     onChange={(e) => setForm((f) => ({ ...f, waitSeconds: e.target.value }))}
-                    className="mt-1 w-32 rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
+                    className="mt-1 w-32 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                   />
                 )}
               </div>
@@ -757,7 +757,7 @@ export default function AutomationsPage() {
               <button
                 onClick={handleSave}
                 disabled={busy || !form.name}
-                className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
               >
                 {mode === "create" ? "Create draft" : "Save as new version"}
               </button>

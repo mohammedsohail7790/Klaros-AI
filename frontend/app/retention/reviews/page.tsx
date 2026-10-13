@@ -160,7 +160,7 @@ export default function ReviewsPage() {
                 <input
                   value={fbCustomerId}
                   onChange={(e) => setFbCustomerId(e.target.value)}
-                  className="w-64 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="w-64 rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                 />
               </div>
               <div>
@@ -168,7 +168,7 @@ export default function ReviewsPage() {
                 <select
                   value={fbRating}
                   onChange={(e) => setFbRating(e.target.value)}
-                  className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                 >
                   {[1, 2, 3, 4, 5].map((n) => (
                     <option key={n} value={n}>
@@ -182,7 +182,7 @@ export default function ReviewsPage() {
                 <input
                   value={fbComment}
                   onChange={(e) => setFbComment(e.target.value)}
-                  className="w-64 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="w-64 rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                 />
               </div>
               <button

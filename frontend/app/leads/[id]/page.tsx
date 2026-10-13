@@ -306,7 +306,7 @@ export default function LeadDetailPage() {
                         onChange={(e) => setConvertTitle(e.target.value)}
                         placeholder={lead.service_requested ?? "Job title"}
                         required
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                       <div className="flex gap-2">
                         <input
@@ -314,20 +314,20 @@ export default function LeadDetailPage() {
                           value={convertStart}
                           onChange={(e) => setConvertStart(e.target.value)}
                           required
-                          className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                          className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                         />
                         <input
                           type="datetime-local"
                           value={convertEnd}
                           onChange={(e) => setConvertEnd(e.target.value)}
                           required
-                          className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                          className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                         />
                       </div>
                       <select
                         value={convertWorkerId}
                         onChange={(e) => setConvertWorkerId(e.target.value)}
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       >
                         <option value="">Assign worker (optional)</option>
                         {workers.map((w) => (
@@ -452,7 +452,7 @@ export default function LeadDetailPage() {
                     <select
                       value={attrCampaignId}
                       onChange={(e) => setAttrCampaignId(e.target.value)}
-                      className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                     >
                       <option value="">No campaign</option>
                       {campaigns.map((c) => (
@@ -468,7 +468,7 @@ export default function LeadDetailPage() {
                       <input
                         value={attrSource}
                         onChange={(e) => setAttrSource(e.target.value)}
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                     </div>
                     <div className="flex-1">
@@ -477,7 +477,7 @@ export default function LeadDetailPage() {
                         value={attrMedium}
                         onChange={(e) => setAttrMedium(e.target.value)}
                         placeholder="e.g. cpc, organic, referral"
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                     </div>
                   </div>
@@ -506,7 +506,7 @@ export default function LeadDetailPage() {
                     <select
                       value={attrModel}
                       onChange={(e) => setAttrModel(e.target.value)}
-                      className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                     >
                       {ATTRIBUTION_MODELS.map((m) => (
                         <option key={m} value={m}>

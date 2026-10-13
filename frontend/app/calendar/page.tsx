@@ -161,7 +161,7 @@ function CalendarPageInner() {
                 value={syncCalendarId}
                 onChange={(e) => setSyncCalendarId(e.target.value)}
                 title="Google Calendar to sync appointments to"
-                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               >
                 {googleCalendars.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -264,7 +264,7 @@ function CalendarPageInner() {
                             type="datetime-local"
                             value={rescheduleDraft}
                             onChange={(e) => setRescheduleDraft(e.target.value)}
-                            className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                            className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                           />
                           <span className="text-xs text-muted">UTC</span>
                           <button

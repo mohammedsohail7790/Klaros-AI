@@ -110,7 +110,7 @@ export default function CampaignsPage() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
             </div>
             <div>
@@ -118,7 +118,7 @@ export default function CampaignsPage() {
               <select
                 value={channel}
                 onChange={(e) => setChannel(e.target.value)}
-                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               >
                 {CHANNELS.map((c) => (
                   <option key={c} value={c}>
@@ -133,7 +133,7 @@ export default function CampaignsPage() {
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
                 placeholder="0.00"
-                className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-28 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
             </div>
             <button

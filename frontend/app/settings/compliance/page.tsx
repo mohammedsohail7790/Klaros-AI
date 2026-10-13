@@ -226,7 +226,7 @@ export default function CompliancePage() {
                 required
                 value={renewExpiry}
                 onChange={(e) => setRenewExpiry(e.target.value)}
-                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
             </div>
             <button

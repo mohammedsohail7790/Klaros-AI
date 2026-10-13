@@ -234,11 +234,11 @@ export default function SEOPage() {
         <form onSubmit={handleGenerate} className="mb-6 flex flex-wrap items-end gap-2">
           <div>
             <label className="block text-xs text-muted">Service</label>
-            <input value={service} onChange={(e) => setService(e.target.value)} placeholder="HVAC Repair" className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
+            <input value={service} onChange={(e) => setService(e.target.value)} placeholder="HVAC Repair" className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm" />
           </div>
           <div>
             <label className="block text-xs text-muted">Location</label>
-            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Dallas, TX" className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
+            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Dallas, TX" className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm" />
           </div>
           <button type="submit" disabled={busy || !service.trim() || !location.trim()} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
             Generate draft
@@ -298,13 +298,13 @@ export default function SEOPage() {
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 placeholder="Keyword"
-                className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
               <input
                 value={keywordLocation}
                 onChange={(e) => setKeywordLocation(e.target.value)}
                 placeholder="Location (optional)"
-                className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
               <button
                 type="submit"
@@ -341,26 +341,26 @@ export default function SEOPage() {
                   value={oppService}
                   onChange={(e) => setOppService(e.target.value)}
                   placeholder="Service"
-                  className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
                 <input
                   value={oppLocation}
                   onChange={(e) => setOppLocation(e.target.value)}
                   placeholder="Location"
-                  className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
               </div>
               <input
                 value={oppRationale}
                 onChange={(e) => setOppRationale(e.target.value)}
                 placeholder="Rationale (optional)"
-                className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
-              <div className="flex items-end gap-2">
+              <div className="flex flex-wrap items-end gap-3">
                 <select
                   value={oppPriority}
                   onChange={(e) => setOppPriority(e.target.value)}
-                  className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 >
                   {PRIORITIES.map((p) => (
                     <option key={p} value={p}>
@@ -388,20 +388,20 @@ export default function SEOPage() {
                 value={listingName}
                 onChange={(e) => setListingName(e.target.value)}
                 placeholder="Business name"
-                className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
               <div className="flex gap-2">
                 <input
                   value={listingCity}
                   onChange={(e) => setListingCity(e.target.value)}
                   placeholder="City"
-                  className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
                 <input
                   value={listingState}
                   onChange={(e) => setListingState(e.target.value)}
                   placeholder="State"
-                  className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
                 <button
                   type="submit"
@@ -432,7 +432,7 @@ export default function SEOPage() {
               <select
                 value={reviewListingId}
                 onChange={(e) => setReviewListingId(e.target.value)}
-                className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               >
                 <option value="">Select a listing...</option>
                 {listings.map((l) => (
@@ -445,7 +445,7 @@ export default function SEOPage() {
                 <select
                   value={reviewRating}
                   onChange={(e) => setReviewRating(e.target.value)}
-                  className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 >
                   {[5, 4, 3, 2, 1].map((r) => (
                     <option key={r} value={r}>
@@ -457,7 +457,7 @@ export default function SEOPage() {
                   value={reviewAuthor}
                   onChange={(e) => setReviewAuthor(e.target.value)}
                   placeholder="Author (optional)"
-                  className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                 />
               </div>
               <textarea
@@ -465,7 +465,7 @@ export default function SEOPage() {
                 onChange={(e) => setReviewBody(e.target.value)}
                 placeholder="Review text (optional)"
                 rows={2}
-                className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
               <button
                 type="submit"

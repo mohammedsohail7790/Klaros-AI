@@ -189,7 +189,7 @@ export default function OutboundPage() {
           <div className="rounded-3xl bg-surface-muted p-4 ">
             <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Lists</h2>
             <form onSubmit={handleCreateList} className="mb-3 flex gap-2">
-              <input value={listName} onChange={(e) => setListName(e.target.value)} placeholder="List name" className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
+              <input value={listName} onChange={(e) => setListName(e.target.value)} placeholder="List name" className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm" />
               <button type="submit" disabled={busy || !listName.trim()} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
                 Create
               </button>
@@ -210,14 +210,14 @@ export default function OutboundPage() {
           <div className="rounded-3xl bg-surface-muted p-4 ">
             <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Add contact</h2>
             <form onSubmit={handleAddContact} className="space-y-2">
-              <select value={selectedList} onChange={(e) => setSelectedList(e.target.value)} className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm">
+              <select value={selectedList} onChange={(e) => setSelectedList(e.target.value)} className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm">
                 <option value="">Select a list...</option>
                 {lists.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
               </select>
-              <input value={contactCompany} onChange={(e) => setContactCompany(e.target.value)} placeholder="Company (optional)" className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
-              <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
+              <input value={contactCompany} onChange={(e) => setContactCompany(e.target.value)} placeholder="Company (optional)" className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm" />
+              <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm" />
               <button type="submit" disabled={busy || !selectedList || !contactEmail.trim()} className="w-full klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
                 Add contact
               </button>
@@ -259,7 +259,7 @@ export default function OutboundPage() {
             value={sequenceName}
             onChange={(e) => setSequenceName(e.target.value)}
             placeholder="Sequence name"
-            className="flex-1 max-w-sm rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+            className="flex-1 max-w-sm rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
           />
           <button
             type="submit"
@@ -308,7 +308,7 @@ export default function OutboundPage() {
                         type="number"
                         value={stepDayOffset}
                         onChange={(e) => setStepDayOffset(e.target.value)}
-                        className="w-20 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                        className="w-20 rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                       />
                     </div>
                     <div>
@@ -316,7 +316,7 @@ export default function OutboundPage() {
                       <select
                         value={stepChannel}
                         onChange={(e) => setStepChannel(e.target.value)}
-                        className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                        className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                       >
                         <option value="EMAIL">EMAIL</option>
                         <option value="SMS">SMS</option>
@@ -327,7 +327,7 @@ export default function OutboundPage() {
                       <input
                         value={stepSubject}
                         onChange={(e) => setStepSubject(e.target.value)}
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                       />
                     </div>
                     <button
@@ -346,7 +346,7 @@ export default function OutboundPage() {
                       <select
                         value={enrollContactId}
                         onChange={(e) => setEnrollContactId(e.target.value)}
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       >
                         <option value="">Select a contact...</option>
                         {contacts.map((c) => (

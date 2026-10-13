@@ -201,7 +201,7 @@ export default function ReferralsPage() {
                 <input
                   value={newProgramName}
                   onChange={(e) => setNewProgramName(e.target.value)}
-                  className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                 />
               </div>
               <div>
@@ -209,7 +209,7 @@ export default function ReferralsPage() {
                 <input
                   value={newRewardAmount}
                   onChange={(e) => setNewRewardAmount(e.target.value)}
-                  className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                 />
               </div>
               <button disabled={busy || !newProgramName.trim()} onClick={handleCreateProgram} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
@@ -252,7 +252,7 @@ export default function ReferralsPage() {
                 <input
                   value={codeProgramId}
                   onChange={(e) => setCodeProgramId(e.target.value)}
-                  className="w-64 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="w-64 rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                 />
               </div>
               <div>
@@ -260,7 +260,7 @@ export default function ReferralsPage() {
                 <input
                   value={codeCustomerId}
                   onChange={(e) => setCodeCustomerId(e.target.value)}
-                  className="w-64 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="w-64 rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm"
                 />
               </div>
               <button
@@ -294,19 +294,19 @@ export default function ReferralsPage() {
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
                     <label className="block text-xs text-muted">Name</label>
-                    <input value={leadName} onChange={(e) => setLeadName(e.target.value)} className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                    <input value={leadName} onChange={(e) => setLeadName(e.target.value)} className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-muted">Phone</label>
-                    <input value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                    <input value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-muted">Email</label>
-                    <input value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                    <input value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-muted">Service requested</label>
-                    <input value={leadService} onChange={(e) => setLeadService(e.target.value)} className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                    <input value={leadService} onChange={(e) => setLeadService(e.target.value)} className="rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm" />
                   </div>
                   <button
                     disabled={busy || !leadName.trim()}

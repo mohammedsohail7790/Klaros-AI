@@ -197,7 +197,7 @@ export default function VendorsPage() {
               >
                 <div>
                   <label className="block text-xs text-muted">Vendor</label>
-                  <div className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm">
+                  <div className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm">
                     {vendorName(billVendorId)}
                   </div>
                 </div>
@@ -207,7 +207,7 @@ export default function VendorsPage() {
                     value={billAmount}
                     onChange={(e) => setBillAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="w-28 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
@@ -216,7 +216,7 @@ export default function VendorsPage() {
                     type="date"
                     value={billDueDate}
                     onChange={(e) => setBillDueDate(e.target.value)}
-                    className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                   />
                 </div>
                 <button

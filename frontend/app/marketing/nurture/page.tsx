@@ -206,7 +206,7 @@ export default function NurturePage() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
             </div>
             <div>
@@ -214,7 +214,7 @@ export default function NurturePage() {
               <select
                 value={triggerType}
                 onChange={(e) => setTriggerType(e.target.value)}
-                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               >
                 {TRIGGER_TYPES.map((t) => (
                   <option key={t} value={t}>

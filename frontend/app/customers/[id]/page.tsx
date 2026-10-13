@@ -246,7 +246,7 @@ export default function CustomerDetailPage() {
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         required
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                     </div>
                     <div className="flex gap-2">
@@ -255,7 +255,7 @@ export default function CustomerDetailPage() {
                         <input
                           value={editEmail}
                           onChange={(e) => setEditEmail(e.target.value)}
-                          className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                          className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                         />
                       </div>
                       <div className="flex-1">
@@ -263,7 +263,7 @@ export default function CustomerDetailPage() {
                         <input
                           value={editPhone}
                           onChange={(e) => setEditPhone(e.target.value)}
-                          className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                          className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                         />
                       </div>
                     </div>
@@ -272,7 +272,7 @@ export default function CustomerDetailPage() {
                       <input
                         value={editAddress}
                         onChange={(e) => setEditAddress(e.target.value)}
-                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                       />
                     </div>
                     <div className="flex gap-2 pt-1">
@@ -474,7 +474,7 @@ export default function CustomerDetailPage() {
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="Write a note..."
-                    className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                    className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                   />
                   <button
                     type="submit"

@@ -148,14 +148,14 @@ export default function CampaignDetailPage() {
         </div>
 
         <div className="mb-6 flex flex-wrap items-end gap-4">
-          <form onSubmit={handleRecordSpend} className="flex items-end gap-2">
+          <form onSubmit={handleRecordSpend} className="flex flex-wrap items-end gap-3">
             <div>
               <label className="block text-xs text-muted">Record spend ({campaign.channel})</label>
               <input
                 value={spendAmount}
                 onChange={(e) => setSpendAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-28 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
               />
             </div>
             <button

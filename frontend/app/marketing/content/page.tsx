@@ -91,7 +91,7 @@ export default function ContentPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Before/after HVAC repair in Dallas"
-              className="w-80 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="w-80 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
             />
           </div>
           <button type="submit" disabled={busy || !title.trim()} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">

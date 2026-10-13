@@ -335,7 +335,7 @@ function ImportCustomersModal({
               type="file"
               accept=".csv,text/csv"
               onChange={handleFile}
-              className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
             />
             {parseError && <p className="text-sm text-danger">{parseError}</p>}
             <div className="flex justify-end gap-2 pt-2">
@@ -359,7 +359,7 @@ function ImportCustomersModal({
                   <select
                     value={mapping[field.key] ?? UNMAPPED}
                     onChange={(e) => setMapping((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                    className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                   >
                     <option value={UNMAPPED}>— Don&apos;t import —</option>
                     {headers.map((h) => (

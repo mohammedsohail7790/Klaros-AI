@@ -77,7 +77,7 @@ export default function ChatPanel({ messages, run, onSend, onCancel, sending }: 
             ))}
           </div>
         )}
-        <form onSubmit={submit} className="flex items-end gap-2">
+        <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
           <label htmlFor="builder-chat" className="sr-only">Ask for a change</label>
           <textarea
             id="builder-chat"

@@ -288,7 +288,7 @@ export default function ApprovalsPage() {
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       placeholder="Decision note (optional)"
-                      className="mb-2 w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      className="mb-2 w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
                     />
                     <div className="flex gap-2">
                       <button

@@ -87,7 +87,7 @@ export default function ReactivationPage() {
         <form onSubmit={handleCreate} className="mb-6 flex items-end gap-2">
           <div>
             <label className="block text-xs text-muted">New reactivation campaign</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="w-64 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
+            <input value={name} onChange={(e) => setName(e.target.value)} className="w-64 rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm" />
           </div>
           <button type="submit" disabled={busy || !name.trim()} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
             Create
