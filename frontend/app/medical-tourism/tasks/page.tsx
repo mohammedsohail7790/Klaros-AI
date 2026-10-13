@@ -12,7 +12,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { Hero } from "@/components/ui/layout";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 const FILTERS = ["OPEN", "ACCEPTED", "DONE", "CANCELLED", "ALL"] as const;
@@ -79,10 +79,10 @@ export default function MedicalTourismTasksPage() {
   return (
     <AppShell user={user}>
       <div className="px-5 py-8 sm:px-8 sm:py-12">
-        <PageHeader title="Tasks" description="Patients who need a person. Take one to own it; every change is recorded." icon={ClipboardList} />
-        <div role="tablist" aria-label="Status" className="mb-4 flex flex-wrap gap-2">
+        <Hero title="Tasks" lede="Patients who need a person. Take one to own it; every change is recorded." />
+        <div role="tablist" aria-label="Status" className="mb-6 flex flex-wrap gap-2">
           {FILTERS.map((f) => (
-            <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} className={`rounded-full border px-3 py-1 text-xs ${filter === f ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"}`}>
+            <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} className={`klaros-filter-tab ${filter === f ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}>
               {f === "ALL" ? "All" : f.charAt(0) + f.slice(1).toLowerCase()}
             </button>
           ))}
@@ -95,43 +95,31 @@ export default function MedicalTourismTasksPage() {
         ) : tasks.length === 0 ? (
           <EmptyState icon={ClipboardList} title={filter === "OPEN" ? "Nothing is waiting for a person." : "No tasks here."} />
         ) : (
-          <div className="klaros-table-wrap">
-            <table className="klaros-table">
-              <thead className="bg-surface text-muted">
-                <tr>
-                  <th className="px-4 py-2">Patient</th>
-                  <th className="px-4 py-2">What and why</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.map((t) => (
-                  <tr key={t.id} className="border-t border-border">
-                    <td className="px-4 py-2">
-                      <Link href={caseHref(t.lead_id)} className="font-medium text-foreground underline-offset-2 hover:underline">
-                        {patientOf[t.lead_id] ? patientName(patientOf[t.lead_id]) : "Open patient"}
-                      </Link>
-                      {patientOf[t.lead_id] && contextLine(patientOf[t.lead_id]) && <div className="text-xs text-muted">{contextLine(patientOf[t.lead_id])}</div>}
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="font-medium text-foreground">{TASK_KIND_LABEL[t.kind] ?? "Task"}</div>
-                      <div className="text-muted">{(t.reason_code && TASK_REASON_LABEL[t.reason_code]) || ""}</div>
-                      {t.created_at && <div className="text-xs text-muted-foreground">opened {ageLabel(t.created_at)}</div>}
-                    </td>
-                    <td className="px-4 py-2"><Badge status={t.status}>{t.status === "ACCEPTED" ? "In progress" : t.status.charAt(0) + t.status.slice(1).toLowerCase()}</Badge></td>
-                    <td className="px-4 py-2 text-right whitespace-nowrap">
-                      {t.status === "OPEN" && <Button size="sm" disabled={busy === t.id} onClick={() => act(t, "accept")}>Accept</Button>}
-                      {t.status === "ACCEPTED" && <Button size="sm" disabled={busy === t.id} onClick={() => act(t, "complete")}>Mark done</Button>}
-                      {(t.status === "OPEN" || t.status === "ACCEPTED") && (
-                        <Button size="sm" variant="ghost" disabled={busy === t.id} onClick={() => act(t, "cancel")}>Cancel</Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="space-y-3" aria-label="Tasks">
+            {tasks.map((t) => (
+              <li key={t.id} className="flex flex-col gap-4 rounded-3xl bg-surface-muted p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <Link href={caseHref(t.lead_id)} className="text-[17px] font-semibold tracking-tight text-foreground hover:underline">
+                      {patientOf[t.lead_id] ? patientName(patientOf[t.lead_id]) : "Open patient"}
+                    </Link>
+                    <Badge status={t.status}>{t.status === "ACCEPTED" ? "In progress" : t.status.charAt(0) + t.status.slice(1).toLowerCase()}</Badge>
+                  </div>
+                  {patientOf[t.lead_id] && contextLine(patientOf[t.lead_id]) && <p className="mt-0.5 text-[14px] text-muted">{contextLine(patientOf[t.lead_id])}</p>}
+                  <p className="mt-3 text-[15px] font-medium text-foreground">{TASK_KIND_LABEL[t.kind] ?? "Task"}</p>
+                  <p className="text-[14px] leading-snug text-muted">{(t.reason_code && TASK_REASON_LABEL[t.reason_code]) || ""}</p>
+                  {t.created_at && <p className="mt-1 text-[13px] text-muted-foreground">opened {ageLabel(t.created_at)}</p>}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {t.status === "OPEN" && <Button size="sm" disabled={busy === t.id} onClick={() => act(t, "accept")}>Accept</Button>}
+                  {t.status === "ACCEPTED" && <Button size="sm" disabled={busy === t.id} onClick={() => act(t, "complete")}>Mark done</Button>}
+                  {(t.status === "OPEN" || t.status === "ACCEPTED") && (
+                    <Button size="sm" variant="ghost" disabled={busy === t.id} onClick={() => act(t, "cancel")}>Cancel</Button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </AppShell>

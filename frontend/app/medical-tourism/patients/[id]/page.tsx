@@ -144,19 +144,19 @@ export default function PatientCasePage() {
         );
       case "OUTCOME":
         return (
-          <Link href="/medical-tourism/referrals" className="inline-flex items-center rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
+          <Link href="/medical-tourism/referrals" className="klaros-btn-primary !px-6 !py-3 text-[15px]">
             {label}
           </Link>
         );
       case "QUALIFICATION":
         return (
-          <Link href={`/leads/${patient.lead_id}`} className="inline-flex items-center rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
+          <Link href={`/leads/${patient.lead_id}`} className="klaros-btn-primary !px-6 !py-3 text-[15px]">
             {label}
           </Link>
         );
       default:
         return (
-          <a href="#consent" className="inline-flex items-center rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
+          <a href="#consent" className="klaros-btn-primary !px-6 !py-3 text-[15px]">
             {label}
           </a>
         );
@@ -165,7 +165,7 @@ export default function PatientCasePage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-5xl px-6 py-8 sm:px-8">
+      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <Link href="/medical-tourism/pipeline" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" /> All patients
         </Link>
@@ -188,8 +188,8 @@ export default function PatientCasePage() {
           <>
             <header className="mt-4 flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
-                <h1 className={`font-display text-3xl ${patient.name ? "text-foreground" : "italic text-muted"}`}>{patientName(patient)}</h1>
-                <p className="mt-1 text-sm text-muted">
+                <h1 className={`font-display text-[2.25rem] font-semibold leading-[1.05] tracking-[-0.03em] sm:text-[3rem] ${patient.name ? "text-foreground" : "italic text-muted"}`}>{patientName(patient)}</h1>
+                <p className="mt-2 text-[17px] text-muted">
                   {contextLine(patient) || "Enquiry details are not on record"}
                   {patient.created_at ? ` · enquired ${ageLabel(patient.created_at)}` : ""}
                 </p>
@@ -197,7 +197,7 @@ export default function PatientCasePage() {
               <Badge status={patient.stage}>{STAGE_LABEL[patient.stage]}</Badge>
             </header>
 
-            <div className="mt-5 klaros-card p-4">
+            <div className="mt-8 rounded-3xl bg-surface-muted p-5 sm:p-6">
               <Stepper stage={patient.stage} />
             </div>
 
@@ -207,16 +207,16 @@ export default function PatientCasePage() {
               </div>
             )}
 
-            <section aria-label="Next step" className="mt-5 klaros-card border-l-4 border-l-accent p-5">
-              <h2 className="text-xs font-medium text-muted-foreground">Next step</h2>
-              <p className="mt-1.5 text-base text-foreground">{step?.hint}</p>
+            <section aria-label="Next step" className="klaros-dark mt-5 rounded-3xl p-7 sm:p-9">
+              <h2 className="text-[13px] font-medium text-muted">Next step</h2>
+              <p className="mt-2 text-balance font-display text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-[1.9rem]">{step?.hint}</p>
               {patient.held_for_person && !patient.consent_frozen && <p className="mt-1 text-sm text-warning">This enquiry is waiting for a person to review it.</p>}
-              <div className="mt-3">{primaryAction()}</div>
+              <div className="mt-6">{primaryAction()}</div>
             </section>
 
-            <div className="mt-6 grid gap-6 lg:grid-cols-5">
-              <div className="space-y-6 lg:col-span-3">
-                <section aria-label="Referrals" className="klaros-card p-5">
+            <div className="mt-10 grid gap-8 lg:grid-cols-5">
+              <div className="space-y-8 lg:col-span-3">
+                <section aria-label="Referrals" className="klaros-card p-6 sm:p-7">
                   <div className="flex items-center justify-between">
                     <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Clinics</h2>
                     {patient.stage !== "CONSENT" && patient.stage !== "NEW_ENQUIRY" && (
@@ -228,7 +228,7 @@ export default function PatientCasePage() {
                   {patient.referrals.length === 0 ? (
                     <p className="mt-2 text-sm text-muted">Not referred to a clinic yet. A clinic receives nothing until the patient has approved sharing with that clinic.</p>
                   ) : (
-                    <ul className="mt-3 divide-y divide-border">
+                    <ul className="mt-4 divide-y divide-border/70">
                       {patient.referrals.map((r) => (
                         <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
                           <div>
@@ -247,12 +247,12 @@ export default function PatientCasePage() {
                   )}
                 </section>
 
-                <section aria-label="Tasks" className="klaros-card p-5">
+                <section aria-label="Tasks" className="klaros-card p-6 sm:p-7">
                   <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Tasks</h2>
                   {tasks.length === 0 ? (
                     <p className="mt-2 text-sm text-muted">Nothing is waiting on a person for this patient.</p>
                   ) : (
-                    <ul className="mt-3 divide-y divide-border">
+                    <ul className="mt-4 divide-y divide-border/70">
                       {tasks.map((t) => (
                         <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
                           <div className="min-w-0">
@@ -280,8 +280,8 @@ export default function PatientCasePage() {
                 </section>
               </div>
 
-              <div className="space-y-6 lg:col-span-2">
-                <section aria-label="About the enquiry" className="klaros-card p-5">
+              <div className="space-y-8 lg:col-span-2">
+                <section aria-label="About the enquiry" className="klaros-card p-6 sm:p-7">
                   <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">About the enquiry</h2>
                   {!patient.name ? (
                     <p className="mt-2 text-sm text-muted">The patient has not agreed to us keeping their details, so none are shown.</p>

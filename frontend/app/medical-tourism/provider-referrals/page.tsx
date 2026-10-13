@@ -19,7 +19,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { Hero } from "@/components/ui/layout";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 /**
@@ -63,10 +63,9 @@ export default function ProviderReferralsPage() {
   return (
     <AppShell user={user}>
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        <PageHeader
+        <Hero
           title="Referrals"
-          description="Send a patient's enquiry to a verified clinic, only after the patient has approved that clinic."
-          icon={Send}
+          lede="Send a patient's enquiry to a verified clinic, only after the patient has approved that clinic."
           actions={<Button size="sm" onClick={() => setCreating(true)}>New referral</Button>}
         />
         {authLoading || (loading && referrals.length === 0) ? (
@@ -76,28 +75,22 @@ export default function ProviderReferralsPage() {
         ) : referrals.length === 0 ? (
           <EmptyState icon={Send} title="No referrals yet." action={<Button size="sm" onClick={() => setCreating(true)}>New referral</Button>} />
         ) : (
-          <div className="klaros-table-wrap">
-            <table className="klaros-table">
-              <thead className="bg-surface text-muted">
-                <tr>
-                  <th className="px-4 py-2">Patient</th>
-                  <th className="px-4 py-2">Clinic</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {referrals.map((r) => (
-                  <tr key={r.id} className="border-t border-border hover:bg-surface">
-                    <td className="px-4 py-2 text-foreground"><Link href={`/medical-tourism/patients/${r.lead_id}`} className="underline-offset-2 hover:underline">{patientName[r.lead_id] ?? "Patient"}</Link></td>
-                    <td className="px-4 py-2 text-muted">{providerName[r.provider_id] ?? "Clinic"}</td>
-                    <td className="px-4 py-2"><Badge status={r.status}>{r.status.replace("_", " ")}</Badge></td>
-                    <td className="px-4 py-2 text-right"><Button size="sm" variant="secondary" onClick={() => setOpenId(r.id)}>Open</Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted" aria-label="Referrals">
+            {referrals.map((r) => (
+              <li key={r.id} className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <Link href={`/medical-tourism/patients/${r.lead_id}`} className="text-[17px] font-semibold tracking-tight text-foreground hover:underline">
+                    {patientName[r.lead_id] ?? "Patient"}
+                  </Link>
+                  <p className="mt-0.5 text-[14px] text-muted">{providerName[r.provider_id] ?? "Clinic"}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <Badge status={r.status}>{r.status.replace("_", " ")}</Badge>
+                  <Button size="sm" variant="secondary" onClick={() => setOpenId(r.id)}>Open</Button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
