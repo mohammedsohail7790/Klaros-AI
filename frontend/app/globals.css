@@ -143,7 +143,10 @@ select:not([multiple]):not([size]):disabled {
 
 @layer components {
   .klaros-card {
-    @apply rounded-2xl border border-border bg-surface;
+    @apply rounded-3xl bg-surface-muted;
+  }
+  .klaros-card .klaros-card {
+    @apply bg-surface;
   }
 
   /* A card that's itself a click target (a summary tile linking to a
@@ -151,7 +154,7 @@ select:not([multiple]):not([size]):disabled {
      shadow on hover so it reads as interactive before the cursor even
      changes, the same restrained affordance StatCard uses. */
   .klaros-card-interactive {
-    @apply cursor-pointer transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:shadow-raised;
+    @apply cursor-pointer transition-all duration-500 ease-apple hover:-translate-y-0.5 hover:bg-surface hover:shadow-raised;
   }
 
   .klaros-input {
@@ -175,7 +178,7 @@ select:not([multiple]):not([size]):disabled {
   }
 
   .klaros-table-wrap {
-    @apply overflow-x-auto rounded-3xl border border-border bg-surface;
+    @apply overflow-x-auto rounded-3xl bg-surface-muted;
   }
 
   .klaros-table {
@@ -183,7 +186,7 @@ select:not([multiple]):not([size]):disabled {
   }
 
   .klaros-table thead {
-    @apply sticky top-0 z-10 bg-surface/90 text-xs font-medium text-muted-foreground backdrop-blur-xl;
+    @apply sticky top-0 z-10 bg-surface-muted/95 text-xs font-medium text-muted-foreground backdrop-blur-xl;
   }
 
   .klaros-table th {
@@ -195,7 +198,7 @@ select:not([multiple]):not([size]):disabled {
   }
 
   .klaros-table tbody tr {
-    @apply border-t border-border transition-colors duration-300 hover:bg-surface-muted/70;
+    @apply border-t border-border/70 transition-colors duration-300 hover:bg-black/[0.03];
   }
 
   /* Rows that are themselves a navigation target (e.g. a table where each

@@ -158,7 +158,7 @@ function Workspace() {
   if (!project || !token) {
     return (
       <AppShell user={user}>
-        <div className="mx-auto max-w-6xl px-6 py-10"><Skeleton rows={5} /></div>
+        <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-12"><Skeleton rows={5} /></div>
       </AppShell>
     );
   }

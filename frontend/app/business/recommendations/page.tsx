@@ -142,7 +142,7 @@ export default function RecommendationsPage() {
   if (!overview || recs === null) {
     return (
       <AppShell user={user}>
-        <div className="mx-auto max-w-4xl px-6 py-10">
+        <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-12">
           {loadError || error ? <Alert variant="danger" action={<Button size="sm" variant="secondary" onClick={() => reload()}>Retry</Button>}>{loadError ?? error}</Alert> : <Skeleton rows={5} />}
         </div>
       </AppShell>
@@ -161,7 +161,7 @@ export default function RecommendationsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
         <StageTracker stages={overview.stages} activeKey="recommendations" />
         <PageHeader
           icon={ListChecks}

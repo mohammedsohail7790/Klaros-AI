@@ -91,7 +91,7 @@ export default function WebsitePage() {
   if (website === undefined) {
     return (
       <AppShell user={user}>
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
           <Skeleton />
         </div>
       </AppShell>
@@ -100,7 +100,7 @@ export default function WebsitePage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-4 py-8 sm:px-8">
+      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <BuilderContextBar
           token={token}
           activeKey="website"

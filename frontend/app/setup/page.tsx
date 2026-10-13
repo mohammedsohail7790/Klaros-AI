@@ -116,7 +116,7 @@ export default function SetupPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader title="Business setup" description="Describe the business once. Klaros builds the draft workspace and tells you what still needs real information or your approval." icon={Rocket} />
         {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
         {authLoading || (loading && !setup) ? (

@@ -93,7 +93,7 @@ export default function CampaignDetailPage() {
   if (error && !campaign) {
     return (
       <AppShell user={user}>
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
           <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         </div>
       </AppShell>
@@ -105,7 +105,7 @@ export default function CampaignDetailPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">{campaign.name}</h1>
           <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{campaign.status}</span>

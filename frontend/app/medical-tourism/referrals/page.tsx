@@ -86,7 +86,7 @@ export default function CommissionDeskPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-6 py-8 sm:px-8">
+      <div className="px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader
           title="Commissions"
           description="What clinics owe you for referrals. A commission is only potential until the clinic reports the outcome your agreement names, with evidence."

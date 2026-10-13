@@ -178,7 +178,7 @@ export default function LeadDetailPage() {
 
   return (
     <AppShell user={user} crumbs={lead ? [{ label: "Leads", href: "/leads" }, { label: lead.name }] : [{ label: "Leads", href: "/leads" }]}>
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (

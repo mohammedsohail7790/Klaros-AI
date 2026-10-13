@@ -55,7 +55,7 @@ export default function WorkflowsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader icon={Workflow} title="Workflows" description="How an enquiry becomes a customer — which steps are built in, which are automated, and which your team does." />
         {(error || actionError) && (
           <div className="mb-4"><Alert variant="danger" action={error ? <Button size="sm" variant="secondary" onClick={() => reload()}>Try again</Button> : undefined}>{actionError ?? error}</Alert></div>

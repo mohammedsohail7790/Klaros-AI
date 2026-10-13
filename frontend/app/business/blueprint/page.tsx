@@ -219,7 +219,7 @@ export default function BlueprintPage() {
   if (journey === undefined || (journey && !data)) {
     return (
       <AppShell user={user}>
-        <div className="mx-auto max-w-4xl px-6 py-10">
+        <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-12">
           {error ? <Alert variant="danger" action={<Button size="sm" variant="secondary" onClick={load}>Retry</Button>}>{error}</Alert> : <Skeleton rows={6} />}
         </div>
       </AppShell>
@@ -250,7 +250,7 @@ export default function BlueprintPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
         <StageTracker stages={BLUEPRINT_STAGES} activeKey="blueprint" />
         <PageHeader
           icon={FileText}

@@ -61,7 +61,7 @@ export default function ContractsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <header className="mb-1 flex items-center justify-between">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Contracts</h1>
           <button

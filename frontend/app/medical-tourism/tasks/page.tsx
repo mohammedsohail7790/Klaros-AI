@@ -78,7 +78,7 @@ export default function MedicalTourismTasksPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-6 py-8 sm:px-8">
+      <div className="px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader title="Tasks" description="Patients who need a person. Take one to own it; every change is recorded." icon={ClipboardList} />
         <div role="tablist" aria-label="Status" className="mb-4 flex flex-wrap gap-2">
           {FILTERS.map((f) => (

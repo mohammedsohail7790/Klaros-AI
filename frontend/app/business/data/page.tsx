@@ -46,7 +46,7 @@ export default function DataCenterPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader icon={Database} title="Data" description="The records your business runs on. Counts come straight from your data." />
         {error && <div className="mb-4"><Alert variant="danger" action={<Button size="sm" variant="secondary" onClick={() => reload()}>Try again</Button>}>{error}</Alert></div>}
         {!ops && !error && <Skeleton rows={4} />}

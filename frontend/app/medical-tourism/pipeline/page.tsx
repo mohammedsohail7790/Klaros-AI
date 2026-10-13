@@ -13,7 +13,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { Hero, Page } from "@/components/ui/layout";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 type View = "board" | "list";
@@ -28,17 +28,17 @@ function PatientCard({ l }: { l: PipelineLead }) {
     <li>
       <Link
         href={caseHref(l.lead_id)}
-        className="klaros-card block p-3 transition-shadow hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        className="block rounded-2xl bg-surface p-4 shadow-card transition-all duration-500 ease-apple hover:-translate-y-0.5 hover:shadow-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         aria-label={`Open ${patientName(l)}`}
       >
         <div className="flex items-start justify-between gap-2">
           <span className={`font-medium ${l.name ? "text-foreground" : "italic text-muted"}`}>{patientName(l)}</span>
-          {l.open_tasks > 0 && <span className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-xs text-warning">{l.open_tasks} task{l.open_tasks === 1 ? "" : "s"}</span>}
+          {l.open_tasks > 0 && <span className="shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">{l.open_tasks} task{l.open_tasks === 1 ? "" : "s"}</span>}
         </div>
-        {context && <p className="mt-0.5 text-sm text-muted">{context}</p>}
+        {context && <p className="mt-1 text-[13px] leading-snug text-muted">{context}</p>}
         {l.intake?.timeframe && <p className="text-xs text-muted-foreground">{l.intake.timeframe}</p>}
         {clinic && <p className="mt-1.5 text-xs text-muted">With {clinic}</p>}
-        <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3 text-xs">
           {step.cta ? <span className={`font-medium ${step.priority === 1 ? "text-danger" : "text-accent"}`}>{step.cta}</span> : <span className="text-muted-foreground">Nothing to do now</span>}
           <span className="text-muted-foreground">{ageLabel(l.created_at)}</span>
         </div>
@@ -54,21 +54,21 @@ function PatientCard({ l }: { l: PipelineLead }) {
 
 function Board({ data }: { data: MedicalTourismPipeline }) {
   return (
-    <div className="-mx-6 overflow-x-auto px-6 pb-4 sm:-mx-8 sm:px-8" aria-label="Patient board">
-      <div className="flex min-w-max gap-3">
+    <div className="-mx-5 overflow-x-auto px-5 pb-6 sm:-mx-8 sm:px-8" aria-label="Patient board">
+      <div className="flex min-w-max gap-4">
         {STAGE_ORDER.map((s, i) => {
           const rows = data.leads.filter((l) => l.stage === s);
           return (
-            <section key={s} aria-label={STAGE_LABEL[s]} className={`shrink-0 ${rows.length === 0 ? "w-36" : "w-64"}`}>
-              <header className="mb-2 flex items-center justify-between px-1">
-                <h2 className="text-sm font-medium text-foreground">
+            <section key={s} aria-label={STAGE_LABEL[s]} className={`shrink-0 rounded-3xl bg-surface-muted p-3 ${rows.length === 0 ? "w-44" : "w-72"}`}>
+              <header className="mb-3 flex items-center justify-between px-2 pt-1">
+                <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
                   <span className="mr-1.5 text-muted-foreground">{i + 1}</span>
                   {STAGE_LABEL[s]}
                 </h2>
-                <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs tabular-nums text-muted">{rows.length}</span>
+                <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-medium tabular-nums text-muted">{rows.length}</span>
               </header>
               {rows.length === 0 ? (
-                <div className="rounded-xl border border-border px-3 py-4 text-center text-xs text-muted-foreground">No one here</div>
+                <div className="px-3 py-6 text-center text-[13px] text-muted-foreground">No one here</div>
               ) : (
                 <ul className="space-y-2">
                   {rows.map((l) => (
@@ -88,7 +88,7 @@ function ListView({ rows }: { rows: PipelineLead[] }) {
   return (
     <div className="klaros-table-wrap">
       <table className="klaros-table">
-        <thead className="bg-surface text-muted">
+        <thead>
           <tr>
             <th className="px-4 py-2">Patient</th>
             <th className="px-4 py-2">Stage</th>
@@ -166,7 +166,7 @@ function PipelineBody() {
       role="tab"
       aria-selected={view === v}
       onClick={() => setView(v)}
-      className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm ${view === v ? "bg-surface text-foreground shadow-sm" : "text-muted"}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[13px] font-medium transition-all duration-300 ease-apple ${view === v ? "bg-surface text-foreground shadow-card" : "text-muted"}`}
     >
       <Icon className="h-4 w-4" aria-hidden="true" />
       {label}
@@ -175,18 +175,17 @@ function PipelineBody() {
 
   return (
     <AppShell user={user}>
-      <div className="px-6 py-8 sm:px-8">
-        <PageHeader
+      <Page className="!max-w-none">
+        <Hero
           title="Patients"
-          description="Every enquiry, from the first call to the clinic's reported outcome. Open a patient to see everything and take the next step."
-          icon={GitBranch}
+          lede="Every enquiry, from the first call to the clinic's reported outcome. Open a patient to see everything and take the next step."
           actions={
             <div className="flex items-center gap-2">
-              <div role="tablist" aria-label="View" className="flex rounded-xl border border-border bg-surface-muted p-0.5">
+              <div role="tablist" aria-label="View" className="flex rounded-full bg-surface-muted p-1">
                 {toggle("board", LayoutGrid, "Board")}
                 {toggle("list", List, "List")}
               </div>
-              <Link href="/leads?new=1" className="inline-flex items-center rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
+              <Link href="/leads?new=1" className="klaros-btn-primary">
                 Add patient
               </Link>
               <Button size="sm" variant="secondary" onClick={() => load()}>
@@ -210,11 +209,11 @@ function PipelineBody() {
           ) : (
             <>
               <div role="tablist" aria-label="Stage" className="mb-4 flex flex-wrap gap-2">
-                <button role="tab" aria-selected={filter === "ALL"} onClick={() => setFilter("ALL")} className={`rounded-full border px-3 py-1 text-xs ${filter === "ALL" ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"}`}>
+                <button role="tab" aria-selected={filter === "ALL"} onClick={() => setFilter("ALL")} className={`klaros-filter-tab ${filter === "ALL" ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}>
                   All ({data.leads.length})
                 </button>
                 {STAGE_ORDER.map((s, i) => (
-                  <button key={s} role="tab" aria-selected={filter === s} onClick={() => setFilter(s)} className={`rounded-full border px-3 py-1 text-xs ${filter === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"}`}>
+                  <button key={s} role="tab" aria-selected={filter === s} onClick={() => setFilter(s)} className={`klaros-filter-tab ${filter === s ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}>
                     {i + 1}. {STAGE_LABEL[s]} ({data.counts[s] ?? 0})
                   </button>
                 ))}
@@ -224,7 +223,7 @@ function PipelineBody() {
           )
         ) : null}
         {data && <p className="mt-4 max-w-3xl text-xs text-muted-foreground">A patient's stage is worked out from what is on record; it cannot be moved by hand or skipped.</p>}
-      </div>
+      </Page>
     </AppShell>
   );
 }

@@ -94,7 +94,7 @@ export default function IntegrationCenterPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-5xl px-6 py-8">
+      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader icon={Plug} title="Integrations" description="What Klaros can connect to, what is connected, and what isn't possible yet." />
         {error && <div className="mb-4"><Alert variant="danger" action={<Button size="sm" variant="secondary" onClick={() => reload()}>Try again</Button>}>{error}</Alert></div>}
         {!ops && !error && <Skeleton rows={5} />}

@@ -73,7 +73,7 @@ export default function BusinessMapPage() {
   if (!overview) {
     return (
       <AppShell user={user}>
-        <div className="mx-auto max-w-6xl px-6 py-10">
+        <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-12">
           {loadError ? <Alert variant="danger" action={<Button size="sm" variant="secondary" onClick={() => reload()}>Retry</Button>}>{loadError}</Alert> : <Skeleton rows={6} />}
         </div>
       </AppShell>

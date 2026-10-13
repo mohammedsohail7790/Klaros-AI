@@ -81,7 +81,7 @@ export default function ReactivationPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-6">Database Reactivation</h1>
 
         <form onSubmit={handleCreate} className="mb-6 flex items-end gap-2">

@@ -77,7 +77,7 @@ export default function MedicalTourismProvidersPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader
           title={`Providers (${total})`}
           description="The hospitals and clinics you refer patients to. Only a verified clinic can receive a referral."

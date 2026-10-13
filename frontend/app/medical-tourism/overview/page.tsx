@@ -21,12 +21,8 @@ import { STAGE_LABEL, STAGE_ORDER } from "@/lib/mtLabels";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Hero, Page } from "@/components/ui/layout";
 
-const PRIORITY_STYLE: Record<number, string> = {
-  1: "border-l-danger",
-  2: "border-l-warning",
-  3: "border-l-border-strong",
-};
 const PRIORITY_WORD: Record<number, string> = { 1: "Urgent", 2: "Today", 3: "When you can" };
 
 function greeting(now: Date): string {
@@ -94,65 +90,58 @@ export default function TodayPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-5xl px-6 py-8 sm:px-8">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="min-h-5 text-sm text-muted">{clock ? clock.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }) : ""}</p>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              {clock ? greeting(clock) : "Welcome"}
-              {firstName ? `, ${firstName}` : ""}
-            </h1>
-            {pipeline && <p className="mt-1 text-base text-muted">{todaySummary(needs)}</p>}
-          </div>
-          <Button size="sm" variant="secondary" onClick={() => load()}>
-            Refresh
-          </Button>
-        </header>
+      <Page>
+        <Hero
+          eyebrow={clock ? clock.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }) : " "}
+          title={`${clock ? greeting(clock) : "Welcome"}${firstName ? `, ${firstName}` : ""}`}
+          lede={pipeline ? todaySummary(needs) : undefined}
+          actions={
+            <Button size="sm" variant="secondary" onClick={() => load()}>
+              Refresh
+            </Button>
+          }
+        />
 
         {authLoading || (loading && !pipeline) ? (
-          <div className="mt-8">
-            <Skeleton />
-          </div>
+          <Skeleton />
         ) : error ? (
-          <div className="mt-8">
-            <Alert variant="danger" action={<Button size="sm" variant="secondary" onClick={() => load()}>Try again</Button>}>
-              {error}
-            </Alert>
-          </div>
+          <Alert variant="danger" action={<Button size="sm" variant="secondary" onClick={() => load()}>Try again</Button>}>
+            {error}
+          </Alert>
         ) : pipeline ? (
           <>
             {failedMessages > 0 && (
-              <div className="mt-6">
+              <div className="mb-8">
                 <Alert variant="danger">
                   {failedMessages} {failedMessages === 1 ? "message" : "messages"} from the AI receptionist did not finish arriving, so some enquiries may be missing or out of date.
                 </Alert>
               </div>
             )}
 
-            <section aria-label="Needs you" className="mt-8">
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">Needs you</h2>
+            <section aria-label="Needs you" className="mb-14">
+              <h2 className="mb-4 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Needs you</h2>
               {needs.length === 0 ? (
-                <div className="klaros-card mt-3 flex items-center gap-3 p-5 text-sm text-muted">
-                  <CheckCircle2 className="h-5 w-5 text-success" aria-hidden="true" />
+                <div className="flex items-center gap-4 rounded-3xl bg-surface-muted px-7 py-8 text-[17px] text-muted">
+                  <CheckCircle2 className="h-6 w-6 shrink-0 text-success" aria-hidden="true" />
                   {total === 0 ? "No patient enquiries yet. They appear here as soon as the AI receptionist or your website records one." : "Every patient is either moving along or waiting on a clinic."}
                 </div>
               ) : (
-                <ul className="mt-3 space-y-2">
-                  {needs.map((n) => (
-                    <li key={n.leadId} className={`klaros-card flex flex-col gap-3 border-l-4 p-4 sm:flex-row sm:items-center sm:justify-between ${PRIORITY_STYLE[n.priority]}`}>
+                <ul className="space-y-3">
+                  {needs.map((n, idx) => (
+                    <li key={n.leadId} className={idx === 0 ? "klaros-dark flex flex-col gap-5 rounded-3xl p-7 sm:flex-row sm:items-center sm:justify-between sm:p-8" : "flex flex-col gap-4 rounded-3xl bg-surface-muted p-6 sm:flex-row sm:items-center sm:justify-between"}>
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-foreground">{n.patient}</span>
-                          {n.context && <span className="text-sm text-muted">· {n.context}</span>}
-                          <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs text-muted">{PRIORITY_WORD[n.priority]}</span>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <span className={idx === 0 ? "font-display text-2xl font-semibold tracking-tight" : "text-[17px] font-semibold text-foreground"}>{n.patient}</span>
+                          {n.context && <span className="text-[15px] text-muted">{n.context}</span>}
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${n.priority === 1 ? "bg-danger/10 text-danger" : n.priority === 2 ? "bg-warning/10 text-warning" : "bg-surface text-muted"}`}>
+                            <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${n.priority === 1 ? "bg-danger" : n.priority === 2 ? "bg-warning" : "bg-muted-foreground"}`} />
+                            {PRIORITY_WORD[n.priority]}
+                          </span>
                           {n.openTasks > 1 && <span className="text-xs text-muted-foreground">{n.openTasks} tasks</span>}
                         </div>
-                        <p className="mt-1 text-sm text-muted">{n.headline}</p>
+                        <p className={idx === 0 ? "mt-2 text-[17px] leading-snug text-muted" : "mt-1 text-[15px] leading-snug text-muted"}>{n.headline}</p>
                       </div>
-                      <Link
-                        href={n.href}
-                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover"
-                      >
+                      <Link href={n.href} className={idx === 0 ? "klaros-btn-primary shrink-0 self-start !px-6 !py-3 text-[15px] sm:self-center" : "klaros-btn-primary shrink-0 self-start sm:self-center"}>
                         {n.cta}
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
                       </Link>
@@ -162,41 +151,41 @@ export default function TodayPage() {
               )}
             </section>
 
-            <div className="mt-10 grid gap-8 lg:grid-cols-2">
-              <section aria-label="Where your patients are">
-                <h2 className="text-xl font-semibold tracking-tight text-foreground">Where your patients are</h2>
-                <ul className="mt-3 space-y-1.5">
+            <div className="grid gap-x-12 gap-y-4 lg:grid-cols-2">
+              <section aria-label="Where your patients are" className="mb-12">
+                <h2 className="mb-4 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Where your patients are</h2>
+                <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted">
                   {STAGE_ORDER.map((s, i) => {
                     const n = pipeline.counts[s] ?? 0;
                     return (
                       <li key={s}>
-                        <Link href={`/medical-tourism/pipeline?stage=${s}`} className="group flex items-center gap-3 rounded-xl px-2 py-1.5 text-sm hover:bg-surface-muted">
-                          <span className="w-5 text-right text-xs text-muted-foreground">{i + 1}</span>
-                          <span className="w-36 shrink-0 text-foreground">{STAGE_LABEL[s]}</span>
-                          <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-muted">
-                            <span className="block h-full rounded-full bg-accent" style={{ width: total > 0 ? `${Math.max(n > 0 ? 6 : 0, (n / total) * 100)}%` : "0%" }} />
+                        <Link href={`/medical-tourism/pipeline?stage=${s}`} className="group flex items-center gap-4 px-5 py-3.5 text-[15px] transition-colors duration-300 hover:bg-black/[0.03]">
+                          <span className="w-4 text-right text-xs tabular-nums text-muted-foreground">{i + 1}</span>
+                          <span className="w-32 shrink-0 text-foreground">{STAGE_LABEL[s]}</span>
+                          <span className="h-2 flex-1 overflow-hidden rounded-full bg-border/60" aria-hidden="true">
+                            <span className="block h-full rounded-full bg-accent transition-[width] duration-700 ease-apple" style={{ width: total > 0 ? `${Math.max(n > 0 ? 6 : 0, (n / total) * 100)}%` : "0%" }} />
                           </span>
-                          <span className="w-6 text-right tabular-nums text-muted">{n}</span>
+                          <span className="w-6 text-right font-medium tabular-nums text-foreground">{n}</span>
                         </Link>
                       </li>
                     );
                   })}
                 </ul>
-                <Link href="/medical-tourism/pipeline" className="mt-2 inline-block text-sm text-accent hover:text-accent-hover">
-                  Open the patient board
+                <Link href="/medical-tourism/pipeline" className="mt-3 inline-block text-[15px] text-accent hover:underline">
+                  Open the patient board &rsaquo;
                 </Link>
               </section>
 
-              <div className="space-y-8">
-                <section aria-label="Money">
-                  <h2 className="text-xl font-semibold tracking-tight text-foreground">Money</h2>
+              <div>
+                <section aria-label="Money" className="mb-12">
+                  <h2 className="mb-4 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Money</h2>
                   {currencies.length === 0 ? (
-                    <p className="mt-3 text-sm text-muted">No commission is on record yet. A commission only counts once a clinic's outcome is confirmed with evidence.</p>
+                    <p className="rounded-3xl bg-surface-muted px-6 py-6 text-[15px] leading-snug text-muted">No commission is on record yet. A commission only counts once a clinic&apos;s outcome is confirmed with evidence.</p>
                   ) : (
                     currencies.map(([cur, by]) => (
-                      <div key={cur} className="klaros-card mt-3 p-4">
-                        <div className="text-xs text-muted-foreground">{cur}</div>
-                        <dl className="mt-2 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                      <div key={cur} className="mb-3 rounded-3xl bg-surface-muted p-6">
+                        <div className="text-xs font-medium text-muted-foreground">{cur}</div>
+                        <dl className="mt-3 grid grid-cols-2 gap-5 sm:grid-cols-4">
                           {(
                             [
                               ["Potential", by.PENDING],
@@ -206,25 +195,25 @@ export default function TodayPage() {
                             ] as const
                           ).map(([label, v]) => (
                             <div key={label}>
-                              <dt className="text-muted">{label}</dt>
-                              <dd className="mt-0.5 text-lg text-foreground">{money(v?.amount ?? "0", cur)}</dd>
+                              <dt className="text-[13px] text-muted">{label}</dt>
+                              <dd className="mt-1 font-display text-xl font-semibold tracking-tight text-foreground">{money(v?.amount ?? "0", cur)}</dd>
                             </div>
                           ))}
                         </dl>
                       </div>
                     ))
                   )}
-                  <p className="mt-2 text-xs text-muted-foreground">Potential is not earned: it becomes revenue only when confirmed.</p>
+                  <p className="mt-3 text-[13px] text-muted-foreground">Potential is not earned: it becomes revenue only when confirmed.</p>
                 </section>
 
                 {waiting.length > 0 && (
-                  <section aria-label="Waiting on clinics">
-                    <h2 className="text-xl font-semibold tracking-tight text-foreground">Waiting on clinics</h2>
-                    <ul className="mt-3 space-y-1.5 text-sm">
+                  <section aria-label="Waiting on clinics" className="mb-12">
+                    <h2 className="mb-4 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Waiting on clinics</h2>
+                    <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted">
                       {waiting.map((w) => (
-                        <li key={w.leadId} className="flex items-center gap-2 text-muted">
+                        <li key={w.leadId} className="flex items-center gap-3 px-5 py-4 text-[15px] text-muted">
                           <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
-                          <Link href={`/medical-tourism/patients/${w.leadId}`} className="text-foreground hover:underline">
+                          <Link href={`/medical-tourism/patients/${w.leadId}`} className="font-medium text-foreground hover:underline">
                             {w.patient}
                           </Link>
                           <span>
@@ -240,7 +229,7 @@ export default function TodayPage() {
             </div>
           </>
         ) : null}
-      </div>
+      </Page>
     </AppShell>
   );
 }

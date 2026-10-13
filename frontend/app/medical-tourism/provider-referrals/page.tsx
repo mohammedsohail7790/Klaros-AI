@@ -62,7 +62,7 @@ export default function ProviderReferralsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader
           title="Referrals"
           description="Send a patient's enquiry to a verified clinic, only after the patient has approved that clinic."

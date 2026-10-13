@@ -57,7 +57,7 @@ export default function AgentsPage() {
   if (authLoading || (agents === null && !error)) {
     return (
       <AppShell user={user}>
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
           <Skeleton rows={4} stats={0} />
         </div>
       </AppShell>
@@ -67,7 +67,7 @@ export default function AgentsPage() {
   if (agents === null) {
     return (
       <AppShell user={user}>
-        <div className="mx-auto max-w-4xl px-6 py-10">
+        <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-12">
           <Alert variant="danger">{error}</Alert>
         </div>
       </AppShell>
@@ -80,7 +80,7 @@ export default function AgentsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-4xl px-6 py-10">
+      <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-12">
         <PageHeader
           icon={Bot}
           title="Agents"

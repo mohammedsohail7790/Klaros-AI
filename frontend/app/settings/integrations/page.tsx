@@ -366,7 +366,7 @@ function IntegrationsPageInner() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-4xl px-6 py-10">
+      <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-12">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1 basis-80">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Integrations</h1>
