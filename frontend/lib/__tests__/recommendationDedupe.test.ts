@@ -30,6 +30,15 @@ describe("dedupeRecommendations", () => {
     expect(out.map((r) => r.id)).toEqual(["accepted"]);
   });
 
+  it("within one requirement, the same provider tagged with different capability keys is one suggestion", () => {
+    const rows = [
+      rec({ id: "a", capability_key: "lead_capture", status: "ACCEPTED" }),
+      rec({ id: "b", capability_key: "lead_generation", status: "REJECTED", created_at: "2026-10-13T10:05:00Z" }),
+    ];
+    expect(dedupeRecommendations(rows)).toHaveLength(2); // different capability keys: kept apart globally
+    expect(dedupeRecommendations(rows, true).map((r) => r.id)).toEqual(["b"]); // same group: collapsed, newest decided wins
+  });
+
   it("keeps different providers and drops superseded rows", () => {
     const out = dedupeRecommendations([
       rec({ id: "g", provider_key: "google_ads" }),
