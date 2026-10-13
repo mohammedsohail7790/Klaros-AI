@@ -272,6 +272,13 @@ export default function BlueprintPage() {
         />
 
         {error && <div className="mb-4"><Alert variant="danger">{error}</Alert></div>}
+        {!awaitingConfirm && (
+          <div className="mb-4">
+            <Alert variant="info">
+              Anything marked “Missing” can still be filled in — use “Edit” on a section. Each change saves a new version of your Blueprint, and Requirements follow it.
+            </Alert>
+          </div>
+        )}
         {missingRequired.length > 0 && toConfirm === 0 && (
           <div className="mb-4">
             <Alert variant="warning">
@@ -305,7 +312,7 @@ export default function BlueprintPage() {
                       key={section.id}
                       section={section}
                       claims={claimsBySection[k] ?? []}
-                      editable={isDraft}
+                      editable={data.blueprint.status !== "SUPERSEDED"}
                       busy={busy}
                       onSave={(next) => handleSectionSave(section, next)}
                       onClaimDecision={handleClaimDecision}

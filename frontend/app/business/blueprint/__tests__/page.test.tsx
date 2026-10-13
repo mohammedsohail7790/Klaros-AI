@@ -235,11 +235,24 @@ describe("Blueprint page", () => {
     expect(screen.getAllByText(/Which supplier\?/).length).toBeGreaterThan(0);
   });
 
-  it("shows read-only confirmed state and a continue-to-requirements action once BLUEPRINT_ACTIVE", async () => {
+  it("shows the confirmed state with a continue action, and still lets the owner fill in sections (each save is a new version)", async () => {
     getCurrentBusinessJourneyMock.mockResolvedValue(journey("BLUEPRINT_ACTIVE"));
     getActiveBlueprintMock.mockResolvedValue({ ...draftBlueprintResponse(), blueprint: { ...draftBlueprintResponse().blueprint, status: "ACTIVE" }, claims: [] });
     render(<BlueprintPage />);
     expect(await screen.findByText("Continue to requirements")).toBeInTheDocument();
-    expect(screen.queryByText("Edit")).not.toBeInTheDocument();
+    expect(screen.queryByText("Confirm and continue")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Edit / }).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Each change saves a new version/)).toBeInTheDocument();
+  });
+
+  it("saves an edit on a confirmed Blueprint against the current version and reloads", async () => {
+    getCurrentBusinessJourneyMock.mockResolvedValue(journey("BLUEPRINT_ACTIVE"));
+    getActiveBlueprintMock.mockResolvedValue({ ...draftBlueprintResponse(), blueprint: { ...draftBlueprintResponse().blueprint, status: "ACTIVE" }, claims: [] });
+    updateBlueprintSectionMock.mockResolvedValue({});
+    render(<BlueprintPage />);
+    fireEvent.click((await screen.findAllByRole("button", { name: /^Edit / }))[0]);
+    fireEvent.click(await screen.findByRole("button", { name: "Save" }));
+    await waitFor(() => expect(updateBlueprintSectionMock).toHaveBeenCalledWith("test-token", expect.any(String), "b1", expect.any(Object)));
+    await waitFor(() => expect(getActiveBlueprintMock.mock.calls.length).toBeGreaterThan(1));
   });
 });
