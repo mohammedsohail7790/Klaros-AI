@@ -5762,6 +5762,18 @@ export const acceptHandoffTask = (token: string, id: string) => post<{ task: Han
 export const completeHandoffTask = (token: string, id: string, note?: string) => post<{ task: HandoffTask }>(token, `${MTR}/tasks/${id}/complete`, { note });
 export const cancelHandoffTask = (token: string, id: string, note?: string) => post<{ task: HandoffTask }>(token, `${MTR}/tasks/${id}/cancel`, { note });
 
+export type ClinicSourcingResult = {
+  status: "ok" | "not_configured" | "ai_unavailable";
+  queries: number;
+  pages_read: number;
+  added: { id: string; name: string; country: string; city: string | null; has_email: boolean; accreditation_claimed: boolean; source_url: string }[];
+  skipped_duplicate: number;
+  rejected_unsupported: number;
+  notes: string[];
+};
+export const runClinicSourcing = (token: string, countries: string[], procedures: string[]) =>
+  post<ClinicSourcingResult>(token, `${MTR}/clinic-sourcing/run`, { countries, procedures });
+
 export function setProviderVerification(token: string, providerId: string, status: string, note?: string) {
   return request<{ provider_id: string; verification_status: string }>(`${MTR}/providers/${providerId}/verification`, {
     method: "PUT",

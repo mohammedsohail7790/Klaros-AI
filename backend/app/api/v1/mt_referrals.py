@@ -18,7 +18,7 @@ from app.db.session import async_session_maker, set_tenant_context
 from app.models.medical_tourism import Provider
 from app.models.medical_tourism_referral import ProviderReferral, ReferralApproval, ReferralDelivery
 from app.models.rbac import Permission, role_has_permission
-from app.services import mt_commission, mt_handoff, mt_pipeline, mt_referrals
+from app.services import mt_clinic_sourcing, mt_commission, mt_handoff, mt_pipeline, mt_referrals
 from app.services.mt_referrals import ReferralError
 
 router = APIRouter(prefix="/medical-tourism", tags=["medical-tourism-referrals"])
@@ -87,6 +87,22 @@ async def put_verification(provider_id: uuid.UUID, body: dict, u: CurrentUser = 
     except ReferralError as exc:
         raise _err(exc) from exc
     return {"provider_id": str(p.id), "verification_status": p.verification_status}
+
+
+# --- clinic sourcing --------------------------------------------------------
+
+
+@router.post("/clinic-sourcing/run")
+async def run_clinic_sourcing(body: dict, u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """body = {countries: ["TR", ...], procedures?: [names]}. Searches public web pages and adds clinics as UNVERIFIED / UNDER_REVIEW for a person to confirm. Contacts nobody."""
+    _manage(u)
+    countries = [str(c).strip().upper() for c in (body.get("countries") or []) if str(c).strip()][:6]
+    procedures = [str(x).strip()[:80] for x in (body.get("procedures") or []) if str(x).strip()][:5]
+    if not countries:
+        raise HTTPException(status_code=422, detail="countries is required")
+    r = await mt_clinic_sourcing.source_clinics(u.tenant_id, u.id, countries, procedures)
+    return {"status": r.status, "queries": r.queries, "pages_read": r.pages_read, "added": r.added, "skipped_duplicate": r.skipped_duplicate,
+            "rejected_unsupported": r.rejected_unsupported, "notes": r.notes}
 
 
 # --- referrals --------------------------------------------------------------

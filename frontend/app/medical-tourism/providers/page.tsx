@@ -8,7 +8,9 @@ import {
   ApiError,
   MedicalTourismProvider,
   createMedicalTourismProvider,
+  ClinicSourcingResult,
   listMedicalTourismProviders,
+  runClinicSourcing,
 } from "@/lib/api";
 import { VERIFICATION_LABEL, countryName, referableNote } from "@/lib/mtLabels";
 
@@ -30,6 +32,9 @@ export default function MedicalTourismProvidersPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [finding, setFinding] = useState(false);
+  const [findCountries, setFindCountries] = useState("TR, TH, KR, IN");
+  const [found, setFound] = useState<ClinicSourcingResult | null>(null);
   const [verifying, setVerifying] = useState<MedicalTourismProvider | null>(null);
 
   const load = useCallback(async () => {
@@ -51,6 +56,21 @@ export default function MedicalTourismProvidersPage() {
     }
   }, [token, status, country]);
 
+  async function findClinics() {
+    if (!token || finding) return;
+    setFinding(true);
+    setError(null);
+    try {
+      const codes = findCountries.split(/[ ,]+/).map((c) => c.trim().toUpperCase()).filter(Boolean);
+      setFound(await runClinicSourcing(token, codes, []));
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't search for clinics.");
+    } finally {
+      setFinding(false);
+    }
+  }
+
   useEffect(() => {
     load();
   }, [load]);
@@ -68,6 +88,31 @@ export default function MedicalTourismProvidersPage() {
             </button>
           }
         />
+
+        <div className="mb-4 rounded-md border border-border-strong bg-surface p-4 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">Find clinics automatically</span>
+            <input
+              value={findCountries}
+              onChange={(e) => setFindCountries(e.target.value)}
+              aria-label="Country codes to search"
+              className="w-40 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5"
+            />
+            <button onClick={findClinics} disabled={finding} className="klaros-btn-primary">
+              {finding ? "Searching…" : "Search the web"}
+            </button>
+          </div>
+          <p className="mt-2 text-muted">
+            Klaros reads public pages and adds what it finds as unverified, with the source link. It contacts no one. You confirm each clinic&apos;s accreditation before it can receive a referral.
+          </p>
+          {found && (
+            <p className="mt-2" role="status">
+              {found.status === "ok"
+                ? `Added ${found.added.length} clinic${found.added.length === 1 ? "" : "s"} for review (${found.skipped_duplicate} already on your list).`
+                : found.notes.join(" ")}
+            </p>
+          )}
+        </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {STATUS_TABS.map((s) => (

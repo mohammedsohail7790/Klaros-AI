@@ -207,6 +207,8 @@ class Settings(BaseSettings):
     # actually send, distinct from the account credentials above.
     TWILIO_FROM_NUMBER: str | None = None
     SENDGRID_API_KEY: str | None = None
+    # Web search for Medical Tourism clinic sourcing (Tavily). Unset = clinic sourcing reports `not_configured` and does nothing.
+    TAVILY_API_KEY: str | None = None
     # Verified SendGrid sender identity — SendGrid rejects sends from an
     # unverified address, so this must be a real, verified sender.
     SENDGRID_FROM_EMAIL: str | None = None
