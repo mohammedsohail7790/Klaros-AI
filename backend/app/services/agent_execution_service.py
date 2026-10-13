@@ -174,7 +174,18 @@ class AgentExecutionService:
             if existing is not None:
                 raise DuplicateExecutionRequestError(existing.id)
 
-        await self._enforce_rate_and_concurrency(tenant_id, agent, version)
+        try:
+            await self._enforce_rate_and_concurrency(tenant_id, agent, version)
+        except AgentNotExecutableError:
+            # Duplicate deliveries of one request race each other: the first creates its row, and the rest, which passed the idempotency check above
+            # a moment earlier, then meet that in-flight row at the concurrency ceiling. They are not new work being refused, they are copies of work
+            # already accepted, so look the key up again and report them as the duplicates they are (a scheduler or webhook retry must see "duplicate",
+            # never a "ceiling reached" refusal that reads like a real capacity problem).
+            if idempotency_key:
+                existing = await self._find_by_idempotency_key(tenant_id, agent_id, idempotency_key)
+                if existing is not None:
+                    raise DuplicateExecutionRequestError(existing.id) from None
+            raise
 
         execution = await self._create_execution_row(
             tenant_id, agent, version, tool_name=tool_name, tool_input=tool_input,
