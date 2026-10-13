@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
+import { Avatar } from "@/components/ui/Avatar";
+import { Hero } from "@/components/ui/layout";
 import { useAuth } from "@/lib/useAuth";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
@@ -121,18 +123,15 @@ export default function TeamSettingsPage() {
   return (
     <AppShell user={user}>
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Team</h1>
-            <p className="mt-1 text-sm text-muted">
-              Invite people to your workspace with real, enforced roles — every action they take goes
-              through the same governed permission pipeline as your own.
-            </p>
-          </div>
-          <button onClick={() => setShowInvite(true)} className="klaros-btn-primary">
-            Invite member
-          </button>
-        </div>
+        <Hero
+          title="Team"
+          lede="Invite people to your workspace with real, enforced roles. Every action they take goes through the same governed permission pipeline as your own."
+          actions={
+            <button onClick={() => setShowInvite(true)} className="klaros-btn-primary">
+              Invite member
+            </button>
+          }
+        />
 
         {error && (
           <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
@@ -148,91 +147,65 @@ export default function TeamSettingsPage() {
           <Skeleton />
         ) : (
           <>
-            <h2 className="mb-3 text-base font-semibold tracking-tight">Members</h2>
-            <div className="mb-8 klaros-table-wrap">
-              <table className="klaros-table">
-                <thead>
-                  <tr>
-                    <th className="px-5 py-4">Name</th>
-                    <th className="px-5 py-4">Email</th>
-                    <th className="px-5 py-4">Role</th>
-                    <th className="px-5 py-4">Status</th>
-                    <th className="px-5 py-4"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {members?.map((m) => (
-                    <tr key={m.id} className="border-t border-border">
-                      <td className="px-5 py-4">
-                        {m.full_name} {m.id === user?.id && <span className="text-xs text-muted">(you)</span>}
-                      </td>
-                      <td className="px-5 py-4 text-muted">{m.email}</td>
-                      <td className="px-5 py-4">
-                        <select
-                          value={m.role}
-                          disabled={busyMemberId === m.id}
-                          onChange={(e) => handleRoleChange(m.id, e.target.value)}
-                          className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-xs disabled:opacity-50"
-                        >
-                          {ROLES.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={m.is_active ? "text-success" : "text-muted"}>
-                          {m.is_active ? "Active" : "Deactivated"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <button
-                          onClick={() => handleToggleActive(m.id, m.is_active)}
-                          disabled={busyMemberId === m.id}
-                          className="text-xs text-muted underline hover:text-foreground disabled:opacity-50"
-                        >
-                          {m.is_active ? "Deactivate" : "Reactivate"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <h2 className="mb-4 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Members</h2>
+            <ul className="mb-12 divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted" aria-label="Members">
+              {members?.map((m) => (
+                <li key={m.id} className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <Avatar name={m.full_name} />
+                    <div className="min-w-0">
+                      <p className="text-[16px] font-semibold tracking-tight text-foreground">
+                        {m.full_name} {m.id === user?.id && <span className="ml-1 rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-muted">You</span>}
+                      </p>
+                      <p className="truncate text-[14px] text-muted">{m.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-3">
+                    <select
+                      value={m.role}
+                      aria-label={`Role for ${m.full_name}`}
+                      disabled={busyMemberId === m.id}
+                      onChange={(e) => handleRoleChange(m.id, e.target.value)}
+                      className="rounded-full bg-surface px-4 py-1.5 text-[13px] font-medium disabled:opacity-50"
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${m.is_active ? "bg-success/10 text-success" : "bg-surface text-muted"}`}>
+                      <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${m.is_active ? "bg-success" : "bg-muted-foreground"}`} />
+                      {m.is_active ? "Active" : "Deactivated"}
+                    </span>
+                    <button
+                      onClick={() => handleToggleActive(m.id, m.is_active)}
+                      disabled={busyMemberId === m.id}
+                      className="text-[14px] text-accent hover:underline disabled:opacity-50"
+                    >
+                      {m.is_active ? "Deactivate" : "Reactivate"}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
 
             {invites && invites.length > 0 && (
               <>
-                <h2 className="mb-3 text-base font-semibold tracking-tight">Pending invites</h2>
-                <div className="klaros-table-wrap">
-                  <table className="klaros-table">
-                    <thead>
-                      <tr>
-                        <th className="px-5 py-4">Email</th>
-                        <th className="px-5 py-4">Role</th>
-                        <th className="px-5 py-4">Expires</th>
-                        <th className="px-5 py-4"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invites.map((i) => (
-                        <tr key={i.id} className="border-t border-border">
-                          <td className="px-5 py-4">{i.email}</td>
-                          <td className="px-5 py-4 text-muted">{i.role}</td>
-                          <td className="px-5 py-4 text-muted">{new Date(i.expires_at).toLocaleDateString()}</td>
-                          <td className="px-5 py-4">
-                            <button
-                              onClick={() => handleRevoke(i.id)}
-                              className="text-xs text-danger underline hover:text-danger"
-                            >
-                              Revoke
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <h2 className="mb-4 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Pending invites</h2>
+                <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted" aria-label="Pending invites">
+                  {invites.map((i) => (
+                    <li key={i.id} className="flex items-center justify-between gap-4 px-6 py-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-[15px] font-medium text-foreground">{i.email}</p>
+                        <p className="text-[13px] text-muted">{i.role} · expires {new Date(i.expires_at).toLocaleDateString()}</p>
+                      </div>
+                      <button onClick={() => handleRevoke(i.id)} className="rounded-full bg-danger/10 px-4 py-1.5 text-[13px] font-medium text-danger hover:bg-danger/20">
+                        Revoke
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </>
             )}
           </>

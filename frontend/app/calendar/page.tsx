@@ -206,26 +206,32 @@ function CalendarPageInner() {
                   {appointments.map((a) => (
                     <li
                       key={a.id}
-                      className="rounded-2xl bg-surface-muted px-4 py-3 text-sm"
+                      className="rounded-3xl bg-surface-muted p-5 text-sm"
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{a.title}</p>
-                          <p className="text-xs text-muted">
-                            {new Date(a.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} –{" "}
-                            {new Date(a.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC ·{" "}
-                            {a.status}
-                            {a.external_provider === "google_calendar" && (
-                              <span className="ml-2 text-success">· synced to Google</span>
-                            )}
-                          </p>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-4">
+                          <div className="flex h-14 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-surface text-center">
+                            <span className="font-display text-lg font-semibold leading-none tracking-tight text-foreground">
+                              {new Date(a.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}
+                            </span>
+                            <span className="mt-1 text-[10px] font-medium text-muted-foreground">UTC</span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[16px] font-semibold tracking-tight text-foreground">{a.title}</p>
+                            <p className="mt-0.5 text-[13px] text-muted">
+                              until {new Date(a.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} · {a.status.toLowerCase()}
+                              {a.external_provider === "google_calendar" && (
+                                <span className="ml-2 text-success">· synced to Google</span>
+                              )}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           {a.status !== "CANCELLED" && (
                             <button
                               onClick={() => handleSyncToGoogle(a.id)}
                               disabled={syncingId === a.id}
-                              className="text-xs text-muted hover:underline disabled:opacity-50"
+                              className="rounded-full bg-surface px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-border disabled:opacity-50"
                             >
                               {syncingId === a.id
                                 ? "Syncing..."
@@ -237,7 +243,7 @@ function CalendarPageInner() {
                           {a.status !== "CANCELLED" && (
                             <button
                               onClick={() => openReschedule(a)}
-                              className="text-xs text-muted hover:underline"
+                              className="rounded-full bg-surface px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-border"
                             >
                               Reschedule
                             </button>
@@ -245,7 +251,7 @@ function CalendarPageInner() {
                           {a.status !== "CANCELLED" && (
                             <button
                               onClick={() => handleCancel(a.id)}
-                              className="text-xs text-danger hover:underline"
+                              className="rounded-full bg-danger/10 px-3 py-1.5 text-xs font-medium text-danger transition-colors hover:bg-danger/20"
                             >
                               Cancel
                             </button>
@@ -270,7 +276,7 @@ function CalendarPageInner() {
                           </button>
                           <button
                             onClick={() => setReschedulingId(null)}
-                            className="text-xs text-muted hover:underline"
+                            className="rounded-full bg-surface px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-border"
                           >
                             Cancel
                           </button>
@@ -287,12 +293,12 @@ function CalendarPageInner() {
               {slots.length === 0 ? (
                 <EmptyState icon={CalendarX} title="No open slots this day." compact />
               ) : (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2.5">
                   {slots.map((s) => (
                     <button
                       key={s.start_time}
                       onClick={() => setBookingSlot(s)}
-                      className="rounded-xl border border-border-strong px-2 py-2 text-xs hover:bg-surface-muted"
+                      className="rounded-2xl bg-surface-muted px-3 py-3 text-[15px] font-medium tabular-nums text-foreground transition-all duration-300 ease-apple hover:-translate-y-0.5 hover:bg-accent hover:text-accent-foreground"
                     >
                       {new Date(s.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}
                     </button>
