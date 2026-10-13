@@ -56,7 +56,12 @@ function Card({ i, needed }: { i: OpsIntegration; needed: boolean }) {
   return (
     <li className={`klaros-card flex flex-col gap-2 p-4 ${i.state === "PLANNED" || i.state === "INTEGRATION_REQUIRED" ? "border-dashed" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-foreground">{i.name}</h3>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-accent-soft to-surface-muted text-sm font-semibold text-accent-hover ring-1 ring-border">
+            {i.name.trim().charAt(0).toUpperCase()}
+          </span>
+          <h3 className="truncate text-sm font-semibold text-foreground">{i.name}</h3>
+        </div>
         <StatusPill state={i.state} />
       </div>
       {needed && <p className="text-xs font-medium text-accent-hover">Your business needs this</p>}

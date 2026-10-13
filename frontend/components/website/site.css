@@ -87,7 +87,10 @@
 }
 .klaros-site-band[data-tone="hero"] {
   padding-block: calc(var(--klaros-site-section-y) * 0.85) var(--klaros-site-section-y);
-  background: linear-gradient(to bottom, var(--klaros-site-surface), var(--klaros-site-bg));
+  background:
+    radial-gradient(60% 80% at 100% 0%, color-mix(in srgb, var(--klaros-site-secondary) 16%, transparent) 0%, transparent 70%),
+    radial-gradient(50% 70% at 0% 100%, color-mix(in srgb, var(--klaros-site-primary) 12%, transparent) 0%, transparent 70%),
+    linear-gradient(to bottom, var(--klaros-site-surface), var(--klaros-site-bg));
 }
 .klaros-site-band[data-tone="trust"] {
   padding-block: 1.1rem;
@@ -284,8 +287,8 @@
 }
 .klaros-site-hero h1 {
   font-size: clamp(2.3rem, 5.2vw, 3.9rem);
-  letter-spacing: -0.01em;
-  max-width: 18ch;
+  letter-spacing: -0.02em;
+  max-width: 22ch;
 }
 .klaros-site-hero p.klaros-site-lead {
   margin-block: 1.4rem 2rem;

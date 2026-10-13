@@ -187,17 +187,63 @@ def _phone_ok(value: str | None) -> bool:
     return bool(value) and bool(re.fullmatch(r"\+?[0-9][0-9 ()\-]{4,30}", value or ""))
 
 
-def _safe_or_default(value: str | None, default: str) -> tuple[str, str]:
+def _first_sentence(text: str, limit: int = 220) -> str:
+    """The first sentence of a longer stated description, kept short enough to sit under a headline."""
+    t = " ".join(text.split())
+    m = re.search(r"(?<=[.!?])\s", t)
+    first = t[: m.start()] if m else t
+    if len(first) > limit:
+        first = first[: limit - 1].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+    return first
+
+
+def _safe_or_default(value: str | None, default: str, max_length: int = 200) -> tuple[str, str]:
     """Returns (text, provenance). Falls back to a SYSTEM_DEFAULT if the
     candidate value is missing or fails the same content-safety validation
     every other field is subject to (never surfaces an unsafe blueprint
     value into a website just because it came from a "trusted" source)."""
     if value:
         try:
-            return reject_unsafe_text(value, max_length=200), "USER_STATED"
+            return reject_unsafe_text(value, max_length=max_length), "USER_STATED"
         except UnsafeContentError:
             pass
     return default, "SYSTEM_DEFAULT"
+
+
+def _join_natural(items: list[str]) -> str:
+    items = [i.strip() for i in items if i and i.strip()]
+    if len(items) <= 1:
+        return "".join(items)
+    return ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _lower_first(text: str) -> str:
+    t = text.strip().rstrip(".!?")
+    return t[:1].lower() + t[1:] if t else t
+
+
+def _derived_hero_copy(
+    service_names: list[str], customers: str | None, geography: str | None
+) -> tuple[str | None, str | None]:
+    """A headline and subheadline assembled ONLY from facts the owner stated (what they offer, who it is for, where) - never an invented claim. Used when
+    the Blueprint holds no written description, so a published site opens with what the business does rather than just its name."""
+    names = [n for n in service_names if _is_safe(n)]
+    if not names:
+        return None, None
+    lead = names[0][:1].upper() + names[0][1:]
+    audience = _lower_first(customers) if customers else None
+    headline = f"{lead} for {audience}" if audience and len(lead) + len(audience) < 110 else lead
+    if not _is_safe(headline):
+        return None, None
+    detail_parts: list[str] = []
+    if len(names) > 1:
+        detail_parts.append("Including " + _join_natural(names[1:4]) + ".")
+    if geography and _is_safe(geography):
+        detail_parts.append(f"Serving {_lower_first(geography) if not geography.isupper() else geography}.")
+    sub = " ".join(detail_parts) or None
+    if sub and not _is_safe(sub[:200]):
+        sub = None
+    return headline, sub
 
 
 class WebsiteGenerationService:
@@ -272,7 +318,8 @@ class WebsiteGenerationService:
 
         description, prov = _safe_or_default(
             _first_string(identity, ("description", "tagline", "summary")) or _sentence(_claim(BlueprintSectionKey.IDENTITY, fields=("description", "summary", "overview", "tagline"))),
-            _DEFAULT_DESCRIPTION
+            _DEFAULT_DESCRIPTION,
+            max_length=4000,
         )
         provenance["description"] = prov
 
@@ -280,6 +327,7 @@ class WebsiteGenerationService:
             _first_string(customers, ("target_customer", "description", "summary"))
             or _sentence(_claim(BlueprintSectionKey.CUSTOMERS)),
             "Everyone who needs what we offer.",
+            max_length=1000,
         )
         provenance["target_customer"] = prov
 
@@ -297,7 +345,15 @@ class WebsiteGenerationService:
 
         hero_headline = business_name
         # No stated description -> no subheadline, rather than a generic claim nobody made.
-        hero_subheadline = description if provenance["description"] != "SYSTEM_DEFAULT" else None
+        hero_subheadline = _first_sentence(description) if provenance["description"] != "SYSTEM_DEFAULT" else None
+        geography_text = _first_string(by_key.get(BlueprintSectionKey.GEOGRAPHY.value, {}), ("region", "market", "location", "country", "description")) or _claim(BlueprintSectionKey.GEOGRAPHY)
+        customers_text = _claim(BlueprintSectionKey.CUSTOMERS) if provenance["target_customer"] != "SYSTEM_DEFAULT" else None
+        derived_headline, derived_sub = _derived_hero_copy(service_names, customers_text, geography_text)
+        if derived_headline:
+            # The business name is already in the site header; the hero should say what the business does.
+            hero_headline = derived_headline
+            hero_subheadline = hero_subheadline or derived_sub
+            provenance["hero_copy"] = "DERIVED_FROM_STATED_FACTS"
         # (SEO metadata still needs *some* text; the business name is the honest one.)
         if provenance["description"] == "SYSTEM_DEFAULT":
             description = business_name
@@ -365,6 +421,14 @@ class WebsiteGenerationService:
         home_sections: list[SectionSpec] = [
             SectionSpec(component_type=ComponentType.HERO, props=hero_props.model_dump(exclude_none=False)),
         ]
+        if not highlights:
+            # Facts the owner stated, shown as a quick strip - never a claim nobody made.
+            strip = []
+            if geography_text and _is_safe(geography_text):
+                strip.append(f"Serving {geography_text}")
+            if customers_text and _is_safe(customers_text):
+                strip.append(f"Made for {_lower_first(customers_text)}")
+            highlights = strip if len(strip) >= 2 else []
         if highlights:
             home_sections.append(SectionSpec(component_type=ComponentType.TRUST_BAR, props=TrustBarProps(items=highlights).model_dump()))
         # A section is only generated when the Blueprint actually supplied its content -

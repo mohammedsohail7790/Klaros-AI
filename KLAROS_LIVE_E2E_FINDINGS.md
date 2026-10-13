@@ -15,7 +15,7 @@ Account creation and password entry were done by the user (not allowed for me on
 | Business Map | Works after a reload (see #6) |
 | Website generation | Works but output is a stub (see #8) |
 | AI Workforce → Create my AI receptionist | FAILS (see #1) |
-| Launch Business | Not run: it publishes the site publicly; needs your explicit OK |
+| Launch Business | Run with your OK: journey COMPLETED, site published at /w/<tenant>. But Home still showed "Not launched yet" until a reload (stale state) |
 | Home / Dashboard | Load; content is generic |
 
 ## Problems (highest impact first)
@@ -42,3 +42,10 @@ Account creation and password entry were done by the user (not allowed for me on
 ## Redesign delivered (branch `feat/klaros-redesign`, local commit a068577, not pushed)
 Design system: indigo/slate tokens, Geist type, Radix Dialog modals, Sonner toasts, new logo, dark sidebar with user menu, ⌘K command palette, new auth layout, marketing header/footer and hero, plain-language copy helper. 460/460 tests pass, `next build` succeeds.
 Not yet redesigned page-by-page (inherit the new tokens only): Build/Discovery/Blueprint/Requirements/Map content layouts, Home, Dashboard body, Website editor, Leads/Customers tables.
+
+
+## Update (after launch)
+- Live site is published at https://meetklaros.com/w/4bdb4033-53f8-4918-bbf7-ac81fdb61520 (still the thin stub; the generator fix below needs the backend deployed, then "Regenerate from blueprint").
+- **Bug found and fixed**: a stated business description longer than 200 characters was silently discarded by the website generator (cap meant for names), leaving an empty subheadline. Fixed (`website_generation_service.py`), plus: hero headline/subheadline now derived from stated products, customers and region; a trust strip from stated facts; the hero falls back to a "Get in touch" button to the Contact page when no email/phone is stated (renderer change, ships with the frontend).
+- Honest limit: with a thin Blueprint the site is still short, because the generator will not invent claims. Richer sites need richer Discovery answers (live Discovery asked 1 useful question).
+- Home stepper, hero, KPI tiles, launch panel, Dashboard headings, Integrations cards and the journey stepper were redesigned. 460 frontend tests + all website backend tests pass.

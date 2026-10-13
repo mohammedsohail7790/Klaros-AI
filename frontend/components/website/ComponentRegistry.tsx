@@ -47,7 +47,7 @@ function Band({ tone, className, children }: { tone: string; className?: string;
   );
 }
 
-function Hero({ props }: { props: Item }) {
+function Hero({ props, contactHref }: { props: Item; contactHref?: string }) {
   const route = strs(props.highlights);
   const cta = safeHref(props.cta_url);
   const second = safeHref(props.secondary_cta_url);
@@ -57,7 +57,13 @@ function Hero({ props }: { props: Item }) {
         <div>
           <h1>{str(props.headline)}</h1>
           {props.subheadline ? <p className="klaros-site-lead">{str(props.subheadline)}</p> : <div style={{ height: "1.5rem" }} />}
-          {(props.cta_text && cta) || (props.secondary_cta_text && second) ? (
+          {!(props.cta_text && cta) && contactHref ? (
+            <div className="klaros-site-actions">
+              <a className="klaros-site-btn" href={contactHref}>
+                Get in touch
+              </a>
+            </div>
+          ) : (props.cta_text && cta) || (props.secondary_cta_text && second) ? (
             <div className="klaros-site-actions">
               {props.cta_text && cta ? (
                 <a className="klaros-site-btn" href={cta}>
@@ -434,12 +440,12 @@ function Footer({ props }: { props: Item }) {
  * as untrusted-shaped: any value outside the known set renders nothing rather than guessing. `alt` says whether this block sits on the tinted band
  * (SiteView alternates them so neighbouring blocks read as separate).
  */
-export function RenderSection({ section, tenantId, preview = false, alt = false }: { section: RenderedSection; tenantId: string; preview?: boolean; alt?: boolean }) {
+export function RenderSection({ section, tenantId, preview = false, alt = false, contactHref }: { section: RenderedSection; tenantId: string; preview?: boolean; alt?: boolean; contactHref?: string }) {
   const props = (section.props ?? {}) as Item;
   const tone: Tone = alt ? "alt" : "base";
   switch (section.component_type) {
     case "HERO":
-      return <Hero props={props} />;
+      return <Hero props={props} contactHref={contactHref} />;
     case "TRUST_BAR":
       return <TrustBar props={props} />;
     case "TEXT":

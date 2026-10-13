@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, ChevronRight, ExternalLink, Info, Rocket, XOctagon } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, BarChart3, ChevronRight, ExternalLink, Globe, Headset, Info, Plug, Rocket, Target, Users, Workflow, XOctagon, Zap, type LucideIcon } from "lucide-react";
 import {
   ApiError,
   BuilderOverview,
@@ -21,10 +21,20 @@ import { leadStatusLabel, sourceLabel, when } from "@/lib/opsLabels";
 import { StatusPill } from "./StatusPill";
 import { ActionItem, ChainNode, HealthTile, LaunchRow, Severity } from "./homeModel";
 
-const SEVERITY: Record<Severity, { icon: typeof Info; tone: string; label: string }> = {
-  danger: { icon: XOctagon, tone: "text-danger", label: "Needs attention" },
-  warning: { icon: AlertTriangle, tone: "text-warning", label: "Waiting on you" },
-  info: { icon: Info, tone: "text-muted-foreground", label: "Set-up step" },
+const SEVERITY: Record<Severity, { icon: typeof Info; tone: string; chip: string; label: string }> = {
+  danger: { icon: XOctagon, tone: "text-danger", chip: "bg-danger/10", label: "Needs attention" },
+  warning: { icon: AlertTriangle, tone: "text-warning", chip: "bg-warning/10", label: "Waiting on you" },
+  info: { icon: Info, tone: "text-accent", chip: "bg-accent-soft", label: "Set-up step" },
+};
+
+const TILE_ICON: Record<string, { icon: LucideIcon; chip: string }> = {
+  website: { icon: Globe, chip: "bg-sky-50 text-sky-600" },
+  workforce: { icon: Headset, chip: "bg-violet-50 text-violet-600" },
+  leads: { icon: Users, chip: "bg-emerald-50 text-emerald-600" },
+  opportunities: { icon: Target, chip: "bg-amber-50 text-amber-600" },
+  pending: { icon: Zap, chip: "bg-rose-50 text-rose-600" },
+  workflows: { icon: Workflow, chip: "bg-indigo-50 text-indigo-600" },
+  integrations: { icon: Plug, chip: "bg-teal-50 text-teal-600" },
 };
 
 /** One row per thing that needs a person, most urgent first. */
@@ -39,7 +49,9 @@ export function ActionCenter({ items, loading }: { items: ActionItem[]; loading?
         const S = SEVERITY[a.severity];
         return (
           <li key={a.id} className="flex items-center gap-3 px-4 py-3">
-            <S.icon className={cn("h-4 w-4 shrink-0", S.tone)} aria-hidden="true" />
+            <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", S.chip)}>
+              <S.icon className={cn("h-4 w-4", S.tone)} aria-hidden="true" />
+            </span>
             <span className="sr-only">{S.label}: </span>
             <p className="min-w-0 flex-1 text-sm text-foreground">{a.text}</p>
             <Link href={a.route} className="klaros-btn-secondary shrink-0 !px-3 !py-1 text-xs">
@@ -59,9 +71,20 @@ export function HealthStrip({ tiles }: { tiles: HealthTile[] }) {
       {tiles.map((t) => (
         <li key={t.key}>
           <Link href={t.route} className="klaros-card klaros-card-interactive block h-full p-3.5">
-            <p className="klaros-label">{t.label}</p>
-            <p className="mt-1 font-display text-xl leading-tight text-foreground">{t.value}</p>
-            {t.hint && <p className="mt-0.5 text-xs text-muted">{t.hint}</p>}
+            <div className="flex items-start justify-between gap-2">
+              <p className="klaros-label">{t.label}</p>
+              {(() => {
+                const meta = TILE_ICON[t.key] ?? { icon: Activity, chip: "bg-surface-muted text-muted" };
+                const TileIcon = meta.icon;
+                return (
+                  <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", meta.chip)} aria-hidden="true">
+                    <TileIcon className="h-3.5 w-3.5" strokeWidth={2} />
+                  </span>
+                );
+              })()}
+            </div>
+            <p className="mt-2 text-xl font-semibold leading-tight tracking-tight text-foreground">{t.value}</p>
+            {t.hint && <p className="mt-1 text-xs text-muted">{t.hint}</p>}
           </Link>
         </li>
       ))}
@@ -232,6 +255,15 @@ export function LaunchPanel({
 
   return (
     <div className="klaros-card overflow-hidden">
+      <div className="flex items-center justify-between gap-4 border-b border-border bg-surface-muted/40 px-4 py-3">
+        <p className="text-sm text-foreground">
+          <span className="font-semibold">{rows.filter((r) => r.state === "READY" || r.state === "CONNECTED").length} of {rows.length}</span>{" "}
+          <span className="text-muted">launch checks complete</span>
+        </p>
+        <div className="h-1.5 w-40 overflow-hidden rounded-full bg-border" aria-hidden="true">
+          <div className="h-full rounded-full bg-gradient-to-r from-accent to-violet-500" style={{ width: `${(rows.filter((r) => r.state === "READY" || r.state === "CONNECTED").length / Math.max(1, rows.length)) * 100}%` }} />
+        </div>
+      </div>
       <ul className="divide-y divide-border" aria-label="Launch readiness">
         {rows.map((r) => (
           <li key={r.key} className="flex items-start justify-between gap-3 px-4 py-3">
