@@ -104,36 +104,21 @@ export default function ContractsPage() {
         ) : contracts.length === 0 ? (
           <EmptyState icon={FileSignature} title="No contracts." />
         ) : (
-          <div className="klaros-table-wrap">
-            <table className="klaros-table">
-              <thead>
-                <tr>
-                  <th className="px-5 py-4">Number</th>
-                  <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">Sent</th>
-                  <th className="px-5 py-4">Viewed</th>
-                  <th className="px-5 py-4">Signed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contracts.map((c) => (
-                  <tr key={c.id} className="border-t border-border">
-                    <td className="px-5 py-4">
-                      <Link href={`/contracts/${c.id}`} className="underline hover:text-foreground">
-                        {c.contract_number}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-4">
-                      <Badge status={c.status}>{c.status}</Badge>
-                    </td>
-                    <td className="px-5 py-4 text-muted">{c.sent_at ? "Yes" : "—"}</td>
-                    <td className="px-5 py-4 text-muted">{c.viewed_at ? "Yes" : "—"}</td>
-                    <td className="px-5 py-4 text-muted">{c.signer_name ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted" aria-label="Contracts">
+            {contracts.map((c) => (
+              <li key={c.id} className="group relative flex flex-wrap items-center justify-between gap-4 px-6 py-5 transition-colors duration-300 hover:bg-black/[0.03]">
+                <div className="min-w-0">
+                  <Link href={`/contracts/${c.id}`} className="font-display text-xl font-semibold tracking-tight text-foreground after:absolute after:inset-0 after:content-['']">
+                    {c.contract_number}
+                  </Link>
+                  <p className="mt-0.5 text-[13px] text-muted">
+                    {c.signer_name ? `Signed by ${c.signer_name}` : c.viewed_at ? "Viewed, not signed" : c.sent_at ? "Sent, not viewed" : "Not sent"}
+                  </p>
+                </div>
+                <Badge status={c.status}>{c.status.replace(/_/g, " ")}</Badge>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </AppShell>

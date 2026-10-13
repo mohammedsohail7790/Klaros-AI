@@ -120,34 +120,22 @@ export default function QuotesPage() {
         ) : quotes.length === 0 ? (
           <EmptyState icon={FileText} title="No quotes." />
         ) : (
-          <div className="klaros-table-wrap">
-            <table className="klaros-table">
-              <thead>
-                <tr>
-                  <th className="px-5 py-4">Number</th>
-                  <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">Valid until</th>
-                  <th className="px-5 py-4">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quotes.map((q) => (
-                  <tr key={q.id} className="border-t border-border">
-                    <td className="px-5 py-4">
-                      <Link href={`/quotes/${q.id}`} className="underline hover:text-foreground">
-                        {q.quote_number}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-4">
-                      <Badge status={q.status}>{q.status}</Badge>
-                    </td>
-                    <td className="px-5 py-4 text-muted">{q.valid_until ?? "—"}</td>
-                    <td className="px-5 py-4">${q.total}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted" aria-label="Quotes">
+            {quotes.map((q) => (
+              <li key={q.id} className="group relative flex flex-wrap items-center justify-between gap-4 px-6 py-5 transition-colors duration-300 hover:bg-black/[0.03]">
+                <div className="min-w-0">
+                  <Link href={`/quotes/${q.id}`} className="font-display text-xl font-semibold tracking-tight text-foreground after:absolute after:inset-0 after:content-['']">
+                    {q.quote_number}
+                  </Link>
+                  <p className="mt-0.5 text-[13px] text-muted">Valid until {q.valid_until ?? "—"}</p>
+                </div>
+                <div className="flex items-center gap-6">
+                  <p className="font-display text-xl font-semibold tabular-nums tracking-tight text-foreground">${q.total}</p>
+                  <Badge status={q.status}>{q.status.replace(/_/g, " ")}</Badge>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 

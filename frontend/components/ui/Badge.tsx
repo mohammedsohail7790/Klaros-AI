@@ -53,12 +53,12 @@ const STATUS_VARIANTS: Record<string, string> = {
   DEAD_LETTER: "bg-red-50 text-red-700 border-red-200",
   failure: "bg-red-50 text-red-700 border-red-200",
   // Neutral
-  NOT_CONNECTED: "bg-surface-muted text-muted border-border-strong",
-  NOT_IMPLEMENTED: "bg-surface-muted text-muted-foreground border-border",
-  DRAFT: "bg-surface-muted text-muted border-border-strong",
-  ARCHIVED: "bg-surface-muted text-muted border-border-strong",
-  NOT_STARTED: "bg-surface-muted text-muted border-border-strong",
-  USER: "bg-surface-muted text-muted border-border-strong",
+  NOT_CONNECTED: "bg-black/[0.06] text-muted border-border-strong",
+  NOT_IMPLEMENTED: "bg-black/[0.05] text-muted-foreground border-border",
+  DRAFT: "bg-black/[0.06] text-muted border-border-strong",
+  ARCHIVED: "bg-black/[0.06] text-muted border-border-strong",
+  NOT_STARTED: "bg-black/[0.06] text-muted border-border-strong",
+  USER: "bg-black/[0.06] text-muted border-border-strong",
 };
 
 export function Badge({
@@ -75,7 +75,7 @@ export function Badge({
     <span
       className={cn(
         "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium",
-        variant ?? "bg-surface-muted text-muted",
+        variant ?? "bg-black/[0.06] text-muted",
         className
       )}
     >
