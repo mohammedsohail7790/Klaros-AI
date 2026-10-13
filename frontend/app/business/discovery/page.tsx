@@ -237,7 +237,7 @@ export default function DiscoveryPage() {
         />
 
         {session?.business_idea && (
-          <div className="mb-4 rounded-lg border border-border bg-surface-muted px-4 py-3 text-sm">
+          <div className="mb-4 rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm">
             <p className="klaros-label mb-0.5">Your idea</p>
             <p className="text-foreground">{session.business_idea}</p>
           </div>

@@ -159,7 +159,7 @@ export default function OnboardingPage() {
               </p>
 
               <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-border bg-surface p-4">
+                <div className="rounded-xl border border-border bg-surface p-4">
                   <div className="flex items-baseline justify-between">
                     <h3 className="font-medium">Solo</h3>
                     <span className="text-sm text-muted">$49/mo</span>
@@ -173,7 +173,7 @@ export default function OnboardingPage() {
                     {subscribingPlan === "solo" ? "Redirecting..." : "Subscribe to Solo"}
                   </button>
                 </div>
-                <div className="rounded-lg border border-border bg-surface p-4">
+                <div className="rounded-xl border border-border bg-surface p-4">
                   <div className="flex items-baseline justify-between">
                     <h3 className="font-medium">Growth</h3>
                     <span className="text-sm text-muted">$129/mo</span>

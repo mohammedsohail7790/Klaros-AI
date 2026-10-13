@@ -50,7 +50,7 @@ export function LeadAiInteraction({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, leadId, refreshKey]);
 
-  if (error) return <div role="alert" className="rounded-lg border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>;
+  if (error) return <div role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>;
   if (!data) return null;
 
   const simulated = data.workforce.mode === "development";
@@ -78,7 +78,7 @@ export function LeadAiInteraction({
   }
   const noConversation = data.events.length === 0;
   return (
-    <section aria-labelledby="lead-ai-h" className="rounded-lg border border-border bg-surface p-5 sm:p-6">
+    <section aria-labelledby="lead-ai-h" className="rounded-xl border border-border bg-surface p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="lead-ai-h" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
           <Bot className="h-5 w-5 text-accent" aria-hidden="true" /> AI interaction
@@ -95,7 +95,7 @@ export function LeadAiInteraction({
       ) : (
         <>
           {data.summary && (
-            <div className="mt-3 rounded-lg bg-surface-muted/70 p-3">
+            <div className="mt-3 rounded-xl bg-surface-muted/70 p-3">
               <p className="klaros-label mb-1">Conversation summary</p>
               <p className="text-sm text-foreground">{data.summary}</p>
             </div>
@@ -105,7 +105,7 @@ export function LeadAiInteraction({
               <li key={`${e.at}-${i}`} className="text-sm">
                 <span className="text-foreground">{e.text}</span>
                 {e.channel && <span className="text-muted"> via {e.channel}</span>}
-                {e.simulated && <span className="ml-1.5 rounded-full border border-dashed border-border-strong px-1.5 py-0.5 text-[10px] text-muted">simulated</span>}
+                {e.simulated && <span className="ml-1.5 rounded-full border border-border-strong px-1.5 py-0.5 text-xs text-muted">simulated</span>}
                 <span className="text-xs text-muted-foreground"> · {when(e.at)}</span>
               </li>
             ))}
@@ -140,7 +140,7 @@ export function LeadAiInteraction({
 
 export function GenericNextAction({ action }: { action: LeadInteraction["next_action"] }) {
   return (
-    <section aria-label="Next action" className="rounded-lg border border-accent/30 bg-accent-soft/60 p-4">
+    <section aria-label="Next action" className="rounded-xl border border-accent/30 bg-accent-soft/60 p-4">
       <p className="klaros-label mb-1">Next action</p>
       {action ? (
         <div className="flex flex-wrap items-center justify-between gap-2">

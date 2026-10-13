@@ -24,10 +24,10 @@ export const STATE_META: Record<ReadinessState, { label: string; classes: string
   },
   INTEGRATION_REQUIRED: {
     label: "Integration required",
-    classes: "border-dashed border-border-strong bg-transparent text-muted",
+    classes: "border-border-strong bg-transparent text-muted",
     icon: CircleDashed,
   },
-  PLANNED: { label: "Planned", classes: "border-dashed border-border-strong bg-transparent text-muted", icon: CircleDashed },
+  PLANNED: { label: "Planned", classes: "border-border-strong bg-transparent text-muted", icon: CircleDashed },
 };
 
 export function StatusPill({ state, className }: { state: ReadinessState | null | undefined; className?: string }) {
@@ -37,7 +37,7 @@ export function StatusPill({ state, className }: { state: ReadinessState | null 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium",
         meta.classes,
         className
       )}

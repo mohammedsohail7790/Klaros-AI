@@ -104,7 +104,7 @@ export default function BillingSettingsPage() {
           <Skeleton />
         ) : (
           <>
-            <div className="mb-6 rounded-lg border border-border bg-surface p-5">
+            <div className="mb-6 rounded-xl border border-border bg-surface p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="font-medium capitalize">
@@ -154,13 +154,13 @@ export default function BillingSettingsPage() {
               {PLANS.map((plan) => (
                 <div
                   key={plan.id}
-                  className={`relative rounded-xl border p-5 shadow-card transition-shadow hover:shadow-raised ${
+                  className={`relative rounded-xl border p-5 transition-shadow hover:shadow-raised ${
                     status.plan === plan.id && status.billing_status === "active"
                       ? "border-accent bg-accent-soft"
                       : "border-border bg-surface"
                   }`}
                 >
-                  {plan.id === "growth" && <span className="absolute -top-2.5 right-4 rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-medium text-accent-foreground">Most popular</span>}
+                  {plan.id === "growth" && <span className="absolute -top-2.5 right-4 rounded-full bg-accent px-2.5 py-0.5 text-xs font-medium text-accent-foreground">Most popular</span>}
                   <div className="flex items-baseline justify-between">
                     <h3 className="text-base font-semibold">{plan.name}</h3>
                     <span className="text-lg font-semibold text-foreground">{plan.price}</span>

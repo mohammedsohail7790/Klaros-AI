@@ -68,7 +68,7 @@ function Board({ data }: { data: MedicalTourismPipeline }) {
                 <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs tabular-nums text-muted">{rows.length}</span>
               </header>
               {rows.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">No one here</div>
+                <div className="rounded-xl border border-border px-3 py-4 text-center text-xs text-muted-foreground">No one here</div>
               ) : (
                 <ul className="space-y-2">
                   {rows.map((l) => (
@@ -182,11 +182,11 @@ function PipelineBody() {
           icon={GitBranch}
           actions={
             <div className="flex items-center gap-2">
-              <div role="tablist" aria-label="View" className="flex rounded-lg border border-border bg-surface-muted p-0.5">
+              <div role="tablist" aria-label="View" className="flex rounded-xl border border-border bg-surface-muted p-0.5">
                 {toggle("board", LayoutGrid, "Board")}
                 {toggle("list", List, "List")}
               </div>
-              <Link href="/leads?new=1" className="inline-flex items-center rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
+              <Link href="/leads?new=1" className="inline-flex items-center rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
                 Add patient
               </Link>
               <Button size="sm" variant="secondary" onClick={() => load()}>

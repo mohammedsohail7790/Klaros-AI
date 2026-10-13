@@ -137,7 +137,7 @@ function PublicContractViewInner() {
         </div>
       )}
 
-      <div className="mb-6 whitespace-pre-wrap rounded-lg border border-border bg-surface p-4 text-sm text-muted">
+      <div className="mb-6 whitespace-pre-wrap rounded-xl border border-border bg-surface p-4 text-sm text-muted">
         {contract.content}
       </div>
 

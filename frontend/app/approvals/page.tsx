@@ -183,7 +183,7 @@ export default function ApprovalsPage() {
                   <button
                     key={a.id}
                     onClick={() => openDetail(a.id)}
-                    className={`block w-full rounded-lg border p-3 text-left text-sm hover:bg-surface-muted ${
+                    className={`block w-full rounded-xl border p-3 text-left text-sm hover:bg-surface-muted ${
                       selected?.approval_request_id === a.id ? "border-border-strong" : "border-border"
                     }`}
                   >
@@ -191,17 +191,17 @@ export default function ApprovalsPage() {
                       <span className="flex items-center gap-2 font-medium">
                         {a.tool_name}
                         {a.requested_by_type === "AI" && (
-                          <span className="rounded-full border border-violet-200 bg-violet-50/30 px-2 py-0.5 text-[10px] font-normal text-violet-700">
+                          <span className="rounded-full border border-accent/20 bg-accent-soft px-2 py-0.5 text-xs font-normal text-accent-hover">
                             AI-proposed
                           </span>
                         )}
                       </span>
-                      <Badge status={a.status} className="text-[10px]">
+                      <Badge status={a.status} className="text-xs">
                         {a.status}
                       </Badge>
                     </div>
                     <p className="mt-1 text-muted">{a.reason}</p>
-                    <div className="mt-1 flex items-center gap-2 text-[10px] text-muted">
+                    <div className="mt-1 flex items-center gap-2 text-xs text-muted">
                       <Badge status={a.execution_status}>
                         {a.execution_status}
                       </Badge>
@@ -217,15 +217,15 @@ export default function ApprovalsPage() {
             {!selected ? (
               <p className="text-sm text-muted">Select an approval to see its detail.</p>
             ) : (
-              <div className="rounded-lg border border-border bg-surface p-5">
+              <div className="rounded-xl border border-border bg-surface p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="font-medium">{selected.tool_name}</h2>
-                  <Badge status={selected.status} className="text-[10px]">
+                  <Badge status={selected.status} className="text-xs">
                     {selected.status}
                   </Badge>
                 </div>
                 {selected.requested_by_type === "AI" && (
-                  <div className="mb-3 rounded-md border border-violet-200 bg-violet-50/20 p-2 text-xs text-violet-700">
+                  <div className="mb-3 rounded-md border border-accent/20 bg-accent-soft p-2 text-xs text-accent-hover">
                     Klaros AI proposed this action — it was not executed automatically because this action
                     type requires your approval. Nothing has happened yet.
                   </div>
@@ -245,7 +245,7 @@ export default function ApprovalsPage() {
                   )}
                   <dt>Execution</dt>
                   <dd>
-                    <Badge status={selected.execution_status} className="text-[10px]">
+                    <Badge status={selected.execution_status} className="text-xs">
                       {selected.execution_status}
                     </Badge>
                   </dd>
@@ -259,7 +259,7 @@ export default function ApprovalsPage() {
 
                 <div className="mt-4">
                   <p className="mb-1 text-xs text-muted">Input</p>
-                  <pre className="max-h-40 overflow-auto rounded-md border border-border bg-background p-2 text-[11px] text-muted">
+                  <pre className="max-h-40 overflow-auto rounded-md border border-border bg-background p-2 text-xs text-muted">
                     {JSON.stringify(selected.tool_input, null, 2)}
                   </pre>
                 </div>
@@ -267,7 +267,7 @@ export default function ApprovalsPage() {
                 {selected.execution_result && (
                   <div className="mt-4">
                     <p className="mb-1 text-xs text-muted">Execution result</p>
-                    <pre className="max-h-40 overflow-auto rounded-md border border-success/20 bg-success/10 p-2 text-[11px] text-success">
+                    <pre className="max-h-40 overflow-auto rounded-md border border-success/20 bg-success/10 p-2 text-xs text-success">
                       {JSON.stringify(selected.execution_result, null, 2)}
                     </pre>
                   </div>

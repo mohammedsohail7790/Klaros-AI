@@ -217,7 +217,7 @@ export default function CompliancePage() {
         {renewingId && (
           <form
             onSubmit={handleRenew}
-            className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-border p-4"
+            className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-border p-4"
           >
             <div>
               <label className="block text-xs text-muted">New expiry date</label>

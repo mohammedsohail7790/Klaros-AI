@@ -195,7 +195,7 @@ export default function CompanyMemoryPage() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="space-y-6">
-            <div className="rounded-lg border border-border bg-surface p-5">
+            <div className="rounded-xl border border-border bg-surface p-5">
               <h2 className="mb-3 text-sm font-medium">Add an explicit preference</h2>
               <div className="space-y-2">
                 <select
@@ -237,7 +237,7 @@ export default function CompanyMemoryPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border bg-surface p-5">
+            <div className="rounded-xl border border-border bg-surface p-5">
               <h2 className="mb-3 text-sm font-medium">Active AI context ({context?.length ?? 0})</h2>
               {!context || context.length === 0 ? (
                 <EmptyState icon={Sparkles} title="No active memory yet — nothing is fed into AI recommendations." compact />
@@ -257,7 +257,7 @@ export default function CompanyMemoryPage() {
             {aiFeedbackPending && aiFeedbackPending.length > 0 && (
               <button
                 onClick={() => setStatusFilter("PENDING")}
-                className="mb-3 block w-full rounded-lg border border-violet-200 bg-violet-50/20 p-3 text-left text-sm text-violet-700 hover:bg-violet-50/40"
+                className="mb-3 block w-full rounded-xl border border-accent/20 bg-accent-soft p-3 text-left text-sm text-accent-hover hover:bg-accent-soft/70"
               >
                 AI feedback awaiting review: {aiFeedbackPending.length} — Klaros learned something from{" "}
                 {aiFeedbackPending.length === 1 ? "a decision you made" : "decisions you made"}. Review below to
@@ -287,24 +287,24 @@ export default function CompanyMemoryPage() {
                 {memories.map((m) => (
                   <div
                     key={m.id}
-                    className={`rounded-lg border p-3 text-sm ${selected?.id === m.id ? "border-border-strong" : "border-border"}`}
+                    className={`rounded-xl border p-3 text-sm ${selected?.id === m.id ? "border-border-strong" : "border-border"}`}
                   >
                     <button onClick={() => openHistory(m)} className="block w-full text-left">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-2 font-medium">
                           {m.key}
                           {m.memory_type === "AI_FEEDBACK" && (
-                            <span className="rounded-full border border-violet-200 bg-violet-50/30 px-2 py-0.5 text-[10px] font-normal text-violet-700">
+                            <span className="rounded-full border border-accent/20 bg-accent-soft px-2 py-0.5 text-xs font-normal text-accent-hover">
                               Learned from an AI decision
                             </span>
                           )}
                         </span>
-                        <Badge status={m.status} className="text-[10px]">
+                        <Badge status={m.status} className="text-xs">
                           {m.status}
                         </Badge>
                       </div>
                       <p className="mt-1 text-muted">{m.value}</p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {m.memory_type} · {SOURCE_LABEL[m.source] ?? m.source}
                         {m.confidence != null && ` · confidence ${(m.confidence * 100).toFixed(0)}%`}
                       </p>
@@ -335,7 +335,7 @@ export default function CompanyMemoryPage() {
                     {m.memory_type === "AI_FEEDBACK" && m.source_entity_type === "approval_request" && m.source_entity_id && (
                       <a
                         href={`/approvals?id=${m.source_entity_id}`}
-                        className="mt-1 inline-block text-[11px] text-muted underline hover:text-muted"
+                        className="mt-1 inline-block text-xs text-muted underline hover:text-muted"
                       >
                         View the approval this came from →
                       </a>
@@ -373,14 +373,14 @@ export default function CompanyMemoryPage() {
             )}
 
             {selected && history && (
-              <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+              <div className="mt-4 rounded-xl border border-border bg-surface p-4">
                 <h3 className="mb-2 text-sm font-medium">History: {selected.key}</h3>
                 <div className="space-y-2">
                   {history.map((h) => (
                     <div key={h.id} className="rounded-md border border-border p-2 text-xs">
                       <div className="flex items-center justify-between">
                         <span>{h.value}</span>
-                        <Badge status={h.status} className="text-[10px]">
+                        <Badge status={h.status} className="text-xs">
                           {h.status}
                         </Badge>
                       </div>

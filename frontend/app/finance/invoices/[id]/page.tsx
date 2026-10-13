@@ -379,7 +379,7 @@ export default function InvoiceDetailPage() {
         )}
 
         {showEditItems && (
-          <form onSubmit={submitEditItems} className="mt-4 space-y-2 rounded-lg border border-border bg-surface p-4">
+          <form onSubmit={submitEditItems} className="mt-4 space-y-2 rounded-xl border border-border bg-surface p-4">
             {editItems.map((li, i) => (
               <div key={i} className="flex flex-wrap items-center gap-2">
                 <input
@@ -422,7 +422,7 @@ export default function InvoiceDetailPage() {
         )}
 
         {showWriteOffForm && (
-          <form onSubmit={submitWriteOff} className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-border bg-surface p-4">
+          <form onSubmit={submitWriteOff} className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-border bg-surface p-4">
             <div>
               <label className="block text-xs text-muted">Amount</label>
               <input
@@ -453,7 +453,7 @@ export default function InvoiceDetailPage() {
         )}
 
         {showCreditNoteForm && (
-          <form onSubmit={submitCreditNote} className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-border bg-surface p-4">
+          <form onSubmit={submitCreditNote} className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-border bg-surface p-4">
             <div>
               <label className="block text-xs text-muted">Amount</label>
               <input

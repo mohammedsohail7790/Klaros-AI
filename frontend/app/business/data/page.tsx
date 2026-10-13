@@ -87,7 +87,7 @@ export default function DataCenterPage() {
               <ConsoleSection id="missing" title="Not configured" hint="Your business needs these, but Klaros has no data model for them yet — so there is nothing to show.">
                 <ul className="grid gap-2 sm:grid-cols-2">
                   {notConfigured.map((r) => (
-                    <li key={r.key} className="klaros-card flex items-center justify-between gap-2 border-dashed p-3 text-sm text-muted">
+                    <li key={r.key} className="klaros-card flex items-center justify-between gap-2 p-3 text-sm text-muted">
                       {r.label}
                       <StatusPill state="PLANNED" />
                     </li>

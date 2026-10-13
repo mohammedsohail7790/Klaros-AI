@@ -190,7 +190,7 @@ export default function VendorsPage() {
             {billVendorId && (
               <form
                 onSubmit={handleRecordBill}
-                className="mb-8 flex flex-wrap items-end gap-2 rounded-lg border border-border p-4"
+                className="mb-8 flex flex-wrap items-end gap-2 rounded-xl border border-border p-4"
               >
                 <div>
                   <label className="block text-xs text-muted">Vendor</label>

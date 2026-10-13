@@ -378,7 +378,7 @@ function IntegrationsPageInner() {
           <button
             onClick={load}
             disabled={loading}
-            className="shrink-0 whitespace-nowrap rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-sm text-foreground shadow-sm hover:bg-surface-muted disabled:opacity-50"
+            className="shrink-0 whitespace-nowrap rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm text-foreground shadow-sm hover:bg-surface-muted disabled:opacity-50"
           >
             {loading ? "Checking..." : "Recheck all"}
           </button>
@@ -398,7 +398,7 @@ function IntegrationsPageInner() {
               const active = getActiveAIRow(categoryRows);
               return (
                 <div key={category} className="mb-6">
-                  <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">AI</h2>
+                  <h2 className="mb-2 text-xs font-medium text-muted">AI</h2>
                   <div className="divide-y divide-border rounded border border-border">
                     <div className="flex items-center justify-between px-4 py-3">
                       <div>
@@ -444,7 +444,7 @@ function IntegrationsPageInner() {
             }
             return (
               <div key={category} className="mb-6">
-                <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+                <h2 className="mb-2 text-xs font-medium text-muted">
                   {category}
                 </h2>
                 <div className="divide-y divide-border rounded border border-border">
@@ -466,7 +466,7 @@ function IntegrationsPageInner() {
 
         {rows && user && (
           <div className="mb-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+            <h2 className="mb-2 text-xs font-medium text-muted">
               Inbound Twilio Lead Capture
             </h2>
             <p className="mb-2 text-xs text-muted">
@@ -496,7 +496,7 @@ function IntegrationsPageInner() {
 
         {rows && (
           <div className="mb-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+            <h2 className="mb-2 text-xs font-medium text-muted">
               Connect your Stripe account
             </h2>
             <p className="mb-2 text-xs text-muted">
@@ -588,7 +588,7 @@ function IntegrationsPageInner() {
 
         {rows && (
           <div className="mb-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+            <h2 className="mb-2 text-xs font-medium text-muted">
               Connect QuickBooks
             </h2>
             <p className="mb-2 text-xs text-muted">
@@ -717,7 +717,7 @@ function IntegrationsPageInner() {
 
         {rows && (
           <div className="mb-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+            <h2 className="mb-2 text-xs font-medium text-muted">
               Connect Google Calendar
             </h2>
             <p className="mb-2 text-xs text-muted">
@@ -826,7 +826,7 @@ function IntegrationsPageInner() {
 
         {rows && (
           <div className="mb-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+            <h2 className="mb-2 text-xs font-medium text-muted">
               Coming soon
             </h2>
             <p className="mb-2 text-xs text-muted">

@@ -94,7 +94,7 @@ export default function WorkersPage() {
           Field technicians available for job assignment and scheduling.
         </p>
 
-        <form onSubmit={handleCreate} className="mb-6 flex flex-wrap items-end gap-2 rounded-lg border border-border bg-surface p-4">
+        <form onSubmit={handleCreate} className="mb-6 flex flex-wrap items-end gap-2 rounded-xl border border-border bg-surface p-4">
           <div>
             <label className="block text-xs text-muted">Name</label>
             <input

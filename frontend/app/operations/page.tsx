@@ -106,7 +106,7 @@ export default function OperationsPage() {
             <section className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
               {dashboard &&
                 METRIC_LABELS.map(({ key, label }) => (
-                  <div key={key} className="rounded-lg border border-border bg-surface p-4">
+                  <div key={key} className="rounded-xl border border-border bg-surface p-4">
                     <p className="text-2xl font-semibold">{dashboard[key]}</p>
                     <p className="mt-1 text-xs text-muted">{label}</p>
                   </div>
@@ -126,7 +126,7 @@ export default function OperationsPage() {
                     >
                       <div>
                         <div className="flex items-center gap-2">
-                          <Badge status={e.severity} className="text-[10px] uppercase">
+                          <Badge status={e.severity} className="text-xs uppercase">
                             {e.severity}
                           </Badge>
                           <span className="font-medium">{e.type}</span>

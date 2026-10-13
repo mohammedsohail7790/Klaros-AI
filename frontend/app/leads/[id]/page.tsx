@@ -194,7 +194,7 @@ export default function LeadDetailPage() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="lg:col-span-2 space-y-6">
               {/* HEADER + CONTACT + BUSINESS CONTEXT */}
-              <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
+              <div className="rounded-xl border border-border bg-surface p-5 sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{lead.name}</h1>
@@ -250,7 +250,7 @@ export default function LeadDetailPage() {
               {ops === null && interaction && (
                 <>
                   <GenericNextAction action={interaction.next_action} />
-                  <section aria-labelledby="lead-tl-h" className="rounded-lg border border-border bg-surface p-5 sm:p-6">
+                  <section aria-labelledby="lead-tl-h" className="rounded-xl border border-border bg-surface p-5 sm:p-6">
                     <h2 id="lead-tl-h" className="text-xl font-semibold tracking-tight text-foreground">Timeline</h2>
                     <ol className="mt-3 space-y-2 border-l border-border pl-4" aria-label="Lead timeline">
                       {[{ at: lead.created_at, text: `Lead received from ${sourceLabel(lead.source).toLowerCase()}` }, ...interaction.events.map((e) => ({ at: e.at, text: e.text }))]
@@ -273,7 +273,7 @@ export default function LeadDetailPage() {
               />
 
               {lead.customer_id && (
-                <div className="rounded-lg border border-border bg-surface p-4 text-sm">
+                <div className="rounded-xl border border-border bg-surface p-4 text-sm">
                   Linked to customer —{" "}
                   <Link href={`/customers/${lead.customer_id}`} className="underline">
                     view Customer 360
@@ -281,7 +281,7 @@ export default function LeadDetailPage() {
                 </div>
               )}
 
-              <div className="rounded-lg border border-border bg-surface p-4 text-sm">
+              <div className="rounded-xl border border-border bg-surface p-4 text-sm">
                 <Link
                   href={`/calendar?lead_id=${lead.id}${lead.customer_id ? `&customer_id=${lead.customer_id}` : ""}`}
                   className="rounded-md bg-surface px-3 py-1.5 font-medium text-foreground hover:bg-surface-muted"
@@ -291,7 +291,7 @@ export default function LeadDetailPage() {
               </div>
 
               {(convertedJobId || (lead.status !== "CONVERTED" && lead.status !== "LOST")) && (
-                <div className="rounded-lg border border-border bg-surface p-6">
+                <div className="rounded-xl border border-border bg-surface p-6">
                   <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Convert to job</h2>
                   <p className="mb-3 text-xs text-muted">
                     One step: match or create the customer, book the appointment, and create the job together.
@@ -355,7 +355,7 @@ export default function LeadDetailPage() {
             </section>
 
             <section className="space-y-4">
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Qualification</h2>
                 <p className="text-sm text-muted">
                   Status: <span className="text-foreground">{lead.qualification_status}</span>
@@ -376,7 +376,7 @@ export default function LeadDetailPage() {
                 {qualifyError && <p className="mt-2 text-xs text-danger">{qualifyError}</p>}
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">AI recommendation</h2>
                 <p className="text-xs text-muted-foreground">
                   Advisory only — never applied automatically. Review it, then use &ldquo;Re-run qualification&rdquo;
@@ -431,7 +431,7 @@ export default function LeadDetailPage() {
                 {advisoryError && <p className="mt-2 text-xs text-danger">{advisoryError}</p>}
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Marketing attribution</h2>
                 <p className="mb-3 text-xs text-muted-foreground">
                   Record where this lead really came from — campaign, source/medium, UTM params — for campaign

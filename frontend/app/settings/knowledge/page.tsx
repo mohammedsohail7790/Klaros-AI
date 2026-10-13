@@ -255,7 +255,7 @@ export default function KnowledgePage() {
             )}
 
             {askResult && (
-              <div className="mb-4 rounded-lg border border-border bg-surface p-4">
+              <div className="mb-4 rounded-xl border border-border bg-surface p-4">
                 <p className="mb-2 text-sm text-foreground">{askResult.answer}</p>
                 {askResult.answered_from_excerpts && askResult.sources && askResult.sources.length > 0 && (
                   <p className="text-xs text-muted">Sources: {askResult.sources.join(", ")}</p>
@@ -269,7 +269,7 @@ export default function KnowledgePage() {
                   <EmptyState icon={Search} title="No matching knowledge found." compact />
                 )}
                 {searchResults.map((r) => (
-                  <div key={`${r.file_path}-${r.chunk_index}`} className="rounded-lg border border-border bg-surface p-4">
+                  <div key={`${r.file_path}-${r.chunk_index}`} className="rounded-xl border border-border bg-surface p-4">
                     <div className="mb-1 flex items-center justify-between text-xs text-muted">
                       <span>{r.file_path}</span>
                       <span>score {r.score.toFixed(3)}</span>
@@ -337,7 +337,7 @@ export default function KnowledgePage() {
               {!selectedPath ? (
                 <p className="text-sm text-muted">Select a file to view or edit it.</p>
               ) : (
-                <div className="rounded-lg border border-border bg-surface p-5">
+                <div className="rounded-xl border border-border bg-surface p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="font-medium">{selectedPath}</h2>
                     <button

@@ -93,7 +93,7 @@ export default function WorkflowsPage() {
             <ConsoleSection id="later" title="Not available yet" hint="These need an external integration, so a workflow cannot do them today.">
               <ul className="grid gap-2 sm:grid-cols-2">
                 {NEEDS_INTEGRATION.map((a) => (
-                  <li key={a} className="klaros-card flex items-center justify-between gap-2 border-dashed p-3 text-sm text-muted">
+                  <li key={a} className="klaros-card flex items-center justify-between gap-2 p-3 text-sm text-muted">
                     {a}
                     <StatusPill state="INTEGRATION_REQUIRED" />
                   </li>

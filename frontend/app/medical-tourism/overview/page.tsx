@@ -151,7 +151,7 @@ export default function TodayPage() {
                       </div>
                       <Link
                         href={n.href}
-                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover"
+                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover"
                       >
                         {n.cta}
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -170,7 +170,7 @@ export default function TodayPage() {
                     const n = pipeline.counts[s] ?? 0;
                     return (
                       <li key={s}>
-                        <Link href={`/medical-tourism/pipeline?stage=${s}`} className="group flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-muted">
+                        <Link href={`/medical-tourism/pipeline?stage=${s}`} className="group flex items-center gap-3 rounded-xl px-2 py-1.5 text-sm hover:bg-surface-muted">
                           <span className="w-5 text-right text-xs text-muted-foreground">{i + 1}</span>
                           <span className="w-36 shrink-0 text-foreground">{STAGE_LABEL[s]}</span>
                           <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-muted">
@@ -195,7 +195,7 @@ export default function TodayPage() {
                   ) : (
                     currencies.map(([cur, by]) => (
                       <div key={cur} className="klaros-card mt-3 p-4">
-                        <div className="text-xs uppercase tracking-wide text-muted-foreground">{cur}</div>
+                        <div className="text-xs text-muted-foreground">{cur}</div>
                         <dl className="mt-2 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                           {(
                             [

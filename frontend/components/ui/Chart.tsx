@@ -84,14 +84,14 @@ export function LineChart({
       </svg>
       {hover !== null && (
         <div
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs shadow-raised"
+          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-xl border border-border bg-surface px-2.5 py-1.5 text-xs shadow-raised"
           style={{ left: `${(x(hover) / width) * 100}%`, top: `${(y(points[hover].value) / height) * 100}%` }}
         >
           <div className="font-semibold text-foreground">{formatValue(points[hover].value)}</div>
           <div className="text-muted-foreground">{points[hover].label}</div>
         </div>
       )}
-      <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+      <div className="mt-1 flex justify-between text-xs text-muted-foreground">
         <span>{points[0].label}</span>
         <span>{points[points.length - 1].label}</span>
       </div>

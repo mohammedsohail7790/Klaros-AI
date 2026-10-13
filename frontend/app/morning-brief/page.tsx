@@ -174,7 +174,7 @@ export default function MorningBriefPage() {
           <>
             {brief && brief.brief_id ? (
               <>
-                <div className="mb-6 rounded-lg border border-border bg-surface p-6">
+                <div className="mb-6 rounded-xl border border-border bg-surface p-6">
                   <div className="mb-2 flex items-center gap-2">
                     <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">
                       {brief.mode === "DETERMINISTIC"
@@ -196,11 +196,11 @@ export default function MorningBriefPage() {
                     {brief.insights.map((i) => (
                       <div
                         key={i.insight_id}
-                        className={`rounded-lg border p-3 text-sm ${PRIORITY_COLOR[i.priority] ?? "border-border-strong"}`}
+                        className={`rounded-xl border p-3 text-sm ${PRIORITY_COLOR[i.priority] ?? "border-border-strong"}`}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="rounded-full border border-current px-2 py-0.5 text-[10px]">{i.category}</span>
-                          <span className="rounded-full border border-current px-2 py-0.5 text-[10px]">{i.priority}</span>
+                          <span className="rounded-full border border-current px-2 py-0.5 text-xs">{i.category}</span>
+                          <span className="rounded-full border border-current px-2 py-0.5 text-xs">{i.priority}</span>
                         </div>
                         <p className="mt-1 text-foreground">{i.summary}</p>
                         {i.related_entity_type && i.related_entity_id && ENTITY_LINK[i.related_entity_type] && (
@@ -219,7 +219,7 @@ export default function MorningBriefPage() {
                 ) : (
                   <div className="space-y-3">
                     {brief.recommendations.map((r) => (
-                      <div key={r.recommendation_id} className="rounded-lg border border-border bg-surface p-4">
+                      <div key={r.recommendation_id} className="rounded-xl border border-border bg-surface p-4">
                         <p className="font-medium">{r.what}</p>
                         <p className="mt-1 text-sm text-muted">Why: {r.why}</p>
                         <p className="mt-1 text-sm text-muted">Next action: {r.next_action}</p>
@@ -302,7 +302,7 @@ export default function MorningBriefPage() {
             )}
 
             {settings && (
-              <div className="mt-10 rounded-lg border border-border bg-surface p-6">
+              <div className="mt-10 rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Schedule</h2>
                 <div className="flex flex-wrap items-end gap-3 text-sm">
                   <label className="flex items-center gap-2">

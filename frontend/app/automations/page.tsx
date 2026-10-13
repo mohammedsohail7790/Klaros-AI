@@ -512,11 +512,11 @@ export default function AutomationsPage() {
                   <button
                     key={a.id}
                     onClick={() => openDetail(a.id)}
-                    className="block w-full rounded-lg border border-border p-3 text-left text-sm hover:bg-surface-muted"
+                    className="block w-full rounded-xl border border-border p-3 text-left text-sm hover:bg-surface-muted"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{a.name}</span>
-                      <Badge status={a.status} className="text-[10px]">
+                      <Badge status={a.status} className="text-xs">
                         {a.status}
                       </Badge>
                     </div>
@@ -530,7 +530,7 @@ export default function AutomationsPage() {
 
         {(mode === "create" || mode === "edit") && (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="space-y-4 rounded-lg border border-border bg-surface p-5">
+            <div className="space-y-4 rounded-xl border border-border bg-surface p-5">
               <div>
                 <label className="mb-1 block text-xs text-muted">Name</label>
                 <input
@@ -624,7 +624,7 @@ export default function AutomationsPage() {
                                   : [...f.scheduleWeekdays, i].sort(),
                               }))
                             }
-                            className={`rounded-md border px-2 py-1 text-[10px] ${
+                            className={`rounded-md border px-2 py-1 text-xs ${
                               form.scheduleWeekdays.includes(i)
                                 ? "border-border-strong bg-surface-muted"
                                 : "border-border-strong hover:bg-surface-muted"
@@ -636,7 +636,7 @@ export default function AutomationsPage() {
                       </div>
                     </div>
                   )}
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Runs in the business timezone set below — currently {tenantTimezone ?? "loading..."}.
                   </p>
                 </div>
@@ -666,12 +666,12 @@ export default function AutomationsPage() {
                   <label className="text-xs text-muted">Conditions (all must match — AND)</label>
                   <button
                     onClick={() => setForm((f) => ({ ...f, conditions: [...f.conditions, { field: "", op: "eq", value: "" }] }))}
-                    className="text-[10px] text-muted underline hover:text-foreground"
+                    className="text-xs text-muted underline hover:text-foreground"
                   >
                     + add condition
                   </button>
                 </div>
-                {form.conditions.length === 0 && <p className="text-[10px] text-muted-foreground">No conditions — always runs.</p>}
+                {form.conditions.length === 0 && <p className="text-xs text-muted-foreground">No conditions — always runs.</p>}
                 {form.conditions.map((c, i) => (
                   <div key={i} className="mb-2 flex gap-2">
                     <input
@@ -712,7 +712,7 @@ export default function AutomationsPage() {
                   <label className="text-xs text-muted">Actions (run in order)</label>
                   <button
                     onClick={() => setForm((f) => ({ ...f, steps: [...f.steps, { action: ACTIONS[0].value, params: {} }] }))}
-                    className="text-[10px] text-muted underline hover:text-foreground"
+                    className="text-xs text-muted underline hover:text-foreground"
                   >
                     + add action
                   </button>
@@ -751,7 +751,7 @@ export default function AutomationsPage() {
                           className="mb-1 w-full rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
                         />
                       ))}
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         Use {"{{"}field.path{"}}"} to reference the trigger context (e.g. {"{{"}lead.name{"}}"}).
                       </p>
                     </div>
@@ -770,10 +770,10 @@ export default function AutomationsPage() {
 
             <div className="space-y-4">
               {selectedAutomation && (
-                <div className="rounded-lg border border-border bg-surface p-5">
+                <div className="rounded-xl border border-border bg-surface p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="font-medium">{selectedAutomation.name}</h2>
-                    <Badge status={selectedAutomation.status} className="text-[10px]">
+                    <Badge status={selectedAutomation.status} className="text-xs">
                       {selectedAutomation.status}
                     </Badge>
                   </div>
@@ -809,7 +809,7 @@ export default function AutomationsPage() {
                   </div>
 
                   {versions && (
-                    <p className="mt-3 text-[10px] text-muted-foreground">
+                    <p className="mt-3 text-xs text-muted-foreground">
                       {versions.length} version{versions.length === 1 ? "" : "s"} — currently editing the latest
                     </p>
                   )}
@@ -843,7 +843,7 @@ export default function AutomationsPage() {
                             : "—"}
                         </span>
                       </p>
-                      <p className="mb-2 text-[10px] text-muted-foreground">
+                      <p className="mb-2 text-xs text-muted-foreground">
                         The background scheduler checks every automation once per poll tick automatically. Use
                         this only to force an immediate check (e.g. for testing) rather than waiting.
                       </p>
@@ -860,7 +860,7 @@ export default function AutomationsPage() {
               )}
 
               {executions && (
-                <div className="rounded-lg border border-border bg-surface p-5">
+                <div className="rounded-xl border border-border bg-surface p-5">
                   <h3 className="mb-3 text-sm font-medium">Execution history</h3>
                   {executions.length === 0 ? (
                     <EmptyState icon={History} title="No executions yet." compact />
@@ -876,7 +876,7 @@ export default function AutomationsPage() {
                         >
                           <div className="flex items-center justify-between">
                             <span>{e.trigger_type}</span>
-                            <Badge status={e.status} className="text-[10px]">
+                            <Badge status={e.status} className="text-xs">
                               {e.status}
                             </Badge>
                           </div>
@@ -889,10 +889,10 @@ export default function AutomationsPage() {
               )}
 
               {selectedExecution && (
-                <div className="rounded-lg border border-border bg-surface p-5">
+                <div className="rounded-xl border border-border bg-surface p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-medium">Execution detail</h3>
-                    <Badge status={selectedExecution.status} className="text-[10px]">
+                    <Badge status={selectedExecution.status} className="text-xs">
                       {selectedExecution.status}
                     </Badge>
                   </div>
@@ -908,7 +908,7 @@ export default function AutomationsPage() {
                           <span>
                             {s.step_index}. {s.action}
                           </span>
-                          <Badge status={s.status} className="text-[10px]">
+                          <Badge status={s.status} className="text-xs">
                             {s.status}
                           </Badge>
                         </div>

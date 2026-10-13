@@ -214,7 +214,7 @@ function CreatePatientLeadModal({
             className="klaros-input"
           />
           {leadResults.length > 0 && (
-            <ul className="mt-1 overflow-hidden rounded-lg border border-border bg-surface text-sm shadow-raised">
+            <ul className="mt-1 overflow-hidden rounded-xl border border-border bg-surface text-sm shadow-raised">
               {leadResults.map((l) => (
                 <li
                   key={l.id}

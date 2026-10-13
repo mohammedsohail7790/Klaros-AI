@@ -247,7 +247,7 @@ function NavLink({ item, active, badge }: { item: NavItem; active: boolean; badg
       <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? "text-accent" : "text-slate-500 group-hover:text-slate-300"}`} strokeWidth={1.75} />
       {item.label}
       {badge !== undefined && badge > 0 && (
-        <span aria-label={`${badge} open`} className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[11px] font-medium leading-none text-accent-foreground">
+        <span aria-label={`${badge} open`} className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-xs font-medium leading-none text-accent-foreground">
           {badge}
         </span>
       )}
@@ -388,7 +388,7 @@ export default function AppShell({
   return (
     <div className="flex min-h-screen bg-background">
       {mobileNavOpen && <div aria-hidden onClick={() => setMobileNavOpen(false)} className="fixed inset-0 z-40 bg-black/30 lg:hidden" />}
-      <aside
+      <aside style={{ backgroundColor: "rgb(28 28 30)" }}
         aria-label="Main"
         className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col klaros-dark border-r border-white/5 bg-accent-2 text-slate-300 transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full"
@@ -400,7 +400,7 @@ export default function AppShell({
             type="button"
             onClick={() => setMobileNavOpen(false)}
             aria-label="Close menu"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 lg:hidden"
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 lg:hidden"
           >
             <X className="h-4 w-4" strokeWidth={2} />
           </button>
@@ -408,14 +408,14 @@ export default function AppShell({
         <div className="px-3 pb-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" strokeWidth={2} />
-            <kbd aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-white/10 px-1 text-[10px] font-medium text-slate-500">⌘K</kbd>
+            <kbd aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-white/10 px-1 text-xs font-medium text-slate-500">⌘K</kbd>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Find a page…"
               aria-label="Find a page"
-              className="w-full rounded-lg border border-white/10 bg-white/[0.05] py-1.5 pl-8 pr-10 text-[13px] text-slate-100 placeholder:text-slate-500 focus:border-accent focus:bg-white/[0.08] focus:outline-none"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.05] py-1.5 pl-8 pr-10 text-[13px] text-slate-100 placeholder:text-slate-500 focus:border-accent focus:bg-white/[0.08] focus:outline-none"
             />
           </div>
         </div>
@@ -459,7 +459,7 @@ export default function AppShell({
                   type="button"
                   onClick={toggleMore}
                   aria-expanded={moreOpen}
-                  className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-[13px] text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                  className="flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-left text-[13px] text-slate-400 hover:bg-white/5 hover:text-slate-100"
                 >
                   <span>All modules</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`} strokeWidth={2} />
@@ -474,7 +474,7 @@ export default function AppShell({
                             type="button"
                             onClick={() => toggleSection(section.label)}
                             aria-expanded={isOpen}
-                            className="flex w-full items-center justify-between rounded-lg px-2.5 py-1 text-left"
+                            className="flex w-full items-center justify-between rounded-xl px-2.5 py-1 text-left"
                           >
                             <span className="klaros-label !text-slate-500">{section.label}</span>
                             <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`} strokeWidth={2} />
@@ -499,7 +499,7 @@ export default function AppShell({
         {user && (
           <div className="border-t border-white/10 p-3">
             <DropdownMenu.Root>
-              <DropdownMenu.Trigger className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left outline-none transition-colors hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent">
+              <DropdownMenu.Trigger className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left outline-none transition-colors hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent">
                 <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white">
                   {(user.full_name || user.email).trim().charAt(0).toUpperCase()}
                 </span>
@@ -512,17 +512,17 @@ export default function AppShell({
               <DropdownMenu.Portal>
                 <DropdownMenu.Content side="top" align="start" sideOffset={8} className="z-[70] min-w-[14rem] rounded-xl border border-border bg-surface p-1.5 text-sm shadow-popover">
                   <DropdownMenu.Item asChild>
-                    <Link href="/settings/account" className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-foreground outline-none data-[highlighted]:bg-surface-muted">
+                    <Link href="/settings/account" className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-foreground outline-none data-[highlighted]:bg-surface-muted">
                       <UserCog className="h-4 w-4 text-muted-foreground" strokeWidth={2} /> Account &amp; security
                     </Link>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item asChild>
-                    <Link href="/settings/billing" className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-foreground outline-none data-[highlighted]:bg-surface-muted">
+                    <Link href="/settings/billing" className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-foreground outline-none data-[highlighted]:bg-surface-muted">
                       <CreditCard className="h-4 w-4 text-muted-foreground" strokeWidth={2} /> Billing
                     </Link>
                   </DropdownMenu.Item>
                   <DropdownMenu.Separator className="my-1 h-px bg-border" />
-                  <DropdownMenu.Item onSelect={() => void signOut()} className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-danger outline-none data-[highlighted]:bg-danger/10">
+                  <DropdownMenu.Item onSelect={() => void signOut()} className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-danger outline-none data-[highlighted]:bg-danger/10">
                     <LogOut className="h-4 w-4" strokeWidth={2} /> Sign out
                   </DropdownMenu.Item>
                 </DropdownMenu.Content>
@@ -537,7 +537,7 @@ export default function AppShell({
             type="button"
             onClick={() => setMobileNavOpen(true)}
             aria-label="Open menu"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-foreground lg:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-foreground lg:hidden"
           >
             <Menu className="h-5 w-5" strokeWidth={2} />
           </button>
@@ -570,11 +570,11 @@ export default function AppShell({
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="hidden items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-muted shadow-sm transition-colors hover:border-border-strong hover:text-foreground sm:flex"
+              className="hidden items-center gap-2 rounded-xl border border-border bg-surface px-2.5 py-1.5 text-xs text-muted shadow-sm transition-colors hover:border-border-strong hover:text-foreground sm:flex"
             >
               <Search className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
               Jump to…
-              <kbd className="rounded border border-border bg-surface-muted px-1 text-[10px] font-medium text-muted-foreground">⌘K</kbd>
+              <kbd className="rounded border border-border bg-surface-muted px-1 text-xs font-medium text-muted-foreground">⌘K</kbd>
             </button>
             <NotificationBell token={token} />
           </div>

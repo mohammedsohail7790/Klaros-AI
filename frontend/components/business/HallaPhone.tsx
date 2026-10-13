@@ -146,7 +146,7 @@ export function HallaPhonePanel({ token, connected }: { token: string | null; co
         {!status && !loadError && <p className="text-sm text-muted">Loading…</p>}
 
         {status?.template_outdated && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-muted/70 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-muted/70 p-3">
             <p className="text-sm text-foreground">A newer version of your AI receptionist is ready. It includes improvements to what it says about medical questions.</p>
             <Button variant="secondary" size="sm" onClick={update} disabled={busy !== null}>{busy === "update" ? "Updating…" : "Update receptionist"}</Button>
           </div>
@@ -184,7 +184,7 @@ export function HallaPhonePanel({ token, connected }: { token: string | null; co
                   <fieldset className="space-y-2">
                     <legend className="klaros-label mb-1">Choose a number</legend>
                     {options.map((o) => (
-                      <label key={o.phone_number} className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+                      <label key={o.phone_number} className="flex cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm">
                         <input type="radio" name="halla-number" value={o.phone_number} checked={picked === o.phone_number} onChange={() => { setPicked(o.phone_number); setAccepted(false); }} />
                         <span className="text-foreground">{formatPhone(o.phone_number)}</span>
                       </label>

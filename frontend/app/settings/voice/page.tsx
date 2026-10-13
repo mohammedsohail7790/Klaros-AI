@@ -112,7 +112,7 @@ export default function VoiceReceptionistPage() {
           <Skeleton />
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="rounded-lg border border-border bg-surface p-5">
+            <div className="rounded-xl border border-border bg-surface p-5">
               <div className="mb-2 flex items-center justify-between">
                 <div>
                   <h2 className="font-medium">Status</h2>
@@ -197,7 +197,7 @@ export default function VoiceReceptionistPage() {
               )}
 
               {selectedCall && (
-                <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+                <div className="mt-4 rounded-xl border border-border bg-surface p-4">
                   <div className="mb-2 flex items-center justify-between">
                     <h3 className="text-sm font-medium">Call detail</h3>
                     <button onClick={() => setSelectedCall(null)} className="text-xs text-muted hover:text-foreground">

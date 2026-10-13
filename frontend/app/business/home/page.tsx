@@ -100,11 +100,10 @@ export default function BusinessHomePage() {
 
         {/* BUSINESS OVERVIEW */}
         <header className="klaros-card relative mb-8 overflow-hidden p-5 sm:p-7">
-          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent via-violet-500 to-fuchsia-500" />
           <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
           <div className="relative flex flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-0 items-start gap-4">
-              <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-violet-600 text-xl font-semibold text-white shadow-md">
+              <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl font-semibold text-white shadow-md">
                 {(business.name ?? business.summary ?? "K").trim().charAt(0).toUpperCase()}
               </span>
               <div className="min-w-0">

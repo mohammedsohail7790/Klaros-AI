@@ -293,7 +293,7 @@ export function SectionPropsForm({
           <Field label="Title (optional)" value={String(props.title ?? "")} onChange={(v) => update("title", v)} />
           <Field label="Introduction (optional)" value={String(props.intro ?? "")} onChange={(v) => update("intro", v)} textarea />
           {items.map((item, i) => (
-            <div key={i} className="space-y-1 rounded-lg border border-border p-3">
+            <div key={i} className="space-y-1 rounded-xl border border-border p-3">
               <Field label={`Card ${i + 1} name`} value={String(item.title ?? "")} onChange={(v) => setItem(i, "title", v)} />
               <Field label="Description" value={String(item.description ?? "")} onChange={(v) => setItem(i, "description", v)} textarea />
               <div className="grid gap-2 sm:grid-cols-2">

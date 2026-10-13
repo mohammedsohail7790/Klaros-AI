@@ -101,8 +101,7 @@ export default function BuilderHome() {
   return (
     <AppShell user={user}>
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
-        <div className="relative mb-10 overflow-hidden rounded-2xl border border-border bg-surface p-6 shadow-card sm:p-9">
-          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent via-violet-500 to-fuchsia-500" />
+        <div className="relative mb-10 overflow-hidden rounded-2xl border border-border bg-surface p-6 sm:p-9">
           <div className="max-w-3xl">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-hover">
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> App Builder
@@ -176,7 +175,7 @@ export default function BuilderHome() {
         {projects === null ? (
           <Skeleton stats={0} rows={3} />
         ) : projects.length === 0 ? (
-          <p className="klaros-card border-dashed p-8 text-center text-sm text-muted">No projects yet. Describe one above to get started.</p>
+          <p className="klaros-card p-8 text-center text-sm text-muted">No projects yet. Describe one above to get started.</p>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((p) => (

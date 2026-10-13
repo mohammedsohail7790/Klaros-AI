@@ -79,7 +79,7 @@ export default function AIActivityPage() {
                   <tr key={r.id} className="border-t border-border">
                     <td className="px-3 py-2 text-muted">{new Date(r.created_at).toLocaleString()}</td>
                     <td className="px-3 py-2">
-                      <Badge status={r.actor_type} className="text-[10px]">
+                      <Badge status={r.actor_type} className="text-xs">
                         {r.actor_type}
                       </Badge>
                     </td>
@@ -89,7 +89,7 @@ export default function AIActivityPage() {
                       {r.entity_type ? `${r.entity_type}${r.entity_id ? ` #${r.entity_id.slice(0, 8)}` : ""}` : "—"}
                     </td>
                     <td className="px-3 py-2">
-                      <Badge status={r.result} className="text-[10px]">
+                      <Badge status={r.result} className="text-xs">
                         {r.result}
                       </Badge>
                     </td>

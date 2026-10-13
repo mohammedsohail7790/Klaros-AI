@@ -27,7 +27,7 @@ export default function PreviewPane({ previewUrl, routes, loading, onRefresh, bu
         <select id="preview-route" value={path} onChange={(e) => setPath(e.target.value)} className="klaros-input !w-auto max-w-[14rem] !py-1.5 text-sm">
           {pages.map((r) => <option key={r.path} value={r.path}>{r.title} — {r.path}</option>)}
         </select>
-        <div role="group" aria-label="Screen size" className="ml-1 flex rounded-lg border border-border p-0.5">
+        <div role="group" aria-label="Screen size" className="ml-1 flex rounded-xl border border-border p-0.5">
           {VIEWPORTS.map((v) => (
             <button key={v.key} type="button" aria-pressed={vp === v.key} aria-label={v.label} title={v.label} onClick={() => setVp(v.key)} className={cn("rounded-md p-1.5 transition-colors", vp === v.key ? "bg-accent-soft text-accent-hover" : "text-muted hover:text-foreground")}>
               <v.icon className="h-4 w-4" />

@@ -21,7 +21,7 @@ export function StageTracker({ stages, activeKey }: { stages: BuilderStage[]; ac
         <span>{doneCount} of {stages.length} steps done</span>
       </div>
       <div className="mb-3 h-1 overflow-hidden rounded-full bg-border" aria-hidden="true">
-        <div className="h-full rounded-full bg-gradient-to-r from-accent to-violet-500 transition-all" style={{ width: `${(doneCount / Math.max(1, stages.length)) * 100}%` }} />
+        <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(doneCount / Math.max(1, stages.length)) * 100}%` }} />
       </div>
       <ol className="flex min-w-max items-center gap-1 text-xs">
         {stages.map((s, i) => {
@@ -29,7 +29,7 @@ export function StageTracker({ stages, activeKey }: { stages: BuilderStage[]; ac
           const body = (
             <span
               className={cn(
-                "flex items-center gap-2 rounded-lg border px-3 py-1.5 font-medium transition-colors",
+                "flex items-center gap-2 rounded-xl border px-3 py-1.5 font-medium transition-colors",
                 s.state === "done" && "border-success/20 bg-success/[0.06] text-success hover:bg-success/10",
                 s.state !== "done" && isActive && "border-accent bg-accent text-accent-foreground shadow-sm",
                 s.state !== "done" && !isActive && "border-border bg-surface text-muted-foreground"
@@ -38,7 +38,7 @@ export function StageTracker({ stages, activeKey }: { stages: BuilderStage[]; ac
               {s.state === "done" ? (
                 <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
               ) : (
-                <span className={cn("flex h-4 w-4 items-center justify-center rounded-full text-[10px]", isActive ? "bg-white/25" : "bg-surface-muted")}>{i + 1}</span>
+                <span className={cn("flex h-4 w-4 items-center justify-center rounded-full text-xs", isActive ? "bg-white/25" : "bg-surface-muted")}>{i + 1}</span>
               )}
               {s.label}
             </span>
@@ -46,7 +46,7 @@ export function StageTracker({ stages, activeKey }: { stages: BuilderStage[]; ac
           return (
             <li key={s.key} className="flex items-center gap-1" aria-current={isActive ? "step" : undefined}>
               {s.state === "done" || isActive ? (
-                <Link href={s.route} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-lg">
+                <Link href={s.route} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-xl">
                   {body}
                   <span className="sr-only">{s.state === "done" ? " (completed)" : " (current)"}</span>
                 </Link>

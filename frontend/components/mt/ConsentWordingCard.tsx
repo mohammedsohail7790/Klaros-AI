@@ -84,7 +84,7 @@ export function ConsentWordingCard({ token, onChanged }: { token: string | null;
           <p className="text-sm text-foreground">
             <span className="font-medium">{current.version}</span> · approved {date(current.approved_at)}
           </p>
-          <blockquote dir={current.language === "ar" ? "rtl" : "ltr"} className="whitespace-pre-line rounded-lg border border-border bg-surface-muted/70 p-3 text-sm text-foreground">{current.text}</blockquote>
+          <blockquote dir={current.language === "ar" ? "rtl" : "ltr"} className="whitespace-pre-line rounded-xl border border-border bg-surface-muted/70 p-3 text-sm text-foreground">{current.text}</blockquote>
           <Button variant="secondary" size="sm" onClick={() => { setEditing(true); setRead(false); }}>Write a new version</Button>
           {data.wordings.length > 1 && <p className="text-xs text-muted">Earlier versions stay on record: {data.wordings.slice(1).map((w) => w.version).join(", ")}. Each enquiry is tied to the version its sender saw.</p>}
         </div>

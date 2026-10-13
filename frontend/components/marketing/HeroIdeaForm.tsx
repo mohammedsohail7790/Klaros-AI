@@ -42,7 +42,7 @@ export function HeroIdeaForm() {
           onChange={(e) => setIdea(e.target.value)}
           maxLength={500}
           placeholder="What are you building?"
-          className="min-w-0 flex-1 rounded-lg bg-transparent px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
+          className="min-w-0 flex-1 rounded-xl bg-transparent px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
         />
         <button type="submit" className="klaros-btn-primary inline-flex items-center justify-center gap-2 px-5 py-3">
           Build My Business

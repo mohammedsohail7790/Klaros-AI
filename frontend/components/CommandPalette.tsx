@@ -51,12 +51,12 @@ export default function CommandPalette({ items, open, onOpenChange }: { items: P
                 placeholder="Jump to a page…"
                 className="h-12 w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
               />
-              <kbd className="rounded border border-border bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">ESC</kbd>
+              <kbd className="rounded border border-border bg-surface-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">ESC</kbd>
             </div>
             <Command.List className="max-h-[50vh] overflow-y-auto p-2">
               <Command.Empty className="px-3 py-8 text-center text-sm text-muted">No pages match “{value}”.</Command.Empty>
               {Object.entries(groups).map(([group, list]) => (
-                <Command.Group key={group} heading={group} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground">
+                <Command.Group key={group} heading={group} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground">
                   {list.map((item) => {
                     const Icon = item.icon;
                     return (
@@ -67,7 +67,7 @@ export default function CommandPalette({ items, open, onOpenChange }: { items: P
                           onOpenChange(false);
                           router.push(item.href);
                         }}
-                        className="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground aria-selected:bg-accent-soft aria-selected:text-accent-hover"
+                        className="flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-foreground aria-selected:bg-accent-soft aria-selected:text-accent-hover"
                       >
                         {Icon && <Icon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} />}
                         <span className="flex-1 truncate">{item.label}</span>

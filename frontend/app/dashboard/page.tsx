@@ -311,7 +311,7 @@ export default function DashboardPage() {
 
         {killSwitch && (
           <div
-            className={`mb-6 flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
+            className={`mb-6 flex items-center justify-between rounded-xl border px-4 py-3 text-sm ${
               killSwitch.ai_paused
                 ? "border-danger/40 bg-danger/10 text-danger"
                 : "border-border bg-surface text-muted"
@@ -348,7 +348,7 @@ export default function DashboardPage() {
         {gettingStartedChecks && (
           <section className="mb-8">
             {gettingStartedRemaining === 0 ? (
-              <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/10 px-4 py-2.5 text-sm text-success">
+              <div className="flex items-center gap-2 rounded-xl border border-success/20 bg-success/10 px-4 py-2.5 text-sm text-success">
                 <Check className="h-4 w-4 shrink-0" strokeWidth={2} />
                 All set — payments, accounting, scheduling, and your AI assistant are connected.
               </div>
@@ -363,12 +363,12 @@ export default function DashboardPage() {
                     <Link
                       key={item.provider}
                       href="/settings/integrations"
-                      className={`rounded-lg border p-4 shadow-card transition hover:border-border-strong ${
+                      className={`rounded-xl border p-4 transition hover:border-border-strong ${
                         item.connected ? "border-success/20 bg-success/10" : "border-border bg-surface"
                       }`}
                     >
                       <div className="mb-1 flex items-center justify-between">
-                        <span className="text-[10px] uppercase tracking-wide text-muted">{item.segment}</span>
+                        <span className="text-xs text-muted">{item.segment}</span>
                         {item.connected ? (
                           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-success/15 text-success">
                             <Check className="h-3 w-3" strokeWidth={3} />
@@ -414,10 +414,10 @@ export default function DashboardPage() {
                   >
                     <div className="min-w-0">
                       <div className="mb-1 flex items-center gap-2">
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${PRIORITY_STYLE[item.priority]}`}>
+                        <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLE[item.priority]}`}>
                           {item.priority}
                         </span>
-                        <span className="text-[10px] uppercase tracking-wide text-muted">
+                        <span className="text-xs text-muted">
                           {CATEGORY_LABELS[item.category] ?? item.category}
                         </span>
                       </div>
@@ -855,20 +855,20 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
+              <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
                 {activity.items.map((item) => {
                   const row = (
                     <div className="flex items-start justify-between gap-4 p-4 transition hover:bg-surface-muted">
                       <div className="min-w-0">
                         <div className="mb-1 flex items-center gap-2">
                           <span
-                            className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                            className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
                               ACTIVITY_SEVERITY_STYLE[item.severity] ?? ACTIVITY_SEVERITY_STYLE.INFO
                             }`}
                           >
                             {item.category}
                           </span>
-                          <span className="text-[10px] text-muted-foreground">{timeAgo(item.timestamp)}</span>
+                          <span className="text-xs text-muted-foreground">{timeAgo(item.timestamp)}</span>
                         </div>
                         <p className="truncate text-sm text-foreground">{item.title}</p>
                         {item.description && (

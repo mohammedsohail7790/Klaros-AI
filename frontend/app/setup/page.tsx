@@ -124,7 +124,7 @@ export default function SetupPage() {
         ) : showForm ? (
           <section aria-label="Set up a Medical Tourism business" className="klaros-card space-y-5 p-5 sm:p-6">
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft text-accent"><Stethoscope className="h-4 w-4" aria-hidden="true" /></span>
+              <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-accent-soft text-accent"><Stethoscope className="h-4 w-4" aria-hidden="true" /></span>
               <div>
                 <h2 className="text-xl font-semibold tracking-tight text-foreground">{available[0]?.name ?? "Medical Tourism"}</h2>
                 <p className="text-sm text-muted">{available[0]?.description}</p>

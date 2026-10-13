@@ -45,7 +45,7 @@ export function WorkflowDetailView({ token, id }: { token: string | null; id: st
         {d.runs.length === 0 ? (
           <p className="text-muted">This workflow hasn&apos;t run yet — it runs the next time its trigger happens.</p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border" aria-label="Recent runs">
+          <ul className="divide-y divide-border rounded-xl border border-border" aria-label="Recent runs">
             {d.runs.map((r) => (
               <li key={r.id} className="px-3 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">

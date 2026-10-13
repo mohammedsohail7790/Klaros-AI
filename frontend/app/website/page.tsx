@@ -357,7 +357,7 @@ function VersionEditor({
         )}
       </div>
 
-      <div role="tablist" aria-label="Editor view" className="inline-flex rounded-lg border border-border bg-surface-muted p-0.5 text-sm">
+      <div role="tablist" aria-label="Editor view" className="inline-flex rounded-xl border border-border bg-surface-muted p-0.5 text-sm">
         {(["edit", "preview"] as const).map((v) => (
           <button
             key={v}

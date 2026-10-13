@@ -56,15 +56,15 @@ export default function AccountPage() {
           ) : (
             <dl className="grid gap-4 text-sm sm:grid-cols-3">
               <div>
-                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Name</dt>
+                <dt className="text-xs text-muted-foreground">Name</dt>
                 <dd className="mt-1 text-foreground">{user.full_name}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Email</dt>
+                <dt className="text-xs text-muted-foreground">Email</dt>
                 <dd className="mt-1 break-all text-foreground">{user.email}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Role</dt>
+                <dt className="text-xs text-muted-foreground">Role</dt>
                 <dd className="mt-1 text-foreground">{ROLE_LABEL[user.role] ?? user.role}</dd>
               </div>
             </dl>

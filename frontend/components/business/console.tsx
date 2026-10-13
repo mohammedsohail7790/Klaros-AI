@@ -74,7 +74,7 @@ export function LeadPipeline({ stages }: { stages: OpsPipelineStage[] }) {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 {s.route ? <Link href={s.route} className="text-sm font-medium text-foreground hover:underline">{s.label}</Link> : <span className="text-sm font-medium text-foreground">{s.label}</span>}
-                <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted"><K.icon className="h-3 w-3" aria-hidden="true" />{K.label}</span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted"><K.icon className="h-3 w-3" aria-hidden="true" />{K.label}</span>
                 <StatusPill state={s.state} />
               </div>
               <p className="mt-0.5 text-xs text-muted">{s.detail}</p>
@@ -104,7 +104,7 @@ export function WorkflowList({ workflows, token = null }: { workflows: OpsWorkfl
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-foreground">{w.name}</p>
               <div className="flex items-center gap-2">
-                {failing && <span className="inline-flex items-center rounded-full border border-danger/25 bg-danger/[0.06] px-2 py-0.5 text-[11px] font-medium text-danger">Last run failed</span>}
+                {failing && <span className="inline-flex items-center rounded-full border border-danger/25 bg-danger/[0.06] px-2 py-0.5 text-xs font-medium text-danger">Last run failed</span>}
                 <StatusPill state={w.status === "ENABLED" ? "READY" : "CONFIGURATION_REQUIRED"} />
               </div>
             </div>

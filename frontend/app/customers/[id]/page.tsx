@@ -237,7 +237,7 @@ export default function CustomerDetailPage() {
         ) : (
           <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="lg:col-span-2 space-y-6">
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 {editingCustomer ? (
                   <form onSubmit={handleSaveCustomer} className="space-y-2">
                     <div>
@@ -329,7 +329,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Timeline</h2>
                 {timeline.length === 0 ? (
                   <EmptyState icon={Clock} title="No activity recorded yet." compact />
@@ -337,7 +337,7 @@ export default function CustomerDetailPage() {
                   <ul className="space-y-3">
                     {timeline.map((entry, i) => (
                       <li key={i} className="flex gap-3 text-sm">
-                        <span className="mt-0.5 rounded-full border border-border-strong px-2 py-0.5 text-[10px] uppercase text-muted">
+                        <span className="mt-0.5 rounded-full border border-border-strong px-2 py-0.5 text-xs uppercase text-muted">
                           {entry.type}
                         </span>
                         <div>
@@ -352,7 +352,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">
                   Appointments ({appointmentEntries.length})
                 </h2>
@@ -369,7 +369,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Invoices / Payments</h2>
                 {invoices.length === 0 ? (
                   <EmptyState icon={Receipt} title="No financial history for this customer yet." compact />
@@ -389,7 +389,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Payments received</h2>
                 {refundNotice && <p className="mb-2 text-sm text-success">{refundNotice}</p>}
                 {payments.length === 0 ? (
@@ -459,7 +459,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Add note</h2>
                 <form onSubmit={submitNote} className="flex gap-2">
                   <input
@@ -481,7 +481,7 @@ export default function CustomerDetailPage() {
 
             <section className="space-y-4">
               {health && (
-                <div className="rounded-lg border border-border bg-surface p-6">
+                <div className="rounded-xl border border-border bg-surface p-6">
                   <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Customer health</h2>
                   <dl className="space-y-1.5 text-sm">
                     <div className="flex justify-between">
@@ -529,7 +529,7 @@ export default function CustomerDetailPage() {
                 </div>
               )}
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Retention timeline</h2>
                 {retentionTimeline.length === 0 ? (
                   <EmptyState icon={Heart} title="No retention activity recorded yet." compact />
@@ -537,7 +537,7 @@ export default function CustomerDetailPage() {
                   <ul className="space-y-3">
                     {retentionTimeline.map((entry, i) => (
                       <li key={i} className="flex gap-3 text-sm">
-                        <span className="mt-0.5 rounded-full border border-border-strong px-2 py-0.5 text-[10px] uppercase text-muted">
+                        <span className="mt-0.5 rounded-full border border-border-strong px-2 py-0.5 text-xs uppercase text-muted">
                           {entry.type}
                         </span>
                         <div>
@@ -550,7 +550,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">AI summary</h2>
                 {summary ? (
                   <p className="text-sm text-muted">{summary}</p>

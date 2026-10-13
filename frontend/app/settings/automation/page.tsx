@@ -200,11 +200,11 @@ export default function AutomationSettingsPage() {
                         <tr key={p.tool_name} className="border-t border-border">
                           <td className="px-3 py-2">
                             <div>{friendlyToolName(p.tool_name)}</div>
-                            <div className="text-[10px] text-muted-foreground">{p.tool_name}</div>
+                            <div className="text-xs text-muted-foreground">{p.tool_name}</div>
                           </td>
                           <td className="px-3 py-2">
                             <span
-                              className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                              className={`rounded-full border px-2 py-0.5 text-xs ${
                                 POLICY_COLOR[p.current_policy] ?? "border-border-strong"
                               }`}
                             >
@@ -225,7 +225,7 @@ export default function AutomationSettingsPage() {
                                     key={opt}
                                     disabled={busyKey === p.tool_name || opt === p.current_policy}
                                     onClick={() => requestPolicyChange(p.tool_name, p.current_policy, opt)}
-                                    className={`rounded-md border px-2 py-1 text-[10px] disabled:opacity-40 ${
+                                    className={`rounded-md border px-2 py-1 text-xs disabled:opacity-40 ${
                                       opt === p.current_policy
                                         ? "border-border-strong bg-surface-muted"
                                         : "border-border-strong hover:bg-surface-muted"
@@ -242,7 +242,7 @@ export default function AutomationSettingsPage() {
                               <button
                                 disabled={busyKey === p.tool_name}
                                 onClick={() => handleReset(p.tool_name)}
-                                className="text-[10px] text-muted underline hover:text-foreground"
+                                className="text-xs text-muted underline hover:text-foreground"
                               >
                                 reset to default
                               </button>

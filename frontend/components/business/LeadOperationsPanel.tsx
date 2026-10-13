@@ -56,7 +56,7 @@ export function LeadOperationsPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, leadId, refreshKey]);
 
-  if (error) return <div role="alert" className="rounded-lg border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>;
+  if (error) return <div role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>;
   if (!ops) return null;
 
   const p = ops.patient;
@@ -72,7 +72,7 @@ export function LeadOperationsPanel({
   const m = ops.matching;
 
   return (
-    <section aria-labelledby="lead-ops-h" className="rounded-lg border border-border bg-surface p-6">
+    <section aria-labelledby="lead-ops-h" className="rounded-xl border border-border bg-surface p-6">
       <h2 id="lead-ops-h" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
         <Stethoscope className="h-5 w-5 text-accent" aria-hidden="true" /> Patient enquiry
       </h2>
@@ -87,7 +87,7 @@ export function LeadOperationsPanel({
         <p className="mt-2 text-sm text-muted">The patient didn't give treatment or destination details — Klaros matches on what the enquiry says.</p>
       )}
 
-      <div className="mt-5 rounded-lg border border-accent/30 bg-accent-soft/60 p-4">
+      <div className="mt-5 rounded-xl border border-accent/30 bg-accent-soft/60 p-4">
         <p className="klaros-label mb-1">Next action</p>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-foreground">{ops.next_action.text}</p>
@@ -106,11 +106,11 @@ export function LeadOperationsPanel({
         {m.basis.destination_country ? ` · destination ${m.basis.destination_country}` : ""}. Suggestions only — nothing is sent or booked automatically.
       </p>
       {m.matches.length === 0 ? (
-        <p className="mt-3 rounded-md border border-dashed border-border-strong p-3 text-sm text-muted">{m.none_reason}</p>
+        <p className="mt-3 rounded-md border border-border-strong p-3 text-sm text-muted">{m.none_reason}</p>
       ) : (
         <ul className="mt-3 space-y-3">
           {m.matches.map((x) => (
-            <li key={x.provider_id} className="rounded-lg border border-border p-3">
+            <li key={x.provider_id} className="rounded-xl border border-border p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{x.name} <span className="font-normal text-muted">· {x.location || "location not set"}</span></p>
                 <span className={x.fit === "STRONG" ? "rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success" : "rounded-full border border-border px-2 py-0.5 text-xs text-muted"}>

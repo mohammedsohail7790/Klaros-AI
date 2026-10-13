@@ -197,7 +197,7 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
             className="klaros-input"
           />
           {customerResults.length > 0 && (
-            <ul className="mt-1 overflow-hidden rounded-lg border border-border bg-surface text-sm shadow-raised">
+            <ul className="mt-1 overflow-hidden rounded-xl border border-border bg-surface text-sm shadow-raised">
               {customerResults.map((c) => (
                 <li
                   key={c.id}

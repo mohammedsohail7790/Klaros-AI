@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 
 function Metric({ label, value, note }: { label: string; value: string | number | null; note: string }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
+    <div className="rounded-xl border border-border bg-surface p-4 ">
       <div className="text-xs text-muted">{label}</div>
       <div className="mt-1 text-xl font-semibold">{value !== null ? value : "INSUFFICIENT DATA"}</div>
       <div className="mt-1 text-xs text-muted-foreground">{note}</div>

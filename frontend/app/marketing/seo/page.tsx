@@ -291,7 +291,7 @@ export default function SEOPage() {
         )}
 
         <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
+          <div className="rounded-xl border border-border bg-surface p-4 ">
             <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Keywords ({keywords.length})</h2>
             <form onSubmit={handleRecordKeyword} className="mb-3 flex flex-wrap gap-2">
               <input
@@ -333,7 +333,7 @@ export default function SEOPage() {
             )}
           </div>
 
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
+          <div className="rounded-xl border border-border bg-surface p-4 ">
             <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">SEO opportunities</h2>
             <form onSubmit={handleCreateOpportunity} className="space-y-2">
               <div className="flex gap-2">
@@ -381,7 +381,7 @@ export default function SEOPage() {
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
+          <div className="rounded-xl border border-border bg-surface p-4 ">
             <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Local listings ({listings.length})</h2>
             <form onSubmit={handleCreateListing} className="mb-3 space-y-2">
               <input
@@ -426,7 +426,7 @@ export default function SEOPage() {
             )}
           </div>
 
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
+          <div className="rounded-xl border border-border bg-surface p-4 ">
             <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Local reviews ({reviews.length})</h2>
             <form onSubmit={handleRecordReview} className="mb-3 space-y-2">
               <select

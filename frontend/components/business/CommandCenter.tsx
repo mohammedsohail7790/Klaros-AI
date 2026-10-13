@@ -29,7 +29,7 @@ const SEVERITY: Record<Severity, { icon: typeof Info; tone: string; chip: string
 
 const TILE_ICON: Record<string, { icon: LucideIcon; chip: string }> = {
   website: { icon: Globe, chip: "bg-sky-50 text-sky-600" },
-  workforce: { icon: Headset, chip: "bg-violet-50 text-violet-600" },
+  workforce: { icon: Headset, chip: "bg-accent-soft text-accent" },
   leads: { icon: Users, chip: "bg-emerald-50 text-emerald-600" },
   opportunities: { icon: Target, chip: "bg-amber-50 text-amber-600" },
   pending: { icon: Zap, chip: "bg-rose-50 text-rose-600" },
@@ -49,7 +49,7 @@ export function ActionCenter({ items, loading }: { items: ActionItem[]; loading?
         const S = SEVERITY[a.severity];
         return (
           <li key={a.id} className="flex items-center gap-3 px-4 py-3">
-            <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", S.chip)}>
+            <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-xl", S.chip)}>
               <S.icon className={cn("h-4 w-4", S.tone)} aria-hidden="true" />
             </span>
             <span className="sr-only">{S.label}: </span>
@@ -77,7 +77,7 @@ export function HealthStrip({ tiles }: { tiles: HealthTile[] }) {
                 const meta = TILE_ICON[t.key] ?? { icon: Activity, chip: "bg-surface-muted text-muted" };
                 const TileIcon = meta.icon;
                 return (
-                  <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", meta.chip)} aria-hidden="true">
+                  <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-xl", meta.chip)} aria-hidden="true">
                     <TileIcon className="h-3.5 w-3.5" strokeWidth={2} />
                   </span>
                 );
@@ -113,7 +113,7 @@ export function ArchitectureStrip({ nodes }: { nodes: ChainNode[] }) {
       <ol className="flex flex-col gap-2 lg:flex-row lg:items-stretch lg:gap-0" aria-label="How your business operates">
         {nodes.map((n, i) => (
           <li key={n.key} className="flex flex-col lg:flex-1 lg:flex-row lg:items-stretch">
-            <Link href={n.route} className="block flex-1 rounded-lg border border-border bg-surface-muted/50 p-3 transition-colors hover:border-border-strong hover:bg-surface-muted">
+            <Link href={n.route} className="block flex-1 rounded-xl border border-border bg-surface-muted/50 p-3 transition-colors hover:border-border-strong hover:bg-surface-muted">
               <p className="text-sm font-medium text-foreground">{n.label}</p>
               <p className="mt-0.5 text-xs text-muted">{n.detail}</p>
               <div className="mt-2"><StatusPill state={n.state} /></div>
@@ -261,7 +261,7 @@ export function LaunchPanel({
           <span className="text-muted">launch checks complete</span>
         </p>
         <div className="h-1.5 w-40 overflow-hidden rounded-full bg-border" aria-hidden="true">
-          <div className="h-full rounded-full bg-gradient-to-r from-accent to-violet-500" style={{ width: `${(rows.filter((r) => r.state === "READY" || r.state === "CONNECTED").length / Math.max(1, rows.length)) * 100}%` }} />
+          <div className="h-full rounded-full bg-accent" style={{ width: `${(rows.filter((r) => r.state === "READY" || r.state === "CONNECTED").length / Math.max(1, rows.length)) * 100}%` }} />
         </div>
       </div>
       <ul className="divide-y divide-border" aria-label="Launch readiness">

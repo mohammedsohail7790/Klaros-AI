@@ -187,7 +187,7 @@ export default function RecommendationsPage() {
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <h2 id={`rec-${key}`} className="text-base font-semibold tracking-tight text-foreground">{requirement?.label ?? label(cap)}</h2>
                     {requirement && <StatusPill state={requirement.readiness} />}
-                    <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${optionalCap ? "border border-border text-muted" : "bg-accent-soft text-accent-hover"}`}>{optionalCap ? "Suggested" : "Required"}</span>
+                    <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${optionalCap ? "border border-border text-muted" : "bg-accent-soft text-accent-hover"}`}>{optionalCap ? "Suggested" : "Required"}</span>
                   </div>
                   {requirement && (
                     <p className="mb-3 text-sm text-muted">

@@ -349,7 +349,7 @@ function RoleAutonomySection({ agent }: { agent: Agent }) {
     <section className="klaros-card p-5">
       <h2 className="mb-3 text-sm font-semibold text-foreground">Role &amp; autonomy</h2>
       <dl className="mb-4 text-sm">
-        <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Acting role</dt>
+        <dt className="text-xs font-medium text-muted-foreground">Acting role</dt>
         <dd className="mt-0.5 text-foreground">{agent.acting_role}</dd>
         <p className="mt-1 text-xs text-muted-foreground">
           The role this agent's actions are authorized under, set from its creator's own role when it was created.
@@ -362,7 +362,7 @@ function RoleAutonomySection({ agent }: { agent: Agent }) {
           {AUTONOMY_OPTIONS.map((opt) => (
             <div
               key={opt.value}
-              className={`rounded-lg border p-3 text-sm ${
+              className={`rounded-xl border p-3 text-sm ${
                 agent.autonomy_tier === opt.value ? "border-accent bg-accent-soft" : "border-border opacity-60"
               }`}
             >
@@ -448,7 +448,7 @@ function ToolPermissionsSection({
           className="klaros-input mt-3"
         />
       )}
-      <ul className="mt-3 max-h-96 divide-y divide-border overflow-y-auto rounded-lg border border-border">
+      <ul className="mt-3 max-h-96 divide-y divide-border overflow-y-auto rounded-xl border border-border">
         {filtered.map((tool) => {
           const granted = grantedNames.has(tool.name);
           return (
@@ -467,12 +467,12 @@ function ToolPermissionsSection({
                   <span className="block truncate text-xs text-muted">{tool.description}</span>
                   <span className="mt-1 flex flex-wrap gap-1.5">
                     {tool.required_permission && (
-                      <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                      <span className="rounded border border-border px-1.5 py-0.5 text-xs text-muted-foreground">
                         Requires {tool.required_permission}
                       </span>
                     )}
                     {tool.counts_toward_ai_usage && (
-                      <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                      <span className="rounded border border-border px-1.5 py-0.5 text-xs text-muted-foreground">
                         Counts toward AI usage
                       </span>
                     )}
@@ -612,7 +612,7 @@ function VersionsSection({
       )}
 
       {showForm && (
-        <div className="mb-4 space-y-4 rounded-lg border border-border p-4">
+        <div className="mb-4 space-y-4 rounded-xl border border-border p-4">
           <Field label="Instructions">
             <textarea
               className="klaros-input min-h-[100px] resize-y"
@@ -644,7 +644,7 @@ function VersionsSection({
             </select>
           </Field>
 
-          <div className="rounded-lg border border-border p-3">
+          <div className="rounded-xl border border-border p-3">
             <label className="flex items-center gap-2 text-sm font-medium text-foreground">
               <input type="checkbox" checked={scheduleEnabled} onChange={(e) => setScheduleEnabled(e.target.checked)} />
               Run on a schedule
@@ -683,7 +683,7 @@ function VersionsSection({
       {sorted.length === 0 ? (
         <p className="text-sm text-muted">No versions yet.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <ul className="divide-y divide-border rounded-xl border border-border">
           {sorted.map((v) => (
             <li key={v.id} className="p-3">
               <div className="flex items-center justify-between gap-3">
@@ -709,7 +709,7 @@ function VersionsSection({
                 </div>
               </div>
               {reviewingId === v.id && (
-                <div className="mt-3 space-y-2 rounded-lg bg-surface-muted p-3 text-xs">
+                <div className="mt-3 space-y-2 rounded-xl bg-surface-muted p-3 text-xs">
                   <div>
                     <span className="font-medium text-foreground">Instructions: </span>
                     <span className="text-muted">{v.instructions_snapshot || "(none)"}</span>
@@ -797,7 +797,7 @@ function ExecutionsSection({
       {sorted.length === 0 ? (
         <p className="text-sm text-muted">No executions yet.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <ul className="divide-y divide-border rounded-xl border border-border">
           {sorted.map((exec) => (
             <li key={exec.id}>
               <button

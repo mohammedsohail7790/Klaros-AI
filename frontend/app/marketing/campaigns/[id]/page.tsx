@@ -117,7 +117,7 @@ export default function CampaignDetailPage() {
 
         {budgetStatus && budgetStatus.budget !== null && (
           <div
-            className={`mb-6 rounded-lg border p-4 text-sm ${
+            className={`mb-6 rounded-xl border p-4 text-sm ${
               budgetStatus.alert
                 ? budgetStatus.alert.includes("overspend")
                   ? "border-danger/25 bg-danger/[0.06] text-danger"

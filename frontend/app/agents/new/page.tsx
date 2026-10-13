@@ -112,7 +112,7 @@ export default function NewAgentPage() {
               {AUTONOMY_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${
+                  className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition-colors ${
                     autonomyTier === opt.value ? "border-accent bg-accent-soft" : "border-border hover:bg-surface-muted"
                   }`}
                 >

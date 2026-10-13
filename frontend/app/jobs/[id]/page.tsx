@@ -426,7 +426,7 @@ export default function JobDetailPage() {
         ) : (
           <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="space-y-6 lg:col-span-2">
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 {editingJob ? (
                   <form onSubmit={handleSaveJob} className="space-y-2">
                     <div>
@@ -672,7 +672,7 @@ export default function JobDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Tasks</h2>
                 {tasks.length === 0 ? (
                   <EmptyState icon={CheckSquare} title="No tasks yet." compact />
@@ -703,7 +703,7 @@ export default function JobDetailPage() {
                 </form>
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Materials</h2>
                 {materials.length === 0 ? (
                   <EmptyState icon={Package} title="No materials recorded." compact />
@@ -744,7 +744,7 @@ export default function JobDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Photos, documents & voice notes</h2>
                 <div className="flex gap-2">
                   <button
@@ -811,7 +811,7 @@ export default function JobDetailPage() {
               </div>
 
               {EDITABLE_STATUSES.has(job.status) && token && (
-                <div className="rounded-lg border border-border bg-surface p-6">
+                <div className="rounded-xl border border-border bg-surface p-6">
                   <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Scope changes</h2>
                   {scopeChanges.length === 0 ? (
                     <p className="text-sm text-muted">No scope changes recorded this session.</p>
@@ -881,7 +881,7 @@ export default function JobDetailPage() {
               )}
 
               {(job.status === "COMPLETED" || job.status === "CLOSED") && token && (
-                <div className="rounded-lg border border-border bg-surface p-6">
+                <div className="rounded-xl border border-border bg-surface p-6">
                   <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Customer sign-off</h2>
                   <p className="mb-3 text-xs text-muted">
                     Internal record only — not a legally binding e-signature.
@@ -909,7 +909,7 @@ export default function JobDetailPage() {
               )}
 
               {job.status === "QA_PENDING" && token && (
-                <div className="rounded-lg border border-border bg-surface p-6">
+                <div className="rounded-xl border border-border bg-surface p-6">
                   <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">QA</h2>
                   <div className="flex gap-2">
                     <button onClick={() => runAction(() => startQA(token, id))} className="klaros-btn-secondary !px-3 !py-1.5">
@@ -929,7 +929,7 @@ export default function JobDetailPage() {
               )}
 
               {job.status === "COMPLETED" && token && (
-                <div className="rounded-lg border border-border bg-surface p-6">
+                <div className="rounded-xl border border-border bg-surface p-6">
                   <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Completion packet</h2>
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -953,7 +953,7 @@ export default function JobDetailPage() {
                 </div>
               )}
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Finance</h2>
                 {invoices.length === 0 ? (
                   <div className="space-y-3">
@@ -1036,7 +1036,7 @@ export default function JobDetailPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Timeline</h2>
                 {timeline.length === 0 ? (
                   <EmptyState icon={Clock} title="No activity recorded yet." compact />
@@ -1054,7 +1054,7 @@ export default function JobDetailPage() {
             </section>
 
             <section className="space-y-4">
-              <div className="rounded-lg border border-border bg-surface p-6">
+              <div className="rounded-xl border border-border bg-surface p-6">
                 <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">AI summary</h2>
                 {summary ? <p className="text-sm text-muted">{summary}</p> : <p className="text-sm text-muted">Not generated yet.</p>}
                 <button

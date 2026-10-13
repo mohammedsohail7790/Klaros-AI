@@ -54,10 +54,10 @@ function requiredConfiguration(i: OpsIntegration): string {
 function Card({ i, needed }: { i: OpsIntegration; needed: boolean }) {
   const workforce = i.category === "AI Workforce";
   return (
-    <li className={`klaros-card flex flex-col gap-2 p-4 ${i.state === "PLANNED" || i.state === "INTEGRATION_REQUIRED" ? "border-dashed" : ""}`}>
+    <li className={`klaros-card flex flex-col gap-2 p-4 ${i.state === "PLANNED" || i.state === "INTEGRATION_REQUIRED" ? "" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-accent-soft to-surface-muted text-sm font-semibold text-accent-hover ring-1 ring-border">
+          <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent-soft to-surface-muted text-sm font-semibold text-accent-hover ring-1 ring-border">
             {i.name.trim().charAt(0).toUpperCase()}
           </span>
           <h3 className="truncate text-sm font-semibold text-foreground">{i.name}</h3>
@@ -106,7 +106,7 @@ export default function IntegrationCenterPage() {
               return (
                 <ConsoleSection key={g} id={`g-${g}`} title={groupLabel(g)}>
                   {items.length === 0 ? (
-                    <p className="klaros-card flex flex-wrap items-center justify-between gap-2 border-dashed p-3 text-sm text-muted">
+                    <p className="klaros-card flex flex-wrap items-center justify-between gap-2 p-3 text-sm text-muted">
                       <span>{EMPTY_GROUP[g]?.text ?? "Nothing available yet."}{EMPTY_GROUP[g] && <> <Link href={EMPTY_GROUP[g].href} className="underline underline-offset-2">{EMPTY_GROUP[g].link}</Link></>}</span>
                       <StatusPill state="PLANNED" />
                     </p>

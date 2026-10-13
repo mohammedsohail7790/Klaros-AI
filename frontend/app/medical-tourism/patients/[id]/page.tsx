@@ -144,19 +144,19 @@ export default function PatientCasePage() {
         );
       case "OUTCOME":
         return (
-          <Link href="/medical-tourism/referrals" className="inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
+          <Link href="/medical-tourism/referrals" className="inline-flex items-center rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
             {label}
           </Link>
         );
       case "QUALIFICATION":
         return (
-          <Link href={`/leads/${patient.lead_id}`} className="inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
+          <Link href={`/leads/${patient.lead_id}`} className="inline-flex items-center rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
             {label}
           </Link>
         );
       default:
         return (
-          <a href="#consent" className="inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
+          <a href="#consent" className="inline-flex items-center rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-hover">
             {label}
           </a>
         );
@@ -208,7 +208,7 @@ export default function PatientCasePage() {
             )}
 
             <section aria-label="Next step" className="mt-5 klaros-card border-l-4 border-l-accent p-5">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Next step</h2>
+              <h2 className="text-xs font-medium text-muted-foreground">Next step</h2>
               <p className="mt-1.5 text-base text-foreground">{step?.hint}</p>
               {patient.held_for_person && !patient.consent_frozen && <p className="mt-1 text-sm text-warning">This enquiry is waiting for a person to review it.</p>}
               <div className="mt-3">{primaryAction()}</div>

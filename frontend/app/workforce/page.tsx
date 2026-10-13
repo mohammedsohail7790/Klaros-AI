@@ -116,12 +116,12 @@ export default function WorkforcePage() {
                   <p className="text-base font-semibold capitalize text-foreground">{status.provider} AI</p>
                   {pill && <StatusPill state={pill} />}
                   <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted">External platform</span>
-                  {status.mode === "development" && <span className="rounded-full border border-dashed border-border-strong px-2 py-0.5 text-xs text-muted">Development simulator — not live</span>}
+                  {status.mode === "development" && <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs text-muted">Development simulator — not live</span>}
                 </div>
                 <p className="mt-2 text-sm text-foreground">{connected ? "Your AI workforce is connected." : "Connect Halla to enable AI workforce capabilities."}</p>
                 <p className="mt-1 text-sm text-muted">{status.message}</p>
                 {!status.adapter_implemented && (
-                  <div className="mt-4 rounded-lg border border-dashed border-border-strong bg-surface-muted p-4 text-sm">
+                  <div className="mt-4 rounded-xl border border-border-strong bg-surface-muted p-4 text-sm">
                     <p className="font-medium text-foreground">Integration required</p>
                     <p className="mt-1 text-muted">
                       Halla AI is a separate product with its own voice and calling stack. Klaros has defined how the two will connect, but the
@@ -165,7 +165,7 @@ export default function WorkforcePage() {
                     <li key={m.key} className="klaros-card flex flex-col gap-2 p-4">
                       <div className="flex items-start justify-between gap-2">
                         <Icon className="h-5 w-5 text-accent" aria-hidden="true" />
-                        <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", m.status === "ACTIVE" ? "border-success/25 bg-success/[0.08] text-success" : "border-dashed border-border-strong text-muted")}>{m.status_label}</span>
+                        <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", m.status === "ACTIVE" ? "border-success/25 bg-success/[0.08] text-success" : "border-border-strong text-muted")}>{m.status_label}</span>
                       </div>
                       <p className="text-sm font-semibold text-foreground">{m.name}</p>
                       <p className="text-xs text-muted">{m.purpose}</p>
@@ -190,7 +190,7 @@ export default function WorkforcePage() {
                       <p className="text-sm font-medium text-foreground">{st.label}</p>
                       <p className="text-xs text-muted">{plainLanguage(st.detail)}</p>
                     </div>
-                    <span className={cn("shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium", st.state === "DONE" ? "bg-success/10 text-success" : st.state === "READY" ? "bg-accent-soft text-accent-hover" : "bg-surface-muted text-muted")}>{st.state === "DONE" ? "Done" : st.state === "READY" ? "Prepared" : "Locked"}</span>
+                    <span className={cn("shrink-0 rounded-md px-2 py-0.5 text-xs font-medium", st.state === "DONE" ? "bg-success/10 text-success" : st.state === "READY" ? "bg-accent-soft text-accent-hover" : "bg-surface-muted text-muted")}>{st.state === "DONE" ? "Done" : st.state === "READY" ? "Prepared" : "Locked"}</span>
                   </li>
                 ))}
               </ol>
@@ -240,7 +240,7 @@ export default function WorkforcePage() {
               {!ops ? (
                 <p className="text-sm text-muted">Loading agents…</p>
               ) : ops.agents.length === 0 ? (
-                <p className="klaros-card flex flex-wrap items-center justify-between gap-2 border-dashed p-4 text-sm text-muted">
+                <p className="klaros-card flex flex-wrap items-center justify-between gap-2 p-4 text-sm text-muted">
                   No agents are configured yet.
                   <Link href="/agents/new" className="klaros-btn-secondary text-sm">Create an agent</Link>
                 </p>

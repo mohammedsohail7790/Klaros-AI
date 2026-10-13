@@ -28,7 +28,7 @@ export default function HeroVisual() {
             <span className="h-2.5 w-2.5 rounded-full bg-red-300" />
             <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
-            <span className="ml-3 rounded-md bg-surface px-2.5 py-0.5 text-[11px] text-muted-foreground">
+            <span className="ml-3 rounded-md bg-surface px-2.5 py-0.5 text-xs text-muted-foreground">
               meetklaros.com/dashboard
             </span>
           </div>
@@ -55,7 +55,7 @@ export default function HeroVisual() {
                   <div key={stat.label} className="klaros-card p-3">
                     <stat.icon className="h-3.5 w-3.5 text-accent" strokeWidth={2} />
                     <div className="mt-1.5 text-sm font-semibold text-foreground">{stat.value}</div>
-                    <div className="text-[10px] text-muted-foreground">{stat.label}</div>
+                    <div className="text-xs text-muted-foreground">{stat.label}</div>
                   </div>
                 ))}
               </div>

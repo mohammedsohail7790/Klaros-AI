@@ -148,12 +148,12 @@ export default function RequirementsPage() {
                     <li key={r.key} className="klaros-card klaros-card-interactive flex flex-col p-5">
                       <div className="mb-1.5 flex flex-wrap items-center gap-2">
                         <h3 className="text-[15px] font-semibold tracking-tight text-foreground">{r.label}</h3>
-                        <span className={r.required ? "rounded-md bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent-hover" : "rounded-md border border-border px-2 py-0.5 text-[11px] text-muted"}>
+                        <span className={r.required ? "rounded-md bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-hover" : "rounded-md border border-border px-2 py-0.5 text-xs text-muted"}>
                           {r.required ? "Required" : "Suggested"}
                         </span>
                       </div>
                       <p className="text-sm text-muted">{r.description}</p>
-                      <p className="mt-3 rounded-lg bg-surface-muted/70 px-3 py-2 text-sm leading-relaxed text-foreground"><span className="klaros-label mr-1.5">Why</span>{r.why}</p>
+                      <p className="mt-3 rounded-xl bg-surface-muted/70 px-3 py-2 text-sm leading-relaxed text-foreground"><span className="klaros-label mr-1.5">Why</span>{r.why}</p>
                       {r.evidence.filter((e) => e.statement && !r.why.includes(e.statement)).slice(0, 1).map((e, i) => (
                         <blockquote key={e.claim_id ?? `${e.kind}-${i}`} className="mt-2 flex gap-1.5 border-l-2 border-accent/50 pl-2 text-xs italic text-muted">
                           <Quote className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />“{e.statement}”

@@ -324,7 +324,7 @@ export default function BlueprintPage() {
               <ul className="mt-3 space-y-2 text-sm">
                 {[...unknowns, ...assumptions].map((c) => (
                   <li key={c.id} className="klaros-card px-4 py-3">
-                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{CLAIM_KIND[c.claim_type] ?? c.claim_type}</span>
+                    <span className="text-xs font-medium text-muted-foreground">{CLAIM_KIND[c.claim_type] ?? c.claim_type}</span>
                     <p className="text-foreground">{claimText(c)}</p>
                   </li>
                 ))}
@@ -442,7 +442,7 @@ function SectionCard({
         </dl>
       ) : settled.length === 0 && proposed.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          <span className="mr-1.5 rounded border border-border px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide">Missing</span>
+          <span className="mr-1.5 rounded border border-border px-1.5 py-0.5 text-xs font-medium ">Missing</span>
           Klaros doesn't know this yet{editable ? " — add what you know, or leave it for later." : "."}
         </p>
       ) : null}
@@ -451,7 +451,7 @@ function SectionCard({
         <ul className="mt-3 space-y-1 border-t border-border pt-3 text-sm">
           {settled.map((c) => (
             <li key={c.id}>
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{CLAIM_KIND[c.claim_type] ?? c.claim_type} · </span>
+              <span className="text-xs font-medium text-muted-foreground">{CLAIM_KIND[c.claim_type] ?? c.claim_type} · </span>
               <span className="text-foreground">{claimText(c)}</span>
               {SOURCE[c.provenance] && <span className="ml-1.5 text-xs text-muted-foreground">({SOURCE[c.provenance]})</span>}
             </li>

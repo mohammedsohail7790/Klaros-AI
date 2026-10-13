@@ -32,7 +32,7 @@ export function RunProgress({ run, onCancel }: { run: BuilderRun; onCancel: () =
         ))}
       </ol>
       {!active && run.source && run.state === "ready" && (
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           {run.source === "ai" ? `Planned by AI${run.usage.models?.length ? ` (${run.usage.models.join(", ")})` : ""} · ${run.usage.calls ?? 0} model call(s)` : "Planned from your requirements — no AI model was used."}
         </p>
       )}

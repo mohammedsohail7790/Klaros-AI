@@ -178,7 +178,7 @@ export function HallaConnectionPanel({ token, setup, onChanged }: { token: strin
         )}
 
         {halla.webhook_url && (
-          <details className="rounded-lg bg-surface-muted/70 p-3 text-sm">
+          <details className="rounded-xl bg-surface-muted/70 p-3 text-sm">
             <summary className="cursor-pointer text-muted">Advanced — webhook address for Halla</summary>
             <p className="klaros-label mb-1 mt-3">Webhook address to register in Halla</p>
             <div className="flex flex-wrap items-center gap-2">
@@ -192,7 +192,7 @@ export function HallaConnectionPanel({ token, setup, onChanged }: { token: strin
         )}
 
         {canCreate && (
-          <div className="space-y-2 rounded-lg border border-border p-4">
+          <div className="space-y-2 rounded-xl border border-border p-4">
             <p className="text-sm text-foreground">Klaros can create your AI receptionist for you. You don&apos;t need a Halla account or any key.</p>
             <p className="text-xs text-muted">It starts with no phone number and takes no calls. Calls only begin when you connect a number and switch it on.</p>
             <Button onClick={create} disabled={busy !== null}>
@@ -234,7 +234,7 @@ export function HallaConnectionPanel({ token, setup, onChanged }: { token: strin
             ) : agents.length === 0 ? (
               <p className="text-sm text-muted">Halla reports no agents yet. Agents are managed in Halla.</p>
             ) : (
-              <ul className="divide-y divide-border rounded-lg border border-border" aria-label="Halla agents">
+              <ul className="divide-y divide-border rounded-xl border border-border" aria-label="Halla agents">
                 {agents.map((a) => (
                   <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
                     <span className="text-foreground">{a.name}{a.role && <span className="text-muted"> · {a.role}</span>}</span>

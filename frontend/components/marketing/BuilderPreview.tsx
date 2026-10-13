@@ -25,23 +25,23 @@ export function BuilderPreview() {
             <div key={n.label} className="relative">
               <div
                 className={`rounded-xl border p-3 text-left ${
-                  n.tone === "core" ? "border-accent bg-accent-soft/70" : n.tone === "planned" ? "border-dashed border-border-strong" : "border-border bg-surface"
+                  n.tone === "core" ? "border-accent bg-accent-soft/70" : n.tone === "planned" ? "border-border-strong" : "border-border bg-surface"
                 }`}
               >
                 <div className="text-sm font-medium text-foreground">{n.label}</div>
                 <div className="text-xs text-muted">{n.sub}</div>
                 {n.tone === "ready" && (
-                  <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-success">
+                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-success">
                     <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> Ready
                   </span>
                 )}
                 {n.tone === "planned" && (
-                  <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-muted">
+                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-muted">
                     <CircleDashed className="h-3 w-3" aria-hidden="true" /> Planned
                   </span>
                 )}
                 {n.tone === "core" && (
-                  <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-accent-hover">
+                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent-hover">
                     <Settings2 className="h-3 w-3" aria-hidden="true" /> Connects it all
                   </span>
                 )}

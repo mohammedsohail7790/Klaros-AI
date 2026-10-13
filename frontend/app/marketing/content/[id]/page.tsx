@@ -120,7 +120,7 @@ export default function ContentDetailPage() {
           <p className="mt-4 text-sm text-muted">Content not found.</p>
         ) : (
           <div className="mt-4 space-y-6">
-            <div className="rounded-lg border border-border bg-surface p-6">
+            <div className="rounded-xl border border-border bg-surface p-6">
               <div className="flex items-start justify-between">
                 <div>
                   <h1 className="text-2xl font-semibold tracking-tight text-foreground">{content.title}</h1>
@@ -164,7 +164,7 @@ export default function ContentDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border bg-surface p-6">
+            <div className="rounded-xl border border-border bg-surface p-6">
               <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Channel variants</h2>
               {content.variants.length === 0 ? (
                 <p className="text-sm text-muted">No variants yet — add one per channel below.</p>

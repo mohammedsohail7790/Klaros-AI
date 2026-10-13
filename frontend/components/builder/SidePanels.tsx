@@ -103,9 +103,9 @@ export function VersionsPanel({ token, project, versions, onRestored }: { token:
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
                   Version {v.number}
-                  <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium text-muted">{VERSION_KIND[v.kind]}</span>
-                  {v.id === project.current_version_id && <span className="rounded-md bg-success/10 px-1.5 py-0.5 text-[11px] font-medium text-success">Current</span>}
-                  {v.id === project.published_version_id && <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-medium text-accent-hover">Live</span>}
+                  <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-xs font-medium text-muted">{VERSION_KIND[v.kind]}</span>
+                  {v.id === project.current_version_id && <span className="rounded-md bg-success/10 px-1.5 py-0.5 text-xs font-medium text-success">Current</span>}
+                  {v.id === project.published_version_id && <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-xs font-medium text-accent-hover">Live</span>}
                 </p>
                 <p className="text-xs text-muted">{timeAgo(v.created_at)} · +{c.added?.length ?? 0} added · {c.changed?.length ?? 0} changed · {c.removed?.length ?? 0} removed</p>
               </div>
@@ -152,8 +152,8 @@ export function ChecksPanel({ project, validation }: { project: BuilderProject; 
           {project.features.map((f) => {
             const s = FEATURE_STATUS[f.status];
             return (
-              <li key={f.key} className="rounded-lg border border-border p-3">
-                <div className="flex items-center justify-between gap-2"><p className="text-sm font-medium text-foreground">{f.label}</p><span className={cn("shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium", s.tone)}>{s.label}</span></div>
+              <li key={f.key} className="rounded-xl border border-border p-3">
+                <div className="flex items-center justify-between gap-2"><p className="text-sm font-medium text-foreground">{f.label}</p><span className={cn("shrink-0 rounded-md px-2 py-0.5 text-xs font-medium", s.tone)}>{s.label}</span></div>
                 <p className="mt-1 text-xs text-muted">{f.note || s.hint}</p>
               </li>
             );
@@ -218,7 +218,7 @@ export function PublishPanel({ token, project, validation, onChanged }: { token:
         <p className="mt-1 text-xs text-muted">Publishing makes the current version public. Edits you make afterwards stay private until you publish again.</p>
         {live && !livePublishedIsCurrent && <p className="mt-2 text-xs text-warning">You have changes that aren&apos;t live yet.</p>}
         {examples > 0 && !livePublishedIsCurrent && (
-          <label className="mt-3 flex items-start gap-2 rounded-lg bg-warning/10 p-3 text-xs text-foreground">
+          <label className="mt-3 flex items-start gap-2 rounded-xl bg-warning/10 p-3 text-xs text-foreground">
             <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5" />
             <span>{examples} section(s) still contain example content (sample records, pricing, text). I&apos;ve reviewed it and want to publish anyway.</span>
           </label>
@@ -231,7 +231,7 @@ export function PublishPanel({ token, project, validation, onChanged }: { token:
           <p className="mt-3 flex items-center gap-2 break-all text-xs"><a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-accent-hover underline">{url}<ExternalLink className="h-3 w-3" aria-hidden="true" /></a>
             <button type="button" aria-label="Copy link" onClick={() => navigator.clipboard?.writeText(url)} className="rounded p-1 text-muted hover:bg-surface-muted"><Copy className="h-3.5 w-3.5" /></button></p>
         )}
-        <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Published projects are served from Klaros. A custom domain isn&apos;t set up automatically — download the files to host them anywhere.</p>
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Published projects are served from Klaros. A custom domain isn&apos;t set up automatically — download the files to host them anywhere.</p>
       </section>
       <section className="rounded-xl border border-border p-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Download className="h-4 w-4 text-accent" aria-hidden="true" />Download</p>

@@ -136,7 +136,7 @@ export default function EventsPage() {
             {deadLetters.length > 0 && (
               <div className="mb-8">
                 <h2 className="mb-3 text-sm font-medium text-danger">Dead-lettered events ({deadLetters.length})</h2>
-                <div className="overflow-x-auto rounded-lg border border-danger/25">
+                <div className="overflow-x-auto rounded-xl border border-danger/25">
                   <table className="klaros-table">
                     <thead className="bg-surface text-muted">
                       <tr>

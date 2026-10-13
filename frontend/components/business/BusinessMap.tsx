@@ -150,7 +150,7 @@ export function BusinessMap({ map, metrics = {} }: { map: BusinessMapData; metri
                         className={cn(
                           "klaros-card w-full p-2.5 text-left transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                           n.kind === "core" && "border-accent bg-accent-soft/60",
-                          n.planned && "border-dashed",
+                          n.planned && "",
                           isSel && "ring-2 ring-accent/50"
                         )}
                       >

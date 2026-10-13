@@ -121,7 +121,7 @@ export default function NotificationBell({ token }: { token: string | null }) {
       >
         <Bell className="h-4 w-4" strokeWidth={2} />
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-medium text-white">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-xs font-medium text-white">
             {unread > 99 ? "99+" : unread}
           </span>
         )}
@@ -158,7 +158,7 @@ export default function NotificationBell({ token }: { token: string | null }) {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{n.title}</p>
                       <p className="mt-0.5 line-clamp-2 text-xs text-muted">{n.body}</p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{new Date(n.created_at).toLocaleString()}</p>
                     </div>
                     <span
                       role="button"

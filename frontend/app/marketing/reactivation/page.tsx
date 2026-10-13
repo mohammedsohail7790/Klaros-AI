@@ -108,7 +108,7 @@ export default function ReactivationPage() {
             ) : (
               <div className="mb-6 space-y-2">
                 {campaigns.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                  <div key={c.id} className="flex items-center justify-between rounded-xl border border-border p-3">
                     <span className="text-sm">{c.name}</span>
                     <div className="flex gap-2">
                       <button disabled={busy} onClick={() => handleIdentify(c.id, "customers")} className="text-xs underline text-muted hover:text-foreground">
