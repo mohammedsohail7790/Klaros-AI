@@ -15,7 +15,7 @@ export default function LegalPage({ title, updated, intro, sections }: { title: 
       <GradientBackdrop />
       <MarketingHeader />
       <article className="mx-auto max-w-3xl px-6 pb-24 pt-16 sm:pt-20">
-        <h1 className="font-display text-4xl text-foreground">{title}</h1>
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground">{title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">Last updated {updated}</p>
         <p className="mt-6 text-base leading-relaxed text-muted">{intro}</p>
         <nav aria-label="On this page" className="mt-8 rounded-xl border border-border bg-surface p-4 text-sm">
@@ -31,7 +31,7 @@ export default function LegalPage({ title, updated, intro, sections }: { title: 
         </nav>
         {sections.map((s, i) => (
           <section key={s.heading} id={`s${i + 1}`} className="mt-10 scroll-mt-24">
-            <h2 className="font-display text-2xl text-foreground">
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
               {i + 1}. {s.heading}
             </h2>
             {s.body.map((p) => (

@@ -50,15 +50,24 @@ requires_real_postgres = pytest.mark.skipif(
 )
 
 
+def _plain(url) -> str:
+    """A connection URL as a string WITH its password. SQLAlchemy 2 masks the password in `str(url)` ("user:***@host"), so a DSN built that way
+    authenticates with the literal password "***" and Postgres rejects it ("password authentication failed for user ...")."""
+    return url.render_as_string(hide_password=False)
+
+
+def _owner_dsn() -> str:
+    """The owner connection as a plain asyncpg DSN (no SQLAlchemy driver suffix), password included."""
+    return _plain(owner_engine.url).replace("postgresql+asyncpg", "postgresql")
+
+
 def _app_role_url(app_user: str, app_password: str) -> str:
     """Build an app-role connection URL against the SAME host/db this test
     session's owner engine already targets (works identically against
     Docker Compose Postgres, CI's Postgres service container, or a
     pgserver-backed disposable instance — never hardcodes a host)."""
     owner_url = owner_engine.url
-    return str(
-        owner_url.set(username=app_user, password=app_password, drivername="postgresql+asyncpg")
-    )
+    return _plain(owner_url.set(username=app_user, password=app_password, drivername="postgresql+asyncpg"))
 
 
 @pytest_asyncio.fixture
@@ -74,7 +83,7 @@ async def app_role():
     app_password = uuid.uuid4().hex
 
     await provision_app_role(
-        owner_dsn=str(owner_engine.url).replace("postgresql+asyncpg", "postgresql"),
+        owner_dsn=_owner_dsn(),
         app_user=app_user,
         app_password=app_password,
     )
@@ -299,7 +308,7 @@ async def test_provisioning_is_idempotent(app_role) -> None:
     redeploy or a second `docker compose up` performs."""
     app_user, app_engine = app_role
     await provision_app_role(
-        owner_dsn=str(owner_engine.url).replace("postgresql+asyncpg", "postgresql"),
+        owner_dsn=_owner_dsn(),
         app_user=app_user,
         app_password=uuid.uuid4().hex,
     )

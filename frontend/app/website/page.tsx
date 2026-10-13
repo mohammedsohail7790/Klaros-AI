@@ -23,6 +23,7 @@ import { Input, Label } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SiteView } from "@/components/website/SiteView";
 import { BRAND_LOOKS, FONT_OPTIONS, contrastRatio } from "@/lib/brandLooks";
 import {
   ApiError,
@@ -90,7 +91,7 @@ export default function WebsitePage() {
   if (website === undefined) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
           <Skeleton />
         </div>
       </AppShell>
@@ -106,7 +107,7 @@ export default function WebsitePage() {
           note="Built from your Business Blueprint: it only includes pages your business actually needs, and nothing goes live until you publish."
         />
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Website</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Website</h1>
           {website &&
             (website.current_published_version_id ? (
               <a href={`/w/${user?.tenant_id}`} target="_blank" rel="noreferrer" className="text-sm text-accent underline">
@@ -192,6 +193,7 @@ function VersionEditor({
   const [activePageSlug, setActivePageSlug] = useState<string | null>(null);
   const [editSections, setEditSections] = useState<WebsiteSection[] | null>(null);
   const isDraft = version.status === "DRAFT";
+  const [view, setView] = useState<"edit" | "preview">("edit");
 
   const loadPreview = useCallback(async () => {
     setError(null);
@@ -355,6 +357,45 @@ function VersionEditor({
         )}
       </div>
 
+      <div role="tablist" aria-label="Editor view" className="inline-flex rounded-lg border border-border bg-surface-muted p-0.5 text-sm">
+        {(["edit", "preview"] as const).map((v) => (
+          <button
+            key={v}
+            role="tab"
+            aria-selected={view === v}
+            onClick={() => setView(v)}
+            className={`rounded-md px-3.5 py-1.5 font-medium transition-colors ${view === v ? "bg-surface text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}
+          >
+            {v === "edit" ? "Edit" : "Live preview"}
+          </button>
+        ))}
+      </div>
+
+      {view === "preview" ? (
+        <div
+          className="overflow-hidden rounded-xl border border-border bg-surface shadow-raised"
+          onClick={(e) => {
+            const a = (e.target as HTMLElement).closest("a");
+            if (!a) return;
+            e.preventDefault();
+            const h = a.getAttribute("href") ?? "";
+            if (h.startsWith("#page-")) setActivePageSlug(h.slice(6));
+          }}
+        >
+          <div className="flex items-center gap-2 border-b border-border bg-surface-muted px-3 py-2">
+            <span className="flex gap-1.5" aria-hidden="true">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-300" />
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
+            </span>
+            <span className="mx-auto max-w-xs flex-1 truncate rounded-md bg-surface px-3 py-1 text-center text-xs text-muted">/{website.slug}</span>
+          </div>
+          <div className="max-h-[70vh] overflow-auto">
+            <SiteView site={rendered} tenantId={website.id} pageSlug={activePageSlug} hrefForPage={(slug) => `#page-${slug}`} preview />
+          </div>
+        </div>
+      ) : (
+        <>
       {isDraft && <ThemeEditor theme={rendered.theme} onSave={handleThemeChange} busy={busy} />}
 
       <div>
@@ -435,6 +476,8 @@ function VersionEditor({
             </div>
           )}
         </div>
+      )}
+        </>
       )}
     </div>
   );

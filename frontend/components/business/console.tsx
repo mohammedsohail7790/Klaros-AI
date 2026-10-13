@@ -9,10 +9,10 @@ import { WorkflowDetailToggle } from "./WorkflowDetail";
 
 export function ConsoleSection({ id, title, hint, children, action }: { id: string; title: string; hint?: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <section id={id} aria-labelledby={`${id}-h`} className="mb-8 scroll-mt-20">
+    <section id={id} aria-labelledby={`${id}-h`} className="mb-9 scroll-mt-20">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 id={`${id}-h`} className="font-display text-xl text-foreground">{title}</h2>
+          <h2 id={`${id}-h`} className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
           {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
         </div>
         {action}

@@ -185,8 +185,8 @@ export default function KnowledgePage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-2">Knowledge Layer</h1>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-2">Knowledge Layer</h1>
         <p className="mb-6 text-sm text-muted">
           The real, editable source of truth for how your business actually operates — pricing rules,
           qualification criteria, brand voice. Klaros reads these where wired in (e.g. the Morning Brief's
@@ -234,7 +234,7 @@ export default function KnowledgePage() {
               <button
                 onClick={handleSearch}
                 disabled={searching || !queryDraft.trim()}
-                className="rounded-md border border-border-strong px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Search
               </button>
@@ -295,7 +295,7 @@ export default function KnowledgePage() {
                 <button
                   onClick={handleCreate}
                   disabled={saving || !newPath.trim()}
-                  className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                 >
                   New
                 </button>

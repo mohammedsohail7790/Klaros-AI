@@ -99,23 +99,33 @@ export default function BusinessHomePage() {
         )}
 
         {/* BUSINESS OVERVIEW */}
-        <header className="klaros-card mb-6 p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
+        <header className="klaros-card relative mb-8 overflow-hidden p-5 sm:p-7">
+          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent via-violet-500 to-fuchsia-500" />
+          <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-4">
+              <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-violet-600 text-xl font-semibold text-white shadow-md">
+                {(business.name ?? business.summary ?? "K").trim().charAt(0).toUpperCase()}
+              </span>
+              <div className="min-w-0">
               <p className="klaros-label">{business.industry ?? "Your business"}</p>
-              <h1 className="font-display text-3xl text-foreground sm:text-4xl">{business.name ?? business.summary ?? "Your business"}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{business.name ?? business.summary ?? "Your business"}</h1>
               <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-                <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-foreground">{statusText}</span>
+                <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${operating ? "border-success/25 bg-success/[0.08] text-success" : "border-border-strong bg-surface-muted text-foreground"}`}>
+                  <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${operating ? "bg-success" : "bg-muted-foreground"}`} />
+                  {statusText}
+                </span>
                 <span>Stage: <span className="font-medium text-foreground">{stage}</span></span>
                 {inProgress && <Link href="/business" className="underline underline-offset-2">Continue setup</Link>}
               </p>
+              </div>
             </div>
             <div className="flex gap-2">
               <Link href="/business/map" className="klaros-btn-secondary text-sm">Business map</Link>
               <Link href="/business/blueprint" className="klaros-btn-secondary text-sm">Blueprint</Link>
             </div>
           </div>
-          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
+          <dl className="relative mt-6 grid gap-5 border-t border-border pt-5 text-sm sm:grid-cols-3">
             {business.summary && <div><dt className="klaros-label">What it is</dt><dd className="text-foreground">{business.summary}</dd></div>}
             {business.customers && <div><dt className="klaros-label">Customers</dt><dd className="text-foreground">{business.customers}</dd></div>}
             {business.business_model && <div><dt className="klaros-label">How it earns</dt><dd className="text-foreground">{business.business_model}</dd></div>}

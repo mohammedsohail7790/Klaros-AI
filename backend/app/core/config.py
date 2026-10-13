@@ -241,6 +241,23 @@ class Settings(BaseSettings):
     HALLA_WEBHOOK_LEASE_SECONDS: int = 120
     # Public base URL of THIS Klaros API, used only to show the tenant the webhook URL to register in Halla.
     KLAROS_PUBLIC_API_URL: str | None = None
+    # --- App Builder (app/builder): per-task AI budgets and run limits. The AI_* / *_MAX_OUTPUT_TOKENS defaults above are sized for one-line
+    # briefs; planning a multi-page project needs far more output and a longer wait.
+    BUILDER_PLAN_MAX_OUTPUT_TOKENS: int = 9000
+    BUILDER_EDIT_MAX_OUTPUT_TOKENS: int = 6000
+    BUILDER_LLM_TIMEOUT_SECONDS: float = 120.0
+    BUILDER_PLAN_MODEL: str | None = None  # None = the provider's configured model
+    BUILDER_MAX_REPAIR_ATTEMPTS: int = 2
+    BUILDER_RUN_TIMEOUT_SECONDS: float = 420.0
+    BUILDER_MAX_LLM_CALLS_PER_RUN: int = 6
+    BUILDER_MAX_ACTIVE_RUNS_PER_TENANT: int = 1
+    BUILDER_MAX_RUNS_PER_TENANT_PER_HOUR: int = 20
+    BUILDER_MAX_PROJECTS_PER_TENANT: int = 25
+    BUILDER_VERSIONS_KEPT: int = 30
+    BUILDER_RUN_STALE_AFTER_SECONDS: int = 120
+    BUILDER_PREVIEW_TOKEN_TTL_SECONDS: int = 3600
+    BUILDER_PUBLIC_BASE_URL: str | None = None  # where published projects are served from (defaults to the API host)
+
     ANTHROPIC_API_KEY: str | None = None
     # "auto" (default) picks a real provider only if its key is set, preferring
     # anthropic > openai > groq > deepseek > nvidia > google, else falls back

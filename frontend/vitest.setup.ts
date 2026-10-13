@@ -16,3 +16,11 @@ vi.mock("next/font/google", () => {
     Tajawal: family(),
   };
 });
+
+// jsdom lacks pointer-capture and scroll APIs that Sonner, Radix and cmdk call.
+if (typeof Element !== "undefined") {
+  Element.prototype.setPointerCapture ??= () => {};
+  Element.prototype.releasePointerCapture ??= () => {};
+  Element.prototype.hasPointerCapture ??= () => false;
+  Element.prototype.scrollIntoView ??= () => {};
+}

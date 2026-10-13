@@ -279,6 +279,9 @@ class ComponentType(StrEnum):
     STEPS = "STEPS"
     FAQ = "FAQ"
     TRUST_BAR = "TRUST_BAR"
+    # v3: the two blocks that make a generated site read as a modern, designed website.
+    SHOWCASE = "SHOWCASE"
+    SPLIT = "SPLIT"
 
 
 class DataSourceRef(_SafeModel):
@@ -305,11 +308,13 @@ class HeroProps(_SafeModel):
     secondary_cta_text: ShortText | None = None
     secondary_cta_url: ShortText | None = None
     background_image_url: ShortText | None = None
+    # A short line above the headline (for example the kind of business). Plain text.
+    eyebrow: ShortText | None = None
     # A short route down the side of the banner (for example the first steps of the customer journey). Omitted when there is nothing real to show.
     highlights_title: ShortText | None = None
     highlights: list[ShortText] = Field(default_factory=list, max_length=5)
 
-    @field_validator("headline", "subheadline", "cta_text", "secondary_cta_text", "highlights_title")
+    @field_validator("headline", "subheadline", "cta_text", "secondary_cta_text", "highlights_title", "eyebrow")
     @classmethod
     def _validate_text(cls, v: str | None) -> str | None:
         if v is None:
@@ -533,6 +538,86 @@ class FooterProps(_SafeModel):
         return reject_unsafe_text(v, max_length=_MAX_SHORT_TEXT)
 
 
+class ShowcaseItem(_SafeModel):
+    """One product, service or offer card. The image is optional; without one the site draws a designed tile for it."""
+
+    title: ShortText
+    description: LongText | None = None
+    price: ShortText | None = None
+    badge: ShortText | None = None
+    image_url: ShortText | None = None
+
+    @field_validator("title", "description", "price", "badge")
+    @classmethod
+    def _validate_text(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return reject_unsafe_text(v)
+
+    @field_validator("image_url")
+    @classmethod
+    def _validate_image(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return None
+        if not v.strip().lower().startswith("https://"):
+            raise UnsafeContentError("Image URLs must start with https://")
+        return reject_unsafe_url(v)
+
+
+class ShowcaseProps(_SafeModel):
+    title: ShortText | None = None
+    intro: LongText | None = None
+    items: list[ShowcaseItem] = Field(default_factory=list, max_length=12)
+
+    @field_validator("title", "intro")
+    @classmethod
+    def _validate_text(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return reject_unsafe_text(v)
+
+
+class SplitProps(_SafeModel):
+    """Text beside a picture: an about block, or one feature explained. With no image the site draws a designed panel."""
+
+    eyebrow: ShortText | None = None
+    heading: ShortText
+    body: LongText
+    bullets: list[ShortText] = Field(default_factory=list, max_length=6)
+    image_url: ShortText | None = None
+    image_side: Literal["LEFT", "RIGHT"] = "RIGHT"
+    cta_text: ShortText | None = None
+    cta_url: ShortText | None = None
+
+    @field_validator("eyebrow", "heading", "body", "cta_text")
+    @classmethod
+    def _validate_text(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return reject_unsafe_text(v)
+
+    @field_validator("bullets")
+    @classmethod
+    def _validate_bullets(cls, v: list[str]) -> list[str]:
+        return [reject_unsafe_text(x, max_length=_MAX_SHORT_TEXT) for x in v]
+
+    @field_validator("image_url")
+    @classmethod
+    def _validate_image(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return None
+        if not v.strip().lower().startswith("https://"):
+            raise UnsafeContentError("Image URLs must start with https://")
+        return reject_unsafe_url(v)
+
+    @field_validator("cta_url")
+    @classmethod
+    def _validate_cta_url(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return None
+        return reject_unsafe_url(v)
+
+
 _PROPS_BY_TYPE: dict[ComponentType, type[_SafeModel]] = {
     ComponentType.HERO: HeroProps,
     ComponentType.TEXT: TextProps,
@@ -545,6 +630,8 @@ _PROPS_BY_TYPE: dict[ComponentType, type[_SafeModel]] = {
     ComponentType.STEPS: StepsProps,
     ComponentType.FAQ: FaqProps,
     ComponentType.TRUST_BAR: TrustBarProps,
+    ComponentType.SHOWCASE: ShowcaseProps,
+    ComponentType.SPLIT: SplitProps,
 }
 
 # Only these two component types are permitted to carry a data_source

@@ -20,7 +20,7 @@ export function PageHeader({
           </span>
         )}
         <div className="min-w-0">
-          <h1 className="font-display text-2xl text-foreground">{title}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
           {description && <p className="mt-1 text-sm text-muted">{description}</p>}
         </div>
       </div>

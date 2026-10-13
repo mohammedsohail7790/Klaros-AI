@@ -73,7 +73,7 @@ export function LeadOperationsPanel({
 
   return (
     <section aria-labelledby="lead-ops-h" className="rounded-lg border border-border bg-surface p-6">
-      <h2 id="lead-ops-h" className="flex items-center gap-2 font-display text-xl text-foreground">
+      <h2 id="lead-ops-h" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
         <Stethoscope className="h-5 w-5 text-accent" aria-hidden="true" /> Patient enquiry
       </h2>
 

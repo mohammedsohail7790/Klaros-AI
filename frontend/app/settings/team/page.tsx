@@ -120,10 +120,10 @@ export default function TeamSettingsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="font-display text-2xl text-foreground">Team</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Team</h1>
             <p className="mt-1 text-sm text-muted">
               Invite people to your workspace with real, enforced roles — every action they take goes
               through the same governed permission pipeline as your own.
@@ -148,7 +148,7 @@ export default function TeamSettingsPage() {
           <Skeleton />
         ) : (
           <>
-            <h2 className="mb-3 font-medium">Members</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight">Members</h2>
             <div className="mb-8 klaros-table-wrap">
               <table className="klaros-table">
                 <thead className="bg-surface text-muted">
@@ -203,7 +203,7 @@ export default function TeamSettingsPage() {
 
             {invites && invites.length > 0 && (
               <>
-                <h2 className="mb-3 font-medium">Pending invites</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight">Pending invites</h2>
                 <div className="klaros-table-wrap">
                   <table className="klaros-table">
                     <thead className="bg-surface text-muted">

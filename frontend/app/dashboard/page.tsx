@@ -91,7 +91,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   automation_failed: "Automation",
 };
 
-const PENDING_MODULES: string[] = [];
 
 // The real, working connectors Klaros ships today — deliberately not a
 // generic "popular apps" marketplace list. Each maps to a segment of the
@@ -298,13 +297,13 @@ export default function DashboardPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-10">
-        <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-10">
+        <header className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="font-display text-2xl text-foreground">Owner Cockpit</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{user ? `Welcome back, ${user.full_name.split(" ")[0]}` : "Your business today"}</h1>
             {user && (
               <p className="text-sm text-muted">
-                Signed in as {user.full_name} · {user.email} · role {user.role}
+                Here is what your business and your AI team did today.
               </p>
             )}
           </div>
@@ -326,7 +325,7 @@ export default function DashboardPage() {
               )}
               <span>
                 {killSwitch.ai_paused
-                  ? "AI is PAUSED tenant-wide — every AI and automation action is refused until you turn it back on. You can still work manually."
+                  ? "AI is paused for your whole workspace — no AI or automation action will run until you turn it back on. You can still work manually."
                   : "AI is active — automations and AI-initiated actions are running normally."}
               </span>
             </div>
@@ -356,7 +355,7 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div className="mb-3 flex items-center justify-between">
-                  <h2 className="text-sm font-medium text-muted">Getting started</h2>
+                  <h2 className="text-base font-semibold tracking-tight text-foreground">Getting started</h2>
                   <span className="text-xs text-muted">{gettingStartedRemaining} step(s) left</span>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -390,7 +389,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted">Needs your attention</h2>
+            <h2 className="text-base font-semibold tracking-tight text-foreground">Needs your attention</h2>
             {attention && attention.items.length > 0 && (
               <span className="text-xs text-muted">
                 {attention.critical_count > 0 && <span className="text-danger">{attention.critical_count} critical</span>}
@@ -437,7 +436,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted">Autonomy status — today</h2>
+            <h2 className="text-base font-semibold tracking-tight text-foreground">What your AI did today</h2>
             <Link href="/settings/automation" className="text-xs text-muted underline">
               Configure automation
             </Link>
@@ -460,7 +459,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted">AI Control Center</h2>
+            <h2 className="text-base font-semibold tracking-tight text-foreground">AI Control Center</h2>
             <Link href="/ai-activity" className="text-xs text-muted underline">
               View AI activity
             </Link>
@@ -523,7 +522,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted">Automations</h2>
+            <h2 className="text-base font-semibold tracking-tight text-foreground">Automations</h2>
             <Link href="/automations" className="text-xs text-muted underline">
               Manage automations
             </Link>
@@ -559,7 +558,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted">Morning Brief</h2>
+            <h2 className="text-base font-semibold tracking-tight text-foreground">Morning Brief</h2>
             <Link href="/morning-brief" className="text-xs text-muted underline">
               View full brief
             </Link>
@@ -568,7 +567,7 @@ export default function DashboardPage() {
             <div className="klaros-card p-6">
               <div className="mb-2 flex items-center gap-2">
                 <Badge status={brief.mode === "DETERMINISTIC" ? "DRAFT" : "AI"}>
-                  {brief.mode === "DETERMINISTIC" ? "DETERMINISTIC SUMMARY — AI NOT CONNECTED" : "AI"}
+                  {brief.mode === "DETERMINISTIC" ? "Standard summary — AI not connected" : "AI"}
                 </Badge>
               </div>
               <p className="mb-4">{brief.headline}</p>
@@ -634,7 +633,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-medium text-muted">Today — CRM</h2>
+          <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Today — CRM</h2>
           {authLoading || loading ? (
             <Skeleton />
           ) : error ? (
@@ -659,7 +658,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted">Commercial Pipeline — Quote → Contract → Deposit → Job</h2>
+            <h2 className="text-base font-semibold tracking-tight text-foreground">Commercial Pipeline — Quote → Contract → Deposit → Job</h2>
             <Link href="/quotes" className="text-xs text-muted underline">
               View quotes
             </Link>
@@ -711,7 +710,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted">Operations — Jobs in flight</h2>
+            <h2 className="text-base font-semibold tracking-tight text-foreground">Operations — Jobs in flight</h2>
             <Link href="/operations" className="text-xs text-muted underline">
               View operations
             </Link>
@@ -761,7 +760,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-medium text-muted">Business Health — Finance</h2>
+          <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Business Health — Finance</h2>
           {finance?.needs_attention && (
             <Alert variant="warning" className="mb-4">
               FINANCE NEEDS ATTENTION — {finance.overdue_invoice_count} overdue invoice(s),{" "}
@@ -783,7 +782,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-medium text-muted">Marketing &amp; Demand Generation</h2>
+          <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Marketing &amp; Demand Generation</h2>
           {marketing?.needs_attention && (
             <Alert variant="warning" className="mb-4">
               MARKETING NEEDS ATTENTION — {marketing.open_marketing_exception_count} open marketing exception(s).
@@ -802,7 +801,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-medium text-muted">Retention &amp; Referral</h2>
+          <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Retention &amp; Referral</h2>
           {retention?.needs_attention && (
             <Alert variant="warning" className="mb-4">
               RETENTION NEEDS ATTENTION — {retention.open_retention_exception_count} open retention exception(s).
@@ -830,7 +829,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted">Recent Activity</h2>
+            <h2 className="text-base font-semibold tracking-tight text-foreground">Recent Activity</h2>
             <div className="flex items-center gap-2">
               <select
                 value={activityCategory}
@@ -918,26 +917,6 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {PENDING_MODULES.length > 0 && (
-          <section className="klaros-card p-6">
-            <h2 className="mb-2 text-sm font-medium text-muted">Foundation status</h2>
-            <p className="text-sm text-muted">
-              Authentication, multi-tenancy, RBAC, the event bus, and CRM (leads/customers/
-              appointments) are live. The modules below are not yet built — this cockpit will never
-              show placeholder numbers for them.
-            </p>
-            <ul className="mt-4 space-y-2">
-              {PENDING_MODULES.map((m) => (
-                <li key={m} className="flex items-center justify-between text-sm">
-                  <span className="text-muted">{m}</span>
-                  <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs text-muted">
-                    not connected
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
       </div>
     </AppShell>
   );

@@ -72,7 +72,7 @@ function AcceptInviteInner() {
     <main className="flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
       <GradientBackdrop />
       <div className="w-full max-w-sm">
-        <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground">
+        <Link href="/" className="font-display mb-8 block text-center text-xl text-foreground">
           Klaros AI
         </Link>
         <div className="klaros-glass rounded-2xl p-7">
@@ -80,7 +80,7 @@ function AcceptInviteInner() {
             <Skeleton />
           ) : previewError || !preview ? (
             <>
-              <h1 className="font-display text-2xl text-foreground">Invite not available</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Invite not available</h1>
               <p className="mt-2 text-sm text-danger">{previewError}</p>
               <p className="mt-4 text-sm text-muted">
                 Ask whoever invited you to send a new invite from Settings → Team.
@@ -88,7 +88,7 @@ function AcceptInviteInner() {
             </>
           ) : (
             <>
-              <h1 className="font-display text-2xl text-foreground">Join {preview.organization_name}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Join {preview.organization_name}</h1>
               <p className="mt-1 text-sm text-muted">
                 You&apos;ve been invited as <span className="font-medium text-foreground">{preview.role}</span>.
                 Set a password to finish joining {preview.email}.

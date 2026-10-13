@@ -126,7 +126,7 @@ export default function SetupPage() {
             <div className="flex items-start gap-3">
               <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft text-accent"><Stethoscope className="h-4 w-4" aria-hidden="true" /></span>
               <div>
-                <h2 className="font-display text-xl text-foreground">{available[0]?.name ?? "Medical Tourism"}</h2>
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">{available[0]?.name ?? "Medical Tourism"}</h2>
                 <p className="text-sm text-muted">{available[0]?.description}</p>
               </div>
             </div>
@@ -160,7 +160,7 @@ export default function SetupPage() {
             <section aria-label="Your business" className="klaros-card p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-xl text-foreground">{setup.profile.business_name}</h2>
+                  <h2 className="text-xl font-semibold tracking-tight text-foreground">{setup.profile.business_name}</h2>
                   <p className="mt-1 text-sm text-muted">{setup.profile.business_model_label} · patients in {setup.profile.patient_markets.join(", ")} · treatment in {setup.profile.destinations.join(", ")}</p>
                   <p className="mt-1 text-sm text-muted">Procedures: {setup.profile.procedures.join(", ")}</p>
                 </div>
@@ -169,7 +169,7 @@ export default function SetupPage() {
             </section>
 
             <section aria-label="Launch checklist">
-              <h2 className="font-display text-lg text-foreground">Launch checklist</h2>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">Launch checklist</h2>
               <p className="mt-0.5 text-sm text-muted" data-testid="checklist-summary">{setup.ready_to_launch ? "Everything on the list is in place." : `${setup.open_items} item${setup.open_items === 1 ? "" : "s"} still open.`} Klaros only marks what it can see as done.</p>
               <ul className="mt-3 divide-y divide-border rounded-md border border-border">
                 {(setup.checklist ?? []).map((i) => (
@@ -197,7 +197,7 @@ export default function SetupPage() {
             <ConsentWordingCard token={token} onChanged={async () => { if (token) setSetup(await getMedicalTourismSetup(token)); }} />
 
             <section aria-label="Drafts">
-              <h2 className="font-display text-lg text-foreground">Drafts for your approval</h2>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">Drafts for your approval</h2>
               <p className="mt-0.5 text-sm text-muted">{setup.note}</p>
               <div className="mt-3 space-y-2">
                 {Object.entries(setup.drafts ?? {}).map(([key, d]) => (

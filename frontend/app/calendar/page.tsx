@@ -152,9 +152,9 @@ function CalendarPageInner() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Calendar</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Calendar</h1>
           <div className="flex items-center gap-2">
             {googleCalendars.length > 1 && (
               <select
@@ -196,7 +196,7 @@ function CalendarPageInner() {
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <section>
-              <h2 className="mb-3 text-sm font-medium text-muted">
+              <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">
                 Appointments ({appointments.length})
               </h2>
               {appointments.length === 0 ? (
@@ -283,7 +283,7 @@ function CalendarPageInner() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-sm font-medium text-muted">Open slots ({slots.length})</h2>
+              <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Open slots ({slots.length})</h2>
               {slots.length === 0 ? (
                 <EmptyState icon={CalendarX} title="No open slots this day." compact />
               ) : (

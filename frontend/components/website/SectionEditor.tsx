@@ -32,6 +32,8 @@ export const COMPONENT_TYPES: WebsiteSection["component_type"][] = [
   "STEPS",
   "FAQ",
   "TRUST_BAR",
+  "SHOWCASE",
+  "SPLIT",
 ];
 
 /** What each building block is called in the editor (the stored type stays the closed enum). */
@@ -47,6 +49,8 @@ export const SECTION_LABELS: Record<WebsiteSection["component_type"], string> = 
   STEPS: "Steps",
   FAQ: "Questions and answers",
   TRUST_BAR: "Facts bar",
+  SHOWCASE: "Product / offer cards",
+  SPLIT: "Text beside a picture",
 };
 
 export function defaultPropsFor(type: WebsiteSection["component_type"]): Props {
@@ -73,6 +77,10 @@ export function defaultPropsFor(type: WebsiteSection["component_type"]): Props {
       return { title: "Questions", items: [{ question: "A question people ask", answer: "Your answer." }] };
     case "TRUST_BAR":
       return { items: ["Something true about your business"] };
+    case "SHOWCASE":
+      return { title: "What we offer", items: [{ title: "First product or service" }] };
+    case "SPLIT":
+      return { heading: "About us", body: "Tell visitors what makes your business worth choosing.", bullets: [], image_side: "RIGHT" };
   }
 }
 
@@ -133,7 +141,9 @@ export function SectionPropsForm({
     case "HERO":
       return (
         <div className="space-y-2">
+          <Field label="Small line above the headline (optional)" value={String(props.eyebrow ?? "")} onChange={(v) => update("eyebrow", v)} />
           <Field label="Headline" value={String(props.headline ?? "")} onChange={(v) => update("headline", v)} />
+          <Field label="Hero picture (optional, https:// link)" value={String(props.background_image_url ?? "")} onChange={(v) => update("background_image_url", v)} placeholder="https://… — leave empty for a designed visual" />
           <Field label="Subheadline" value={String(props.subheadline ?? "")} onChange={(v) => update("subheadline", v)} textarea />
           <Field label="CTA text" value={String(props.cta_text ?? "")} onChange={(v) => update("cta_text", v)} />
           <Field label="CTA URL" value={String(props.cta_url ?? "")} onChange={(v) => update("cta_url", v)} placeholder="https://, mailto: or tel:" />
@@ -268,6 +278,63 @@ export function SectionPropsForm({
               Add question
             </Button>
           )}
+        </div>
+      );
+    }
+    case "SHOWCASE": {
+      const items = Array.isArray(props.items) ? (props.items as Props[]) : [];
+      const setItem = (i: number, key: string, v: string) => {
+        const next = [...items];
+        next[i] = { ...items[i], [key]: v === "" && key !== "title" ? undefined : v };
+        update("items", next);
+      };
+      return (
+        <div className="space-y-2">
+          <Field label="Title (optional)" value={String(props.title ?? "")} onChange={(v) => update("title", v)} />
+          <Field label="Introduction (optional)" value={String(props.intro ?? "")} onChange={(v) => update("intro", v)} textarea />
+          {items.map((item, i) => (
+            <div key={i} className="space-y-1 rounded-lg border border-border p-3">
+              <Field label={`Card ${i + 1} name`} value={String(item.title ?? "")} onChange={(v) => setItem(i, "title", v)} />
+              <Field label="Description" value={String(item.description ?? "")} onChange={(v) => setItem(i, "description", v)} textarea />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Field label="Price (optional)" value={String(item.price ?? "")} onChange={(v) => setItem(i, "price", v)} placeholder="e.g. $39" />
+                <Field label="Label (optional)" value={String(item.badge ?? "")} onChange={(v) => setItem(i, "badge", v)} placeholder="e.g. New" />
+              </div>
+              <Field label="Picture (optional, https:// link)" value={String(item.image_url ?? "")} onChange={(v) => setItem(i, "image_url", v)} placeholder="Leave empty for a designed tile" />
+              <Button variant="ghost" size="sm" onClick={() => update("items", items.filter((_, j) => j !== i))}>
+                Remove card
+              </Button>
+            </div>
+          ))}
+          <Button variant="secondary" size="sm" onClick={() => update("items", [...items, { title: "New item" }])}>
+            Add card
+          </Button>
+        </div>
+      );
+    }
+    case "SPLIT": {
+      const bullets = Array.isArray(props.bullets) ? (props.bullets as string[]) : [];
+      return (
+        <div className="space-y-2">
+          <Field label="Small line above the heading (optional)" value={String(props.eyebrow ?? "")} onChange={(v) => update("eyebrow", v)} />
+          <Field label="Heading" value={String(props.heading ?? "")} onChange={(v) => update("heading", v)} />
+          <Field label="Text" value={String(props.body ?? "")} onChange={(v) => update("body", v)} textarea />
+          <Field
+            label="Key points (one per line, up to 6)"
+            value={bullets.join("\n")}
+            onChange={(v) => update("bullets", v.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 6))}
+            textarea
+          />
+          <Field label="Picture (optional, https:// link)" value={String(props.image_url ?? "")} onChange={(v) => update("image_url", v)} placeholder="Leave empty for a designed visual" />
+          <div className="space-y-1">
+            <Label>Picture side</Label>
+            <select className="klaros-input" value={String(props.image_side ?? "RIGHT")} onChange={(e) => update("image_side", e.target.value)}>
+              <option value="RIGHT">Right</option>
+              <option value="LEFT">Left</option>
+            </select>
+          </div>
+          <Field label="Button text (optional)" value={String(props.cta_text ?? "")} onChange={(v) => update("cta_text", v)} />
+          <Field label="Button link (optional)" value={String(props.cta_url ?? "")} onChange={(v) => update("cta_url", v)} placeholder="https://, mailto: or tel:" />
         </div>
       );
     }

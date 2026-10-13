@@ -58,6 +58,7 @@ from app.api.v1 import (
     public_invites,
     public_leads,
     public_quotes,
+    builder,
     public_websites,
     quickbooks_oauth,
     quotes,
@@ -124,6 +125,8 @@ api_router.include_router(public_leads.router)
 api_router.include_router(public_invites.router)
 api_router.include_router(public_contact.router)
 api_router.include_router(public_websites.router)
+api_router.include_router(builder.preview_router)
+api_router.include_router(builder.site_router)
 api_router.include_router(payments.router)
 api_router.include_router(ar.router)
 api_router.include_router(refunds.router)
@@ -164,3 +167,4 @@ api_router.include_router(medical_tourism.router)
 api_router.include_router(mt_referrals.router)
 api_router.include_router(business_setup.router)
 api_router.include_router(websites.router)
+api_router.include_router(builder.router)

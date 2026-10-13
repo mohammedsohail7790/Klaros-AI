@@ -81,15 +81,15 @@ export default function ReactivationPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-6">Database Reactivation</h1>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-6">Database Reactivation</h1>
 
         <form onSubmit={handleCreate} className="mb-6 flex items-end gap-2">
           <div>
             <label className="block text-xs text-muted">New reactivation campaign</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className="w-64 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
           </div>
-          <button type="submit" disabled={busy || !name.trim()} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
+          <button type="submit" disabled={busy || !name.trim()} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
             Create
           </button>
         </form>
@@ -100,7 +100,7 @@ export default function ReactivationPage() {
           <Skeleton />
         ) : (
           <>
-            <h2 className="mb-3 text-sm font-medium text-muted">Campaigns</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Campaigns</h2>
             {campaigns.length === 0 ? (
               <div className="mb-6">
                 <EmptyState icon={Heart} title="No reactivation campaigns yet." />
@@ -123,7 +123,7 @@ export default function ReactivationPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-sm font-medium text-muted">Candidates ({candidates.length})</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Candidates ({candidates.length})</h2>
             {candidates.length === 0 ? (
               <EmptyState icon={Target} title="No candidates identified yet." />
             ) : (
