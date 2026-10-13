@@ -41,7 +41,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         closeButton
         toastOptions={{
           classNames: {
-            toast: "!rounded-xl !border-border !shadow-popover !font-sans",
+            toast: "!rounded-2xl !border-transparent !bg-surface/90 !backdrop-blur-xl !shadow-popover !font-sans",
           },
         }}
       />

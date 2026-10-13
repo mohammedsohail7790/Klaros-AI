@@ -159,7 +159,7 @@ select:not([multiple]):not([size]):disabled {
   }
 
   .klaros-label {
-    @apply text-[11px] font-semibold uppercase tracking-wider text-muted-foreground;
+    @apply text-xs font-medium text-muted-foreground;
   }
 
   /* Both buttons get the same tactile shape: a soft shadow at rest, a
@@ -175,7 +175,7 @@ select:not([multiple]):not([size]):disabled {
   }
 
   .klaros-table-wrap {
-    @apply overflow-x-auto rounded-xl border border-border bg-surface shadow-card;
+    @apply overflow-x-auto rounded-3xl border border-border bg-surface;
   }
 
   .klaros-table {
@@ -183,19 +183,19 @@ select:not([multiple]):not([size]):disabled {
   }
 
   .klaros-table thead {
-    @apply sticky top-0 z-10 bg-surface-muted/95 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur-sm;
+    @apply sticky top-0 z-10 bg-surface/90 text-xs font-medium text-muted-foreground backdrop-blur-xl;
   }
 
   .klaros-table th {
-    @apply px-4 py-3 font-medium;
+    @apply px-5 py-3.5 font-medium;
   }
 
   .klaros-table td {
-    @apply px-4 py-3.5;
+    @apply px-5 py-4;
   }
 
   .klaros-table tbody tr {
-    @apply border-t border-border transition-colors hover:bg-accent-soft/40;
+    @apply border-t border-border transition-colors duration-300 hover:bg-surface-muted/70;
   }
 
   /* Rows that are themselves a navigation target (e.g. a table where each
@@ -206,15 +206,15 @@ select:not([multiple]):not([size]):disabled {
   }
 
   .klaros-filter-tab {
-    @apply rounded-full border px-3 py-1 text-xs font-medium transition-all duration-150;
+    @apply rounded-full px-4 py-1.5 text-[13px] font-medium transition-all duration-300 ease-apple;
   }
 
   .klaros-filter-tab-active {
-    @apply border-accent/40 bg-accent-soft text-accent-hover;
+    @apply bg-foreground text-background;
   }
 
   .klaros-filter-tab-inactive {
-    @apply border-border-strong text-muted hover:border-accent/40 hover:text-foreground;
+    @apply bg-surface-muted text-muted hover:bg-border hover:text-foreground;
   }
 
   /* Glassmorphism — reserved for chrome/marketing surfaces (nav bars, hero
@@ -223,12 +223,18 @@ select:not([multiple]):not([size]):disabled {
      readability regression for dense text/numbers, which is why Stripe's
      and Linear's own dashboards never apply this to their data views. */
   .klaros-glass {
-    @apply border border-border bg-surface/85 shadow-card backdrop-blur-xl;
+    @apply border border-border/70 bg-surface/75 backdrop-blur-2xl backdrop-saturate-150;
   }
 
   .klaros-glass-dark {
     @apply border border-white/10 bg-foreground/80 text-white shadow-popover backdrop-blur-xl;
   }
 }
+
+@keyframes klaros-page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.klaros-page-in { animation: klaros-page-in 0.6s cubic-bezier(0.28, 0.11, 0.32, 1) both; }
 
 /* The published website's styles live in components/website/site.css (imported by SiteView). */

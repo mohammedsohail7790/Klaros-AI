@@ -70,12 +70,12 @@ export function Badge({
   children: React.ReactNode;
   className?: string;
 }) {
-  const variant = status ? STATUS_VARIANTS[status] : undefined;
+  const variant = status ? STATUS_VARIANTS[status]?.replace(/\bborder-(?:[a-z]+-200|border-strong|border)\b/g, "").trim() : undefined;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium",
-        variant ?? "border-border-strong bg-surface-muted text-muted",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium",
+        variant ?? "bg-surface-muted text-muted",
         className
       )}
     >

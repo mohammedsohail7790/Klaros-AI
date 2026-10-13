@@ -24,20 +24,20 @@ export function Modal({
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-[2px] animate-[klaros-fade-in_0.15s_ease-out]" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/30 backdrop-blur-md animate-[klaros-fade-in_0.3s_ease-out]" />
         <div className="fixed inset-0 z-50 flex overflow-y-auto px-4 py-8">
           <Dialog.Content
             aria-describedby={undefined}
             className={cn(
-              "m-auto w-full rounded-2xl border border-border bg-surface p-6 shadow-popover outline-none animate-[klaros-modal-in_0.18s_cubic-bezier(0.16,1,0.3,1)]",
+              "m-auto w-full rounded-3xl bg-surface p-7 shadow-popover outline-none animate-[klaros-modal-in_0.4s_cubic-bezier(0.28,0.11,0.32,1)] sm:p-8",
               size === "lg" ? "max-w-2xl" : "max-w-md"
             )}
           >
-            <div className="mb-4 flex items-center justify-between">
-              <Dialog.Title className="text-lg font-semibold tracking-tight text-foreground">{title}</Dialog.Title>
+            <div className="mb-5 flex items-center justify-between">
+              <Dialog.Title className="font-display text-2xl font-semibold tracking-tight text-foreground">{title}</Dialog.Title>
               <Dialog.Close
                 aria-label="Close"
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-muted hover:text-foreground"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-muted transition-colors hover:bg-border hover:text-foreground"
               >
                 <X className="h-4 w-4" strokeWidth={2} />
               </Dialog.Close>

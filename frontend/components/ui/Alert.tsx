@@ -33,7 +33,7 @@ export function Alert({
 }) {
   const { classes, icon: Icon } = VARIANTS[variant];
   return (
-    <div role={variant === "danger" || variant === "warning" ? "alert" : "status"} className={cn("flex items-start gap-2.5 rounded-lg border px-4 py-3 text-sm", classes, className)}>
+    <div role={variant === "danger" || variant === "warning" ? "alert" : "status"} className={cn("flex items-start gap-3 rounded-2xl border px-5 py-4 text-[15px]", classes, className)}>
       <Icon className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />
       <div className="flex-1 leading-snug">
         {children}

@@ -43,14 +43,14 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "klaros-card group flex flex-col gap-3 p-4 transition-all duration-200 ease-out hover:-translate-y-px hover:shadow-raised",
+        "group flex flex-col gap-4 rounded-3xl bg-surface-muted p-5 transition-all duration-500 ease-apple hover:bg-surface hover:shadow-raised sm:p-6",
         className
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-xs font-medium text-muted">{label}</span>
+        <span className="text-[13px] font-medium text-muted">{label}</span>
         {Icon && (
-          <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", toneClasses[tone])}>
+          <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full", toneClasses[tone])}>
             <Icon className="h-3.5 w-3.5" strokeWidth={2} />
           </span>
         )}
@@ -59,7 +59,7 @@ export function StatCard({
         <span
           className={cn(
             "font-semibold leading-tight tracking-tight",
-            compact ? "text-base" : "text-[1.65rem] leading-none",
+            compact ? "text-lg" : "font-display text-[2.25rem] leading-none tracking-[-0.03em]",
             tone === "neutral" ? "text-foreground" : toneClasses[tone].split(" ")[1]
           )}
         >

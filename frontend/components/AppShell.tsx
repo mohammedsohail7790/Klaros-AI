@@ -240,12 +240,11 @@ function NavLink({ item, active, badge }: { item: NavItem; active: boolean; badg
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors ${
-        active ? "bg-white/[0.09] font-medium text-white" : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
+      className={`group relative flex items-center gap-3 rounded-xl px-3 py-2 text-[14px] transition-all duration-300 ease-apple ${
+        active ? "bg-white/[0.12] font-medium text-white" : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
       }`}
     >
-      {active && <span aria-hidden="true" className="absolute -left-3 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-accent" />}
-      <Icon className={`h-4 w-4 shrink-0 ${active ? "text-white" : "text-slate-500 group-hover:text-slate-300"}`} strokeWidth={2} />
+      <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? "text-accent" : "text-slate-500 group-hover:text-slate-300"}`} strokeWidth={1.75} />
       {item.label}
       {badge !== undefined && badge > 0 && (
         <span aria-label={`${badge} open`} className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[11px] font-medium leading-none text-accent-foreground">
@@ -533,7 +532,7 @@ export default function AppShell({
         )}
       </aside>
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-xl sm:px-6">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border/70 bg-background/75 px-4 py-3 backdrop-blur-2xl backdrop-saturate-150 sm:px-8">
           <button
             type="button"
             onClick={() => setMobileNavOpen(true)}
@@ -580,7 +579,7 @@ export default function AppShell({
             <NotificationBell token={token} />
           </div>
         </header>
-        <main className="min-w-0 flex-1 overflow-x-clip">{children}</main>
+        <main key={pathname} className="klaros-page-in min-w-0 flex-1 overflow-x-clip">{children}</main>
       </div>
       <CommandPalette
         open={paletteOpen}
