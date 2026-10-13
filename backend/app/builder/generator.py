@@ -445,7 +445,7 @@ def generate_project(spec: ProjectSpec, *, existing: Workspace | None = None, lo
             data.append(r)
             if not (isinstance(img, str) and _SAFE_HTTPS.match(img)):
                 put(_record_art(ent, rec), art_svg(f"{ent.name}-{rec.get('slug')}", design.palette, str(rec.get("title", ""))))
-        put(f"data/{ent.name}.json", json.dumps(data, indent=2, ensure_ascii=False))
+        put(f"data/{ent.name}.json", json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True))  # sorted: Postgres JSONB does not keep key order, and one spec must give the same bytes
 
     descr_default = spec.summary or spec.tagline or spec.name
     split_idx_seen: set[int] = set()
