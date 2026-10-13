@@ -84,7 +84,7 @@ export default function BusinessMapPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <StageTracker stages={overview.stages} activeKey="map" />
         <PageHeader
           icon={Network}
@@ -116,7 +116,7 @@ export default function BusinessMapPage() {
           <BusinessMap map={overview.business_map} metrics={buildMapMetrics(overview, ops)} />
         )}
 
-        <section className="mt-10" aria-labelledby="next-actions">
+        <section className="mt-14" aria-labelledby="next-actions">
           <h2 id="next-actions" className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Next actions</h2>
           <p className="mt-1 text-sm text-muted">Generated from the current state of your business — they update as you make progress.</p>
           {overview.next_actions.length === 0 ? (
@@ -124,12 +124,12 @@ export default function BusinessMapPage() {
           ) : (
             <ul className="mt-4 grid gap-3 md:grid-cols-2">
               {overview.next_actions.map((a) => (
-                <li key={a.id} className="klaros-card flex flex-col gap-2 p-4">
+                <li key={a.id} className="klaros-card flex flex-col gap-3 p-6">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-foreground">{a.title}</h3>
+                    <h3 className="text-[17px] font-semibold tracking-tight text-foreground">{a.title}</h3>
                     <StatusPill state={a.state} />
                   </div>
-                  <p className="text-sm text-muted">{a.detail}</p>
+                  <p className="text-[15px] leading-snug text-muted">{a.detail}</p>
                   {a.kind === "enable_vertical" && a.vertical_key ? (
                     <Button size="sm" className="self-start" disabled={busy} onClick={() => handleEnable(a.vertical_key!)}>Enable module</Button>
                   ) : a.route ? (

@@ -81,12 +81,12 @@ export default function OperationsPage() {
   return (
     <AppShell user={user}>
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        <header className="mb-6 flex items-center justify-between">
+        <header className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Operations</h1>
           <button
             onClick={handleDetectDelays}
             disabled={detecting}
-            className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
+            className="klaros-btn-primary disabled:opacity-50"
           >
             {detecting ? "Scanning..." : "Run delay detection"}
           </button>
@@ -103,40 +103,40 @@ export default function OperationsPage() {
           </div>
         ) : (
           <>
-            <section className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <section className="mb-12 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {dashboard &&
                 METRIC_LABELS.map(({ key, label }) => (
-                  <div key={key} className="rounded-3xl bg-surface-muted p-4">
-                    <p className="text-2xl font-semibold">{dashboard[key]}</p>
-                    <p className="mt-1 text-xs text-muted">{label}</p>
+                  <div key={key} className="rounded-3xl bg-surface-muted p-6">
+                    <p className="text-[13px] font-medium text-muted">{label}</p>
+                    <p className="mt-4 font-display text-[2.5rem] font-semibold leading-none tracking-[-0.035em] text-foreground">{dashboard[key]}</p>
                   </div>
                 ))}
             </section>
 
             <section>
-              <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Needs your attention</h2>
+              <h2 className="mb-4 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Needs your attention</h2>
               {exceptions.length === 0 ? (
                 <EmptyState icon={CheckCircle2} title="No open exceptions." compact />
               ) : (
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   {exceptions.map((e) => (
                     <li
                       key={e.id}
-                      className="flex items-start justify-between rounded-2xl bg-surface-muted px-4 py-3 text-sm"
+                      className="flex flex-wrap items-start justify-between gap-4 rounded-3xl bg-surface-muted p-6"
                     >
                       <div>
                         <div className="flex items-center gap-2">
                           <Badge status={e.severity} className="text-xs uppercase">
                             {e.severity}
                           </Badge>
-                          <span className="font-medium">{e.type}</span>
+                          <span className="text-[17px] font-semibold tracking-tight">{e.type}</span>
                         </div>
-                        <p className="mt-1 text-muted">{e.description}</p>
+                        <p className="mt-2 text-[15px] leading-snug text-muted">{e.description}</p>
                         {e.recommended_action && (
                           <p className="mt-1 text-xs text-muted-foreground">→ {e.recommended_action}</p>
                         )}
                       </div>
-                      <button onClick={() => handleResolve(e.id)} className="text-xs text-muted underline hover:text-foreground">
+                      <button onClick={() => handleResolve(e.id)} className="rounded-full bg-surface px-4 py-1.5 text-[13px] font-medium text-foreground hover:bg-border">
                         Resolve
                       </button>
                     </li>

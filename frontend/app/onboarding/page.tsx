@@ -123,12 +123,12 @@ export default function OnboardingPage() {
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
       <GradientBackdrop />
-      <div className="w-full max-w-xl">
+      <div className="w-full max-w-2xl">
         <Link href="/" className="font-display mb-8 block text-center text-xl text-foreground">
           Klaros AI
         </Link>
 
-        <div className="klaros-glass rounded-2xl p-8">
+        <div className="rounded-3xl bg-surface-muted p-8 sm:p-10">
           <div className="mb-6 flex items-center gap-2">
             {STEPS.map((label, i) => (
               <div key={label} className="flex flex-1 items-center gap-2">
@@ -150,7 +150,7 @@ export default function OnboardingPage() {
 
           {step === 0 && (
             <>
-              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.25rem]">
                 Welcome{user ? `, ${user.full_name.split(" ")[0]}` : ""}
               </h1>
               <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
@@ -159,30 +159,30 @@ export default function OnboardingPage() {
               </p>
 
               <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-3xl bg-surface-muted p-4">
+                <div className="rounded-2xl bg-surface p-6">
                   <div className="flex items-baseline justify-between">
-                    <h3 className="font-medium">Solo</h3>
-                    <span className="text-sm text-muted">$49/mo</span>
+                    <h3 className="font-display text-xl font-semibold tracking-tight">Solo</h3>
+                    <span className="text-[15px] text-muted">$49/mo</span>
                   </div>
                   <p className="mt-1 text-xs text-muted">Up to 50 AI recommendations/mo, 1 user.</p>
                   <button
                     onClick={() => handleSubscribe("solo")}
                     disabled={subscribingPlan !== null}
-                    className="mt-3 w-full klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
+                    className="mt-4 w-full klaros-btn-secondary !py-2 disabled:opacity-50"
                   >
                     {subscribingPlan === "solo" ? "Redirecting..." : "Subscribe to Solo"}
                   </button>
                 </div>
-                <div className="rounded-3xl bg-surface-muted p-4">
+                <div className="rounded-2xl bg-surface p-6">
                   <div className="flex items-baseline justify-between">
-                    <h3 className="font-medium">Growth</h3>
-                    <span className="text-sm text-muted">$129/mo</span>
+                    <h3 className="font-display text-xl font-semibold tracking-tight">Growth</h3>
+                    <span className="text-[15px] text-muted">$129/mo</span>
                   </div>
                   <p className="mt-1 text-xs text-muted">Unlimited AI recommendations, full automation engine.</p>
                   <button
                     onClick={() => handleSubscribe("growth")}
                     disabled={subscribingPlan !== null}
-                    className="mt-3 w-full klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
+                    className="mt-4 w-full klaros-btn-secondary !py-2 disabled:opacity-50"
                   >
                     {subscribingPlan === "growth" ? "Redirecting..." : "Subscribe to Growth"}
                   </button>
@@ -205,14 +205,14 @@ export default function OnboardingPage() {
 
           {step === 1 && (
             <>
-              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Set your business hours</h1>
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.25rem]">Set your business hours</h1>
               <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
                 So Klaros runs on your business's own schedule, not generic defaults. Can be changed
                 later in Settings.
               </p>
 
               <div className="mt-6">
-                <label className="mb-1 block text-xs text-muted">
+                <label className="mb-1.5 block text-[13px] font-medium text-muted">
                   What timezone does your business operate in?
                 </label>
                 <p className="mb-2 text-xs text-muted">
@@ -224,7 +224,7 @@ export default function OnboardingPage() {
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
                   placeholder="America/New_York"
-                  className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                  className="klaros-input"
                 />
                 <datalist id="onboarding-timezones">
                   {COMMON_TIMEZONES.map((tz) => (
@@ -236,7 +236,7 @@ export default function OnboardingPage() {
               {timezoneError && <p className="mt-3 text-sm text-danger">{timezoneError}</p>}
 
               <div className="mt-6 flex items-center justify-between">
-                <button onClick={goToDashboard} className="text-sm text-muted hover:underline">
+                <button onClick={goToDashboard} className="text-[15px] text-muted hover:text-foreground hover:underline">
                   Skip setup for now
                 </button>
                 <button
@@ -252,7 +252,7 @@ export default function OnboardingPage() {
 
           {step === 2 && (
             <>
-              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Teach Klaros your business</h1>
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.25rem]">Teach Klaros your business</h1>
               <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
                 This writes real, editable files into your Knowledge Layer — the same source Klaros
                 reads from for Ask AI and AI-drafted content. Answer as much or as little as you
@@ -261,7 +261,7 @@ export default function OnboardingPage() {
 
               <div className="mt-6 space-y-4">
                 <div>
-                  <label className="mb-1 block text-xs text-muted">
+                  <label className="mb-1.5 block text-[13px] font-medium text-muted">
                     What services or products do you offer?
                   </label>
                   <textarea
@@ -269,11 +269,11 @@ export default function OnboardingPage() {
                     onChange={(e) => setServices(e.target.value)}
                     rows={3}
                     placeholder="e.g. Residential HVAC repair and installation, emergency after-hours service, annual maintenance plans..."
-                    className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                    className="klaros-input"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-muted">
+                  <label className="mb-1.5 block text-[13px] font-medium text-muted">
                     How do you price your work?
                   </label>
                   <textarea
@@ -281,11 +281,11 @@ export default function OnboardingPage() {
                     onChange={(e) => setPricing(e.target.value)}
                     rows={3}
                     placeholder="e.g. $125/hr labor, free estimates on jobs over $500, 50% deposit required on installs..."
-                    className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                    className="klaros-input"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-muted">
+                  <label className="mb-1.5 block text-[13px] font-medium text-muted">
                     How should Klaros sound when writing to your customers?
                   </label>
                   <textarea
@@ -293,7 +293,7 @@ export default function OnboardingPage() {
                     onChange={(e) => setVoice(e.target.value)}
                     rows={3}
                     placeholder="e.g. Friendly and direct, no jargon, always mention our 24-month workmanship warranty..."
-                    className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                    className="klaros-input"
                   />
                 </div>
               </div>
@@ -301,7 +301,7 @@ export default function OnboardingPage() {
               {knowledgeError && <p className="mt-3 text-sm text-danger">{knowledgeError}</p>}
 
               <div className="mt-6 flex items-center justify-between">
-                <button onClick={() => setStep(3)} className="text-sm text-muted hover:underline">
+                <button onClick={() => setStep(3)} className="text-[15px] text-muted hover:text-foreground hover:underline">
                   Skip this step
                 </button>
                 <button
@@ -317,7 +317,7 @@ export default function OnboardingPage() {
 
           {step === 3 && (
             <>
-              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">You&apos;re set up</h1>
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.25rem]">You&apos;re set up</h1>
               <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
                 Klaros now knows your timezone and what you told it about your business. Next, connect
                 the tools you actually use — Stripe, QuickBooks, Google Calendar — from the checklist on
