@@ -134,14 +134,14 @@ export default function ReviewsPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
         ) : (
           <>
             {negativeFeedback.length > 0 && (
-              <div className="mb-6 rounded-md border border-danger/25 bg-danger/[0.06] p-4">
+              <div className="mb-6 rounded-xl border border-danger/25 bg-danger/[0.06] p-4">
                 <h2 className="mb-2 text-sm font-medium text-danger">Service recovery opportunities ({negativeFeedback.length})</h2>
                 <ul className="space-y-1 text-sm">
                   {negativeFeedback.map((f) => (
@@ -160,7 +160,7 @@ export default function ReviewsPage() {
                 <input
                   value={fbCustomerId}
                   onChange={(e) => setFbCustomerId(e.target.value)}
-                  className="w-64 rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="w-64 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 />
               </div>
               <div>
@@ -168,7 +168,7 @@ export default function ReviewsPage() {
                 <select
                   value={fbRating}
                   onChange={(e) => setFbRating(e.target.value)}
-                  className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 >
                   {[1, 2, 3, 4, 5].map((n) => (
                     <option key={n} value={n}>
@@ -182,7 +182,7 @@ export default function ReviewsPage() {
                 <input
                   value={fbComment}
                   onChange={(e) => setFbComment(e.target.value)}
-                  className="w-64 rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="w-64 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 />
               </div>
               <button
@@ -240,7 +240,7 @@ export default function ReviewsPage() {
             ) : (
               <ul className="space-y-2 text-sm text-muted">
                 {positiveFeedback.map((f) => (
-                  <li key={f.id} className="rounded-md border border-border bg-surface p-3">
+                  <li key={f.id} className="rounded-2xl bg-surface-muted p-3">
                     <div>
                       Rating {f.rating}/5{f.comment ? `: "${f.comment}"` : ""}
                     </div>

@@ -2,7 +2,7 @@ import { cn } from "@/lib/cn";
 
 /** A single shimmering placeholder bar/block. */
 export function SkeletonBlock({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return <div className={cn("klaros-skeleton rounded-md", className)} style={style} />;
+  return <div className={cn("klaros-skeleton rounded-xl", className)} style={style} />;
 }
 
 /**

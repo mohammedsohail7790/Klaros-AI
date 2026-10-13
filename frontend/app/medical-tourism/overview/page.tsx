@@ -196,7 +196,7 @@ export default function TodayPage() {
                           ).map(([label, v]) => (
                             <div key={label}>
                               <dt className="text-[13px] text-muted">{label}</dt>
-                              <dd className="mt-1 font-display text-xl font-semibold tracking-tight text-foreground">{money(v?.amount ?? "0", cur)}</dd>
+                              <dd className="mt-1 font-display font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">{money(v?.amount ?? "0", cur)}</dd>
                             </div>
                           ))}
                         </dl>

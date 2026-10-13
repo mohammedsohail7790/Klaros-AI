@@ -171,7 +171,7 @@ export default function BuilderHome() {
           </div>
         </div>
 
-        <h2 className="mb-3 text-lg font-semibold tracking-tight text-foreground">Your projects</h2>
+        <h2 className="mb-3 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Your projects</h2>
         {projects === null ? (
           <Skeleton stats={0} rows={3} />
         ) : projects.length === 0 ? (
@@ -193,7 +193,7 @@ export default function BuilderHome() {
                 </dl>
                 <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
                   <Link href={`/builder/${p.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-accent-hover hover:underline">Open <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link>
-                  <button type="button" onClick={() => remove(p)} aria-label={`Delete ${p.name}`} className="rounded-md p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => remove(p)} aria-label={`Delete ${p.name}`} className="rounded-xl p-1.5 text-muted-foreground hover:bg-danger/10 hover:text-danger"><Trash2 className="h-4 w-4" /></button>
                 </div>
               </li>
             ))}

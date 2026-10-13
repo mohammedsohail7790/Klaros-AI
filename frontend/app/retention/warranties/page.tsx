@@ -150,7 +150,7 @@ export default function WarrantiesPage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         {authLoading || loading ? (
@@ -211,7 +211,7 @@ export default function WarrantiesPage() {
         <Modal title="New warranty" onClose={() => setShowCreate(false)}>
           <form onSubmit={handleCreate} className="space-y-3">
             {selectedCustomer ? (
-              <div className="flex items-center justify-between rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm">
+              <div className="flex items-center justify-between rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm">
                 <span>{selectedCustomer.name}</span>
                 <button type="button" onClick={() => setSelectedCustomer(null)} className="text-xs text-muted underline">
                   Change
@@ -237,7 +237,7 @@ export default function WarrantiesPage() {
                   </button>
                 </div>
                 {customerResults.length > 0 && (
-                  <div className="mt-1 rounded-md border border-border-strong bg-surface">
+                  <div className="mt-1 rounded-xl border border-border-strong bg-surface">
                     {customerResults.map((c) => (
                       <button
                         type="button"

@@ -28,7 +28,7 @@ export default function HeroVisual() {
             <span className="h-2.5 w-2.5 rounded-full bg-red-300" />
             <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
-            <span className="ml-3 rounded-md bg-surface px-2.5 py-0.5 text-xs text-muted-foreground">
+            <span className="ml-3 rounded-xl bg-surface px-2.5 py-0.5 text-xs text-muted-foreground">
               meetklaros.com/dashboard
             </span>
           </div>

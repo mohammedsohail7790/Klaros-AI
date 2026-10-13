@@ -186,7 +186,7 @@ export default function QuoteDetailPage() {
 
         {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
         {viewUrlPath && (
-          <div className="mb-4 rounded-md border border-border bg-surface p-3 text-sm text-muted">
+          <div className="mb-4 rounded-2xl bg-surface-muted p-3 text-sm text-muted">
             Customer view link:{" "}
             <code className="break-all text-muted">
               {(typeof window !== "undefined" ? window.location.origin : "") + viewUrlPath}
@@ -205,7 +205,7 @@ export default function QuoteDetailPage() {
           quote.status === "DEPOSIT_PENDING" ||
           quote.status === "DEPOSIT_PAID" ||
           quote.status === "CONVERTED") && (
-          <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm">
+          <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm">
             {contract ? (
               <>
                 <span className="text-muted">
@@ -231,7 +231,7 @@ export default function QuoteDetailPage() {
         )}
 
         {quote.deposit_type && (quote.status === "DEPOSIT_PENDING" || quote.status === "DEPOSIT_PAID") && (
-          <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm">
+          <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm">
             <div className="mb-2 text-muted">
               Deposit: <span className="text-foreground">${quote.deposit_amount ?? "—"}</span>{" "}
               {quote.status === "DEPOSIT_PAID" ? (
@@ -261,7 +261,7 @@ export default function QuoteDetailPage() {
         )}
 
         {quote.decline_reason && (
-          <div className="mb-6 rounded-md border border-border bg-surface p-3 text-sm text-muted">
+          <div className="mb-6 rounded-2xl bg-surface-muted p-3 text-sm text-muted">
             Decline reason: {quote.decline_reason}
           </div>
         )}
@@ -285,21 +285,21 @@ export default function QuoteDetailPage() {
                         <input
                           value={li.description}
                           onChange={(e) => updateDraftItem(i, "description", e.target.value)}
-                          className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                          className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                         />
                       </td>
                       <td className="px-4 py-2">
                         <input
                           value={li.quantity}
                           onChange={(e) => updateDraftItem(i, "quantity", e.target.value)}
-                          className="w-20 rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                          className="w-20 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                         />
                       </td>
                       <td className="px-4 py-2">
                         <input
                           value={li.unit_price}
                           onChange={(e) => updateDraftItem(i, "unit_price", e.target.value)}
-                          className="w-24 rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                          className="w-24 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                         />
                       </td>
                       <td className="px-4 py-2">
@@ -328,7 +328,7 @@ export default function QuoteDetailPage() {
                 value={draftNotes}
                 onChange={(e) => setDraftNotes(e.target.value)}
                 rows={2}
-                className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
               />
             </div>
             <div>
@@ -337,7 +337,7 @@ export default function QuoteDetailPage() {
                 value={draftTerms}
                 onChange={(e) => setDraftTerms(e.target.value)}
                 rows={2}
-                className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
               />
             </div>
 
@@ -347,7 +347,7 @@ export default function QuoteDetailPage() {
                 <select
                   value={draftDepositType}
                   onChange={(e) => setDraftDepositType(e.target.value as "" | "FIXED" | "PERCENTAGE")}
-                  className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                 >
                   <option value="">No deposit required</option>
                   <option value="FIXED">Fixed amount</option>
@@ -358,7 +358,7 @@ export default function QuoteDetailPage() {
                     placeholder={draftDepositType === "PERCENTAGE" ? "e.g. 25" : "e.g. 200"}
                     value={draftDepositValue}
                     onChange={(e) => setDraftDepositValue(e.target.value)}
-                    className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                   />
                 )}
               </div>
@@ -374,7 +374,7 @@ export default function QuoteDetailPage() {
               </button>
               <button
                 onClick={() => setEditing(false)}
-                className="rounded-md px-3 py-1.5 text-sm text-muted hover:underline"
+                className="rounded-xl px-3 py-1.5 text-sm text-muted hover:underline"
               >
                 Cancel
               </button>

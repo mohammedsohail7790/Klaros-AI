@@ -452,7 +452,7 @@ export default function AutomationsPage() {
           {mode !== "list" ? (
             <button
               onClick={() => setMode("list")}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-muted"
+              className="rounded-xl border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-muted"
             >
               Back to list
             </button>
@@ -470,18 +470,18 @@ export default function AutomationsPage() {
           against the version it started with.
         </p>
 
-        <div className="mb-6 flex items-center gap-2 rounded-md border border-border bg-surface p-3 text-xs">
+        <div className="mb-6 flex items-center gap-2 rounded-2xl bg-surface-muted p-3 text-xs">
           <span className="text-muted">Business timezone (used by all Schedule triggers):</span>
           <input
             value={timezoneInput}
             onChange={(e) => setTimezoneInput(e.target.value)}
             placeholder="America/New_York"
-            className="w-48 rounded-md border border-border-strong bg-background px-2 py-1 text-xs"
+            className="w-48 rounded-xl border border-border-strong bg-background px-2 py-1 text-xs"
           />
           <button
             onClick={handleSaveTimezone}
             disabled={busy || timezoneInput === tenantTimezone}
-            className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-xs hover:bg-surface-muted disabled:opacity-50"
+            className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-xs hover:bg-surface-muted disabled:opacity-50"
           >
             Save
           </button>
@@ -489,7 +489,7 @@ export default function AutomationsPage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         {mode === "list" && (
@@ -530,14 +530,14 @@ export default function AutomationsPage() {
 
         {(mode === "create" || mode === "edit") && (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="space-y-4 rounded-xl border border-border bg-surface p-5">
+            <div className="space-y-4 rounded-3xl bg-surface-muted p-5">
               <div>
                 <label className="mb-1 block text-xs text-muted">Name</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   disabled={mode === "edit"}
-                  className="w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm disabled:opacity-60"
+                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm disabled:opacity-60"
                   placeholder="New Lead Follow-up"
                 />
               </div>
@@ -546,7 +546,7 @@ export default function AutomationsPage() {
                 <input
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  className="w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
                   placeholder="Optional"
                 />
               </div>
@@ -558,7 +558,7 @@ export default function AutomationsPage() {
                     <button
                       key={t}
                       onClick={() => setForm((f) => ({ ...f, triggerType: t }))}
-                      className={`rounded-md border px-3 py-1.5 text-xs ${
+                      className={`rounded-xl border px-3 py-1.5 text-xs ${
                         form.triggerType === t ? "border-border-strong bg-surface-muted" : "border-border-strong hover:bg-surface-muted"
                       }`}
                     >
@@ -574,7 +574,7 @@ export default function AutomationsPage() {
                   <input
                     value={form.eventType}
                     onChange={(e) => setForm((f) => ({ ...f, eventType: e.target.value }))}
-                    className="w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
                     placeholder="lead.created"
                   />
                 </div>
@@ -589,7 +589,7 @@ export default function AutomationsPage() {
                         <button
                           key={f}
                           onClick={() => setForm((prev) => ({ ...prev, scheduleFrequency: f }))}
-                          className={`rounded-md border px-3 py-1.5 text-xs ${
+                          className={`rounded-xl border px-3 py-1.5 text-xs ${
                             form.scheduleFrequency === f
                               ? "border-border-strong bg-surface-muted"
                               : "border-border-strong hover:bg-surface-muted"
@@ -606,7 +606,7 @@ export default function AutomationsPage() {
                       type="time"
                       value={form.scheduleTime}
                       onChange={(e) => setForm((f) => ({ ...f, scheduleTime: e.target.value }))}
-                      className="w-40 rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
+                      className="w-40 rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
                     />
                   </div>
                   {form.scheduleFrequency === "WEEKLY" && (
@@ -624,7 +624,7 @@ export default function AutomationsPage() {
                                   : [...f.scheduleWeekdays, i].sort(),
                               }))
                             }
-                            className={`rounded-md border px-2 py-1 text-xs ${
+                            className={`rounded-xl border px-2 py-1 text-xs ${
                               form.scheduleWeekdays.includes(i)
                                 ? "border-border-strong bg-surface-muted"
                                 : "border-border-strong hover:bg-surface-muted"
@@ -656,7 +656,7 @@ export default function AutomationsPage() {
                     type="number"
                     value={form.waitSeconds}
                     onChange={(e) => setForm((f) => ({ ...f, waitSeconds: e.target.value }))}
-                    className="mt-1 w-32 rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
+                    className="mt-1 w-32 rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
                   />
                 )}
               </div>
@@ -678,12 +678,12 @@ export default function AutomationsPage() {
                       value={c.field}
                       onChange={(e) => updateCondition(i, "field", e.target.value)}
                       placeholder="lead.score"
-                      className="w-1/3 rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
+                      className="w-1/3 rounded-xl border border-border-strong bg-background px-2 py-1.5 text-xs"
                     />
                     <select
                       value={c.op}
                       onChange={(e) => updateCondition(i, "op", e.target.value)}
-                      className="rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
+                      className="rounded-xl border border-border-strong bg-background px-2 py-1.5 text-xs"
                     >
                       {COMPARISON_OPS.map((op) => (
                         <option key={op} value={op}>
@@ -695,7 +695,7 @@ export default function AutomationsPage() {
                       value={c.value}
                       onChange={(e) => updateCondition(i, "value", e.target.value)}
                       placeholder="70"
-                      className="flex-1 rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
+                      className="flex-1 rounded-xl border border-border-strong bg-background px-2 py-1.5 text-xs"
                     />
                     <button
                       onClick={() => setForm((f) => ({ ...f, conditions: f.conditions.filter((_, j) => j !== i) }))}
@@ -720,12 +720,12 @@ export default function AutomationsPage() {
                 {form.steps.map((s, i) => {
                   const def = ACTIONS.find((a) => a.value === s.action) ?? ACTIONS[0];
                   return (
-                    <div key={i} className="mb-2 rounded-md border border-border p-2">
+                    <div key={i} className="mb-2 rounded-xl border border-border p-2">
                       <div className="mb-2 flex items-center justify-between">
                         <select
                           value={s.action}
                           onChange={(e) => updateStepAction(i, e.target.value)}
-                          className="rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
+                          className="rounded-xl border border-border-strong bg-background px-2 py-1.5 text-xs"
                         >
                           {ACTIONS.map((a) => (
                             <option key={a.value} value={a.value}>
@@ -748,7 +748,7 @@ export default function AutomationsPage() {
                           value={s.params[field.key] ?? ""}
                           onChange={(e) => updateStepParam(i, field.key, e.target.value)}
                           placeholder={field.label}
-                          className="mb-1 w-full rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
+                          className="mb-1 w-full rounded-xl border border-border-strong bg-background px-2 py-1.5 text-xs"
                         />
                       ))}
                       <p className="text-xs text-muted-foreground">
@@ -762,7 +762,7 @@ export default function AutomationsPage() {
               <button
                 onClick={handleSave}
                 disabled={busy || !form.name}
-                className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
               >
                 {mode === "create" ? "Create draft" : "Save as new version"}
               </button>
@@ -770,7 +770,7 @@ export default function AutomationsPage() {
 
             <div className="space-y-4">
               {selectedAutomation && (
-                <div className="rounded-xl border border-border bg-surface p-5">
+                <div className="rounded-3xl bg-surface-muted p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="font-medium">{selectedAutomation.name}</h2>
                     <Badge status={selectedAutomation.status} className="text-xs">
@@ -783,7 +783,7 @@ export default function AutomationsPage() {
                       <button
                         onClick={handlePublish}
                         disabled={busy}
-                        className="rounded-md border border-success/20 px-3 py-1.5 text-xs text-success hover:bg-success/[0.06]"
+                        className="rounded-xl border border-success/20 px-3 py-1.5 text-xs text-success hover:bg-success/[0.06]"
                       >
                         Publish
                       </button>
@@ -792,7 +792,7 @@ export default function AutomationsPage() {
                       <button
                         onClick={() => handleToggleEnabled(true)}
                         disabled={busy}
-                        className="rounded-md border border-success/20 px-3 py-1.5 text-xs text-success hover:bg-success/[0.06]"
+                        className="rounded-xl border border-success/20 px-3 py-1.5 text-xs text-success hover:bg-success/[0.06]"
                       >
                         Enable
                       </button>
@@ -801,7 +801,7 @@ export default function AutomationsPage() {
                       <button
                         onClick={() => handleToggleEnabled(false)}
                         disabled={busy}
-                        className="rounded-md border border-warning/25 px-3 py-1.5 text-xs text-warning hover:bg-warning/[0.07]"
+                        className="rounded-xl border border-warning/25 px-3 py-1.5 text-xs text-warning hover:bg-warning/[0.07]"
                       >
                         Disable
                       </button>
@@ -821,12 +821,12 @@ export default function AutomationsPage() {
                         value={triggerContext}
                         onChange={(e) => setTriggerContext(e.target.value)}
                         rows={3}
-                        className="w-full rounded-md border border-border-strong bg-background px-2 py-1.5 font-mono text-xs"
+                        className="w-full rounded-xl border border-border-strong bg-background px-2 py-1.5 font-mono text-xs"
                       />
                       <button
                         onClick={handleManualTrigger}
                         disabled={busy}
-                        className="mt-2 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-xs hover:bg-surface-muted disabled:opacity-50"
+                        className="mt-2 rounded-xl border border-border-strong bg-surface-muted px-3 py-1.5 text-xs hover:bg-surface-muted disabled:opacity-50"
                       >
                         Run now
                       </button>
@@ -850,7 +850,7 @@ export default function AutomationsPage() {
                       <button
                         onClick={handleDispatchTickNow}
                         disabled={busy}
-                        className="rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-xs hover:bg-surface-muted disabled:opacity-50"
+                        className="rounded-xl border border-border-strong bg-surface-muted px-3 py-1.5 text-xs hover:bg-surface-muted disabled:opacity-50"
                       >
                         Run scheduler tick now
                       </button>
@@ -860,7 +860,7 @@ export default function AutomationsPage() {
               )}
 
               {executions && (
-                <div className="rounded-xl border border-border bg-surface p-5">
+                <div className="rounded-3xl bg-surface-muted p-5">
                   <h3 className="mb-3 text-sm font-medium">Execution history</h3>
                   {executions.length === 0 ? (
                     <EmptyState icon={History} title="No executions yet." compact />
@@ -870,7 +870,7 @@ export default function AutomationsPage() {
                         <button
                           key={e.id}
                           onClick={() => openExecution(e.id)}
-                          className={`block w-full rounded-md border p-2 text-left text-xs hover:bg-surface-muted ${
+                          className={`block w-full rounded-xl border p-2 text-left text-xs hover:bg-surface-muted ${
                             selectedExecution?.id === e.id ? "border-border-strong" : "border-border"
                           }`}
                         >
@@ -889,7 +889,7 @@ export default function AutomationsPage() {
               )}
 
               {selectedExecution && (
-                <div className="rounded-xl border border-border bg-surface p-5">
+                <div className="rounded-3xl bg-surface-muted p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-medium">Execution detail</h3>
                     <Badge status={selectedExecution.status} className="text-xs">
@@ -897,13 +897,13 @@ export default function AutomationsPage() {
                     </Badge>
                   </div>
                   {selectedExecution.error && (
-                    <p className="mb-2 rounded-md border border-danger/25 bg-danger/[0.06] p-2 text-xs text-danger">
+                    <p className="mb-2 rounded-xl border border-danger/25 bg-danger/[0.06] p-2 text-xs text-danger">
                       {selectedExecution.error}
                     </p>
                   )}
                   <div className="space-y-2">
                     {selectedExecution.steps.map((s) => (
-                      <div key={s.id} className="rounded-md border border-border p-2 text-xs">
+                      <div key={s.id} className="rounded-xl border border-border p-2 text-xs">
                         <div className="flex items-center justify-between">
                           <span>
                             {s.step_index}. {s.action}

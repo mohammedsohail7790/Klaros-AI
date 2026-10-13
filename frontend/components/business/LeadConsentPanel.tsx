@@ -95,13 +95,13 @@ export function LeadConsentPanel({ token, leadId, onChanged }: { token: string |
   }
 
   return (
-    <section aria-labelledby="lead-consent-h" className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+    <section aria-labelledby="lead-consent-h" className="rounded-3xl bg-surface-muted p-5 sm:p-6">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
           <ShieldCheck className="h-4 w-4" strokeWidth={2} />
         </span>
         <div className="min-w-0">
-          <h2 id="lead-consent-h" className="text-xl font-semibold tracking-tight text-foreground">Consent</h2>
+          <h2 id="lead-consent-h" className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Consent</h2>
           <p className="mt-0.5 text-sm text-muted">What this patient has agreed to now. Their newest answer is the one that counts.</p>
         </div>
       </div>
@@ -118,7 +118,7 @@ export function LeadConsentPanel({ token, leadId, onChanged }: { token: string |
               No consent has been recorded for this patient, so nothing is treated as agreed.
             </Alert>
           )}
-          <dl className="mt-4 divide-y divide-border rounded-md border border-border">
+          <dl className="mt-4 divide-y divide-border rounded-xl border border-border">
             {SCOPES.map((s) => {
               const yes = s.key === "contact" ? state.contact : s.key === "store_personal_data" ? state.store_personal_data : state.store_medical_information;
               return (

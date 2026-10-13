@@ -128,7 +128,7 @@ export default function NotificationBell({ token }: { token: string | null }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-96 rounded-xl border border-border bg-surface shadow-popover">
+        <div className="absolute right-0 z-20 mt-2 w-96 rounded-3xl bg-surface-muted shadow-popover">
           <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
             <span className="text-sm font-semibold text-foreground">Notifications</span>
             {items && items.some((n) => !n.read_at) && (

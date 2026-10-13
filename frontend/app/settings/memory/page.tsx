@@ -190,18 +190,18 @@ export default function CompanyMemoryPage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="space-y-6">
-            <div className="rounded-xl border border-border bg-surface p-5">
+            <div className="rounded-3xl bg-surface-muted p-5">
               <h2 className="mb-3 text-sm font-medium">Add an explicit preference</h2>
               <div className="space-y-2">
                 <select
                   value={form.memory_type}
                   onChange={(e) => setForm((f) => ({ ...f, memory_type: e.target.value as typeof form.memory_type }))}
-                  className="w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
                 >
                   {MEMORY_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -213,38 +213,38 @@ export default function CompanyMemoryPage() {
                   value={form.key}
                   onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))}
                   placeholder="preferred_appointment_time"
-                  className="w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
                 />
                 <input
                   value={form.value}
                   onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
                   placeholder="morning"
-                  className="w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
                 />
                 <input
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   placeholder="Description (optional)"
-                  className="w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-background px-3 py-2 text-sm"
                 />
                 <button
                   onClick={handleCreate}
                   disabled={busy || !form.key || !form.value}
-                  className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
                 >
                   Save preference
                 </button>
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-surface p-5">
+            <div className="rounded-3xl bg-surface-muted p-5">
               <h2 className="mb-3 text-sm font-medium">Active AI context ({context?.length ?? 0})</h2>
               {!context || context.length === 0 ? (
                 <EmptyState icon={Sparkles} title="No active memory yet — nothing is fed into AI recommendations." compact />
               ) : (
                 <div className="space-y-2">
                   {context.map((c) => (
-                    <div key={c.key} className="rounded-md border border-border p-2 text-xs">
+                    <div key={c.key} className="rounded-xl border border-border p-2 text-xs">
                       <span className="text-muted">[{c.memory_type}]</span> <span className="font-medium">{c.key}</span>: {c.value}
                     </div>
                   ))}
@@ -269,7 +269,7 @@ export default function CompanyMemoryPage() {
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
-                  className={`rounded-md border px-3 py-1.5 text-xs ${
+                  className={`rounded-xl border px-3 py-1.5 text-xs ${
                     statusFilter === s ? "border-border-strong bg-surface-muted" : "border-border-strong hover:bg-surface-muted"
                   }`}
                 >
@@ -315,7 +315,7 @@ export default function CompanyMemoryPage() {
                         <input
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
-                          className="flex-1 rounded-md border border-border-strong bg-surface px-2 py-1 text-sm"
+                          className="flex-1 rounded-xl border border-border-strong bg-surface px-2 py-1 text-sm"
                         />
                         <button
                           onClick={() => handleSaveEdit(m.id)}
@@ -373,11 +373,11 @@ export default function CompanyMemoryPage() {
             )}
 
             {selected && history && (
-              <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+              <div className="mt-4 rounded-3xl bg-surface-muted p-4">
                 <h3 className="mb-2 text-sm font-medium">History: {selected.key}</h3>
                 <div className="space-y-2">
                   {history.map((h) => (
-                    <div key={h.id} className="rounded-md border border-border p-2 text-xs">
+                    <div key={h.id} className="rounded-xl border border-border p-2 text-xs">
                       <div className="flex items-center justify-between">
                         <span>{h.value}</span>
                         <Badge status={h.status} className="text-xs">

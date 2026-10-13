@@ -66,7 +66,7 @@ export default function MedicalTourismRevenuePage() {
           <div className="space-y-8">
             {currencies.map((cur) => (
               <section key={cur} aria-label={`Revenue in ${cur}`}>
-                <h2 className="text-lg font-semibold tracking-tight text-foreground">{cur}</h2>
+                <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">{cur}</h2>
                 <div className="klaros-table-wrap mt-2">
                   <table className="klaros-table">
                     <thead className="bg-surface text-muted">

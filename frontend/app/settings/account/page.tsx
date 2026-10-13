@@ -72,7 +72,7 @@ export default function AccountPage() {
         </section>
 
         <section aria-label="Change password" className="klaros-card p-5 sm:p-6">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">Change password</h2>
+          <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Change password</h2>
           <p className="mt-1 text-sm text-muted">After you change it, every other device is signed out. This one stays signed in.</p>
           <form onSubmit={submit} className="mt-4 max-w-sm space-y-4">
             {done && <Alert variant="success">Your password was changed.</Alert>}

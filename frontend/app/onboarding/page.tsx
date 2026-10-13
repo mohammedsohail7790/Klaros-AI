@@ -159,7 +159,7 @@ export default function OnboardingPage() {
               </p>
 
               <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-border bg-surface p-4">
+                <div className="rounded-3xl bg-surface-muted p-4">
                   <div className="flex items-baseline justify-between">
                     <h3 className="font-medium">Solo</h3>
                     <span className="text-sm text-muted">$49/mo</span>
@@ -173,7 +173,7 @@ export default function OnboardingPage() {
                     {subscribingPlan === "solo" ? "Redirecting..." : "Subscribe to Solo"}
                   </button>
                 </div>
-                <div className="rounded-xl border border-border bg-surface p-4">
+                <div className="rounded-3xl bg-surface-muted p-4">
                   <div className="flex items-baseline justify-between">
                     <h3 className="font-medium">Growth</h3>
                     <span className="text-sm text-muted">$129/mo</span>
@@ -224,7 +224,7 @@ export default function OnboardingPage() {
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
                   placeholder="America/New_York"
-                  className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
                 />
                 <datalist id="onboarding-timezones">
                   {COMMON_TIMEZONES.map((tz) => (
@@ -269,7 +269,7 @@ export default function OnboardingPage() {
                     onChange={(e) => setServices(e.target.value)}
                     rows={3}
                     placeholder="e.g. Residential HVAC repair and installation, emergency after-hours service, annual maintenance plans..."
-                    className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
@@ -281,7 +281,7 @@ export default function OnboardingPage() {
                     onChange={(e) => setPricing(e.target.value)}
                     rows={3}
                     placeholder="e.g. $125/hr labor, free estimates on jobs over $500, 50% deposit required on installs..."
-                    className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
@@ -293,7 +293,7 @@ export default function OnboardingPage() {
                     onChange={(e) => setVoice(e.target.value)}
                     rows={3}
                     placeholder="e.g. Friendly and direct, no jargon, always mention our 24-month workmanship warranty..."
-                    className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                    className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
                   />
                 </div>
               </div>

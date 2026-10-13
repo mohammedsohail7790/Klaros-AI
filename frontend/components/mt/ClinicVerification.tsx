@@ -97,7 +97,7 @@ export function ClinicVerification({ token, provider, onClose, onSaved }: { toke
   return (
     <Modal title={`Verification: ${provider.name}`} onClose={onClose} size="lg">
       {error && (
-        <div role="alert" className="mb-3 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
+        <div role="alert" className="mb-3 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
           {error}
         </div>
       )}
@@ -110,7 +110,7 @@ export function ClinicVerification({ token, provider, onClose, onSaved }: { toke
         ) : credentials.length === 0 ? (
           <p className="mt-2 text-sm text-muted">None yet. Add at least one below.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-border rounded-md border border-border">
+          <ul className="mt-2 divide-y divide-border rounded-xl border border-border">
             {credentials.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
                 <div className="min-w-0">
@@ -135,7 +135,7 @@ export function ClinicVerification({ token, provider, onClose, onSaved }: { toke
         <form onSubmit={add} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Add a credential">
           <label className="block text-xs">
             Type
-            <select aria-label="Credential type" value={type} onChange={(e) => setType(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5 text-sm">
+            <select aria-label="Credential type" value={type} onChange={(e) => setType(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5 text-sm">
               {CREDENTIAL_TYPES.map((t) => (
                 <option key={t}>{t}</option>
               ))}
@@ -143,15 +143,15 @@ export function ClinicVerification({ token, provider, onClose, onSaved }: { toke
           </label>
           <label className="block text-xs">
             Issued by
-            <input aria-label="Issuing authority" value={authority} onChange={(e) => setAuthority(e.target.value)} placeholder="e.g. Ministry of Health" className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5 text-sm" />
+            <input aria-label="Issuing authority" value={authority} onChange={(e) => setAuthority(e.target.value)} placeholder="e.g. Ministry of Health" className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5 text-sm" />
           </label>
           <label className="block text-xs">
             Reference number
-            <input aria-label="Credential number" value={number} onChange={(e) => setNumber(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5 text-sm" />
+            <input aria-label="Credential number" value={number} onChange={(e) => setNumber(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5 text-sm" />
           </label>
           <label className="block text-xs">
             Expires on
-            <input aria-label="Expiry date" type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5 text-sm" />
+            <input aria-label="Expiry date" type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5 text-sm" />
           </label>
           <div className="sm:col-span-2">
             <button type="submit" disabled={busy} className="klaros-btn-secondary">
@@ -164,7 +164,7 @@ export function ClinicVerification({ token, provider, onClose, onSaved }: { toke
       <section aria-label="Clinic status" className="mt-5 border-t border-border pt-4">
         <h3 className="font-medium text-foreground">2. Clinic status</h3>
         {ready && status !== "VERIFIED" && (
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md bg-success/10 p-3 text-sm text-success">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-success/10 p-3 text-sm text-success">
             <span>A checked, unexpired credential is on record. This clinic can now be marked Verified.</span>
             <button type="button" disabled={busy} onClick={() => save("VERIFIED")} className="klaros-btn-primary">
               Mark clinic as verified
@@ -174,7 +174,7 @@ export function ClinicVerification({ token, provider, onClose, onSaved }: { toke
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block text-sm">
             Status
-            <select aria-label="Verification status" value={status} onChange={(e) => setStatus(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5">
+            <select aria-label="Verification status" value={status} onChange={(e) => setStatus(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5">
               {VERIFICATION_STATUSES.map((v) => (
                 <option key={v} value={v}>
                   {VERIFICATION_LABEL[v]}
@@ -184,7 +184,7 @@ export function ClinicVerification({ token, provider, onClose, onSaved }: { toke
           </label>
           <label className="block text-sm">
             Note (optional)
-            <input aria-label="Note" value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5" />
+            <input aria-label="Note" value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5" />
           </label>
         </div>
         {(ready || status !== "VERIFIED") && <p className={`mt-2 text-xs ${note_.ok ? "text-success" : "text-muted-foreground"}`}>{note_.text}</p>}

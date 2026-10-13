@@ -72,7 +72,7 @@ export function ConsentWordingCard({ token, onChanged }: { token: string | null;
       <div className="flex items-start gap-2">
         <ShieldCheck className="mt-0.5 h-5 w-5 text-success" aria-hidden="true" />
         <div>
-          <h2 id="consent-wording-title" className="text-lg font-semibold tracking-tight text-foreground">Consent wording for your enquiry form</h2>
+          <h2 id="consent-wording-title" className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Consent wording for your enquiry form</h2>
           <p className="mt-0.5 text-sm text-muted">The exact words a visitor agrees to before sending their details. Until you approve a wording, the enquiry form on your website stays closed.</p>
         </div>
       </div>
@@ -84,7 +84,7 @@ export function ConsentWordingCard({ token, onChanged }: { token: string | null;
           <p className="text-sm text-foreground">
             <span className="font-medium">{current.version}</span> · approved {date(current.approved_at)}
           </p>
-          <blockquote dir={current.language === "ar" ? "rtl" : "ltr"} className="whitespace-pre-line rounded-xl border border-border bg-surface-muted/70 p-3 text-sm text-foreground">{current.text}</blockquote>
+          <blockquote dir={current.language === "ar" ? "rtl" : "ltr"} className="whitespace-pre-line rounded-3xl bg-surface-muted-muted/70 p-3 text-sm text-foreground">{current.text}</blockquote>
           <Button variant="secondary" size="sm" onClick={() => { setEditing(true); setRead(false); }}>Write a new version</Button>
           {data.wordings.length > 1 && <p className="text-xs text-muted">Earlier versions stay on record: {data.wordings.slice(1).map((w) => w.version).join(", ")}. Each enquiry is tied to the version its sender saw.</p>}
         </div>

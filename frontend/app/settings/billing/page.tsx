@@ -95,7 +95,7 @@ export default function BillingSettingsPage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
@@ -104,7 +104,7 @@ export default function BillingSettingsPage() {
           <Skeleton />
         ) : (
           <>
-            <div className="mb-6 rounded-xl border border-border bg-surface p-5">
+            <div className="mb-6 rounded-3xl bg-surface-muted p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="font-medium capitalize">

@@ -135,7 +135,7 @@ export default function VendorsPage() {
         </header>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         {authLoading || loading ? (
@@ -194,7 +194,7 @@ export default function VendorsPage() {
               >
                 <div>
                   <label className="block text-xs text-muted">Vendor</label>
-                  <div className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm">
+                  <div className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm">
                     {vendorName(billVendorId)}
                   </div>
                 </div>
@@ -204,7 +204,7 @@ export default function VendorsPage() {
                     value={billAmount}
                     onChange={(e) => setBillAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
@@ -213,7 +213,7 @@ export default function VendorsPage() {
                     type="date"
                     value={billDueDate}
                     onChange={(e) => setBillDueDate(e.target.value)}
-                    className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                   />
                 </div>
                 <button

@@ -77,7 +77,7 @@ export default function ContractDetailPage() {
     return (
       <AppShell user={user}>
         <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         </div>
       </AppShell>
     );
@@ -111,10 +111,10 @@ export default function ContractDetailPage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
         {viewUrlPath && (
-          <div className="mb-4 rounded-md border border-border bg-surface p-3 text-sm text-muted">
+          <div className="mb-4 rounded-2xl bg-surface-muted p-3 text-sm text-muted">
             Customer signing link:{" "}
             <code className="break-all text-muted">
               {(typeof window !== "undefined" ? window.location.origin : "") + viewUrlPath}
@@ -123,7 +123,7 @@ export default function ContractDetailPage() {
         )}
 
         {contract.status === "SIGNED" && (
-          <div className="mb-6 rounded-md border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
+          <div className="mb-6 rounded-xl border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
             <div>Signed by {contract.signer_name} — internal attestation recorded, not a third-party e-signature.</div>
             {quote && (
               <div className="mt-2 border-t border-success/30 pt-2 text-success">
@@ -158,7 +158,7 @@ export default function ContractDetailPage() {
           </div>
         )}
         {contract.status === "DECLINED" && (
-          <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
+          <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">
             Declined by the customer{contract.decline_reason ? `: ${contract.decline_reason}` : "."}
           </div>
         )}
@@ -175,7 +175,7 @@ export default function ContractDetailPage() {
           ))}
         </div>
 
-        <div className="mb-6 whitespace-pre-wrap rounded-xl border border-border bg-surface p-4 text-sm text-muted">
+        <div className="mb-6 whitespace-pre-wrap rounded-3xl bg-surface-muted p-4 text-sm text-muted">
           {contract.content}
         </div>
 

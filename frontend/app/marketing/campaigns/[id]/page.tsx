@@ -94,7 +94,7 @@ export default function CampaignDetailPage() {
     return (
       <AppShell user={user}>
         <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         </div>
       </AppShell>
     );
@@ -112,7 +112,7 @@ export default function CampaignDetailPage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         {budgetStatus && budgetStatus.budget !== null && (
@@ -155,7 +155,7 @@ export default function CampaignDetailPage() {
                 value={spendAmount}
                 onChange={(e) => setSpendAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <button

@@ -11,7 +11,7 @@ export function RunProgress({ run, onCancel }: { run: BuilderRun; onCancel: () =
   const active = BUILDER_ACTIVE_STATES.includes(run.state);
   const events = run.progress.slice(-8);
   return (
-    <div className="rounded-xl border border-border bg-surface-muted/60 p-3" role="status" aria-live="polite">
+    <div className="rounded-3xl bg-surface-muted-muted/60 p-3" role="status" aria-live="polite">
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-sm font-medium text-foreground">
           {active ? <Loader2 className="h-4 w-4 animate-spin text-accent" aria-hidden="true" /> : run.state === "ready" ? <CheckCircle2 className="h-4 w-4 text-success" aria-hidden="true" /> : run.state === "cancelled" ? <Square className="h-4 w-4 text-muted" aria-hidden="true" /> : <XCircle className="h-4 w-4 text-danger" aria-hidden="true" />}

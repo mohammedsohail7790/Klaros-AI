@@ -95,7 +95,7 @@ export default function OperationsPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -106,7 +106,7 @@ export default function OperationsPage() {
             <section className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
               {dashboard &&
                 METRIC_LABELS.map(({ key, label }) => (
-                  <div key={key} className="rounded-xl border border-border bg-surface p-4">
+                  <div key={key} className="rounded-3xl bg-surface-muted p-4">
                     <p className="text-2xl font-semibold">{dashboard[key]}</p>
                     <p className="mt-1 text-xs text-muted">{label}</p>
                   </div>
@@ -122,7 +122,7 @@ export default function OperationsPage() {
                   {exceptions.map((e) => (
                     <li
                       key={e.id}
-                      className="flex items-start justify-between rounded-md border border-border bg-surface px-4 py-3 text-sm"
+                      className="flex items-start justify-between rounded-2xl bg-surface-muted px-4 py-3 text-sm"
                     >
                       <div>
                         <div className="flex items-center gap-2">

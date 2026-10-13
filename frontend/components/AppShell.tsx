@@ -510,7 +510,7 @@ export default function AppShell({
                 <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={2} />
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
-                <DropdownMenu.Content side="top" align="start" sideOffset={8} className="z-[70] min-w-[14rem] rounded-xl border border-border bg-surface p-1.5 text-sm shadow-popover">
+                <DropdownMenu.Content side="top" align="start" sideOffset={8} className="z-[70] min-w-[14rem] rounded-3xl bg-surface-muted p-1.5 text-sm shadow-popover">
                   <DropdownMenu.Item asChild>
                     <Link href="/settings/account" className="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-foreground outline-none data-[highlighted]:bg-surface-muted">
                       <UserCog className="h-4 w-4 text-muted-foreground" strokeWidth={2} /> Account &amp; security
@@ -570,7 +570,7 @@ export default function AppShell({
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="hidden items-center gap-2 rounded-xl border border-border bg-surface px-2.5 py-1.5 text-xs text-muted shadow-sm transition-colors hover:border-border-strong hover:text-foreground sm:flex"
+              className="hidden items-center gap-2 rounded-3xl bg-surface-muted px-2.5 py-1.5 text-xs text-muted shadow-sm transition-colors hover:border-border-strong hover:text-foreground sm:flex"
             >
               <Search className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
               Jump to…

@@ -161,7 +161,7 @@ export default function BusinessJourneyEntryPage() {
                   type="button"
                   disabled={busy}
                   onClick={() => setBusinessIdea(ex)}
-                  className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-left text-sm text-muted transition-colors hover:border-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="w-full rounded-3xl bg-surface-muted px-3 py-2 text-left text-sm text-muted transition-colors hover:border-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {ex}
                 </button>

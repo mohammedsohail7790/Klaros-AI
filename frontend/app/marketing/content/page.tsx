@@ -90,7 +90,7 @@ export default function ContentPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Before/after HVAC repair in Dallas"
-              className="w-80 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="w-80 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
             />
           </div>
           <button type="submit" disabled={busy || !title.trim()} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
@@ -113,7 +113,7 @@ export default function ContentPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>

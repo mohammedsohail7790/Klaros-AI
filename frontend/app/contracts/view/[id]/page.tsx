@@ -89,7 +89,7 @@ function PublicContractViewInner() {
   if (error && !contract) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-16">
-        <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+        <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
           {error}
           <div className="mt-2 text-xs text-danger">
             If you followed a link from an email or text message, it may have expired — please contact us for a
@@ -112,32 +112,32 @@ function PublicContractViewInner() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+        <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
       )}
 
       {contract.status === "SIGNED" && (
-        <div className="mb-6 rounded-md border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
+        <div className="mb-6 rounded-xl border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
           Signed by {contract.signer_name} — thank you. This is an internal record of your agreement, not a
           third-party verified e-signature.
         </div>
       )}
       {contract.status === "DECLINED" && (
-        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
+        <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">
           You declined this contract.
         </div>
       )}
       {contract.status === "EXPIRED" && (
-        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
+        <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">
           This contract has expired. Please contact us for an updated agreement.
         </div>
       )}
       {contract.status === "CANCELLED" && (
-        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
+        <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">
           This contract has been cancelled.
         </div>
       )}
 
-      <div className="mb-6 whitespace-pre-wrap rounded-xl border border-border bg-surface p-4 text-sm text-muted">
+      <div className="mb-6 whitespace-pre-wrap rounded-3xl bg-surface-muted p-4 text-sm text-muted">
         {contract.content}
       </div>
 
@@ -146,7 +146,7 @@ function PublicContractViewInner() {
           <button
             disabled={busy}
             onClick={() => setConfirmingSign(true)}
-            className="rounded-md border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
+            className="rounded-xl border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
           >
             Sign this agreement
           </button>
@@ -162,7 +162,7 @@ function PublicContractViewInner() {
             <button
               disabled={busy}
               onClick={handleDecline}
-              className="rounded-md border border-danger/25 px-4 py-2 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
+              className="rounded-xl border border-danger/25 px-4 py-2 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
             >
               Decline
             </button>
@@ -171,7 +171,7 @@ function PublicContractViewInner() {
       )}
 
       {decidable && confirmingSign && (
-        <div className="rounded-md border border-border bg-surface p-4">
+        <div className="rounded-2xl bg-surface-muted p-4">
           <p className="mb-3 text-sm text-muted">
             Typing your name below records your agreement to the terms above. This is an internal record kept by
             the business, not a third-party verified electronic signature.
@@ -196,14 +196,14 @@ function PublicContractViewInner() {
             <button
               disabled={busy || !signerName.trim()}
               onClick={handleSign}
-              className="rounded-md border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
+              className="rounded-xl border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
             >
               {busy ? "Signing..." : "Confirm signature"}
             </button>
             <button
               disabled={busy}
               onClick={() => setConfirmingSign(false)}
-              className="rounded-md border border-border-strong px-4 py-2 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
+              className="rounded-xl border border-border-strong px-4 py-2 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
             >
               Cancel
             </button>

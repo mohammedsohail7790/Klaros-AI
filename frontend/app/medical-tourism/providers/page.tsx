@@ -19,7 +19,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { ClinicVerification } from "@/components/mt/ClinicVerification";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { Hero, Page } from "@/components/ui/layout";
 
 const STATUS_TABS = ["ALL", "ACTIVE", "INACTIVE"];
 
@@ -77,11 +77,10 @@ export default function MedicalTourismProvidersPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        <PageHeader
+      <Page>
+        <Hero
           title={`Providers (${total})`}
-          description="The hospitals and clinics you refer patients to. Only a verified clinic can receive a referral."
-          icon={Stethoscope}
+          lede="The hospitals and clinics you refer patients to. Only a verified clinic can receive a referral."
           actions={
             <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">
               New provider
@@ -89,40 +88,35 @@ export default function MedicalTourismProvidersPage() {
           }
         />
 
-        <div className="mb-4 rounded-md border border-border-strong bg-surface p-4 text-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">Find clinics automatically</span>
+        <section aria-label="Find clinics automatically" className="mb-12 rounded-3xl bg-surface-muted p-7 sm:p-9">
+          <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] text-foreground">Find clinics automatically</h2>
+          <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted">
+            Klaros reads public pages and adds what it finds as unverified, with the source link. It contacts no one. You confirm each clinic&apos;s accreditation before it can receive a referral.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
             <input
               value={findCountries}
               onChange={(e) => setFindCountries(e.target.value)}
               aria-label="Country codes to search"
-              className="w-40 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5"
+              placeholder="TR, TH, KR, IN"
+              className="klaros-input !w-56 !rounded-full"
             />
             <button onClick={findClinics} disabled={finding} className="klaros-btn-primary">
               {finding ? "Searching…" : "Search the web"}
             </button>
           </div>
-          <p className="mt-2 text-muted">
-            Klaros reads public pages and adds what it finds as unverified, with the source link. It contacts no one. You confirm each clinic&apos;s accreditation before it can receive a referral.
-          </p>
           {found && (
-            <p className="mt-2" role="status">
+            <p className="mt-4 text-[15px] text-foreground" role="status">
               {found.status === "ok"
                 ? `Added ${found.added.length} clinic${found.added.length === 1 ? "" : "s"} for review (${found.skipped_duplicate} already on your list).`
                 : found.notes.join(" ")}
             </p>
           )}
-        </div>
+        </section>
 
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-5 flex flex-wrap items-center gap-2">
           {STATUS_TABS.map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatus(s)}
-              className={`rounded-full border px-3 py-1 text-xs ${
-                status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"
-              }`}
-            >
+            <button key={s} onClick={() => setStatus(s)} className={`klaros-filter-tab ${status === s ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}>
               {s}
             </button>
           ))}
@@ -130,14 +124,14 @@ export default function MedicalTourismProvidersPage() {
             value={country}
             onChange={(e) => setCountry(e.target.value)}
             placeholder="Country (e.g. TR)"
-            className="ml-auto w-40 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
+            className="klaros-input ml-auto !w-44 !rounded-full"
           />
         </div>
 
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-3xl bg-danger/[0.06] p-6 text-[15px] text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -154,42 +148,38 @@ export default function MedicalTourismProvidersPage() {
             }
           />
         ) : (
-          <div className="klaros-table-wrap">
-            <table className="klaros-table">
-              <thead className="bg-surface text-muted">
-                <tr>
-                  <th className="px-4 py-2">Name</th>
-                  <th className="px-4 py-2">Practitioner</th>
-                  <th className="px-4 py-2">Location</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Verification</th>
-                  <th className="px-4 py-2">Contact</th>
-                </tr>
-              </thead>
-              <tbody>
-                {providers.map((p) => (
-                  <tr key={p.id} className="border-t border-border hover:bg-surface">
-                    <td className="px-4 py-2 font-medium text-foreground">{p.name}</td>
-                    <td className="px-4 py-2 text-muted">{p.practitioner_name || "—"}</td>
-                    <td className="px-4 py-2 text-muted">
-                      {[p.city, countryName(p.country)].filter(Boolean).join(", ") || "—"}
-                    </td>
-                    <td className="px-4 py-2">
+          <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted" aria-label="Providers">
+            {providers.map((p) => {
+              const note = referableNote(p.status, p.verification_status);
+              const verified = p.verification_status === "VERIFIED";
+              return (
+                <li key={p.id} className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[17px] font-semibold tracking-tight text-foreground">{p.name}</p>
+                    <p className="mt-0.5 text-[14px] text-muted">
+                      {[p.practitioner_name, [p.city, countryName(p.country)].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "—"}
+                    </p>
+                    <p className="mt-0.5 text-[13px] text-muted-foreground">{p.contact_email || p.contact_phone || "No contact on file"}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${verified ? "bg-success/10 text-success" : "bg-surface text-muted"}`}>
+                        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${verified ? "bg-success" : "bg-muted-foreground"}`} />
+                        {VERIFICATION_LABEL[p.verification_status ?? "UNVERIFIED"] ?? p.verification_status}
+                      </span>
                       <Badge status={p.status}>{p.status}</Badge>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <span className={p.verification_status === "VERIFIED" ? "font-medium text-success" : "text-muted"}>{VERIFICATION_LABEL[p.verification_status ?? "UNVERIFIED"] ?? p.verification_status}</span>
-                      <button onClick={() => setVerifying(p)} className="ml-2 text-xs underline">Change</button>
-                      <div className={`mt-0.5 text-xs ${referableNote(p.status, p.verification_status).ok ? "text-success" : "text-muted-foreground"}`}>{referableNote(p.status, p.verification_status).text}</div>
-                    </td>
-                    <td className="px-4 py-2 text-muted">{p.contact_email || p.contact_phone || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <button onClick={() => setVerifying(p)} className="text-[14px] text-accent hover:underline">
+                        Change
+                      </button>
+                    </div>
+                    <p className={`text-[13px] ${note.ok ? "text-success" : "text-muted-foreground"}`}>{note.text}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
-      </div>
+      </Page>
 
       {verifying && token && (
         <ClinicVerification token={token} provider={verifying} onClose={() => setVerifying(null)} onSaved={() => { setVerifying(null); load(); }} />

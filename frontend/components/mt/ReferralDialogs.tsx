@@ -42,13 +42,13 @@ export function NewReferral({ token, patients, providers, initialLeadId, onClose
       <p className="mb-3 text-sm text-muted">Only active, verified clinics can be chosen. Nothing is sent until the patient's approval is recorded.</p>
       {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
       <label className="block text-sm">Patient
-        <select aria-label="Patient" value={lead} onChange={(e) => setLead(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5">
+        <select aria-label="Patient" value={lead} onChange={(e) => setLead(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5">
           <option value="">Choose…</option>
           {patients.map((p) => <option key={p.lead_id} value={p.lead_id}>{p.name ?? "Name withheld"} · {p.stage.replace("_", " ").toLowerCase()}</option>)}
         </select>
       </label>
       <label className="mt-3 block text-sm">Clinic
-        <select aria-label="Clinic" value={provider} onChange={(e) => setProvider(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5">
+        <select aria-label="Clinic" value={provider} onChange={(e) => setProvider(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5">
           <option value="">Choose…</option>
           {verified.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.country})</option>)}
         </select>
@@ -127,7 +127,7 @@ export function ReferralDetail({ token, id, providerName, onClose, onChanged }: 
           </section>
 
           {["DRAFT", "APPROVED"].includes(r.status) && (
-            <section aria-label="Patient decision" className="rounded-md border border-border p-4">
+            <section aria-label="Patient decision" className="rounded-xl border border-border p-4">
               <h3 className="font-medium text-foreground">Record the patient's decision</h3>
               <p className="mt-1 text-xs text-muted-foreground">Record what the patient told you. Tell them which clinic receives which information first; do not agree on their behalf.</p>
               <fieldset className="mt-3">
@@ -142,9 +142,9 @@ export function ReferralDetail({ token, id, providerName, onClose, onChanged }: 
                 The patient was told which clinic receives this information</label>
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="block text-xs">Wording shown to the patient (label)
-                  <input aria-label="Wording version" value={wording} onChange={(e) => setWording(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5 text-sm" placeholder="e.g. SHARE-v1" /></label>
+                  <input aria-label="Wording version" value={wording} onChange={(e) => setWording(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5 text-sm" placeholder="e.g. SHARE-v1" /></label>
                 <label className="block text-xs">How they told you
-                  <select aria-label="Channel" value={channel} onChange={(e) => setChannel(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5 text-sm">
+                  <select aria-label="Channel" value={channel} onChange={(e) => setChannel(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5 text-sm">
                     {CHANNELS.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}</select></label>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -166,15 +166,15 @@ export function ReferralDetail({ token, id, providerName, onClose, onChanged }: 
           )}
 
           {(r.status === "ACCEPTED" || r.status === "OUTCOME_REPORTED") && (
-            <section aria-label="Outcome" className="rounded-md border border-border p-4">
+            <section aria-label="Outcome" className="rounded-xl border border-border p-4">
               <h3 className="font-medium text-foreground">{r.status === "OUTCOME_REPORTED" ? "Update the outcome" : "Record the outcome the clinic reported"}</h3>
               {r.status === "OUTCOME_REPORTED" && (
                 <p className="mt-1 text-xs text-muted-foreground">Reported so far: {r.outcome ? OUTCOME_LABEL[r.outcome] ?? r.outcome : "an outcome"}. A consultation usually comes first and treatment later: record the new outcome here when the clinic reports it.</p>
               )}
               <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <select aria-label="Outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)} className="rounded-md border border-border-strong bg-surface px-2 py-1.5">
+                <select aria-label="Outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)} className="rounded-xl border border-border-strong bg-surface px-2 py-1.5">
                   {Object.entries(OUTCOME_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-                <input aria-label="Where the clinic reported it" value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Where it was reported (reference)" className="rounded-md border border-border-strong bg-surface px-2 py-1.5" />
+                <input aria-label="Where the clinic reported it" value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Where it was reported (reference)" className="rounded-xl border border-border-strong bg-surface px-2 py-1.5" />
               </div>
               <div className="mt-3"><Button size="sm" disabled={busy || !evidence.trim()} onClick={() => run(() => recordReferralOutcome(token, id, { outcome, evidence: evidence.trim() }), r.status === "OUTCOME_REPORTED" ? "Outcome updated." : "Outcome recorded.")}>{r.status === "OUTCOME_REPORTED" ? "Update outcome" : "Record outcome"}</Button></div>
             </section>

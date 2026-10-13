@@ -210,7 +210,7 @@ export default function KnowledgePage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
@@ -228,7 +228,7 @@ export default function KnowledgePage() {
                 value={queryDraft}
                 onChange={(e) => setQueryDraft(e.target.value)}
                 placeholder="e.g. what is our plumbing hourly rate?"
-                className="flex-1 rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
               <button
@@ -241,7 +241,7 @@ export default function KnowledgePage() {
               <button
                 onClick={handleAsk}
                 disabled={searching || !queryDraft.trim()}
-                className="rounded-md border border-success/20 bg-success/[0.06] px-3 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
+                className="rounded-xl border border-success/20 bg-success/[0.06] px-3 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
               >
                 Ask AI
               </button>
@@ -249,13 +249,13 @@ export default function KnowledgePage() {
 
             {searching && <p className="text-sm text-muted">Working...</p>}
             {searchError && (
-              <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-3 text-sm text-warning">
+              <div className="mb-4 rounded-xl border border-warning/25 bg-warning/[0.07] p-3 text-sm text-warning">
                 {searchError}
               </div>
             )}
 
             {askResult && (
-              <div className="mb-4 rounded-xl border border-border bg-surface p-4">
+              <div className="mb-4 rounded-3xl bg-surface-muted p-4">
                 <p className="mb-2 text-sm text-foreground">{askResult.answer}</p>
                 {askResult.answered_from_excerpts && askResult.sources && askResult.sources.length > 0 && (
                   <p className="text-xs text-muted">Sources: {askResult.sources.join(", ")}</p>
@@ -269,7 +269,7 @@ export default function KnowledgePage() {
                   <EmptyState icon={Search} title="No matching knowledge found." compact />
                 )}
                 {searchResults.map((r) => (
-                  <div key={`${r.file_path}-${r.chunk_index}`} className="rounded-xl border border-border bg-surface p-4">
+                  <div key={`${r.file_path}-${r.chunk_index}`} className="rounded-3xl bg-surface-muted p-4">
                     <div className="mb-1 flex items-center justify-between text-xs text-muted">
                       <span>{r.file_path}</span>
                       <span>score {r.score.toFixed(3)}</span>
@@ -290,7 +290,7 @@ export default function KnowledgePage() {
                   value={newPath}
                   onChange={(e) => setNewPath(e.target.value)}
                   placeholder="category/new-file.md"
-                  className="flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                 />
                 <button
                   onClick={handleCreate}
@@ -309,7 +309,7 @@ export default function KnowledgePage() {
                       {grouped[cat].map((f) => (
                         <div
                           key={f.path}
-                          className={`flex items-center justify-between rounded-md border px-2 py-1.5 text-sm ${
+                          className={`flex items-center justify-between rounded-xl border px-2 py-1.5 text-sm ${
                             selectedPath === f.path ? "border-border-strong bg-surface-muted" : "border-border"
                           }`}
                         >
@@ -337,13 +337,13 @@ export default function KnowledgePage() {
               {!selectedPath ? (
                 <p className="text-sm text-muted">Select a file to view or edit it.</p>
               ) : (
-                <div className="rounded-xl border border-border bg-surface p-5">
+                <div className="rounded-3xl bg-surface-muted p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="font-medium">{selectedPath}</h2>
                     <button
                       onClick={handleSave}
                       disabled={saving}
-                      className="rounded-md border border-success/20 bg-success/[0.06] px-3 py-1.5 text-sm text-success hover:bg-success/10 disabled:opacity-50"
+                      className="rounded-xl border border-success/20 bg-success/[0.06] px-3 py-1.5 text-sm text-success hover:bg-success/10 disabled:opacity-50"
                     >
                       Save
                     </button>
@@ -352,7 +352,7 @@ export default function KnowledgePage() {
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     rows={20}
-                    className="w-full rounded-md border border-border-strong bg-background p-3 font-mono text-sm text-foreground"
+                    className="w-full rounded-xl border border-border-strong bg-background p-3 font-mono text-sm text-foreground"
                   />
                 </div>
               )}

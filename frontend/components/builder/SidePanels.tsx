@@ -103,9 +103,9 @@ export function VersionsPanel({ token, project, versions, onRestored }: { token:
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
                   Version {v.number}
-                  <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-xs font-medium text-muted">{VERSION_KIND[v.kind]}</span>
-                  {v.id === project.current_version_id && <span className="rounded-md bg-success/10 px-1.5 py-0.5 text-xs font-medium text-success">Current</span>}
-                  {v.id === project.published_version_id && <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-xs font-medium text-accent-hover">Live</span>}
+                  <span className="rounded-xl bg-surface-muted px-1.5 py-0.5 text-xs font-medium text-muted">{VERSION_KIND[v.kind]}</span>
+                  {v.id === project.current_version_id && <span className="rounded-xl bg-success/10 px-1.5 py-0.5 text-xs font-medium text-success">Current</span>}
+                  {v.id === project.published_version_id && <span className="rounded-xl bg-accent-soft px-1.5 py-0.5 text-xs font-medium text-accent-hover">Live</span>}
                 </p>
                 <p className="text-xs text-muted">{timeAgo(v.created_at)} · +{c.added?.length ?? 0} added · {c.changed?.length ?? 0} changed · {c.removed?.length ?? 0} removed</p>
               </div>
@@ -153,7 +153,7 @@ export function ChecksPanel({ project, validation }: { project: BuilderProject; 
             const s = FEATURE_STATUS[f.status];
             return (
               <li key={f.key} className="rounded-xl border border-border p-3">
-                <div className="flex items-center justify-between gap-2"><p className="text-sm font-medium text-foreground">{f.label}</p><span className={cn("shrink-0 rounded-md px-2 py-0.5 text-xs font-medium", s.tone)}>{s.label}</span></div>
+                <div className="flex items-center justify-between gap-2"><p className="text-sm font-medium text-foreground">{f.label}</p><span className={cn("shrink-0 rounded-xl px-2 py-0.5 text-xs font-medium", s.tone)}>{s.label}</span></div>
                 <p className="mt-1 text-xs text-muted">{f.note || s.hint}</p>
               </li>
             );

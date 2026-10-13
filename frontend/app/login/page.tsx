@@ -96,7 +96,7 @@ function LoginForm() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {notice && <p role="status" className="rounded-xl border border-border bg-surface-muted px-3 py-2 text-sm text-foreground">{notice}</p>}
+          {notice && <p role="status" className="rounded-3xl bg-surface-muted-muted px-3 py-2 text-sm text-foreground">{notice}</p>}
           <Field label="Email">
             <Input required type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>

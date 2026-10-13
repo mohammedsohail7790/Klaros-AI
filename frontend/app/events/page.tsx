@@ -109,7 +109,7 @@ export default function EventsPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
@@ -221,7 +221,7 @@ export default function EventsPage() {
                                 <div className="space-y-3 text-xs">
                                   <div>
                                     <p className="mb-1 font-medium text-muted">Payload</p>
-                                    <pre className="overflow-x-auto rounded-md border border-border bg-surface p-2">
+                                    <pre className="overflow-x-auto rounded-2xl bg-surface-muted p-2">
                                       {JSON.stringify(detail.payload, null, 2)}
                                     </pre>
                                   </div>
@@ -230,7 +230,7 @@ export default function EventsPage() {
                                       <p className="mb-1 font-medium text-muted">Handler attempts</p>
                                       <ul className="space-y-1">
                                         {detail.attempts.map((a, i) => (
-                                          <li key={i} className="rounded-md border border-border bg-surface p-2">
+                                          <li key={i} className="rounded-2xl bg-surface-muted p-2">
                                             <span className="font-medium">{a.handler_name}</span> —{" "}
                                             <Badge status={a.status}>{a.status}</Badge> · {a.attempts} attempt(s)
                                             {a.last_error && (

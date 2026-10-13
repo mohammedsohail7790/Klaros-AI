@@ -110,7 +110,7 @@ export default function QuotesPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -245,7 +245,7 @@ function CreateQuoteModal({ token, onClose }: { token: string; onClose: () => vo
             className="w-full klaros-input"
           />
           {customerResults.length > 0 && (
-            <ul className="mt-1 rounded-md border border-border bg-surface-muted text-sm">
+            <ul className="mt-1 rounded-2xl bg-surface-muted-muted text-sm">
               {customerResults.map((c) => (
                 <li
                   key={c.id}

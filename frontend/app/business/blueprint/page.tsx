@@ -292,7 +292,7 @@ export default function BlueprintPage() {
         <div className="space-y-10">
           {GROUPS.map((g) => (
             <section key={g.title} aria-labelledby={`bp-${g.title}`}>
-              <h2 id={`bp-${g.title}`} className="text-xl font-semibold tracking-tight text-foreground">{g.title}</h2>
+              <h2 id={`bp-${g.title}`} className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">{g.title}</h2>
               <p className="mb-3 text-sm text-muted">{g.blurb}</p>
               <div className="space-y-3">
                 {g.keys.map((k) => {
@@ -315,7 +315,7 @@ export default function BlueprintPage() {
           ))}
 
           <section aria-labelledby="bp-unknowns">
-            <h2 id="bp-unknowns" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
+            <h2 id="bp-unknowns" className="flex items-center gap-2 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">
               <HelpCircle className="h-5 w-5 text-warning" aria-hidden="true" /> Still unresolved
             </h2>
             {unknowns.length === 0 && assumptions.length === 0 ? (
@@ -463,7 +463,7 @@ function SectionCard({
         <div className="mt-3 space-y-2 border-t border-border pt-3">
           <p className="klaros-label">Is this right?</p>
           {proposed.map((c) => (
-            <div key={c.id} className="flex flex-col gap-2 rounded-md border border-border px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-border px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <span className="text-xs text-muted-foreground">{CLAIM_KIND[c.claim_type] ?? c.claim_type} · </span>
                 <span className="text-foreground">{claimText(c)}</span>

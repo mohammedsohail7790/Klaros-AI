@@ -148,7 +148,7 @@ export default function InvoicesPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -235,7 +235,7 @@ export default function InvoicesPage() {
                   </button>
                 </div>
                 {customerResults.length > 0 && (
-                  <div className="mt-1 rounded-md border border-border-strong bg-surface">
+                  <div className="mt-1 rounded-xl border border-border-strong bg-surface">
                     {customerResults.map((c) => (
                       <button
                         type="button"
@@ -459,7 +459,7 @@ function ImportInvoicesModal({
       <div className="space-y-4">
         {result ? (
           <>
-            <div className="rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
+            <div className="rounded-xl border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
               Imported {result.created_count} invoice(s)
               {result.customers_created_count > 0 && `, creating ${result.customers_created_count} new customer(s)`}.
               {result.skipped_count > 0 && ` ${result.skipped_count} row(s) skipped — see below.`}
@@ -498,7 +498,7 @@ function ImportInvoicesModal({
             />
             {parseError && <p className="text-sm text-danger">{parseError}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
+              <button type="button" onClick={onClose} className="rounded-xl px-3 py-1.5 text-sm text-muted">
                 Cancel
               </button>
             </div>
@@ -533,7 +533,7 @@ function ImportInvoicesModal({
               ))}
             </div>
 
-            <div className="rounded-md border border-border bg-surface-muted p-3 text-xs text-muted">
+            <div className="rounded-2xl bg-surface-muted-muted p-3 text-xs text-muted">
               {preview.rows.length} row(s) will be imported.
               {preview.invalidCount > 0 &&
                 ` ${preview.invalidCount} row(s) skipped — missing or unparseable Customer name/Amount/Issue date/Due date.`}
@@ -549,7 +549,7 @@ function ImportInvoicesModal({
                   setDataRows([]);
                   if (fileInputRef.current) fileInputRef.current.value = "";
                 }}
-                className="rounded-md px-3 py-1.5 text-sm text-muted"
+                className="rounded-xl px-3 py-1.5 text-sm text-muted"
               >
                 Choose a different file
               </button>

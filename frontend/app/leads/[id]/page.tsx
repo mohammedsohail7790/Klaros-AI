@@ -182,7 +182,7 @@ export default function LeadDetailPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div role="alert" className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -194,7 +194,7 @@ export default function LeadDetailPage() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="lg:col-span-2 space-y-6">
               {/* HEADER + CONTACT + BUSINESS CONTEXT */}
-              <div className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+              <div className="rounded-3xl bg-surface-muted p-5 sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{lead.name}</h1>
@@ -210,7 +210,7 @@ export default function LeadDetailPage() {
                     <select
                       value={lead.status}
                       onChange={(e) => handleStatusChange(e.target.value)}
-                      className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                      className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                     >
                       {STATUS_OPTIONS.map((s) => (
                         <option key={s} value={s}>
@@ -250,8 +250,8 @@ export default function LeadDetailPage() {
               {ops === null && interaction && (
                 <>
                   <GenericNextAction action={interaction.next_action} />
-                  <section aria-labelledby="lead-tl-h" className="rounded-xl border border-border bg-surface p-5 sm:p-6">
-                    <h2 id="lead-tl-h" className="text-xl font-semibold tracking-tight text-foreground">Timeline</h2>
+                  <section aria-labelledby="lead-tl-h" className="rounded-3xl bg-surface-muted p-5 sm:p-6">
+                    <h2 id="lead-tl-h" className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Timeline</h2>
                     <ol className="mt-3 space-y-2 border-l border-border pl-4" aria-label="Lead timeline">
                       {[{ at: lead.created_at, text: `Lead received from ${sourceLabel(lead.source).toLowerCase()}` }, ...interaction.events.map((e) => ({ at: e.at, text: e.text }))]
                         .sort((a, b) => a.at.localeCompare(b.at))
@@ -273,7 +273,7 @@ export default function LeadDetailPage() {
               />
 
               {lead.customer_id && (
-                <div className="rounded-xl border border-border bg-surface p-4 text-sm">
+                <div className="rounded-3xl bg-surface-muted p-4 text-sm">
                   Linked to customer —{" "}
                   <Link href={`/customers/${lead.customer_id}`} className="underline">
                     view Customer 360
@@ -281,17 +281,17 @@ export default function LeadDetailPage() {
                 </div>
               )}
 
-              <div className="rounded-xl border border-border bg-surface p-4 text-sm">
+              <div className="rounded-3xl bg-surface-muted p-4 text-sm">
                 <Link
                   href={`/calendar?lead_id=${lead.id}${lead.customer_id ? `&customer_id=${lead.customer_id}` : ""}`}
-                  className="rounded-md bg-surface px-3 py-1.5 font-medium text-foreground hover:bg-surface-muted"
+                  className="rounded-xl bg-surface px-3 py-1.5 font-medium text-foreground hover:bg-surface-muted"
                 >
                   Book appointment
                 </Link>
               </div>
 
               {(convertedJobId || (lead.status !== "CONVERTED" && lead.status !== "LOST")) && (
-                <div className="rounded-xl border border-border bg-surface p-6">
+                <div className="rounded-3xl bg-surface-muted p-6">
                   <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Convert to job</h2>
                   <p className="mb-3 text-xs text-muted">
                     One step: match or create the customer, book the appointment, and create the job together.
@@ -310,7 +310,7 @@ export default function LeadDetailPage() {
                         onChange={(e) => setConvertTitle(e.target.value)}
                         placeholder={lead.service_requested ?? "Job title"}
                         required
-                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                       />
                       <div className="flex gap-2">
                         <input
@@ -318,20 +318,20 @@ export default function LeadDetailPage() {
                           value={convertStart}
                           onChange={(e) => setConvertStart(e.target.value)}
                           required
-                          className="flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                          className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                         />
                         <input
                           type="datetime-local"
                           value={convertEnd}
                           onChange={(e) => setConvertEnd(e.target.value)}
                           required
-                          className="flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                          className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                         />
                       </div>
                       <select
                         value={convertWorkerId}
                         onChange={(e) => setConvertWorkerId(e.target.value)}
-                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                       >
                         <option value="">Assign worker (optional)</option>
                         {workers.map((w) => (
@@ -355,7 +355,7 @@ export default function LeadDetailPage() {
             </section>
 
             <section className="space-y-4">
-              <div className="rounded-xl border border-border bg-surface p-6">
+              <div className="rounded-3xl bg-surface-muted p-6">
                 <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Qualification</h2>
                 <p className="text-sm text-muted">
                   Status: <span className="text-foreground">{lead.qualification_status}</span>
@@ -376,7 +376,7 @@ export default function LeadDetailPage() {
                 {qualifyError && <p className="mt-2 text-xs text-danger">{qualifyError}</p>}
               </div>
 
-              <div className="rounded-xl border border-border bg-surface p-6">
+              <div className="rounded-3xl bg-surface-muted p-6">
                 <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">AI recommendation</h2>
                 <p className="text-xs text-muted-foreground">
                   Advisory only — never applied automatically. Review it, then use &ldquo;Re-run qualification&rdquo;
@@ -410,7 +410,7 @@ export default function LeadDetailPage() {
                       </dl>
                       {advisory.summary && <p className="text-muted">{advisory.summary}</p>}
                       {advisory.recommended_next_action && (
-                        <p className="rounded-md border border-border-strong bg-surface-muted p-2 text-xs">
+                        <p className="rounded-xl border border-border-strong bg-surface-muted p-2 text-xs">
                           Recommended: {advisory.recommended_next_action}
                         </p>
                       )}
@@ -431,7 +431,7 @@ export default function LeadDetailPage() {
                 {advisoryError && <p className="mt-2 text-xs text-danger">{advisoryError}</p>}
               </div>
 
-              <div className="rounded-xl border border-border bg-surface p-6">
+              <div className="rounded-3xl bg-surface-muted p-6">
                 <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Marketing attribution</h2>
                 <p className="mb-3 text-xs text-muted-foreground">
                   Record where this lead really came from — campaign, source/medium, UTM params — for campaign
@@ -440,7 +440,7 @@ export default function LeadDetailPage() {
                   whatever you save most recently.
                 </p>
                 {attribution && (
-                  <div className="mb-3 rounded-md border border-success/20 bg-success/[0.06] p-2 text-xs text-success">
+                  <div className="mb-3 rounded-xl border border-success/20 bg-success/[0.06] p-2 text-xs text-success">
                     Saved — {attribution.source ?? "no source"} / {attribution.medium ?? "no medium"} (
                     {attribution.attribution_model})
                     {attribution.campaign_id &&
@@ -453,7 +453,7 @@ export default function LeadDetailPage() {
                     <select
                       value={attrCampaignId}
                       onChange={(e) => setAttrCampaignId(e.target.value)}
-                      className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                     >
                       <option value="">No campaign</option>
                       {campaigns.map((c) => (
@@ -469,7 +469,7 @@ export default function LeadDetailPage() {
                       <input
                         value={attrSource}
                         onChange={(e) => setAttrSource(e.target.value)}
-                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                       />
                     </div>
                     <div className="flex-1">
@@ -478,7 +478,7 @@ export default function LeadDetailPage() {
                         value={attrMedium}
                         onChange={(e) => setAttrMedium(e.target.value)}
                         placeholder="e.g. cpc, organic, referral"
-                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                       />
                     </div>
                   </div>
@@ -487,19 +487,19 @@ export default function LeadDetailPage() {
                       value={attrUtmSource}
                       onChange={(e) => setAttrUtmSource(e.target.value)}
                       placeholder="utm_source"
-                      className="w-1/3 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-xs"
+                      className="w-1/3 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-xs"
                     />
                     <input
                       value={attrUtmMedium}
                       onChange={(e) => setAttrUtmMedium(e.target.value)}
                       placeholder="utm_medium"
-                      className="w-1/3 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-xs"
+                      className="w-1/3 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-xs"
                     />
                     <input
                       value={attrUtmCampaign}
                       onChange={(e) => setAttrUtmCampaign(e.target.value)}
                       placeholder="utm_campaign"
-                      className="w-1/3 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-xs"
+                      className="w-1/3 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-xs"
                     />
                   </div>
                   <div>
@@ -507,7 +507,7 @@ export default function LeadDetailPage() {
                     <select
                       value={attrModel}
                       onChange={(e) => setAttrModel(e.target.value)}
-                      className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                     >
                       {ATTRIBUTION_MODELS.map((m) => (
                         <option key={m} value={m}>

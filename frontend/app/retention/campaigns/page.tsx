@@ -167,7 +167,7 @@ export default function RetentionCampaignsPage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         )}
 
         {showCreate && (
@@ -177,7 +177,7 @@ export default function RetentionCampaignsPage() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <div>
@@ -185,7 +185,7 @@ export default function RetentionCampaignsPage() {
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               >
                 {TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -232,7 +232,7 @@ export default function RetentionCampaignsPage() {
                             value={c.status}
                             disabled={busy}
                             onChange={(e) => handleStatusChange(c.id, e.target.value)}
-                            className="rounded-md border border-border-strong bg-surface-muted px-1.5 py-0.5 text-xs disabled:opacity-50"
+                            className="rounded-xl border border-border-strong bg-surface-muted px-1.5 py-0.5 text-xs disabled:opacity-50"
                           >
                             {STATUSES.map((s) => (
                               <option key={s} value={s}>
@@ -264,10 +264,10 @@ export default function RetentionCampaignsPage() {
                               onChange={(e) => setCustomerQuery(e.target.value)}
                               placeholder="Search customer by name/email"
                               disabled={enrolling}
-                              className="w-full rounded-md border border-border-strong bg-surface px-3 py-1.5 text-sm disabled:opacity-50"
+                              className="w-full rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm disabled:opacity-50"
                             />
                             {customerResults.length > 0 && (
-                              <ul className="absolute z-10 mt-1 w-full rounded-md border border-border bg-surface text-sm shadow-popover">
+                              <ul className="absolute z-10 mt-1 w-full rounded-2xl bg-surface-muted text-sm shadow-popover">
                                 {customerResults.map((cust) => (
                                   <li
                                     key={cust.id}

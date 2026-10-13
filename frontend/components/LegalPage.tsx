@@ -18,7 +18,7 @@ export default function LegalPage({ title, updated, intro, sections }: { title: 
         <h1 className="text-4xl font-semibold tracking-tight text-foreground">{title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">Last updated {updated}</p>
         <p className="mt-6 text-base leading-relaxed text-muted">{intro}</p>
-        <nav aria-label="On this page" className="mt-8 rounded-xl border border-border bg-surface p-4 text-sm">
+        <nav aria-label="On this page" className="mt-8 rounded-3xl bg-surface-muted p-4 text-sm">
           <ol className="list-decimal space-y-1 pl-5 text-muted">
             {sections.map((s, i) => (
               <li key={s.heading}>

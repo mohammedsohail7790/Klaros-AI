@@ -73,7 +73,7 @@ export default function MedicalTourismPatientLeadsPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -214,7 +214,7 @@ function CreatePatientLeadModal({
             className="klaros-input"
           />
           {leadResults.length > 0 && (
-            <ul className="mt-1 overflow-hidden rounded-xl border border-border bg-surface text-sm shadow-raised">
+            <ul className="mt-1 overflow-hidden rounded-3xl bg-surface-muted text-sm shadow-raised">
               {leadResults.map((l) => (
                 <li
                   key={l.id}

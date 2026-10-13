@@ -116,7 +116,7 @@ export default function MedicalTourismConsultationsPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -262,7 +262,7 @@ function CreateConsultationModal({
     <Modal title="New consultation" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
         {loadedAppointments && appointments.length === 0 && (
-          <div className="rounded-md border border-warning/30 bg-warning/[0.06] p-3 text-sm text-foreground">
+          <div className="rounded-xl border border-warning/30 bg-warning/[0.06] p-3 text-sm text-foreground">
             <p className="font-medium">Book the appointment first.</p>
             <p className="mt-1 text-muted">
               A consultation is attached to a booked appointment, and none was found in the last or next 90 days. Add the patient under{" "}

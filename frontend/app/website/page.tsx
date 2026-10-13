@@ -119,7 +119,7 @@ export default function WebsitePage() {
         </header>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         {!website ? (
@@ -142,7 +142,7 @@ export default function WebsitePage() {
                   <button
                     key={v.id}
                     onClick={() => setSelectedVersionId(v.id)}
-                    className={`w-full rounded-md border p-2 text-left text-sm ${
+                    className={`w-full rounded-xl border p-2 text-left text-sm ${
                       v.id === selectedVersionId ? "border-accent bg-accent-soft" : "border-border"
                     }`}
                   >
@@ -327,7 +327,7 @@ function VersionEditor({
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+        <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -357,14 +357,14 @@ function VersionEditor({
         )}
       </div>
 
-      <div role="tablist" aria-label="Editor view" className="inline-flex rounded-xl border border-border bg-surface-muted p-0.5 text-sm">
+      <div role="tablist" aria-label="Editor view" className="inline-flex rounded-3xl bg-surface-muted-muted p-0.5 text-sm">
         {(["edit", "preview"] as const).map((v) => (
           <button
             key={v}
             role="tab"
             aria-selected={view === v}
             onClick={() => setView(v)}
-            className={`rounded-md px-3.5 py-1.5 font-medium transition-colors ${view === v ? "bg-surface text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}
+            className={`rounded-xl px-3.5 py-1.5 font-medium transition-colors ${view === v ? "bg-surface text-foreground shadow-sm" : "text-muted hover:text-foreground"}`}
           >
             {v === "edit" ? "Edit" : "Live preview"}
           </button>
@@ -373,7 +373,7 @@ function VersionEditor({
 
       {view === "preview" ? (
         <div
-          className="overflow-hidden rounded-xl border border-border bg-surface shadow-raised"
+          className="overflow-hidden rounded-3xl bg-surface-muted shadow-raised"
           onClick={(e) => {
             const a = (e.target as HTMLElement).closest("a");
             if (!a) return;
@@ -388,7 +388,7 @@ function VersionEditor({
               <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
             </span>
-            <span className="mx-auto max-w-xs flex-1 truncate rounded-md bg-surface px-3 py-1 text-center text-xs text-muted">/{website.slug}</span>
+            <span className="mx-auto max-w-xs flex-1 truncate rounded-xl bg-surface px-3 py-1 text-center text-xs text-muted">/{website.slug}</span>
           </div>
           <div className="max-h-[70vh] overflow-auto">
             <SiteView site={rendered} tenantId={website.id} pageSlug={activePageSlug} hrefForPage={(slug) => `#page-${slug}`} preview />
@@ -423,7 +423,7 @@ function VersionEditor({
       {activePage && editSections && (
         <div className="space-y-4">
           {editSections.map((section, i) => (
-            <div key={i} className="rounded-md border border-border p-4">
+            <div key={i} className="rounded-xl border border-border p-4">
               <div className="mb-2 flex items-center justify-between">
                 <Badge>{SECTION_LABELS[section.component_type] ?? section.component_type}</Badge>
                 {isDraft && (
@@ -532,7 +532,7 @@ function ThemeEditor({
   useEffect(() => setLocal(theme), [theme]);
 
   return (
-    <details className="rounded-md border border-border p-4">
+    <details className="rounded-xl border border-border p-4">
       <summary className="cursor-pointer text-sm font-medium">Theme and brand</summary>
       <div className="mt-3 space-y-2">
         <Label>Start from a look</Label>
@@ -541,7 +541,7 @@ function ThemeEditor({
             <button
               key={look.key}
               type="button"
-              className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-muted"
+              className="flex items-center gap-2 rounded-xl border border-border px-3 py-1.5 text-sm hover:bg-surface-muted"
               onClick={() =>
                 setLocal({
                   ...local,

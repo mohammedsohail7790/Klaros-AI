@@ -148,7 +148,7 @@ function PublicQuoteViewInner() {
   if (error && !quote) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-16">
-        <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+        <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
           {error}
           <div className="mt-2 text-xs text-danger">
             If you followed a link from an email or text message, it may have expired — please contact us for a
@@ -177,24 +177,24 @@ function PublicQuoteViewInner() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+        <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
       )}
 
       {depositReturn === "cancelled" && depositPending && (
-        <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-3 text-sm text-warning">
+        <div className="mb-4 rounded-xl border border-warning/25 bg-warning/[0.07] p-3 text-sm text-warning">
           Checkout was cancelled — no payment was made. You can try again below whenever you&apos;re ready.
         </div>
       )}
 
       {confirming && depositPending && (
-        <div className="mb-6 rounded-md border border-blue-200 bg-blue-50/30 p-4 text-sm text-blue-700">
+        <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50/30 p-4 text-sm text-blue-700">
           Confirming your payment with Stripe — this usually takes just a few seconds. This page will update
           automatically once it&apos;s confirmed.
         </div>
       )}
 
       {!confirming && depositReturn === "success" && depositPending && (
-        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
+        <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">
           We haven&apos;t received confirmation of your payment yet. If you completed checkout, this can take a
           moment — refresh this page shortly, or contact us if this persists.
           <button
@@ -210,7 +210,7 @@ function PublicQuoteViewInner() {
       )}
 
       {(quote.status === "ACCEPTED" || quote.status === "CONVERTED") && !depositPending && (
-        <div className="mb-6 rounded-md border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
+        <div className="mb-6 rounded-xl border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
           You accepted this quote.{jobCreated ? " Work has been scheduled." : ""}
           {quote.status === "CONVERTED" && quote.deposit_required && (
             <div className="mt-1">Your deposit has been received — thank you.</div>
@@ -219,19 +219,19 @@ function PublicQuoteViewInner() {
       )}
 
       {quote.status === "DEPOSIT_PAID" && (
-        <div className="mb-6 rounded-md border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
+        <div className="mb-6 rounded-xl border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
           Your deposit has been received and this quote is accepted. We&apos;re finalizing your job now.
         </div>
       )}
 
       {quote.status === "DECLINED" && (
-        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
+        <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">
           You declined this quote.
         </div>
       )}
 
       {quote.status === "EXPIRED" && (
-        <div className="mb-6 rounded-md border border-border bg-surface p-4 text-sm text-muted">
+        <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">
           This quote has expired. Please contact us for an updated quote.
         </div>
       )}
@@ -276,7 +276,7 @@ function PublicQuoteViewInner() {
       </div>
 
       {quote.terms && (
-        <div className="mb-6 whitespace-pre-wrap rounded-md border border-border bg-surface p-3 text-sm text-muted">
+        <div className="mb-6 whitespace-pre-wrap rounded-2xl bg-surface-muted p-3 text-sm text-muted">
           {quote.terms}
         </div>
       )}
@@ -284,7 +284,7 @@ function PublicQuoteViewInner() {
       {decidable && (
         <div className="flex flex-col gap-3">
           {quote.deposit_required && (
-            <div className="rounded-md border border-border bg-surface p-3 text-sm text-muted">
+            <div className="rounded-2xl bg-surface-muted p-3 text-sm text-muted">
               This quote requires a deposit to begin work. The exact amount will be shown after you accept, and
               you&apos;ll be able to pay it securely via Stripe.
             </div>
@@ -292,7 +292,7 @@ function PublicQuoteViewInner() {
           <button
             disabled={busy}
             onClick={handleAccept}
-            className="rounded-md border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
+            className="rounded-xl border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
           >
             {busy ? "Accepting..." : "Accept quote"}
           </button>
@@ -308,7 +308,7 @@ function PublicQuoteViewInner() {
             <button
               disabled={busy}
               onClick={handleDecline}
-              className="rounded-md border border-danger/25 px-4 py-2 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
+              className="rounded-xl border border-danger/25 px-4 py-2 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
             >
               Decline
             </button>
@@ -318,14 +318,14 @@ function PublicQuoteViewInner() {
 
       {depositPending && !confirming && (
         <div className="flex flex-col gap-3">
-          <div className="rounded-md border border-border bg-surface p-4 text-sm text-muted">
+          <div className="rounded-2xl bg-surface-muted p-4 text-sm text-muted">
             <div className="mb-1 font-medium text-foreground">Deposit required: ${quote.deposit_amount ?? "—"}</div>
             Payment is handled securely by Stripe — Klaros never sees or stores your card details.
           </div>
           <button
             disabled={busy}
             onClick={handlePayDeposit}
-            className="rounded-md border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
+            className="rounded-xl border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
           >
             {busy ? "Starting checkout..." : "Pay deposit securely with Stripe"}
           </button>

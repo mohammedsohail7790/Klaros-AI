@@ -94,14 +94,14 @@ export default function WorkersPage() {
           Field technicians available for job assignment and scheduling.
         </p>
 
-        <form onSubmit={handleCreate} className="mb-6 flex flex-wrap items-end gap-2 rounded-xl border border-border bg-surface p-4">
+        <form onSubmit={handleCreate} className="mb-6 flex flex-wrap items-end gap-2 rounded-3xl bg-surface-muted p-4">
           <div>
             <label className="block text-xs text-muted">Name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Worker name"
-              className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
             />
           </div>
           <div>
@@ -109,7 +109,7 @@ export default function WorkersPage() {
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
             />
           </div>
           <div>
@@ -117,7 +117,7 @@ export default function WorkersPage() {
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
             />
           </div>
           <div>
@@ -126,7 +126,7 @@ export default function WorkersPage() {
               value={role}
               onChange={(e) => setRole(e.target.value)}
               placeholder="e.g. HVAC Technician"
-              className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
             />
           </div>
           <div>
@@ -135,7 +135,7 @@ export default function WorkersPage() {
               value={serviceTypes}
               onChange={(e) => setServiceTypes(e.target.value)}
               placeholder="HVAC, PLUMBING"
-              className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+              className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
             />
           </div>
           <button
@@ -148,7 +148,7 @@ export default function WorkersPage() {
         </form>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         <label className="mb-4 flex items-center gap-2 text-sm text-muted">
@@ -189,7 +189,7 @@ export default function WorkersPage() {
                           value={w.status}
                           disabled={busy}
                           onChange={(e) => handleStatusChange(w.id, e.target.value)}
-                          className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-xs disabled:opacity-50"
+                          className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-xs disabled:opacity-50"
                         >
                           {STATUSES.map((s) => (
                             <option key={s} value={s}>

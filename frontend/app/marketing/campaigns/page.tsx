@@ -97,7 +97,7 @@ export default function CampaignsPage() {
         </div>
 
         {detectNotice && (
-          <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-3 text-sm text-warning">
+          <div className="mb-4 rounded-xl border border-warning/25 bg-warning/[0.07] p-3 text-sm text-warning">
             {detectNotice}
           </div>
         )}
@@ -109,7 +109,7 @@ export default function CampaignsPage() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <div>
@@ -117,7 +117,7 @@ export default function CampaignsPage() {
               <select
                 value={channel}
                 onChange={(e) => setChannel(e.target.value)}
-                className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               >
                 {CHANNELS.map((c) => (
                   <option key={c} value={c}>
@@ -132,7 +132,7 @@ export default function CampaignsPage() {
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
                 placeholder="0.00"
-                className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <button
@@ -148,7 +148,7 @@ export default function CampaignsPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry

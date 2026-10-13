@@ -166,7 +166,7 @@ export default function MorningBriefPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
@@ -174,7 +174,7 @@ export default function MorningBriefPage() {
           <>
             {brief && brief.brief_id ? (
               <>
-                <div className="mb-6 rounded-xl border border-border bg-surface p-6">
+                <div className="mb-6 rounded-3xl bg-surface-muted p-6">
                   <div className="mb-2 flex items-center gap-2">
                     <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">
                       {brief.mode === "DETERMINISTIC"
@@ -219,7 +219,7 @@ export default function MorningBriefPage() {
                 ) : (
                   <div className="space-y-3">
                     {brief.recommendations.map((r) => (
-                      <div key={r.recommendation_id} className="rounded-xl border border-border bg-surface p-4">
+                      <div key={r.recommendation_id} className="rounded-3xl bg-surface-muted p-4">
                         <p className="font-medium">{r.what}</p>
                         <p className="mt-1 text-sm text-muted">Why: {r.why}</p>
                         <p className="mt-1 text-sm text-muted">Next action: {r.next_action}</p>
@@ -279,12 +279,12 @@ export default function MorningBriefPage() {
                               onChange={(e) => setRememberText(e.target.value)}
                               rows={2}
                               placeholder="e.g. This customer is strategic — always prioritize commercial accounts like this."
-                              className="w-full rounded-md border border-border-strong bg-background px-2 py-1.5 text-xs"
+                              className="w-full rounded-xl border border-border-strong bg-background px-2 py-1.5 text-xs"
                             />
                             <button
                               disabled={busy || !rememberText.trim()}
                               onClick={() => handleRemember(r.recommendation_id)}
-                              className="mt-2 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-xs hover:bg-surface-muted disabled:opacity-50"
+                              className="mt-2 rounded-xl border border-border-strong bg-surface-muted px-3 py-1.5 text-xs hover:bg-surface-muted disabled:opacity-50"
                             >
                               Save to memory
                             </button>
@@ -302,7 +302,7 @@ export default function MorningBriefPage() {
             )}
 
             {settings && (
-              <div className="mt-10 rounded-xl border border-border bg-surface p-6">
+              <div className="mt-10 rounded-3xl bg-surface-muted p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Schedule</h2>
                 <div className="flex flex-wrap items-end gap-3 text-sm">
                   <label className="flex items-center gap-2">
@@ -319,7 +319,7 @@ export default function MorningBriefPage() {
                       type="time"
                       value={settings.local_time}
                       onChange={(e) => handleSettingsSave({ ...settings, local_time: e.target.value })}
-                      className="rounded-md border border-border-strong bg-surface-muted px-2 py-1"
+                      className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1"
                     />
                   </div>
                   <div>
@@ -328,7 +328,7 @@ export default function MorningBriefPage() {
                       value={settings.timezone}
                       onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
                       onBlur={(e) => handleSettingsSave({ ...settings, timezone: e.target.value })}
-                      className="w-48 rounded-md border border-border-strong bg-surface-muted px-2 py-1"
+                      className="w-48 rounded-xl border border-border-strong bg-surface-muted px-2 py-1"
                     />
                   </div>
                 </div>

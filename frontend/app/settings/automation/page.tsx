@@ -169,7 +169,7 @@ export default function AutomationSettingsPage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
@@ -225,7 +225,7 @@ export default function AutomationSettingsPage() {
                                     key={opt}
                                     disabled={busyKey === p.tool_name || opt === p.current_policy}
                                     onClick={() => requestPolicyChange(p.tool_name, p.current_policy, opt)}
-                                    className={`rounded-md border px-2 py-1 text-xs disabled:opacity-40 ${
+                                    className={`rounded-xl border px-2 py-1 text-xs disabled:opacity-40 ${
                                       opt === p.current_policy
                                         ? "border-border-strong bg-surface-muted"
                                         : "border-border-strong hover:bg-surface-muted"

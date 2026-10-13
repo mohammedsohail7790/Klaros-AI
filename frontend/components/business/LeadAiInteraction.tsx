@@ -78,9 +78,9 @@ export function LeadAiInteraction({
   }
   const noConversation = data.events.length === 0;
   return (
-    <section aria-labelledby="lead-ai-h" className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+    <section aria-labelledby="lead-ai-h" className="rounded-3xl bg-surface-muted p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="lead-ai-h" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
+        <h2 id="lead-ai-h" className="flex items-center gap-2 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">
           <Bot className="h-5 w-5 text-accent" aria-hidden="true" /> AI interaction
         </h2>
         <AiStatePill state={data.state} />

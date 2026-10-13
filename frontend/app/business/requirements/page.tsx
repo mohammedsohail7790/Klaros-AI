@@ -148,7 +148,7 @@ export default function RequirementsPage() {
                     <li key={r.key} className="klaros-card klaros-card-interactive flex flex-col p-5">
                       <div className="mb-1.5 flex flex-wrap items-center gap-2">
                         <h3 className="text-[15px] font-semibold tracking-tight text-foreground">{r.label}</h3>
-                        <span className={r.required ? "rounded-md bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-hover" : "rounded-md border border-border px-2 py-0.5 text-xs text-muted"}>
+                        <span className={r.required ? "rounded-xl bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-hover" : "rounded-xl border border-border px-2 py-0.5 text-xs text-muted"}>
                           {r.required ? "Required" : "Suggested"}
                         </span>
                       </div>

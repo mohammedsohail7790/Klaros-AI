@@ -114,7 +114,7 @@ export default function CommissionDeskPage() {
           <>
             {awaiting.length > 0 && (
               <section aria-label="Ready for a commission" className="mb-8">
-                <h2 className="text-xl font-semibold tracking-tight text-foreground">Ready for a commission</h2>
+                <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Ready for a commission</h2>
                 <p className="mt-0.5 text-sm text-muted">The clinic has reported an outcome for these referrals. Record the commission you agreed.</p>
                 <ul className="mt-3 space-y-2">
                   {awaiting.map((a) => (
@@ -139,7 +139,7 @@ export default function CommissionDeskPage() {
             )}
 
             <section aria-label="Commissions">
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">Commissions</h2>
+              <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Commissions</h2>
               {commissions.length === 0 ? (
                 <p className="mt-2 text-sm text-muted">
                   No commissions yet. Once a clinic reports an outcome for a referral, it appears above so you can record the commission.
@@ -264,7 +264,7 @@ function SetUpCommission({ token, item, patient, onClose, onDone }: { token: str
     <Modal title={`Commission: ${patient}`} onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
         {error && (
-          <div role="alert" className="rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
+          <div role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
@@ -283,11 +283,11 @@ function SetUpCommission({ token, item, patient, onClose, onDone }: { token: str
         <div className="grid grid-cols-3 gap-2">
           <label className="col-span-2 block text-sm">
             {basis === "FLAT" ? "Fee" : "Percentage"}
-            <input aria-label={basis === "FLAT" ? "Fee" : "Percentage"} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={basis === "FLAT" ? "e.g. 650" : "e.g. 10"} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5" />
+            <input aria-label={basis === "FLAT" ? "Fee" : "Percentage"} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={basis === "FLAT" ? "e.g. 650" : "e.g. 10"} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5" />
           </label>
           <label className="block text-sm">
             Currency
-            <select aria-label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5">
+            <select aria-label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5">
               {CURRENCIES.map((c) => (
                 <option key={c}>{c}</option>
               ))}
@@ -297,12 +297,12 @@ function SetUpCommission({ token, item, patient, onClose, onDone }: { token: str
         {basis === "PERCENTAGE" && (
           <label className="block text-sm">
             Treatment cost it applies to (optional)
-            <input aria-label="Treatment cost" inputMode="decimal" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Leave blank until the clinic tells you" className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5" />
+            <input aria-label="Treatment cost" inputMode="decimal" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Leave blank until the clinic tells you" className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5" />
           </label>
         )}
         <label className="block text-sm">
           The outcome your agreement says earns it
-          <select aria-label="Qualifying outcome" value={qualifying} onChange={(e) => setQualifying(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5">
+          <select aria-label="Qualifying outcome" value={qualifying} onChange={(e) => setQualifying(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5">
             {Object.entries(OUTCOME_LABEL).map(([k, v]) => (
               <option key={k} value={k}>
                 {v}
@@ -345,7 +345,7 @@ function StepDialog({ token, c, to, label, onClose, onDone }: { token: string; c
   return (
     <Modal title={label} onClose={onClose}>
       {error && (
-        <div role="alert" className="mb-3 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
+        <div role="alert" className="mb-3 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
           {error}
         </div>
       )}
@@ -356,7 +356,7 @@ function StepDialog({ token, c, to, label, onClose, onDone }: { token: string; c
       </p>
       <label className="mt-3 block text-sm">
         {needsNote ? "Reason (recommended)" : "Note (optional)"}
-        <input aria-label="Note" value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5" />
+        <input aria-label="Note" value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5" />
       </label>
       <div className="mt-4 flex justify-end gap-2">
         <Button size="sm" variant="secondary" onClick={onClose}>

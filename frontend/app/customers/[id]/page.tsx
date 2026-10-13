@@ -226,7 +226,7 @@ export default function CustomerDetailPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="mt-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="mt-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -237,7 +237,7 @@ export default function CustomerDetailPage() {
         ) : (
           <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <section className="lg:col-span-2 space-y-6">
-              <div className="rounded-xl border border-border bg-surface p-6">
+              <div className="rounded-3xl bg-surface-muted p-6">
                 {editingCustomer ? (
                   <form onSubmit={handleSaveCustomer} className="space-y-2">
                     <div>
@@ -246,7 +246,7 @@ export default function CustomerDetailPage() {
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         required
-                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                       />
                     </div>
                     <div className="flex gap-2">
@@ -255,7 +255,7 @@ export default function CustomerDetailPage() {
                         <input
                           value={editEmail}
                           onChange={(e) => setEditEmail(e.target.value)}
-                          className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                          className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                         />
                       </div>
                       <div className="flex-1">
@@ -263,7 +263,7 @@ export default function CustomerDetailPage() {
                         <input
                           value={editPhone}
                           onChange={(e) => setEditPhone(e.target.value)}
-                          className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                          className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                         />
                       </div>
                     </div>
@@ -272,7 +272,7 @@ export default function CustomerDetailPage() {
                       <input
                         value={editAddress}
                         onChange={(e) => setEditAddress(e.target.value)}
-                        className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                        className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                       />
                     </div>
                     <div className="flex gap-2 pt-1">
@@ -286,7 +286,7 @@ export default function CustomerDetailPage() {
                       <button
                         type="button"
                         onClick={() => setEditingCustomer(false)}
-                        className="rounded-md px-3 py-1.5 text-sm text-muted hover:underline"
+                        className="rounded-xl px-3 py-1.5 text-sm text-muted hover:underline"
                       >
                         Cancel
                       </button>
@@ -316,7 +316,7 @@ export default function CustomerDetailPage() {
                       <select
                         value={customer.status}
                         onChange={(e) => handleStatusChange(e.target.value)}
-                        className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-xs"
+                        className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-xs"
                       >
                         {CUSTOMER_STATUSES.map((s) => (
                           <option key={s} value={s}>
@@ -329,7 +329,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-border bg-surface p-6">
+              <div className="rounded-3xl bg-surface-muted p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Timeline</h2>
                 {timeline.length === 0 ? (
                   <EmptyState icon={Clock} title="No activity recorded yet." compact />
@@ -352,7 +352,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-border bg-surface p-6">
+              <div className="rounded-3xl bg-surface-muted p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">
                   Appointments ({appointmentEntries.length})
                 </h2>
@@ -369,7 +369,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-border bg-surface p-6">
+              <div className="rounded-3xl bg-surface-muted p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Invoices / Payments</h2>
                 {invoices.length === 0 ? (
                   <EmptyState icon={Receipt} title="No financial history for this customer yet." compact />
@@ -389,7 +389,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-border bg-surface p-6">
+              <div className="rounded-3xl bg-surface-muted p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Payments received</h2>
                 {refundNotice && <p className="mb-2 text-sm text-success">{refundNotice}</p>}
                 {payments.length === 0 ? (
@@ -417,7 +417,7 @@ export default function CustomerDetailPage() {
                         {refundingPaymentId === p.id && (
                           <form
                             onSubmit={(e) => submitRefund(e, p.id)}
-                            className="mt-2 flex flex-wrap items-end gap-2 rounded-md border border-border-strong bg-surface-muted p-3"
+                            className="mt-2 flex flex-wrap items-end gap-2 rounded-xl border border-border-strong bg-surface-muted p-3"
                           >
                             <div>
                               <label className="block text-xs text-muted">Amount</label>
@@ -425,7 +425,7 @@ export default function CustomerDetailPage() {
                                 value={refundAmount}
                                 onChange={(e) => setRefundAmount(e.target.value)}
                                 required
-                                className="w-24 rounded-md border border-border-strong bg-surface px-2 py-1 text-sm"
+                                className="w-24 rounded-xl border border-border-strong bg-surface px-2 py-1 text-sm"
                               />
                             </div>
                             <div className="flex-1">
@@ -434,13 +434,13 @@ export default function CustomerDetailPage() {
                                 value={refundReason}
                                 onChange={(e) => setRefundReason(e.target.value)}
                                 required
-                                className="w-full rounded-md border border-border-strong bg-surface px-2 py-1 text-sm"
+                                className="w-full rounded-xl border border-border-strong bg-surface px-2 py-1 text-sm"
                               />
                             </div>
                             <button
                               type="submit"
                               disabled={refundBusy}
-                              className="rounded-md border border-border-strong px-3 py-1 text-xs hover:bg-surface disabled:opacity-50"
+                              className="rounded-xl border border-border-strong px-3 py-1 text-xs hover:bg-surface disabled:opacity-50"
                             >
                               Submit
                             </button>
@@ -459,14 +459,14 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-border bg-surface p-6">
+              <div className="rounded-3xl bg-surface-muted p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Add note</h2>
                 <form onSubmit={submitNote} className="flex gap-2">
                   <input
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="Write a note..."
-                    className="flex-1 rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+                    className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
                   />
                   <button
                     type="submit"
@@ -481,7 +481,7 @@ export default function CustomerDetailPage() {
 
             <section className="space-y-4">
               {health && (
-                <div className="rounded-xl border border-border bg-surface p-6">
+                <div className="rounded-3xl bg-surface-muted p-6">
                   <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Customer health</h2>
                   <dl className="space-y-1.5 text-sm">
                     <div className="flex justify-between">
@@ -518,7 +518,7 @@ export default function CustomerDetailPage() {
                     </div>
                   </dl>
                   {feedback.some((f) => f.sentiment === "NEGATIVE") && (
-                    <p className="mt-3 rounded-md border border-danger/25 bg-danger/[0.06] p-2 text-xs text-danger">
+                    <p className="mt-3 rounded-xl border border-danger/25 bg-danger/[0.06] p-2 text-xs text-danger">
                       Negative feedback on file — service recovery required.
                     </p>
                   )}
@@ -529,7 +529,7 @@ export default function CustomerDetailPage() {
                 </div>
               )}
 
-              <div className="rounded-xl border border-border bg-surface p-6">
+              <div className="rounded-3xl bg-surface-muted p-6">
                 <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Retention timeline</h2>
                 {retentionTimeline.length === 0 ? (
                   <EmptyState icon={Heart} title="No retention activity recorded yet." compact />
@@ -550,7 +550,7 @@ export default function CustomerDetailPage() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-border bg-surface p-6">
+              <div className="rounded-3xl bg-surface-muted p-6">
                 <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">AI summary</h2>
                 {summary ? (
                   <p className="text-sm text-muted">{summary}</p>

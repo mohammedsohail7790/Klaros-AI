@@ -48,7 +48,7 @@ export default function CashForecastPage() {
         />
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         )}
 
         {!forecast ? (

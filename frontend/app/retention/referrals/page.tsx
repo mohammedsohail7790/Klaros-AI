@@ -180,7 +180,7 @@ export default function ReferralsPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">Retry</button>
           </div>
@@ -201,7 +201,7 @@ export default function ReferralsPage() {
                 <input
                   value={newProgramName}
                   onChange={(e) => setNewProgramName(e.target.value)}
-                  className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 />
               </div>
               <div>
@@ -209,7 +209,7 @@ export default function ReferralsPage() {
                 <input
                   value={newRewardAmount}
                   onChange={(e) => setNewRewardAmount(e.target.value)}
-                  className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 />
               </div>
               <button disabled={busy || !newProgramName.trim()} onClick={handleCreateProgram} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
@@ -252,7 +252,7 @@ export default function ReferralsPage() {
                 <input
                   value={codeProgramId}
                   onChange={(e) => setCodeProgramId(e.target.value)}
-                  className="w-64 rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="w-64 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 />
               </div>
               <div>
@@ -260,7 +260,7 @@ export default function ReferralsPage() {
                 <input
                   value={codeCustomerId}
                   onChange={(e) => setCodeCustomerId(e.target.value)}
-                  className="w-64 rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                  className="w-64 rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                 />
               </div>
               <button
@@ -272,7 +272,7 @@ export default function ReferralsPage() {
               </button>
             </div>
             {generatedCode && (
-              <div className="mb-6 rounded-md border border-border p-4 text-sm">
+              <div className="mb-6 rounded-xl border border-border p-4 text-sm">
                 <p className="text-muted">
                   Code: <span className="font-mono">{generatedCode.code}</span>
                 </p>
@@ -287,26 +287,26 @@ export default function ReferralsPage() {
             )}
 
             {newReferralId && (
-              <div className="mb-6 rounded-md border border-border p-4">
+              <div className="mb-6 rounded-xl border border-border p-4">
                 <p className="mb-2 text-sm text-muted">
                   Referral created ({newReferralId}). Convert to a lead:
                 </p>
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
                     <label className="block text-xs text-muted">Name</label>
-                    <input value={leadName} onChange={(e) => setLeadName(e.target.value)} className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                    <input value={leadName} onChange={(e) => setLeadName(e.target.value)} className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-muted">Phone</label>
-                    <input value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                    <input value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-muted">Email</label>
-                    <input value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                    <input value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-muted">Service requested</label>
-                    <input value={leadService} onChange={(e) => setLeadService(e.target.value)} className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
+                    <input value={leadService} onChange={(e) => setLeadService(e.target.value)} className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                   </div>
                   <button
                     disabled={busy || !leadName.trim()}

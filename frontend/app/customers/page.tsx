@@ -82,7 +82,7 @@ export default function CustomersPage() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -325,7 +325,7 @@ function ImportCustomersModal({
       <div className="space-y-4">
         {result ? (
           <>
-            <div className="rounded-md border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
+            <div className="rounded-xl border border-success/20 bg-success/[0.06] p-3 text-sm text-success">
               Imported {result.created_count} customer(s).
               {result.skipped_duplicate_count > 0 &&
                 ` Skipped ${result.skipped_duplicate_count} row(s) matching an existing customer's email.`}
@@ -347,11 +347,11 @@ function ImportCustomersModal({
               type="file"
               accept=".csv,text/csv"
               onChange={handleFile}
-              className="w-full rounded-md border border-border-strong bg-surface-muted px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-border-strong bg-surface-muted px-3 py-2 text-sm"
             />
             {parseError && <p className="text-sm text-danger">{parseError}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted">
+              <button type="button" onClick={onClose} className="rounded-xl px-3 py-1.5 text-sm text-muted">
                 Cancel
               </button>
             </div>
@@ -371,7 +371,7 @@ function ImportCustomersModal({
                   <select
                     value={mapping[field.key] ?? UNMAPPED}
                     onChange={(e) => setMapping((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                    className="flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                    className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                   >
                     <option value={UNMAPPED}>— Don&apos;t import —</option>
                     {headers.map((h) => (
@@ -384,7 +384,7 @@ function ImportCustomersModal({
               ))}
             </div>
 
-            <div className="rounded-md border border-border bg-surface-muted p-3 text-xs text-muted">
+            <div className="rounded-2xl bg-surface-muted-muted p-3 text-xs text-muted">
               {previewRows.length} row(s) will be imported.
               {skippedForNoName > 0 && ` ${skippedForNoName} row(s) skipped — no value in the mapped Name column.`}
             </div>
@@ -399,7 +399,7 @@ function ImportCustomersModal({
                   setDataRows([]);
                   if (fileInputRef.current) fileInputRef.current.value = "";
                 }}
-                className="rounded-md px-3 py-1.5 text-sm text-muted"
+                className="rounded-xl px-3 py-1.5 text-sm text-muted"
               >
                 Choose a different file
               </button>

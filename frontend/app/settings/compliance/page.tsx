@@ -158,7 +158,7 @@ export default function CompliancePage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
 
         {authLoading || loading ? (
@@ -226,7 +226,7 @@ export default function CompliancePage() {
                 required
                 value={renewExpiry}
                 onChange={(e) => setRenewExpiry(e.target.value)}
-                className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <button

@@ -72,8 +72,8 @@ export function LeadOperationsPanel({
   const m = ops.matching;
 
   return (
-    <section aria-labelledby="lead-ops-h" className="rounded-xl border border-border bg-surface p-6">
-      <h2 id="lead-ops-h" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
+    <section aria-labelledby="lead-ops-h" className="rounded-3xl bg-surface-muted p-6">
+      <h2 id="lead-ops-h" className="flex items-center gap-2 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">
         <Stethoscope className="h-5 w-5 text-accent" aria-hidden="true" /> Patient enquiry
       </h2>
 
@@ -106,7 +106,7 @@ export function LeadOperationsPanel({
         {m.basis.destination_country ? ` · destination ${m.basis.destination_country}` : ""}. Suggestions only — nothing is sent or booked automatically.
       </p>
       {m.matches.length === 0 ? (
-        <p className="mt-3 rounded-md border border-border-strong p-3 text-sm text-muted">{m.none_reason}</p>
+        <p className="mt-3 rounded-xl border border-border-strong p-3 text-sm text-muted">{m.none_reason}</p>
       ) : (
         <ul className="mt-3 space-y-3">
           {m.matches.map((x) => (

@@ -146,7 +146,7 @@ export function HallaPhonePanel({ token, connected }: { token: string | null; co
         {!status && !loadError && <p className="text-sm text-muted">Loading…</p>}
 
         {status?.template_outdated && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-muted/70 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-surface-muted-muted/70 p-3">
             <p className="text-sm text-foreground">A newer version of your AI receptionist is ready. It includes improvements to what it says about medical questions.</p>
             <Button variant="secondary" size="sm" onClick={update} disabled={busy !== null}>{busy === "update" ? "Updating…" : "Update receptionist"}</Button>
           </div>

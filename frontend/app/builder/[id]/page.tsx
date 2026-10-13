@@ -167,7 +167,7 @@ function Workspace() {
     <AppShell user={user} crumbs={[{ label: "App Builder", href: "/builder" }, { label: project.name }]}>
       <div className="flex h-[calc(100vh-3.6rem)] min-h-[760px] flex-col">
         <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-2">
-          <Link href="/builder" aria-label="Back to projects" className="rounded-md p-1 text-muted hover:bg-surface-muted"><ArrowLeft className="h-4 w-4" /></Link>
+          <Link href="/builder" aria-label="Back to projects" className="rounded-xl p-1 text-muted hover:bg-surface-muted"><ArrowLeft className="h-4 w-4" /></Link>
           <h1 className="truncate text-sm font-semibold text-foreground">{project.name}</h1>
           <Badge status={project.status === "ready" ? "ACTIVE" : project.status === "failed" ? "FAILED" : "RUNNING"}>{project.status === "working" ? "Building" : project.status}</Badge>
           {project.published_version_id && <Badge status="PUBLISHED">Live</Badge>}

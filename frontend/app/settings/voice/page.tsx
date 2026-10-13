@@ -103,7 +103,7 @@ export default function VoiceReceptionistPage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
@@ -112,7 +112,7 @@ export default function VoiceReceptionistPage() {
           <Skeleton />
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="rounded-xl border border-border bg-surface p-5">
+            <div className="rounded-3xl bg-surface-muted p-5">
               <div className="mb-2 flex items-center justify-between">
                 <div>
                   <h2 className="font-medium">Status</h2>
@@ -123,7 +123,7 @@ export default function VoiceReceptionistPage() {
                 <button
                   onClick={handleToggle}
                   disabled={saving}
-                  className={`rounded-md border px-3 py-1.5 text-sm disabled:opacity-50 ${
+                  className={`rounded-xl border px-3 py-1.5 text-sm disabled:opacity-50 ${
                     settings.enabled
                       ? "border-danger/25 bg-danger/[0.06] text-danger hover:bg-danger/10"
                       : "border-success/20 bg-success/[0.06] text-success hover:bg-success/10"
@@ -147,7 +147,7 @@ export default function VoiceReceptionistPage() {
                 value={draftGreeting}
                 onChange={(e) => setDraftGreeting(e.target.value)}
                 rows={2}
-                className="mb-3 w-full rounded-md border border-border-strong bg-background p-2 text-sm text-foreground"
+                className="mb-3 w-full rounded-xl border border-border-strong bg-background p-2 text-sm text-foreground"
               />
 
               <label className="mb-1 block text-xs text-muted">Business hours note (optional)</label>
@@ -156,7 +156,7 @@ export default function VoiceReceptionistPage() {
                 onChange={(e) => setDraftHours(e.target.value)}
                 rows={2}
                 placeholder="e.g. Mon-Fri 8am-6pm, emergency service available 24/7"
-                className="mb-3 w-full rounded-md border border-border-strong bg-background p-2 text-sm text-foreground"
+                className="mb-3 w-full rounded-xl border border-border-strong bg-background p-2 text-sm text-foreground"
               />
 
               <button
@@ -178,7 +178,7 @@ export default function VoiceReceptionistPage() {
                     <button
                       key={c.id}
                       onClick={() => setSelectedCall(c)}
-                      className="block w-full rounded-md border border-border px-3 py-2 text-left text-sm hover:bg-surface-muted"
+                      className="block w-full rounded-xl border border-border px-3 py-2 text-left text-sm hover:bg-surface-muted"
                     >
                       <div className="flex items-center justify-between">
                         <span>{c.caller_number ?? "Unknown number"}</span>
@@ -197,7 +197,7 @@ export default function VoiceReceptionistPage() {
               )}
 
               {selectedCall && (
-                <div className="mt-4 rounded-xl border border-border bg-surface p-4">
+                <div className="mt-4 rounded-3xl bg-surface-muted p-4">
                   <div className="mb-2 flex items-center justify-between">
                     <h3 className="text-sm font-medium">Call detail</h3>
                     <button onClick={() => setSelectedCall(null)} className="text-xs text-muted hover:text-foreground">
@@ -206,7 +206,7 @@ export default function VoiceReceptionistPage() {
                   </div>
 
                   {selectedCall.booking && (
-                    <div className="mb-3 rounded-md border border-border bg-background p-3 text-xs">
+                    <div className="mb-3 rounded-xl border border-border bg-background p-3 text-xs">
                       <div className="mb-1 text-muted">Booking state: <span className="text-foreground">{selectedCall.booking.state}</span></div>
                       {selectedCall.booking.service_summary && (
                         <div className="mb-1 text-muted">
@@ -229,7 +229,7 @@ export default function VoiceReceptionistPage() {
                   )}
 
                   {selectedCall.latency_ms.length > 0 && (
-                    <div className="mb-3 rounded-md border border-border bg-background p-3 text-xs">
+                    <div className="mb-3 rounded-xl border border-border bg-background p-3 text-xs">
                       <div className="mb-1 text-muted">Latency (most recent turn)</div>
                       {(() => {
                         const last = selectedCall.latency_ms[selectedCall.latency_ms.length - 1];

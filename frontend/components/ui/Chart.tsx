@@ -84,7 +84,7 @@ export function LineChart({
       </svg>
       {hover !== null && (
         <div
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-xl border border-border bg-surface px-2.5 py-1.5 text-xs shadow-raised"
+          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-3xl bg-surface-muted px-2.5 py-1.5 text-xs shadow-raised"
           style={{ left: `${(x(hover) / width) * 100}%`, top: `${(y(points[hover].value) / height) * 100}%` }}
         >
           <div className="font-semibold text-foreground">{formatValue(points[hover].value)}</div>

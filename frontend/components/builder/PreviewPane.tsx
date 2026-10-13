@@ -29,14 +29,14 @@ export default function PreviewPane({ previewUrl, routes, loading, onRefresh, bu
         </select>
         <div role="group" aria-label="Screen size" className="ml-1 flex rounded-xl border border-border p-0.5">
           {VIEWPORTS.map((v) => (
-            <button key={v.key} type="button" aria-pressed={vp === v.key} aria-label={v.label} title={v.label} onClick={() => setVp(v.key)} className={cn("rounded-md p-1.5 transition-colors", vp === v.key ? "bg-accent-soft text-accent-hover" : "text-muted hover:text-foreground")}>
+            <button key={v.key} type="button" aria-pressed={vp === v.key} aria-label={v.label} title={v.label} onClick={() => setVp(v.key)} className={cn("rounded-xl p-1.5 transition-colors", vp === v.key ? "bg-accent-soft text-accent-hover" : "text-muted hover:text-foreground")}>
               <v.icon className="h-4 w-4" />
             </button>
           ))}
         </div>
         <div className="ml-auto flex items-center gap-1">
-          <button type="button" onClick={() => { setNonce((n) => n + 1); onRefresh(); }} aria-label="Refresh preview" title="Refresh" className="rounded-md p-1.5 text-muted hover:bg-surface-muted hover:text-foreground"><RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} /></button>
-          {src && <a href={src} target="_blank" rel="noopener noreferrer" aria-label="Open preview in a new tab" title="Open in a new tab" className="rounded-md p-1.5 text-muted hover:bg-surface-muted hover:text-foreground"><ExternalLink className="h-4 w-4" /></a>}
+          <button type="button" onClick={() => { setNonce((n) => n + 1); onRefresh(); }} aria-label="Refresh preview" title="Refresh" className="rounded-xl p-1.5 text-muted hover:bg-surface-muted hover:text-foreground"><RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} /></button>
+          {src && <a href={src} target="_blank" rel="noopener noreferrer" aria-label="Open preview in a new tab" title="Open in a new tab" className="rounded-xl p-1.5 text-muted hover:bg-surface-muted hover:text-foreground"><ExternalLink className="h-4 w-4" /></a>}
         </div>
       </div>
       <div className="relative min-h-0 flex-1 overflow-auto p-3">

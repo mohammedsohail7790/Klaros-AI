@@ -117,7 +117,7 @@ export default function BusinessMapPage() {
         )}
 
         <section className="mt-10" aria-labelledby="next-actions">
-          <h2 id="next-actions" className="text-xl font-semibold tracking-tight text-foreground">Next actions</h2>
+          <h2 id="next-actions" className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Next actions</h2>
           <p className="mt-1 text-sm text-muted">Generated from the current state of your business — they update as you make progress.</p>
           {overview.next_actions.length === 0 ? (
             <p className="mt-4 text-sm text-muted">Nothing left to do right now.</p>

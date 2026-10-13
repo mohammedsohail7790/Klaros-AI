@@ -177,10 +177,10 @@ export default function NurturePage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         )}
         {candidateIds && (
-          <div className="mb-4 rounded-md border border-border bg-surface p-3 text-sm">
+          <div className="mb-4 rounded-2xl bg-surface-muted p-3 text-sm">
             {candidateIds.length === 0 ? (
               "No stale lead candidates found (no status change in 30+ days)."
             ) : (
@@ -206,7 +206,7 @@ export default function NurturePage() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <div>
@@ -214,7 +214,7 @@ export default function NurturePage() {
               <select
                 value={triggerType}
                 onChange={(e) => setTriggerType(e.target.value)}
-                className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               >
                 {TRIGGER_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -283,10 +283,10 @@ export default function NurturePage() {
                               onChange={(e) => setLeadQuery(e.target.value)}
                               placeholder="Search lead by name/email"
                               disabled={busy}
-                              className="w-full rounded-md border border-border-strong bg-surface px-3 py-1.5 text-sm disabled:opacity-50"
+                              className="w-full rounded-xl border border-border-strong bg-surface px-3 py-1.5 text-sm disabled:opacity-50"
                             />
                             {leadResults.length > 0 && (
-                              <ul className="absolute z-10 mt-1 w-full rounded-md border border-border bg-surface text-sm shadow-popover">
+                              <ul className="absolute z-10 mt-1 w-full rounded-2xl bg-surface-muted text-sm shadow-popover">
                                 {leadResults.map((lead) => (
                                   <li
                                     key={lead.id}

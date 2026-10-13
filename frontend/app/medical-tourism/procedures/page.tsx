@@ -84,14 +84,14 @@ export default function MedicalTourismProceduresPage() {
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder="Category"
-            className="ml-auto w-48 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
+            className="ml-auto w-48 rounded-xl border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
           />
         </div>
 
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry

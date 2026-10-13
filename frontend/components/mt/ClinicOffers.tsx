@@ -60,7 +60,7 @@ export function ClinicOffers({ token, refreshKey = 0 }: { token: string; refresh
     <section aria-label="What clinics offer" className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">What clinics offer</h2>
+          <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">What clinics offer</h2>
           <p className="mt-0.5 text-sm text-muted">Which procedures each clinic really performs. A price is optional and should only be one the clinic has approved.</p>
         </div>
         <button type="button" onClick={() => setAdding(true)} disabled={providers.length === 0 || procedures.length === 0} className="klaros-btn-primary">
@@ -144,13 +144,13 @@ function AddOffer({ token, providers, procedures, onClose, onAdded }: { token: s
     <Modal title="Add an offer" onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
         {error && (
-          <div role="alert" className="rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
+          <div role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
         <label className="block text-sm">
           Clinic
-          <select aria-label="Clinic" value={provider} onChange={(e) => setProvider(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5">
+          <select aria-label="Clinic" value={provider} onChange={(e) => setProvider(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5">
             <option value="">Choose…</option>
             {providers.map((p) => (
               <option key={p.id} value={p.id}>
@@ -161,7 +161,7 @@ function AddOffer({ token, providers, procedures, onClose, onAdded }: { token: s
         </label>
         <label className="block text-sm">
           Procedure
-          <select aria-label="Procedure" value={procedure} onChange={(e) => setProcedure(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5">
+          <select aria-label="Procedure" value={procedure} onChange={(e) => setProcedure(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5">
             <option value="">Choose…</option>
             {procedures.map((p) => (
               <option key={p.id} value={p.id}>
@@ -173,11 +173,11 @@ function AddOffer({ token, providers, procedures, onClose, onAdded }: { token: s
         <div className="grid grid-cols-3 gap-2">
           <label className="col-span-2 block text-sm">
             Price the clinic has approved (optional)
-            <input aria-label="Approved price" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 1800" className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5" />
+            <input aria-label="Approved price" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 1800" className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5" />
           </label>
           <label className="block text-sm">
             Currency
-            <select aria-label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className="mt-1 w-full rounded-md border border-border-strong bg-surface px-2 py-1.5">
+            <select aria-label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value)} className="mt-1 w-full rounded-xl border border-border-strong bg-surface px-2 py-1.5">
               {CURRENCIES.map((c) => (
                 <option key={c}>{c}</option>
               ))}

@@ -333,7 +333,7 @@ export default function DashboardPage() {
               <button
                 onClick={handleToggleKillSwitch}
                 disabled={killSwitchBusy}
-                className={`shrink-0 rounded-md border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+                className={`shrink-0 rounded-xl border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
                   killSwitch.ai_paused
                     ? "border-success/40 bg-success/[0.06] text-success hover:bg-success/15"
                     : "border-danger/40 bg-danger/[0.06] text-danger hover:bg-danger/10"
@@ -837,7 +837,7 @@ export default function DashboardPage() {
                   setActivityCategory(e.target.value);
                   setActivityPage(1);
                 }}
-                className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-muted"
+                className="rounded-2xl bg-surface-muted px-2 py-1 text-xs text-muted"
               >
                 {ACTIVITY_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -855,7 +855,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+              <ul className="divide-y divide-border rounded-3xl bg-surface-muted">
                 {activity.items.map((item) => {
                   const row = (
                     <div className="flex items-start justify-between gap-4 p-4 transition hover:bg-surface-muted">
@@ -900,14 +900,14 @@ export default function DashboardPage() {
                   <button
                     onClick={() => setActivityPage((p) => Math.max(1, p - 1))}
                     disabled={activityPage <= 1 || activityLoading}
-                    className="rounded-md border border-border px-2 py-1 disabled:opacity-40"
+                    className="rounded-xl border border-border px-2 py-1 disabled:opacity-40"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => setActivityPage((p) => p + 1)}
                     disabled={activityPage * activity.page_size >= activity.total || activityLoading}
-                    className="rounded-md border border-border px-2 py-1 disabled:opacity-40"
+                    className="rounded-xl border border-border px-2 py-1 disabled:opacity-40"
                   >
                     Next
                   </button>

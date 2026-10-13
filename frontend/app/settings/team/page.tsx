@@ -135,10 +135,10 @@ export default function TeamSettingsPage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
         {lastInviteLink && !lastInviteLink.emailSent && (
-          <div className="mb-4 rounded-md border border-warning/25 bg-warning/[0.07] p-3 text-xs text-warning">
+          <div className="mb-4 rounded-xl border border-warning/25 bg-warning/[0.07] p-3 text-xs text-warning">
             Invite link (share directly — no email provider configured):{" "}
             <code className="break-all">{lastInviteLink.url}</code>
           </div>
@@ -172,7 +172,7 @@ export default function TeamSettingsPage() {
                           value={m.role}
                           disabled={busyMemberId === m.id}
                           onChange={(e) => handleRoleChange(m.id, e.target.value)}
-                          className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-xs disabled:opacity-50"
+                          className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-xs disabled:opacity-50"
                         >
                           {ROLES.map((r) => (
                             <option key={r} value={r}>

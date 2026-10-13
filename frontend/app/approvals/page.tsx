@@ -149,7 +149,7 @@ export default function ApprovalsPage() {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`rounded-md border px-3 py-1.5 text-xs ${
+                className={`rounded-xl border px-3 py-1.5 text-xs ${
                   filter === f ? "border-border-strong bg-surface-muted" : "border-border-strong hover:bg-surface-muted"
                 }`}
               >
@@ -166,7 +166,7 @@ export default function ApprovalsPage() {
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
+          <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">
             {error}
           </div>
         )}
@@ -217,7 +217,7 @@ export default function ApprovalsPage() {
             {!selected ? (
               <p className="text-sm text-muted">Select an approval to see its detail.</p>
             ) : (
-              <div className="rounded-xl border border-border bg-surface p-5">
+              <div className="rounded-3xl bg-surface-muted p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="font-medium">{selected.tool_name}</h2>
                   <Badge status={selected.status} className="text-xs">
@@ -225,7 +225,7 @@ export default function ApprovalsPage() {
                   </Badge>
                 </div>
                 {selected.requested_by_type === "AI" && (
-                  <div className="mb-3 rounded-md border border-accent/20 bg-accent-soft p-2 text-xs text-accent-hover">
+                  <div className="mb-3 rounded-xl border border-accent/20 bg-accent-soft p-2 text-xs text-accent-hover">
                     Klaros AI proposed this action — it was not executed automatically because this action
                     type requires your approval. Nothing has happened yet.
                   </div>
@@ -259,7 +259,7 @@ export default function ApprovalsPage() {
 
                 <div className="mt-4">
                   <p className="mb-1 text-xs text-muted">Input</p>
-                  <pre className="max-h-40 overflow-auto rounded-md border border-border bg-background p-2 text-xs text-muted">
+                  <pre className="max-h-40 overflow-auto rounded-xl border border-border bg-background p-2 text-xs text-muted">
                     {JSON.stringify(selected.tool_input, null, 2)}
                   </pre>
                 </div>
@@ -267,14 +267,14 @@ export default function ApprovalsPage() {
                 {selected.execution_result && (
                   <div className="mt-4">
                     <p className="mb-1 text-xs text-muted">Execution result</p>
-                    <pre className="max-h-40 overflow-auto rounded-md border border-success/20 bg-success/10 p-2 text-xs text-success">
+                    <pre className="max-h-40 overflow-auto rounded-xl border border-success/20 bg-success/10 p-2 text-xs text-success">
                       {JSON.stringify(selected.execution_result, null, 2)}
                     </pre>
                   </div>
                 )}
 
                 {selected.execution_error && (
-                  <div className="mt-4 rounded-md border border-danger/25 bg-danger/[0.06] p-3 text-xs text-danger">
+                  <div className="mt-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-xs text-danger">
                     {selected.execution_error}
                   </div>
                 )}
@@ -285,20 +285,20 @@ export default function ApprovalsPage() {
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       placeholder="Decision note (optional)"
-                      className="mb-2 w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                      className="mb-2 w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                     />
                     <div className="flex gap-2">
                       <button
                         disabled={busy}
                         onClick={handleApprove}
-                        className="rounded-md border border-success/20 bg-success/[0.06] px-3 py-1.5 text-sm text-success hover:bg-success/10 disabled:opacity-50"
+                        className="rounded-xl border border-success/20 bg-success/[0.06] px-3 py-1.5 text-sm text-success hover:bg-success/10 disabled:opacity-50"
                       >
                         Approve
                       </button>
                       <button
                         disabled={busy}
                         onClick={handleReject}
-                        className="rounded-md border border-danger/25 bg-danger/[0.06] px-3 py-1.5 text-sm text-danger hover:bg-danger/10 disabled:opacity-50"
+                        className="rounded-xl border border-danger/25 bg-danger/[0.06] px-3 py-1.5 text-sm text-danger hover:bg-danger/10 disabled:opacity-50"
                       >
                         Reject
                       </button>

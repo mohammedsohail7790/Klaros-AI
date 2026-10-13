@@ -218,7 +218,7 @@ export default function PatientCasePage() {
               <div className="space-y-6 lg:col-span-3">
                 <section aria-label="Referrals" className="klaros-card p-5">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold tracking-tight text-foreground">Clinics</h2>
+                    <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Clinics</h2>
                     {patient.stage !== "CONSENT" && patient.stage !== "NEW_ENQUIRY" && (
                       <Button size="sm" variant="secondary" onClick={() => setChoosing(true)}>
                         New referral
@@ -248,7 +248,7 @@ export default function PatientCasePage() {
                 </section>
 
                 <section aria-label="Tasks" className="klaros-card p-5">
-                  <h2 className="text-lg font-semibold tracking-tight text-foreground">Tasks</h2>
+                  <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Tasks</h2>
                   {tasks.length === 0 ? (
                     <p className="mt-2 text-sm text-muted">Nothing is waiting on a person for this patient.</p>
                   ) : (
@@ -282,7 +282,7 @@ export default function PatientCasePage() {
 
               <div className="space-y-6 lg:col-span-2">
                 <section aria-label="About the enquiry" className="klaros-card p-5">
-                  <h2 className="text-lg font-semibold tracking-tight text-foreground">About the enquiry</h2>
+                  <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">About the enquiry</h2>
                   {!patient.name ? (
                     <p className="mt-2 text-sm text-muted">The patient has not agreed to us keeping their details, so none are shown.</p>
                   ) : (

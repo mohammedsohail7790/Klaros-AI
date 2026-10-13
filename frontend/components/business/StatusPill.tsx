@@ -37,7 +37,7 @@ export function StatusPill({ state, className }: { state: ReadinessState | null 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-xl border px-2 py-0.5 text-xs font-medium",
         meta.classes,
         className
       )}

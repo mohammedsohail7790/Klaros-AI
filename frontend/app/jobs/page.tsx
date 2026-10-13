@@ -74,14 +74,14 @@ export default function JobsPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search job # / title..."
-            className="ml-auto w-56 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
+            className="ml-auto w-56 rounded-xl border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
           />
         </div>
 
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -197,7 +197,7 @@ function CreateJobModal({ token, onClose, onCreated }: { token: string; onClose:
             className="klaros-input"
           />
           {customerResults.length > 0 && (
-            <ul className="mt-1 overflow-hidden rounded-xl border border-border bg-surface text-sm shadow-raised">
+            <ul className="mt-1 overflow-hidden rounded-3xl bg-surface-muted text-sm shadow-raised">
               {customerResults.map((c) => (
                 <li
                   key={c.id}

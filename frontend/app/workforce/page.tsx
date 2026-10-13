@@ -178,7 +178,7 @@ export default function WorkforcePage() {
 
             {/* SETUP */}
             <section aria-labelledby="wf-setup" className="mb-8">
-              <h2 id="wf-setup" className="mb-1 text-lg font-semibold tracking-tight text-foreground">Set up your AI workforce</h2>
+              <h2 id="wf-setup" className="mb-1 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Set up your AI workforce</h2>
               <p className="mb-3 text-xs text-muted">Klaros prepares the business side now. The steps that need Halla stay locked until it is connected.</p>
               <ol className="klaros-card divide-y divide-border">
                 {setup.steps.map((st, i) => (
@@ -190,7 +190,7 @@ export default function WorkforcePage() {
                       <p className="text-sm font-medium text-foreground">{st.label}</p>
                       <p className="text-xs text-muted">{plainLanguage(st.detail)}</p>
                     </div>
-                    <span className={cn("shrink-0 rounded-md px-2 py-0.5 text-xs font-medium", st.state === "DONE" ? "bg-success/10 text-success" : st.state === "READY" ? "bg-accent-soft text-accent-hover" : "bg-surface-muted text-muted")}>{st.state === "DONE" ? "Done" : st.state === "READY" ? "Prepared" : "Locked"}</span>
+                    <span className={cn("shrink-0 rounded-xl px-2 py-0.5 text-xs font-medium", st.state === "DONE" ? "bg-success/10 text-success" : st.state === "READY" ? "bg-accent-soft text-accent-hover" : "bg-surface-muted text-muted")}>{st.state === "DONE" ? "Done" : st.state === "READY" ? "Prepared" : "Locked"}</span>
                   </li>
                 ))}
               </ol>

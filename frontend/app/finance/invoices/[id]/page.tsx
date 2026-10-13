@@ -232,7 +232,7 @@ export default function InvoiceDetailPage() {
         </div>
 
         {invoice.notes && (
-          <div className="mb-6 rounded-md border border-border bg-surface p-3 text-sm text-muted">
+          <div className="mb-6 rounded-2xl bg-surface-muted p-3 text-sm text-muted">
             {invoice.notes}
           </div>
         )}
@@ -291,7 +291,7 @@ export default function InvoiceDetailPage() {
               <button
                 disabled={busy}
                 onClick={() => runAction(() => rejectInvoice(token!, invoice.id), "Invoice rejected — returned to draft.")}
-                className="rounded-md border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
+                className="rounded-xl border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
               >
                 Reject
               </button>
@@ -347,7 +347,7 @@ export default function InvoiceDetailPage() {
             <button
               disabled={busy}
               onClick={() => runAction(() => voidInvoice(token!, invoice.id, "Voided from invoice detail page"), "Invoice voided.")}
-              className="rounded-md border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
+              className="rounded-xl border border-danger/25 px-3 py-1.5 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
             >
               Void
             </button>
@@ -379,26 +379,26 @@ export default function InvoiceDetailPage() {
         )}
 
         {showEditItems && (
-          <form onSubmit={submitEditItems} className="mt-4 space-y-2 rounded-xl border border-border bg-surface p-4">
+          <form onSubmit={submitEditItems} className="mt-4 space-y-2 rounded-3xl bg-surface-muted p-4">
             {editItems.map((li, i) => (
               <div key={i} className="flex flex-wrap items-center gap-2">
                 <input
                   placeholder="Description"
                   value={li.description}
                   onChange={(e) => updateEditItem(i, "description", e.target.value)}
-                  className="min-w-[10rem] flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="min-w-[10rem] flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                 />
                 <input
                   placeholder="Qty"
                   value={li.quantity}
                   onChange={(e) => updateEditItem(i, "quantity", e.target.value)}
-                  className="w-16 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="w-16 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                 />
                 <input
                   placeholder="Unit price"
                   value={li.unit_price}
                   onChange={(e) => updateEditItem(i, "unit_price", e.target.value)}
-                  className="w-24 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                  className="w-24 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
                 />
                 {editItems.length > 1 && (
                   <button type="button" onClick={() => removeEditItem(i)} className="text-xs text-danger hover:underline">
@@ -422,7 +422,7 @@ export default function InvoiceDetailPage() {
         )}
 
         {showWriteOffForm && (
-          <form onSubmit={submitWriteOff} className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-border bg-surface p-4">
+          <form onSubmit={submitWriteOff} className="mt-4 flex flex-wrap items-end gap-2 rounded-3xl bg-surface-muted p-4">
             <div>
               <label className="block text-xs text-muted">Amount</label>
               <input
@@ -430,7 +430,7 @@ export default function InvoiceDetailPage() {
                 onChange={(e) => setWriteOffAmount(e.target.value)}
                 placeholder={invoice.amount_due}
                 required
-                className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <div className="flex-1">
@@ -439,7 +439,7 @@ export default function InvoiceDetailPage() {
                 value={writeOffReason}
                 onChange={(e) => setWriteOffReason(e.target.value)}
                 required
-                className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <button
@@ -453,7 +453,7 @@ export default function InvoiceDetailPage() {
         )}
 
         {showCreditNoteForm && (
-          <form onSubmit={submitCreditNote} className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-border bg-surface p-4">
+          <form onSubmit={submitCreditNote} className="mt-4 flex flex-wrap items-end gap-2 rounded-3xl bg-surface-muted p-4">
             <div>
               <label className="block text-xs text-muted">Amount</label>
               <input
@@ -461,7 +461,7 @@ export default function InvoiceDetailPage() {
                 onChange={(e) => setCreditNoteAmount(e.target.value)}
                 placeholder={invoice.total}
                 required
-                className="w-28 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-28 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <div className="flex-1">
@@ -470,7 +470,7 @@ export default function InvoiceDetailPage() {
                 value={creditNoteReason}
                 onChange={(e) => setCreditNoteReason(e.target.value)}
                 required
-                className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               />
             </div>
             <button

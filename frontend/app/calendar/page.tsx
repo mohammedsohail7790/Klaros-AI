@@ -161,7 +161,7 @@ function CalendarPageInner() {
                 value={syncCalendarId}
                 onChange={(e) => setSyncCalendarId(e.target.value)}
                 title="Google Calendar to sync appointments to"
-                className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
+                className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm"
               >
                 {googleCalendars.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -175,7 +175,7 @@ function CalendarPageInner() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
+              className="rounded-xl border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
             />
           </div>
         </header>
@@ -187,7 +187,7 @@ function CalendarPageInner() {
         {authLoading || loading ? (
           <Skeleton />
         ) : error ? (
-          <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+          <div className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
             {error}{" "}
             <button onClick={load} className="ml-2 underline">
               Retry
@@ -206,7 +206,7 @@ function CalendarPageInner() {
                   {appointments.map((a) => (
                     <li
                       key={a.id}
-                      className="rounded-md border border-border bg-surface px-4 py-3 text-sm"
+                      className="rounded-2xl bg-surface-muted px-4 py-3 text-sm"
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -258,13 +258,13 @@ function CalendarPageInner() {
                             type="datetime-local"
                             value={rescheduleDraft}
                             onChange={(e) => setRescheduleDraft(e.target.value)}
-                            className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm"
+                            className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-sm"
                           />
                           <span className="text-xs text-muted">UTC</span>
                           <button
                             onClick={() => handleReschedule(a)}
                             disabled={reschedulingBusy}
-                            className="rounded-md border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-muted disabled:opacity-50"
+                            className="rounded-xl border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-muted disabled:opacity-50"
                           >
                             {reschedulingBusy ? "Saving..." : "Save"}
                           </button>
@@ -292,7 +292,7 @@ function CalendarPageInner() {
                     <button
                       key={s.start_time}
                       onClick={() => setBookingSlot(s)}
-                      className="rounded-md border border-border-strong px-2 py-2 text-xs hover:bg-surface-muted"
+                      className="rounded-xl border border-border-strong px-2 py-2 text-xs hover:bg-surface-muted"
                     >
                       {new Date(s.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}
                     </button>
@@ -398,7 +398,7 @@ function BookSlotModal({
               className="klaros-input"
             />
             {customerResults.length > 0 && (
-              <ul className="mt-1 overflow-hidden rounded-xl border border-border bg-surface text-sm shadow-raised">
+              <ul className="mt-1 overflow-hidden rounded-3xl bg-surface-muted text-sm shadow-raised">
                 {customerResults.map((c) => (
                   <li
                     key={c.id}
