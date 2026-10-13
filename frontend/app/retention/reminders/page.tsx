@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, ServiceReminderRow, listServiceReminders, markDueReminders, updateReminderStatus } from "@/lib/api";
 
@@ -71,6 +72,8 @@ export default function RemindersPage() {
             Mark due reminders
           </button>
         </div>
+
+        <StatusSummary rows={reminders} noun="reminders" />
 
         {authLoading || loading ? (
           <Skeleton />

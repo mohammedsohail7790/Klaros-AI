@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Truck } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -137,6 +138,8 @@ export default function VendorsPage() {
         {error && (
           <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
+
+        <StatusSummary rows={vendors} noun="vendors" />
 
         {authLoading || loading ? (
           <Skeleton />

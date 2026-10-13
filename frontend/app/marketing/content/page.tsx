@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -109,6 +110,8 @@ export default function ContentPage() {
             </button>
           ))}
         </div>
+
+        <StatusSummary rows={items} noun="content items" />
 
         {authLoading || loading ? (
           <Skeleton />

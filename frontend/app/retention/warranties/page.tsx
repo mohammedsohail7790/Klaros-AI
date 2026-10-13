@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -152,6 +153,8 @@ export default function WarrantiesPage() {
         {error && (
           <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
         )}
+
+        <StatusSummary rows={warranties} noun="warranties" />
 
         {authLoading || loading ? (
           <Skeleton />

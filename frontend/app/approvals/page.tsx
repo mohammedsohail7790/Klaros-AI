@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CheckSquare } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -173,6 +174,8 @@ export default function ApprovalsPage() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>
+            <StatusSummary rows={(approvals ?? [])} noun="approvals" />
+
             {authLoading || loading ? (
               <Skeleton />
             ) : !approvals || approvals.length === 0 ? (

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Megaphone } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Campaign, createCampaign, detectMarketingExceptions, listCampaigns } from "@/lib/api";
 
@@ -144,6 +145,8 @@ export default function CampaignsPage() {
             </button>
           </form>
         )}
+
+        <StatusSummary rows={campaigns} noun="campaigns" />
 
         {authLoading || loading ? (
           <Skeleton />

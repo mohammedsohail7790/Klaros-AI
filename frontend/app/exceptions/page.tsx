@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, OpsException, listExceptions, resolveException } from "@/lib/api";
 
@@ -62,6 +63,8 @@ export default function ExceptionsPage() {
             </button>
           ))}
         </div>
+
+        <StatusSummary rows={exceptions} noun="exceptions" />
 
         {authLoading || loading ? (
           <Skeleton />

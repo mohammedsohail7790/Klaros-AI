@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { TrendingUp } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, RetentionOpportunityRow, listRetentionOpportunities, updateOpportunityStatus } from "@/lib/api";
 
@@ -65,6 +66,8 @@ export default function OpportunitiesPage() {
             </button>
           ))}
         </div>
+
+        <StatusSummary rows={opportunities} noun="opportunities" />
 
         {authLoading || loading ? (
           <Skeleton />

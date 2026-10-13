@@ -179,12 +179,12 @@ export default function RecommendationsPage() {
         {sections.length === 0 ? (
           <EmptyState title="No recommendations were generated. Your Blueprint may not list any required capabilities yet." />
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-6">
             {sections.map(({ key, requirement, cap, capRecs, integrations, tools }) => {
               const optionalCap = requirement ? requirement.required === false : capRecs.some((c) => !c.required);
               return (
-                <section key={key} aria-labelledby={`rec-${key}`} className="klaros-card p-5 sm:p-6">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                <section key={key} aria-labelledby={`rec-${key}`} className="klaros-card p-6 sm:p-8">
+                  <div className="mb-3 flex flex-wrap items-center gap-3">
                     <h2 id={`rec-${key}`} className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">{requirement?.label ?? label(cap)}</h2>
                     {requirement && <StatusPill state={requirement.readiness} />}
                     <span className={`rounded-xl px-2 py-0.5 text-xs font-medium ${optionalCap ? "border border-border text-muted" : "bg-accent-soft text-accent-hover"}`}>{optionalCap ? "Suggested" : "Required"}</span>
@@ -198,7 +198,7 @@ export default function RecommendationsPage() {
                     <Card key={c.id} rec={c} busy={busyId === c.id} onDecide={decide} requirement={requirement} />
                   ))}
                   {integrations.length > 0 && (
-                    <div className="mt-4 rounded-xl bg-surface-muted/60 p-3 sm:p-4">
+                    <div className="mt-5 rounded-3xl bg-surface p-4 sm:p-5">
                       <p className="klaros-label mb-2">Integrations that could cover it</p>
                       <div className="space-y-3">
                         {integrations.map((o) => (

@@ -289,11 +289,11 @@ export default function BlueprintPage() {
           </div>
         )}
 
-        <div className="space-y-10">
+        <div className="space-y-14">
           {GROUPS.map((g) => (
             <section key={g.title} aria-labelledby={`bp-${g.title}`}>
               <h2 id={`bp-${g.title}`} className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">{g.title}</h2>
-              <p className="mb-3 text-sm text-muted">{g.blurb}</p>
+              <p className="mb-5 mt-1 text-[15px] text-muted">{g.blurb}</p>
               <div className="space-y-3">
                 {g.keys.map((k) => {
                   const section = sectionByKey[k];
@@ -390,9 +390,9 @@ function SectionCard({
   }
 
   return (
-    <div className="klaros-card p-4 sm:p-5">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-foreground">{label}</h3>
+    <div className="klaros-card p-6 sm:p-7">
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h3 className="font-display text-[1.2rem] font-semibold tracking-[-0.015em] text-foreground">{label}</h3>
         {editable && !editing && (
           <Button variant="ghost" size="sm" onClick={startEdit} className="gap-1" aria-label={`Edit ${label}`}>
             <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Edit
@@ -428,21 +428,21 @@ function SectionCard({
       ) : entries.length > 0 && entries.every(([, v]) => v === true) ? (
         <ul className="flex flex-wrap gap-2" aria-label={`${label} listed`}>
           {entries.map(([k]) => (
-            <li key={k} className="rounded-full border border-border bg-surface-muted px-2.5 py-0.5 text-sm text-foreground">{humanize(k)}</li>
+            <li key={k} className="rounded-full bg-surface px-4 py-1.5 text-[14px] font-medium text-foreground">{humanize(k)}</li>
           ))}
         </ul>
       ) : entries.length > 0 ? (
-        <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {entries.map(([k, v]) => (
-            <div key={k}>
-              <dt className="klaros-label">{humanize(k)}</dt>
-              <dd className="text-foreground">{show(v)}</dd>
+            <div key={k} className="rounded-2xl bg-surface px-5 py-4">
+              <dt className="text-[13px] font-medium text-muted">{humanize(k)}</dt>
+              <dd className="mt-1 text-[15px] font-medium text-foreground">{show(v)}</dd>
             </div>
           ))}
         </dl>
       ) : settled.length === 0 && proposed.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          <span className="mr-1.5 rounded border border-border px-1.5 py-0.5 text-xs font-medium ">Missing</span>
+          <span className="mr-2 rounded-full bg-warning/10 px-2.5 py-0.5 text-xs font-medium text-warning">Missing</span>
           Klaros doesn't know this yet{editable ? " — add what you know, or leave it for later." : "."}
         </p>
       ) : null}
@@ -463,7 +463,7 @@ function SectionCard({
         <div className="mt-3 space-y-2 border-t border-border pt-3">
           <p className="klaros-label">Is this right?</p>
           {proposed.map((c) => (
-            <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-border px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div key={c.id} className="flex flex-col gap-2 rounded-2xl bg-surface px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <span className="text-xs text-muted-foreground">{CLAIM_KIND[c.claim_type] ?? c.claim_type} · </span>
                 <span className="text-foreground">{claimText(c)}</span>

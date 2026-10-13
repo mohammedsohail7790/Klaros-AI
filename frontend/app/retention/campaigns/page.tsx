@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Heart } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -203,6 +204,8 @@ export default function RetentionCampaignsPage() {
             </button>
           </form>
         )}
+
+        <StatusSummary rows={campaigns} noun="campaigns" />
 
         {authLoading || loading ? (
           <Skeleton />
