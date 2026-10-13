@@ -99,6 +99,18 @@ def security_headers(*, preview: bool, enquiry_origin: str | None = None) -> dic
     }
 
 
+def inject_context(html: str, *, api_base: str | None, tenant_id: uuid.UUID | None) -> str:
+    """Tell a published page which Klaros API and tenant it belongs to (used by forms that need the consent wording). Preview pages get nothing, so they stay disconnected."""
+    if not api_base or tenant_id is None:
+        return html
+    from html import escape
+
+    return (
+        html.replace('<meta name="klaros-api" content="">', '<meta name="klaros-api" content="' + escape(api_base, quote=True) + '">')
+        .replace('<meta name="klaros-tenant" content="">', '<meta name="klaros-tenant" content="' + escape(str(tenant_id), quote=True) + '">')
+    )
+
+
 def inject_enquiry(html: str, endpoint: str | None) -> str:
     """Point the generated forms at the lead endpoint (published sites only; in preview they stay disconnected on purpose)."""
     if not endpoint:

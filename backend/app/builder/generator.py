@@ -373,7 +373,7 @@ def _footer(ctx: _Ctx) -> str:
     contact_col = f'<div><h2>Contact</h2><ul>{contact}</ul></div>' if contact else ""
     return (
         f'<footer class="site-footer"><div class="container"><div class="footer-grid"><div><a class="brand" href="{e(ctx.page("/"))}"><span class="brand-mark" aria-hidden="true">{e(spec.name[:1].upper())}</span>{e(spec.name)}</a>'
-        + (f'<p class="lead" style="font-size:1rem;margin-top:.9rem">{e(spec.tagline)}</p>' if spec.tagline else "")
+        + (f'<p class="lead foot-lead">{e(spec.tagline)}</p>' if spec.tagline else "")
         + f'</div><div><h2>Pages</h2><ul>{links}</ul></div>{contact_col}</div>'
         f'<p class="legal">© <span data-year>{datetime.now(timezone.utc).year}</span> {e(spec.name)}. All rights reserved.</p></div></footer>'
     )
@@ -405,7 +405,7 @@ def _page_body(spec: ProjectSpec, route: RoutePlan, file: str, record: dict | No
         title = str(record.get("title", route.title)) if record else route.title
         lead = "" if record else route.purpose
         out.append(
-            f'<section class="section tight" style="padding-bottom:0"><div class="container"><div class="section-head" style="margin-bottom:0"><h1>{e(title)}</h1>'
+            f'<section class="section tight page-head"><div class="container"><div class="section-head"><h1>{e(title)}</h1>'
             + (f'<p class="lead">{e(lead)}</p>' if lead else "")
             + "</div></div></section>"
         )
