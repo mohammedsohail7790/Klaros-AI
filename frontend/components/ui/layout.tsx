@@ -102,7 +102,7 @@ export function Tile({ label, value, hint, href, icon: Icon, className }: { labe
         {Icon && <Icon className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} aria-hidden="true" />}
       </div>
       <div className="mt-5">
-        <p className="font-display text-[2.25rem] font-semibold leading-none tracking-[-0.035em] text-foreground">{value}</p>
+        <p className={cn("font-display font-semibold leading-[1.05] tracking-[-0.03em] text-foreground", typeof value === "string" && value.length > 6 ? "text-[1.6rem]" : "text-[2.25rem] leading-none")}>{value}</p>
         {hint && <p className="mt-2 text-[13px] leading-snug text-muted">{hint}</p>}
       </div>
     </div>
