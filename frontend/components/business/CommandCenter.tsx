@@ -16,6 +16,7 @@ import {
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Group, GroupRow, ProgressRing, Tile } from "@/components/ui/layout";
 import { cn } from "@/lib/cn";
 import { leadStatusLabel, sourceLabel, when } from "@/lib/opsLabels";
 import { StatusPill } from "./StatusPill";
@@ -37,24 +38,43 @@ const TILE_ICON: Record<string, { icon: LucideIcon; chip: string }> = {
   integrations: { icon: Plug, chip: "bg-teal-50 text-teal-600" },
 };
 
-/** One row per thing that needs a person, most urgent first. */
+/** What needs a person, most urgent first: the top item is the "up next" card, the rest are a grouped list. */
 export function ActionCenter({ items, loading }: { items: ActionItem[]; loading?: boolean }) {
   if (loading) return <Skeleton stats={0} rows={3} />;
   if (items.length === 0) {
-    return <p className="klaros-card p-5 text-sm text-muted">Nothing is waiting on you right now. New leads and issues appear here the moment they need a person.</p>;
+    return (
+      <div className="rounded-3xl bg-surface-muted px-8 py-10 text-center">
+        <p className="font-display text-2xl font-semibold tracking-tight text-foreground">You&apos;re all caught up.</p>
+        <p className="mx-auto mt-2 max-w-md text-[15px] text-muted">Nothing is waiting on you right now. New leads and issues appear here the moment they need a person.</p>
+      </div>
+    );
   }
+  const [first, ...rest] = items;
+  const S = SEVERITY[first.severity];
   return (
-    <ul className="klaros-card divide-y divide-border" aria-label="Action center">
-      {items.map((a) => {
-        const S = SEVERITY[a.severity];
+    <ul className="space-y-3" aria-label="Action center">
+      <li className="klaros-dark flex flex-col gap-6 rounded-3xl p-7 sm:flex-row sm:items-center sm:justify-between sm:p-9">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-[13px] font-medium text-muted">
+            <S.icon className={cn("h-4 w-4", S.tone)} aria-hidden="true" /> Up next · {S.label}
+          </p>
+          <p className="mt-3 text-balance font-display text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-[1.9rem]">{first.text}</p>
+        </div>
+        <Link href={first.route} className="klaros-btn-primary shrink-0 self-start !px-6 !py-3 text-[15px] sm:self-center">
+          {first.cta}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          <span className="sr-only"> — {first.text}</span>
+        </Link>
+      </li>
+      {rest.map((a) => {
+        const R = SEVERITY[a.severity];
         return (
-          <li key={a.id} className="flex items-center gap-3 px-4 py-3">
-            <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-xl", S.chip)}>
-              <S.icon className={cn("h-4 w-4", S.tone)} aria-hidden="true" />
+          <li key={a.id} className="flex items-center gap-3.5 rounded-2xl bg-surface-muted px-5 py-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface">
+              <R.icon className={cn("h-[18px] w-[18px]", R.tone)} aria-hidden="true" />
             </span>
-            <span className="sr-only">{S.label}: </span>
-            <p className="min-w-0 flex-1 text-sm text-foreground">{a.text}</p>
-            <Link href={a.route} className="klaros-btn-secondary shrink-0 !px-3 !py-1 text-xs">
+            <p className="min-w-0 flex-1 text-[15px] text-foreground">{a.text}</p>
+            <Link href={a.route} className="shrink-0 text-[15px] text-accent hover:underline">
               {a.cta}
               <span className="sr-only"> — {a.text}</span>
             </Link>
@@ -67,71 +87,53 @@ export function ActionCenter({ items, loading }: { items: ActionItem[]; loading?
 
 export function HealthStrip({ tiles }: { tiles: HealthTile[] }) {
   return (
-    <ul className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7" aria-label="Business health">
-      {tiles.map((t) => (
-        <li key={t.key}>
-          <Link href={t.route} className="klaros-card klaros-card-interactive block h-full p-3.5">
-            <div className="flex items-start justify-between gap-2">
-              <p className="klaros-label">{t.label}</p>
-              {(() => {
-                const meta = TILE_ICON[t.key] ?? { icon: Activity, chip: "bg-surface-muted text-muted" };
-                const TileIcon = meta.icon;
-                return (
-                  <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-xl", meta.chip)} aria-hidden="true">
-                    <TileIcon className="h-3.5 w-3.5" strokeWidth={2} />
-                  </span>
-                );
-              })()}
-            </div>
-            <p className="mt-2 text-xl font-semibold leading-tight tracking-tight text-foreground">{t.value}</p>
-            {t.hint && <p className="mt-1 text-xs text-muted">{t.hint}</p>}
-          </Link>
-        </li>
-      ))}
+    <ul className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Business health">
+      {tiles.map((t) => {
+        const meta = TILE_ICON[t.key] ?? { icon: Activity, chip: "" };
+        return (
+          <li key={t.key}>
+            <Tile label={t.label} value={t.value} hint={t.hint} href={t.route} icon={meta.icon} />
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
 export function QuickActions({ actions }: { actions: { label: string; href: string }[] }) {
   return (
-    <ul className="flex flex-wrap gap-2" aria-label="Quick actions">
+    <Group label="Quick actions">
       {actions.map((a) => (
-        <li key={a.label}>
-          <Link href={a.href} className="klaros-btn-secondary !px-3 !py-1.5 text-sm">
-            {a.label}
-          </Link>
-        </li>
+        <GroupRow key={a.label} title={a.label} href={a.href} />
       ))}
-    </ul>
+    </Group>
   );
 }
 
-/** The business as a chain of real, linked parts. */
+/** The business as a chain of real, linked parts, shown as a vertical stepper. */
 export function ArchitectureStrip({ nodes }: { nodes: ChainNode[] }) {
   return (
-    <div className="klaros-card p-4">
-      <ol className="flex flex-col gap-2 lg:flex-row lg:items-stretch lg:gap-0" aria-label="How your business operates">
+    <div>
+      <ol className="relative space-y-1" aria-label="How your business operates">
         {nodes.map((n, i) => (
-          <li key={n.key} className="flex flex-col lg:flex-1 lg:flex-row lg:items-stretch">
-            <Link href={n.route} className="block flex-1 rounded-xl border border-border bg-surface-muted/50 p-3 transition-colors hover:border-border-strong hover:bg-surface-muted">
-              <p className="text-sm font-medium text-foreground">{n.label}</p>
-              <p className="mt-0.5 text-xs text-muted">{n.detail}</p>
-              <div className="mt-2"><StatusPill state={n.state} /></div>
-            </Link>
-            {i < nodes.length - 1 && (
-              <span className="flex items-center justify-center py-0.5 text-border-strong lg:px-1.5 lg:py-0" aria-hidden="true">
-                <ArrowRight className="hidden h-4 w-4 lg:block" />
-                <ArrowRight className="h-4 w-4 rotate-90 lg:hidden" />
+          <li key={n.key} className="relative flex gap-4">
+            <div className="flex flex-col items-center">
+              <span className="mt-4 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-muted text-xs font-semibold text-muted">{i + 1}</span>
+              {i < nodes.length - 1 && <span className="mt-1 w-px flex-1 bg-border" aria-hidden="true" />}
+            </div>
+            <Link href={n.route} className="group mb-1 flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl px-4 py-3 transition-colors duration-300 hover:bg-surface-muted">
+              <span className="min-w-0">
+                <span className="block text-[15px] font-medium text-foreground">{n.label}</span>
+                <span className="mt-0.5 block text-[13px] text-muted">{n.detail}</span>
               </span>
-            )}
+              <StatusPill state={n.state} />
+            </Link>
           </li>
         ))}
       </ol>
-      <div className="mt-3 text-right">
-        <Link href="/business/map" className="inline-flex items-center gap-1 text-xs font-medium text-accent-hover hover:underline">
-          Open the Business Map <ChevronRight className="h-3 w-3" aria-hidden="true" />
-        </Link>
-      </div>
+      <Link href="/business/map" className="mt-3 inline-flex items-center gap-1 text-[15px] text-accent hover:underline">
+        Open the Business Map <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </Link>
     </div>
   );
 }
@@ -147,20 +149,13 @@ function clock(iso: string): string {
 }
 
 export function ActivityTimeline({ items }: { items: BusinessOperations["activity"] }) {
-  if (items.length === 0) return <p className="klaros-card p-5 text-sm text-muted">Nothing has happened yet. Activity appears here as your business runs.</p>;
+  if (items.length === 0) return <p className="rounded-3xl bg-surface-muted px-6 py-8 text-[15px] text-muted">Nothing has happened yet. Activity appears here as your business runs.</p>;
   return (
-    <ol className="klaros-card px-4 py-3" aria-label="Recent activity">
+    <Group label="Recent activity">
       {items.slice(0, 8).map((a, i) => (
-        <li key={`${a.at}-${i}`} className="relative flex gap-3 pb-3 last:pb-0">
-          {i < Math.min(items.length, 8) - 1 && <span className="absolute left-[3px] top-3 h-full w-px bg-border" aria-hidden="true" />}
-          <span className={cn("relative mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full", DOT[a.kind] ?? "bg-muted-foreground")} aria-hidden="true" />
-          <div className="min-w-0 flex-1 text-sm">
-            {a.route ? <Link href={a.route} className="text-foreground hover:underline">{a.text}</Link> : <span className="text-foreground">{a.text}</span>}
-            <p className="text-xs text-muted-foreground">{clock(a.at)}</p>
-          </div>
-        </li>
+        <GroupRow key={`${a.at}-${i}`} title={<span className="whitespace-normal">{a.text}</span>} href={a.route ?? undefined} trailing={clock(a.at)} />
       ))}
-    </ol>
+    </Group>
   );
 }
 
@@ -183,22 +178,30 @@ export function LeadsToAct({ token }: { token: string | null }) {
       cancelled = true;
     };
   }, [token]);
-  if (error) return <p className="klaros-card p-5 text-sm text-muted">We couldn't load your leads just now.</p>;
+  if (error) return <p className="rounded-3xl bg-surface-muted px-6 py-8 text-[15px] text-muted">We couldn't load your leads just now.</p>;
   if (!rows) return <Skeleton stats={0} rows={3} />;
-  if (rows.length === 0) return <p className="klaros-card p-5 text-sm text-muted">No lead needs a next step right now.</p>;
+  if (rows.length === 0) return <p className="rounded-3xl bg-surface-muted px-6 py-8 text-[15px] text-muted">No lead needs a next step right now.</p>;
   return (
-    <ul className="klaros-card divide-y divide-border" aria-label="Leads with a next step">
+    <Group label="Leads with a next step">
       {rows.map((l) => (
-        <li key={l.id} className="flex items-start justify-between gap-3 px-4 py-3">
-          <div className="min-w-0">
-            <Link href={`/leads/${l.id}`} className="text-sm font-medium text-foreground hover:underline">{l.name}</Link>
-            <p className="text-xs text-muted">{[l.service, sourceLabel(l.source), leadStatusLabel(l.status)].filter(Boolean).join(" · ")}</p>
-            {l.next_action && <p className="mt-1 text-xs text-foreground"><span className="text-muted">Next:</span> {l.next_action.text}</p>}
-          </div>
-          <span className="shrink-0 text-xs text-muted-foreground">{when(l.created_at)}</span>
-        </li>
+        <GroupRow
+          key={l.id}
+          title={l.name}
+          href={`/leads/${l.id}`}
+          detail={
+            <>
+              {[l.service, sourceLabel(l.source), leadStatusLabel(l.status)].filter(Boolean).join(" · ")}
+              {l.next_action && (
+                <span className="mt-1 block text-foreground">
+                  <span className="text-muted">Next:</span> {l.next_action.text}
+                </span>
+              )}
+            </>
+          }
+          trailing={when(l.created_at)}
+        />
       ))}
-    </ul>
+    </Group>
   );
 }
 
@@ -253,32 +256,32 @@ export function LaunchPanel({
     }
   }, [token, onLaunched]);
 
+  const doneCount = rows.filter((r) => r.state === "READY" || r.state === "CONNECTED").length;
   return (
-    <div className="klaros-card overflow-hidden">
-      <div className="flex items-center justify-between gap-4 border-b border-border bg-surface-muted/40 px-4 py-3">
-        <p className="text-sm text-foreground">
-          <span className="font-semibold">{rows.filter((r) => r.state === "READY" || r.state === "CONNECTED").length} of {rows.length}</span>{" "}
-          <span className="text-muted">launch checks complete</span>
+    <div className="overflow-hidden rounded-3xl bg-surface-muted">
+      <div className="flex items-center gap-5 px-6 py-6">
+        <ProgressRing done={doneCount} total={rows.length} />
+        <p className="text-[15px] leading-snug text-foreground">
+          <span className="font-display text-xl font-semibold tracking-tight">Launch readiness</span>
+          <br />
+          <span className="text-muted">{doneCount} of {rows.length} checks complete</span>
         </p>
-        <div className="h-1.5 w-40 overflow-hidden rounded-full bg-border" aria-hidden="true">
-          <div className="h-full rounded-full bg-accent" style={{ width: `${(rows.filter((r) => r.state === "READY" || r.state === "CONNECTED").length / Math.max(1, rows.length)) * 100}%` }} />
-        </div>
       </div>
-      <ul className="divide-y divide-border" aria-label="Launch readiness">
+      <ul className="divide-y divide-border/70 border-t border-border/70" aria-label="Launch readiness">
         {rows.map((r) => (
-          <li key={r.key} className="flex items-start justify-between gap-3 px-4 py-3">
+          <li key={r.key} className="flex items-start justify-between gap-3 px-6 py-3.5">
             <div className="min-w-0">
-              <p className="klaros-label">{r.group}</p>
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-xs text-muted-foreground">{r.group}</p>
+              <p className="text-[15px] font-medium text-foreground">
                 {r.route ? <Link href={r.route} className="hover:underline">{r.value}</Link> : r.value}
               </p>
-              {r.detail && <p className="mt-0.5 text-xs text-muted">{r.detail}</p>}
+              {r.detail && <p className="mt-0.5 text-[13px] text-muted">{r.detail}</p>}
             </div>
             <StatusPill state={r.state} className="mt-1" />
           </li>
         ))}
       </ul>
-      <div className="border-t border-border bg-surface-muted/50 px-4 py-4">
+      <div className="border-t border-border/70 px-6 py-5">
         {error && <div className="mb-3"><Alert variant="danger">{error}</Alert></div>}
         {launched ? (
           <div className="flex flex-wrap items-center justify-between gap-3">

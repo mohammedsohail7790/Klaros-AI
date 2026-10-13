@@ -5,20 +5,14 @@ import { ArrowDown, CircleDot, Cog, Hand, Sparkles, Zap } from "lucide-react";
 import type { BusinessOperations, OpsPipelineStage, OpsWorkflow } from "@/lib/api";
 import { LEAD_STATUS_ORDER, actionLabel, leadStatusLabel, sourceLabel, triggerLabel, when } from "@/lib/opsLabels";
 import { StatusPill } from "./StatusPill";
+import { Section } from "@/components/ui/layout";
 import { WorkflowDetailToggle } from "./WorkflowDetail";
 
 export function ConsoleSection({ id, title, hint, children, action }: { id: string; title: string; hint?: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <section id={id} aria-labelledby={`${id}-h`} className="mb-9 scroll-mt-20">
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h2 id={`${id}-h`} className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
-          {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
-        </div>
-        {action}
-      </div>
+    <Section id={id} title={title} hint={hint} action={action}>
       {children}
-    </section>
+    </Section>
   );
 }
 
@@ -30,9 +24,9 @@ export function LeadFunnel({ leads }: { leads: BusinessOperations["leads"] }) {
   return (
     <ul className="space-y-2" aria-label="Leads by status">
       {rows.map((s) => (
-        <li key={s} className="grid grid-cols-[7rem_1fr_2rem] items-center gap-3 text-sm">
+        <li key={s} className="grid grid-cols-[7rem_1fr_2rem] items-center gap-4 text-[15px]">
           <span className="text-muted">{leadStatusLabel(s)}</span>
-          <span className="h-2.5 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true">
+          <span className="h-3 overflow-hidden rounded-full bg-border/60" aria-hidden="true">
             <span className="block h-full rounded-full bg-accent" style={{ width: `${(leads.by_status[s] / max) * 100}%` }} />
           </span>
           <span className="text-right font-medium text-foreground">{leads.by_status[s]}</span>
@@ -65,16 +59,16 @@ const KIND: Record<OpsPipelineStage["kind"], { label: string; icon: typeof Cog }
  * automated by a workflow, assisted by AI, or done by a person — and whether it's set up. */
 export function LeadPipeline({ stages }: { stages: OpsPipelineStage[] }) {
   return (
-    <ol className="klaros-card divide-y divide-border" aria-label="How a lead is handled">
+    <ol className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted" aria-label="How a lead is handled">
       {stages.map((s, i) => {
         const K = KIND[s.kind];
         return (
-          <li key={s.key} className="flex items-start gap-3 px-4 py-3">
-            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-muted text-xs font-medium text-muted" aria-hidden="true">{i + 1}</span>
+          <li key={s.key} className="flex items-start gap-4 px-6 py-4">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface text-xs font-semibold text-muted" aria-hidden="true">{i + 1}</span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 {s.route ? <Link href={s.route} className="text-sm font-medium text-foreground hover:underline">{s.label}</Link> : <span className="text-sm font-medium text-foreground">{s.label}</span>}
-                <span className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted"><K.icon className="h-3 w-3" aria-hidden="true" />{K.label}</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-0.5 text-xs text-muted"><K.icon className="h-3 w-3" aria-hidden="true" />{K.label}</span>
                 <StatusPill state={s.state} />
               </div>
               <p className="mt-0.5 text-xs text-muted">{s.detail}</p>

@@ -18,6 +18,7 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { Hero, Page } from "@/components/ui/layout";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StageTracker } from "@/components/business/StageTracker";
 import { useBuilderOverview } from "@/components/business/useBuilderOverview";
@@ -89,105 +90,83 @@ export default function BusinessHomePage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <Page>
         <StageTracker stages={overview.stages} activeKey={operating ? "operate" : "launch"} />
-        {error && <div className="mb-4"><Alert variant="danger">{error}</Alert></div>}
+        {error && <div className="mb-6"><Alert variant="danger">{error}</Alert></div>}
         {opsError && (
-          <div className="mb-4">
+          <div className="mb-6">
             <Alert variant="warning" action={<Button size="sm" variant="secondary" onClick={() => reloadOps()}>Try again</Button>}>{opsError}</Alert>
           </div>
         )}
 
-        {/* BUSINESS OVERVIEW */}
-        <header className="klaros-card relative mb-8 overflow-hidden p-5 sm:p-7">
-          <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
-          <div className="relative flex flex-wrap items-start justify-between gap-4">
-            <div className="flex min-w-0 items-start gap-4">
-              <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl font-semibold text-white shadow-md">
-                {(business.name ?? business.summary ?? "K").trim().charAt(0).toUpperCase()}
+        <Hero
+          eyebrow={
+            <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>{business.industry ?? "Your business"}</span>
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${operating ? "bg-success/10 text-success" : "bg-surface-muted text-muted"}`}>
+                <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${operating ? "bg-success" : "bg-muted-foreground"}`} />
+                {statusText}
               </span>
-              <div className="min-w-0">
-              <p className="klaros-label">{business.industry ?? "Your business"}</p>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{business.name ?? business.summary ?? "Your business"}</h1>
-              <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-                <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${operating ? "border-success/25 bg-success/[0.08] text-success" : "border-border-strong bg-surface-muted text-foreground"}`}>
-                  <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${operating ? "bg-success" : "bg-muted-foreground"}`} />
-                  {statusText}
-                </span>
-                <span>Stage: <span className="font-medium text-foreground">{stage}</span></span>
-                {inProgress && <Link href="/business" className="underline underline-offset-2">Continue setup</Link>}
-              </p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Link href="/business/map" className="klaros-btn-secondary text-sm">Business map</Link>
-              <Link href="/business/blueprint" className="klaros-btn-secondary text-sm">Blueprint</Link>
-            </div>
-          </div>
-          <dl className="relative mt-6 grid gap-5 border-t border-border pt-5 text-sm sm:grid-cols-3">
-            {business.summary && <div><dt className="klaros-label">What it is</dt><dd className="text-foreground">{business.summary}</dd></div>}
-            {business.customers && <div><dt className="klaros-label">Customers</dt><dd className="text-foreground">{business.customers}</dd></div>}
-            {business.business_model && <div><dt className="klaros-label">How it earns</dt><dd className="text-foreground">{business.business_model}</dd></div>}
-          </dl>
-        </header>
+              <span className="text-muted-foreground">Stage: <span className="font-medium text-foreground">{stage}</span></span>
+            </span>
+          }
+          title={business.name ?? business.summary ?? "Your business"}
+          lede={business.summary && business.summary !== business.name ? business.summary : undefined}
+          actions={
+            <>
+              {inProgress && <Link href="/business" className="klaros-btn-primary">Continue setup</Link>}
+              <Link href="/business/map" className="klaros-btn-secondary">Business map</Link>
+              <Link href="/business/blueprint" className="klaros-btn-secondary">Blueprint</Link>
+            </>
+          }
+        />
 
-        {/* BUSINESS HEALTH */}
+        {/* UP NEXT */}
+        <ConsoleSection id="action-center" title="Action center" hint="What needs a person, most urgent first.">
+          <ActionCenter items={model.actions} loading={!ops} />
+        </ConsoleSection>
+
+        {/* HEALTH */}
         <ConsoleSection id="health" title="Business health" hint="Where your business stands right now.">
           <HealthStrip tiles={model.health} />
         </ConsoleSection>
 
-        {/* LAUNCH (first while preparing) */}
-        {!operating && (
-          <ConsoleSection id="launch" title="Launch readiness" hint="What is ready, and exactly what is holding up launch.">
-            <LaunchPanel overview={overview} rows={model.launch} token={token} tenantId={user?.tenant_id} onLaunched={onLaunched} />
-          </ConsoleSection>
-        )}
+        <div className="grid gap-x-10 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+          {/* MAIN COLUMN */}
+          <div className="min-w-0">
+            <ConsoleSection id="leads" title="Leads to move forward" hint="Each with its next step." action={<Link href="/leads" className="text-[15px] text-accent hover:underline">All leads &rsaquo;</Link>}>
+              <LeadsToAct token={token} />
+            </ConsoleSection>
 
-        {/* ACTION CENTER + QUICK ACTIONS */}
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <ConsoleSection id="action-center" title="Action center" hint="What needs a person, most urgent first.">
-            <ActionCenter items={model.actions} loading={!ops} />
-          </ConsoleSection>
-          <ConsoleSection id="quick-actions" title="Quick actions">
-            <QuickActions actions={quick} />
-          </ConsoleSection>
+            {ops && (
+              <ConsoleSection id="pipeline" title="From website to customer" hint="How an enquiry moves through your business, and which parts are set up." action={<Link href="/business/workflows" className="text-[15px] text-accent hover:underline">Workflows &rsaquo;</Link>}>
+                <div className="mb-4 rounded-3xl bg-surface-muted p-6">
+                  <h3 className="mb-4 text-[15px] font-semibold text-foreground">Where leads are</h3>
+                  <LeadFunnel leads={ops.leads} />
+                </div>
+                <LeadPipeline stages={ops.lead_pipeline} />
+              </ConsoleSection>
+            )}
+
+            <ConsoleSection id="activity" title="Recent activity" hint="What has actually happened, newest first.">
+              {ops ? <ActivityTimeline items={ops.activity} /> : <Skeleton stats={0} rows={3} />}
+            </ConsoleSection>
+          </div>
+
+          {/* SIDE RAIL */}
+          <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+            <ConsoleSection id="launch" title="Launch readiness" hint={operating ? "Everything that makes this business complete." : "What is ready, and what is holding up launch."}>
+              <LaunchPanel overview={overview} rows={model.launch} token={token} tenantId={user?.tenant_id} onLaunched={onLaunched} />
+            </ConsoleSection>
+            <ConsoleSection id="quick-actions" title="Quick actions">
+              <QuickActions actions={quick} />
+            </ConsoleSection>
+            <ConsoleSection id="architecture" title="How your business operates" hint="The parts of your business and whether each is in place.">
+              <ArchitectureStrip nodes={model.chain} />
+            </ConsoleSection>
+          </aside>
         </div>
-
-        {/* ARCHITECTURE */}
-        <ConsoleSection id="architecture" title="How your business operates" hint="The parts of your business and whether each one is in place.">
-          <ArchitectureStrip nodes={model.chain} />
-        </ConsoleSection>
-
-        {/* LEADS + ACTIVITY */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ConsoleSection id="leads" title="Leads to move forward" hint="Each with its next step." action={<Link href="/leads" className="klaros-btn-secondary text-sm">All leads</Link>}>
-            <LeadsToAct token={token} />
-          </ConsoleSection>
-          <ConsoleSection id="activity" title="Recent activity" hint="What has actually happened, newest first.">
-            {ops ? <ActivityTimeline items={ops.activity} /> : <Skeleton stats={0} rows={3} />}
-          </ConsoleSection>
-        </div>
-
-        {/* LEAD FUNNEL + PIPELINE */}
-        {ops && (
-          <ConsoleSection id="pipeline" title="From website to customer" hint="How an enquiry moves through your business — and which parts are set up." action={<Link href="/business/workflows" className="klaros-btn-secondary text-sm">Automation</Link>}>
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-              <div className="klaros-card p-4">
-                <h3 className="mb-3 text-sm font-semibold text-foreground">Where leads are</h3>
-                <LeadFunnel leads={ops.leads} />
-              </div>
-              <LeadPipeline stages={ops.lead_pipeline} />
-            </div>
-          </ConsoleSection>
-        )}
-
-        {/* LAUNCH (after the day-to-day once live) */}
-        {operating && (
-          <ConsoleSection id="launch" title="Launch readiness" hint="Everything that makes this business complete.">
-            <LaunchPanel overview={overview} rows={model.launch} token={token} tenantId={user?.tenant_id} onLaunched={onLaunched} />
-          </ConsoleSection>
-        )}
-      </div>
+      </Page>
     </AppShell>
   );
 }

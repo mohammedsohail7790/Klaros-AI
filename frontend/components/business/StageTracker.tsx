@@ -15,12 +15,12 @@ import { cn } from "@/lib/cn";
 export function StageTracker({ stages, activeKey }: { stages: BuilderStage[]; activeKey?: string }) {
   const doneCount = stages.filter((s) => s.state === "done").length;
   return (
-    <nav aria-label="Business journey" className="relative mb-7 -mx-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
+    <nav aria-label="Business journey" className="relative mb-10 -mx-5 overflow-x-auto px-5 pb-2 sm:-mx-8 sm:px-8">
       <div className="mb-2 flex items-center justify-between text-xs text-muted">
         <span className="font-medium text-foreground">Your journey</span>
         <span>{doneCount} of {stages.length} steps done</span>
       </div>
-      <div className="mb-3 h-1 overflow-hidden rounded-full bg-border" aria-hidden="true">
+      <div className="mb-4 h-1 overflow-hidden rounded-full bg-border" aria-hidden="true">
         <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(doneCount / Math.max(1, stages.length)) * 100}%` }} />
       </div>
       <ol className="flex min-w-max items-center gap-1 text-xs">
@@ -29,14 +29,14 @@ export function StageTracker({ stages, activeKey }: { stages: BuilderStage[]; ac
           const body = (
             <span
               className={cn(
-                "flex items-center gap-2 rounded-xl border px-3 py-1.5 font-medium transition-colors",
-                s.state === "done" && "border-success/20 bg-success/[0.06] text-success hover:bg-success/10",
-                s.state !== "done" && isActive && "border-accent bg-accent text-accent-foreground shadow-sm",
-                s.state !== "done" && !isActive && "border-border bg-surface text-muted-foreground"
+                "flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-all duration-300 ease-apple",
+                s.state === "done" && "bg-surface-muted text-foreground hover:bg-border",
+                s.state !== "done" && isActive && "bg-foreground text-background",
+                s.state !== "done" && !isActive && "text-muted-foreground"
               )}
             >
               {s.state === "done" ? (
-                <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
+                <Check className="h-3.5 w-3.5 text-accent" strokeWidth={3} aria-hidden="true" />
               ) : (
                 <span className={cn("flex h-4 w-4 items-center justify-center rounded-full text-xs", isActive ? "bg-white/25" : "bg-surface-muted")}>{i + 1}</span>
               )}
@@ -53,7 +53,7 @@ export function StageTracker({ stages, activeKey }: { stages: BuilderStage[]; ac
               ) : (
                 body
               )}
-              {i < stages.length - 1 && <span className="h-px w-3 bg-border-strong/60" aria-hidden="true" />}
+              {i < stages.length - 1 && <span className="h-px w-2 bg-border-strong/60" aria-hidden="true" />}
             </li>
           );
         })}
