@@ -7,6 +7,7 @@ import { ApiError, acceptInvite, getInvitePreview } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Logo } from "@/components/Logo";
 import GradientBackdrop from "@/components/GradientBackdrop";
 import { setSession } from "@/lib/session";
 
@@ -71,16 +72,14 @@ function AcceptInviteInner() {
   return (
     <main className="flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
       <GradientBackdrop />
-      <div className="w-full max-w-sm">
-        <Link href="/" className="font-display mb-8 block text-center text-xl text-foreground">
-          Klaros AI
-        </Link>
-        <div className="klaros-glass rounded-2xl p-7">
+      <div className="w-full max-w-md">
+        <div className="mb-10 flex justify-center"><Logo /></div>
+        <div className="rounded-3xl bg-surface-muted p-8">
           {loadingPreview ? (
             <Skeleton />
           ) : previewError || !preview ? (
             <>
-              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Invite not available</h1>
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.25rem]">Invite not available</h1>
               <p className="mt-2 text-sm text-danger">{previewError}</p>
               <p className="mt-4 text-sm text-muted">
                 Ask whoever invited you to send a new invite from Settings → Team.
@@ -88,7 +87,7 @@ function AcceptInviteInner() {
             </>
           ) : (
             <>
-              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Join {preview.organization_name}</h1>
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.25rem]">Join {preview.organization_name}</h1>
               <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
                 You&apos;ve been invited as <span className="font-medium text-foreground">{preview.role}</span>.
                 Set a password to finish joining {preview.email}.

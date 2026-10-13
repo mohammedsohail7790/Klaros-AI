@@ -170,31 +170,34 @@ function PublicQuoteViewInner() {
       : null;
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-16">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Quote {quote.quote_number}</h1>
+    <div className="mx-auto w-full max-w-2xl px-5 py-12 sm:py-20">
+      <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="mb-2 text-[15px] font-medium text-muted-foreground">Quote</p>
+          <h1 className="font-display text-[2.25rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[3rem]">{quote.quote_number}</h1>
+        </div>
         <Badge status={quote.status}>{quote.status.replace(/_/g, " ")}</Badge>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</div>
+        <div className="mb-6 rounded-3xl bg-danger/10 px-6 py-5 text-[15px] text-danger">{error}</div>
       )}
 
       {depositReturn === "cancelled" && depositPending && (
-        <div className="mb-4 rounded-xl border border-warning/25 bg-warning/[0.07] p-3 text-sm text-warning">
+        <div className="mb-6 rounded-3xl bg-warning/10 px-6 py-5 text-[15px] text-warning">
           Checkout was cancelled — no payment was made. You can try again below whenever you&apos;re ready.
         </div>
       )}
 
       {confirming && depositPending && (
-        <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50/30 p-4 text-sm text-blue-700">
+        <div className="mb-6 rounded-3xl bg-accent-soft px-6 py-5 text-[15px] text-accent-hover">
           Confirming your payment with Stripe — this usually takes just a few seconds. This page will update
           automatically once it&apos;s confirmed.
         </div>
       )}
 
       {!confirming && depositReturn === "success" && depositPending && (
-        <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">
+        <div className="mb-6 rounded-3xl bg-surface-muted px-6 py-5 text-[15px] text-muted">
           We haven&apos;t received confirmation of your payment yet. If you completed checkout, this can take a
           moment — refresh this page shortly, or contact us if this persists.
           <button
@@ -210,7 +213,7 @@ function PublicQuoteViewInner() {
       )}
 
       {(quote.status === "ACCEPTED" || quote.status === "CONVERTED") && !depositPending && (
-        <div className="mb-6 rounded-xl border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
+        <div className="mb-6 rounded-3xl bg-success/10 px-6 py-5 text-[15px] text-success">
           You accepted this quote.{jobCreated ? " Work has been scheduled." : ""}
           {quote.status === "CONVERTED" && quote.deposit_required && (
             <div className="mt-1">Your deposit has been received — thank you.</div>
@@ -219,45 +222,40 @@ function PublicQuoteViewInner() {
       )}
 
       {quote.status === "DEPOSIT_PAID" && (
-        <div className="mb-6 rounded-xl border border-success/20 bg-success/[0.06] p-4 text-sm text-success">
+        <div className="mb-6 rounded-3xl bg-success/10 px-6 py-5 text-[15px] text-success">
           Your deposit has been received and this quote is accepted. We&apos;re finalizing your job now.
         </div>
       )}
 
       {quote.status === "DECLINED" && (
-        <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">
+        <div className="mb-6 rounded-3xl bg-surface-muted px-6 py-5 text-[15px] text-muted">
           You declined this quote.
         </div>
       )}
 
       {quote.status === "EXPIRED" && (
-        <div className="mb-6 rounded-2xl bg-surface-muted p-4 text-sm text-muted">
+        <div className="mb-6 rounded-3xl bg-surface-muted px-6 py-5 text-[15px] text-muted">
           This quote has expired. Please contact us for an updated quote.
         </div>
       )}
 
-      <div className="mb-6 klaros-table-wrap">
-        <table className="klaros-table">
-          <thead>
-            <tr>
-              <th className="px-5 py-4">Description</th>
-              <th className="px-5 py-4">Qty</th>
-              <th className="px-5 py-4">Unit price</th>
-              <th className="px-5 py-4">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {quote.line_items.map((li, i) => (
-              <tr key={i} className="border-t border-border">
-                <td className="px-5 py-4">{li.description}</td>
-                <td className="px-5 py-4">{li.quantity}</td>
-                <td className="px-5 py-4">${li.unit_price}</td>
-                <td className="px-5 py-4">${li.line_total}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <section aria-label="Line items" className="mb-8 rounded-3xl bg-surface-muted p-6 sm:p-8">
+        <ul className="divide-y divide-border/70">
+          {quote.line_items.map((li, i) => (
+            <li key={i} className="flex items-baseline justify-between gap-4 py-3.5">
+              <div className="min-w-0">
+                <p className="text-[16px] font-medium text-foreground">{li.description}</p>
+                <p className="text-[13px] text-muted">{li.quantity} × ${li.unit_price}</p>
+              </div>
+              <p className="shrink-0 font-display text-lg font-semibold tabular-nums text-foreground">${li.line_total}</p>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex items-baseline justify-between border-t border-border pt-4">
+          <p className="text-[15px] font-medium text-muted">Total</p>
+          <p className="font-display text-[2rem] font-semibold tabular-nums tracking-[-0.03em] text-foreground">${quote.total}</p>
+        </div>
+      </section>
 
       <div className="mb-6 space-y-1 text-right text-sm text-muted">
         <div>Subtotal: ${quote.subtotal}</div>
@@ -292,7 +290,7 @@ function PublicQuoteViewInner() {
           <button
             disabled={busy}
             onClick={handleAccept}
-            className="rounded-xl border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
+            className="rounded-full bg-success px-6 py-3 text-[15px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {busy ? "Accepting..." : "Accept quote"}
           </button>
@@ -303,12 +301,12 @@ function PublicQuoteViewInner() {
               value={declineReason}
               onChange={(e) => setDeclineReason(e.target.value)}
               disabled={busy}
-              className="flex-1 rounded border border-border-strong bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+              className="klaros-input flex-1"
             />
             <button
               disabled={busy}
               onClick={handleDecline}
-              className="rounded-xl border border-danger/25 px-4 py-2 text-sm text-danger hover:bg-danger/[0.06] disabled:opacity-50"
+              className="rounded-full bg-danger/10 px-5 py-3 text-[15px] font-medium text-danger transition-colors hover:bg-danger/20 disabled:opacity-50"
             >
               Decline
             </button>
@@ -325,7 +323,7 @@ function PublicQuoteViewInner() {
           <button
             disabled={busy}
             onClick={handlePayDeposit}
-            className="rounded-xl border border-success/20 bg-success/[0.06] px-4 py-2 text-sm text-success hover:bg-success/10 disabled:opacity-50"
+            className="rounded-full bg-success px-6 py-3 text-[15px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {busy ? "Starting checkout..." : "Pay deposit securely with Stripe"}
           </button>
