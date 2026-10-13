@@ -235,6 +235,15 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "env": settings.ENV}
 
 
+@app.get("/version")
+async def version() -> dict[str, str]:
+    """The commit and branch this process was deployed from, so a deploy can be
+    verified from outside. Dependency-free like /health, and carries no secret."""
+    from app.core.version import deployed_version
+
+    return deployed_version()
+
+
 @app.get("/ready")
 async def ready(response: Response) -> dict[str, object]:
     """Readiness (Phase 12B): actually checks the two real dependencies this
