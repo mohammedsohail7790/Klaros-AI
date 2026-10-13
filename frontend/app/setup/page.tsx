@@ -10,6 +10,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { ConsentWordingCard } from "@/components/mt/ConsentWordingCard";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ProgressRing } from "@/components/ui/layout";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 const MODELS: { key: string; label: string; help: string }[] = [
@@ -116,7 +117,7 @@ export default function SetupPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
+      <div className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
         <PageHeader title="Business setup" description="Describe the business once. Klaros builds the draft workspace and tells you what still needs real information or your approval." icon={Rocket} />
         {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
         {authLoading || (loading && !setup) ? (
@@ -157,10 +158,10 @@ export default function SetupPage() {
           </section>
         ) : setup?.configured && setup.profile ? (
           <div className="space-y-8">
-            <section aria-label="Your business" className="klaros-card p-5 sm:p-6">
+            <section aria-label="Your business" className="rounded-3xl bg-surface-muted p-6 sm:p-8">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">{setup.profile.business_name}</h2>
+                  <h2 className="font-display text-[2rem] font-semibold leading-tight tracking-[-0.025em] text-foreground">{setup.profile.business_name}</h2>
                   <p className="mt-1 text-sm text-muted">{setup.profile.business_model_label} · patients in {setup.profile.patient_markets.join(", ")} · treatment in {setup.profile.destinations.join(", ")}</p>
                   <p className="mt-1 text-sm text-muted">Procedures: {setup.profile.procedures.join(", ")}</p>
                 </div>
@@ -169,11 +170,16 @@ export default function SetupPage() {
             </section>
 
             <section aria-label="Launch checklist">
-              <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Launch checklist</h2>
-              <p className="mt-0.5 text-sm text-muted" data-testid="checklist-summary">{setup.ready_to_launch ? "Everything on the list is in place." : `${setup.open_items} item${setup.open_items === 1 ? "" : "s"} still open.`} Klaros only marks what it can see as done.</p>
-              <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
+              <div className="flex items-center gap-5">
+                <ProgressRing done={(setup.checklist ?? []).filter((c) => c.status === "DONE").length} total={(setup.checklist ?? []).length} />
+                <div>
+                  <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Launch checklist</h2>
+                  <p className="mt-0.5 text-[15px] text-muted" data-testid="checklist-summary">{setup.ready_to_launch ? "Everything on the list is in place." : `${setup.open_items} item${setup.open_items === 1 ? "" : "s"} still open.`} Klaros only marks what it can see as done.</p>
+                </div>
+              </div>
+              <ul className="mt-5 divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted">
                 {(setup.checklist ?? []).map((i) => (
-                  <li key={i.key} className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
+                  <li key={i.key} className="flex items-start justify-between gap-4 px-6 py-4 text-[15px]">
                     <div className="flex items-start gap-2">
                       {i.status === "DONE" ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-success" aria-hidden="true" /> : <CircleDashed className="mt-0.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />}
                       <div>
@@ -182,7 +188,7 @@ export default function SetupPage() {
                       </div>
                     </div>
                     <div className="shrink-0">
-                      {i.route && i.status !== "DONE" && <Link href={i.route} className="text-xs underline">Open</Link>}
+                      {i.route && i.status !== "DONE" && <Link href={i.route} className="rounded-full bg-surface px-4 py-1.5 text-[13px] font-medium text-accent hover:bg-border">Open</Link>}
                       {!i.route && (
                         <label className="flex items-center gap-1.5 text-xs">
                           <input type="checkbox" aria-label={`Confirm: ${i.label}`} checked={i.status === "DONE"} onChange={(e) => confirm(i.key, e.target.checked)} /> Confirmed
@@ -201,7 +207,7 @@ export default function SetupPage() {
               <p className="mt-0.5 text-sm text-muted">{setup.note}</p>
               <div className="mt-3 space-y-2">
                 {Object.entries(setup.drafts ?? {}).map(([key, d]) => (
-                  <details key={key} className="rounded-xl border border-border px-4 py-2 text-sm">
+                  <details key={key} className="rounded-3xl bg-surface-muted px-6 py-4 text-[15px]">
                     <summary className="cursor-pointer text-foreground">{DRAFT_TITLE[key] ?? key} <span className="ml-2 rounded-full border border-border-strong px-2 py-0.5 text-xs text-muted">DRAFT</span></summary>
                     <div className="mt-2 text-muted">
                       {d.text && <p>{d.text}</p>}
@@ -215,9 +221,9 @@ export default function SetupPage() {
               </div>
             </section>
 
-            <div className="flex gap-3 text-sm">
-              <Link href="/medical-tourism/pipeline" className="underline">Open the patient pipeline</Link>
-              <Link href="/medical-tourism/providers" className="underline">Add clinics</Link>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/medical-tourism/pipeline" className="klaros-btn-secondary">Open the patient pipeline</Link>
+              <Link href="/medical-tourism/providers" className="klaros-btn-primary">Add clinics</Link>
             </div>
           </div>
         ) : null}
