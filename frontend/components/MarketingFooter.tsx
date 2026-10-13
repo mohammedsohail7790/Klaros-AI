@@ -3,7 +3,7 @@ import { Logo } from "@/components/Logo";
 
 export default function MarketingFooter() {
   return (
-    <footer className="border-t border-border px-6 py-12">
+    <footer className="bg-surface-muted px-6 py-14">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 sm:flex-row">
         <div>
           <Logo />
@@ -18,7 +18,7 @@ export default function MarketingFooter() {
             family — Halla AI is Klaros's separate AI workforce platform.
           </p>
         </div>
-        <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted">
+        <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-muted">
           <Link href="/#how-it-works" className="transition-colors hover:text-foreground">
             How it works
           </Link>
