@@ -910,6 +910,10 @@ async def _provide_website_provider_directory(tenant_id: uuid.UUID, params: dict
     )
     items = []
     for p in providers:
+        # The public site calls this the partner network, so an unverified clinic
+        # is never listed (same rule as matching and referrals).
+        if (getattr(p, "verification_status", None) or "UNVERIFIED") != "VERIFIED":
+            continue
         offerings, _ = await service.list_offerings(tenant_id, provider_id=p.id, status="ACTIVE", limit=10)
         procedure_ids = [o.procedure_id for o in offerings]
         procedure_names: dict[uuid.UUID, str] = {}
@@ -949,7 +953,8 @@ async def _provide_website_procedure_list(tenant_id: uuid.UUID, params: dict) ->
     procedures, _total = await service.list_procedures(tenant_id, status=ProcedureStatus.ACTIVE, limit=limit)
     return {
         "items": [
-            {"name": proc.name, "category": proc.category or "", "description": proc.description or ""}
+            # "General" is only the placeholder the business setup assigns, not something to show patients.
+            {"name": proc.name, "category": "" if (proc.category or "").strip().lower() == "general" else (proc.category or ""), "description": proc.description or ""}
             for proc in procedures
         ]
     }

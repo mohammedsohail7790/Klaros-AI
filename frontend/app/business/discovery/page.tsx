@@ -49,7 +49,9 @@ const DISCOVERY_STAGES: BuilderStage[] = [
   { key: "recommendations", label: "Recommendations", state: "todo", route: "/business/recommendations" },
   { key: "map", label: "Business Map", state: "todo", route: "/business/map" },
   { key: "website", label: "Website", state: "todo", route: "/website" },
-  { key: "launch", label: "Launch", state: "todo", route: "/business/home" },
+  { key: "workforce", label: "AI workforce", state: "todo", route: "/workforce" },
+  { key: "launch", label: "Launch", state: "todo", route: "/business/home#launch" },
+  { key: "operate", label: "Operate", state: "todo", route: "/business/home" },
 ];
 
 export default function DiscoveryPage() {
