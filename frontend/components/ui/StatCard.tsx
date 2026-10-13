@@ -59,7 +59,7 @@ export function StatCard({
         <span
           className={cn(
             "font-semibold leading-tight tracking-tight",
-            compact ? "text-lg" : "font-display text-[2.25rem] leading-none tracking-[-0.03em]",
+            compact ? "text-lg" : typeof value === "string" && value.length > 8 ? "font-display text-[1.5rem] leading-tight tracking-[-0.02em]" : "font-display text-[2.25rem] leading-none tracking-[-0.03em]",
             tone === "neutral" ? "text-foreground" : toneClasses[tone].split(" ")[1]
           )}
         >
