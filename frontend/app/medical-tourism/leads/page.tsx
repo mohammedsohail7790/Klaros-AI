@@ -58,7 +58,7 @@ export default function MedicalTourismPatientLeadsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <PageHeader
           title={`Patient Leads (${total})`}
           description="Medical Tourism intake extensions on top of the tenant's CRM Leads — sourced from the authenticated Leads screen or the public website's lead-intake form."

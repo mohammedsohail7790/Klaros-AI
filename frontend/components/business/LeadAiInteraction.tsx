@@ -80,7 +80,7 @@ export function LeadAiInteraction({
   return (
     <section aria-labelledby="lead-ai-h" className="rounded-lg border border-border bg-surface p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="lead-ai-h" className="flex items-center gap-2 font-display text-xl text-foreground">
+        <h2 id="lead-ai-h" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
           <Bot className="h-5 w-5 text-accent" aria-hidden="true" /> AI interaction
         </h2>
         <AiStatePill state={data.state} />

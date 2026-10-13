@@ -407,7 +407,7 @@ export default function JobDetailPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <Link href="/jobs" className="text-sm text-muted hover:underline">
           ← Back to jobs
         </Link>
@@ -491,7 +491,7 @@ export default function JobDetailPage() {
                   <>
                     <div className="flex items-start justify-between">
                       <div>
-                        <h1 className="font-display text-2xl text-foreground">
+                        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                           {job.job_number} — {job.title}
                         </h1>
                         <p className="text-sm text-muted">
@@ -511,7 +511,7 @@ export default function JobDetailPage() {
                         ))}
                         <button
                           onClick={startEditingJob}
-                          className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                          className="klaros-btn-secondary !px-3 !py-1.5"
                         >
                           Edit
                         </button>
@@ -563,7 +563,7 @@ export default function JobDetailPage() {
                           <label className="block text-xs text-muted">End</label>
                           <input name="end" type="datetime-local" required className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                         </div>
-                        <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
+                        <button type="submit" className="klaros-btn-secondary !px-3 !py-1.5">
                           Schedule
                         </button>
                       </form>
@@ -581,7 +581,7 @@ export default function JobDetailPage() {
                               <label className="block text-xs text-muted">New end</label>
                               <input name="end" type="datetime-local" required className="rounded-md border border-border-strong bg-surface-muted px-2 py-1 text-sm" />
                             </div>
-                            <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
+                            <button type="submit" className="klaros-btn-secondary !px-3 !py-1.5">
                               Save
                             </button>
                             <button
@@ -595,7 +595,7 @@ export default function JobDetailPage() {
                         ) : (
                           <button
                             onClick={() => setReschedulingJob(true)}
-                            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                            className="klaros-btn-secondary !px-3 !py-1.5"
                           >
                             Reschedule
                           </button>
@@ -673,7 +673,7 @@ export default function JobDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Tasks</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Tasks</h2>
                 {tasks.length === 0 ? (
                   <EmptyState icon={CheckSquare} title="No tasks yet." compact />
                 ) : (
@@ -697,14 +697,14 @@ export default function JobDetailPage() {
                 )}
                 <form onSubmit={handleAddTask} className="mt-3 flex gap-2">
                   <input name="title" placeholder="New task" className="flex-1 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm" />
-                  <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
+                  <button type="submit" className="klaros-btn-secondary !px-3 !py-1.5">
                     Add
                   </button>
                 </form>
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Materials</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Materials</h2>
                 {materials.length === 0 ? (
                   <EmptyState icon={Package} title="No materials recorded." compact />
                 ) : (
@@ -718,7 +718,7 @@ export default function JobDetailPage() {
                 )}
                 <form onSubmit={handleAddMaterial} className="mt-3 flex gap-2">
                   <input name="name" placeholder="Material name" className="flex-1 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm" />
-                  <button type="submit" className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
+                  <button type="submit" className="klaros-btn-secondary !px-3 !py-1.5">
                     Add
                   </button>
                 </form>
@@ -735,7 +735,7 @@ export default function JobDetailPage() {
                     <button
                       disabled={busy}
                       onClick={handleCreatePODraft}
-                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                      className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                     >
                       Draft purchase order
                     </button>
@@ -745,11 +745,11 @@ export default function JobDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Photos, documents & voice notes</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Photos, documents & voice notes</h2>
                 <div className="flex gap-2">
                   <button
                     onClick={() => photoInputRef.current?.click()}
-                    className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                    className="klaros-btn-secondary !px-3 !py-1.5"
                   >
                     Upload photo
                   </button>
@@ -762,7 +762,7 @@ export default function JobDetailPage() {
                   />
                   <button
                     onClick={() => docInputRef.current?.click()}
-                    className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                    className="klaros-btn-secondary !px-3 !py-1.5"
                   >
                     Upload document
                   </button>
@@ -775,7 +775,7 @@ export default function JobDetailPage() {
                   />
                   <button
                     onClick={() => voiceInputRef.current?.click()}
-                    className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                    className="klaros-btn-secondary !px-3 !py-1.5"
                   >
                     Upload voice note
                   </button>
@@ -812,7 +812,7 @@ export default function JobDetailPage() {
 
               {EDITABLE_STATUSES.has(job.status) && token && (
                 <div className="rounded-lg border border-border bg-surface p-6">
-                  <h2 className="mb-3 text-sm font-medium text-muted">Scope changes</h2>
+                  <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Scope changes</h2>
                   {scopeChanges.length === 0 ? (
                     <p className="text-sm text-muted">No scope changes recorded this session.</p>
                   ) : (
@@ -871,7 +871,7 @@ export default function JobDetailPage() {
                       <button
                         type="submit"
                         disabled={busy || !scopeDescription.trim()}
-                        className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                        className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                       >
                         Record scope change
                       </button>
@@ -882,7 +882,7 @@ export default function JobDetailPage() {
 
               {(job.status === "COMPLETED" || job.status === "CLOSED") && token && (
                 <div className="rounded-lg border border-border bg-surface p-6">
-                  <h2 className="mb-3 text-sm font-medium text-muted">Customer sign-off</h2>
+                  <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Customer sign-off</h2>
                   <p className="mb-3 text-xs text-muted">
                     Internal record only — not a legally binding e-signature.
                   </p>
@@ -900,7 +900,7 @@ export default function JobDetailPage() {
                     <button
                       type="submit"
                       disabled={busy || !signedBy.trim()}
-                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                      className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                     >
                       Record sign-off
                     </button>
@@ -910,9 +910,9 @@ export default function JobDetailPage() {
 
               {job.status === "QA_PENDING" && token && (
                 <div className="rounded-lg border border-border bg-surface p-6">
-                  <h2 className="mb-3 text-sm font-medium text-muted">QA</h2>
+                  <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">QA</h2>
                   <div className="flex gap-2">
-                    <button onClick={() => runAction(() => startQA(token, id))} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
+                    <button onClick={() => runAction(() => startQA(token, id))} className="klaros-btn-secondary !px-3 !py-1.5">
                       Start QA
                     </button>
                     <button onClick={() => runAction(() => completeQA(token, id))} className="rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-foreground">
@@ -930,11 +930,11 @@ export default function JobDetailPage() {
 
               {job.status === "COMPLETED" && token && (
                 <div className="rounded-lg border border-border bg-surface p-6">
-                  <h2 className="mb-3 text-sm font-medium text-muted">Completion packet</h2>
+                  <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Completion packet</h2>
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => runAction(() => generateCompletionPacket(token, id))}
-                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                      className="klaros-btn-secondary !px-3 !py-1.5"
                     >
                       Generate packet
                     </button>
@@ -945,7 +945,7 @@ export default function JobDetailPage() {
                           setActionNotice(`Content idea created: "${result.content.title}".`);
                         })
                       }
-                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                      className="klaros-btn-secondary !px-3 !py-1.5"
                     >
                       Generate marketing content idea
                     </button>
@@ -954,7 +954,7 @@ export default function JobDetailPage() {
               )}
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Finance</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Finance</h2>
                 {invoices.length === 0 ? (
                   <div className="space-y-3">
                     <p className="text-sm text-muted">
@@ -964,7 +964,7 @@ export default function JobDetailPage() {
                     {job?.status === "CLOSED" && token && (
                       <button
                         onClick={() => runAction(() => triggerInvoiceFromJob(token, id))}
-                        className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                        className="klaros-btn-secondary !px-3 !py-1.5"
                       >
                         Trigger invoice now
                       </button>
@@ -1037,7 +1037,7 @@ export default function JobDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Timeline</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Timeline</h2>
                 {timeline.length === 0 ? (
                   <EmptyState icon={Clock} title="No activity recorded yet." compact />
                 ) : (
@@ -1055,7 +1055,7 @@ export default function JobDetailPage() {
 
             <section className="space-y-4">
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-2 text-sm font-medium text-muted">AI summary</h2>
+                <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">AI summary</h2>
                 {summary ? <p className="text-sm text-muted">{summary}</p> : <p className="text-sm text-muted">Not generated yet.</p>}
                 <button
                   onClick={() =>
@@ -1065,7 +1065,7 @@ export default function JobDetailPage() {
                       setSummary(result.summary);
                     })
                   }
-                  className="mt-4 w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                  className="mt-4 w-full klaros-btn-secondary !px-3 !py-1.5"
                 >
                   Generate summary
                 </button>
@@ -1139,7 +1139,7 @@ function RecordJobCostForm({ token, jobId, onRecorded }: { token: string; jobId:
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+        className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
       >
         Record cost
       </button>

@@ -161,8 +161,8 @@ export default function AutomationSettingsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-2">Automation Settings</h1>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-2">Automation Settings</h1>
         <p className="mb-6 text-sm text-muted">
           Decide what Klaros is allowed to do automatically, and how it should notify you when it needs
           your attention.
@@ -179,7 +179,7 @@ export default function AutomationSettingsPage() {
         ) : (
           <>
             <section className="mb-10">
-              <h2 className="mb-3 text-sm font-medium text-muted">Automation Policies</h2>
+              <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Automation Policies</h2>
               {!policies || policies.length === 0 ? (
                 <EmptyState icon={Settings2} title="No configurable automation actions found." />
               ) : (

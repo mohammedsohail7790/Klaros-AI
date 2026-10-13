@@ -38,7 +38,7 @@ export default function ContactPage() {
       <GradientBackdrop />
       <MarketingHeader />
       <section className="mx-auto max-w-xl px-6 pb-24 pt-16 sm:pt-24">
-        <h1 className="font-display text-4xl text-foreground">Talk to us</h1>
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground">Talk to us</h1>
         <p className="mt-3 text-base leading-relaxed text-muted">
           Questions about Klaros, a plan that fits your team, or something not working? Send a message and a person will reply by email.
         </p>

@@ -76,7 +76,7 @@ export default function ContractDetailPage() {
   if (error && !contract) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
           <div className="rounded-md border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</div>
         </div>
       </AppShell>
@@ -95,9 +95,9 @@ export default function ContractDetailPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <div className="mb-2 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Contract {contract.contract_number}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Contract {contract.contract_number}</h1>
           <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{contract.status}</span>
         </div>
         <p className="mb-6 text-sm text-muted">
@@ -184,7 +184,7 @@ export default function ContractDetailPage() {
             <button
               disabled={busy}
               onClick={handleSend}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
             >
               {busy ? "Sending..." : "Send to customer"}
             </button>

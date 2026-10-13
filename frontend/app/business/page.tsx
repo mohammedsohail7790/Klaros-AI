@@ -117,7 +117,7 @@ export default function BusinessJourneyEntryPage() {
           <span className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent-soft text-accent">
             <Sparkles className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </span>
-          <h1 className="font-display text-3xl text-foreground sm:text-4xl">What are you building?</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">What are you building?</h1>
           <p className="mx-auto mt-3 max-w-md text-sm text-muted sm:text-base">
             Describe your business in your own words. Klaros will ask a few questions, work out what the business needs, and help you
             build it.

@@ -142,7 +142,7 @@ export default function Home() {
       <section id="how-it-works" className="scroll-mt-24 border-y border-border bg-surface px-6 py-20">
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto max-w-xl text-center">
-            <h2 className="font-display text-3xl text-foreground">From business idea to operating business</h2>
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground">From business idea to operating business</h2>
             <p className="mt-3 text-sm text-muted">One continuous journey — not a pile of unrelated admin pages.</p>
           </div>
           <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -152,7 +152,7 @@ export default function Home() {
                   {i + 1}
                 </span>
                 <div>
-                  <h3 className="flex items-center gap-2 font-display text-lg text-foreground">
+                  <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
                     <step.icon className="h-4 w-4 text-accent" strokeWidth={1.75} aria-hidden="true" />
                     {step.title}
                   </h3>
@@ -167,7 +167,7 @@ export default function Home() {
       <section id="product" className="scroll-mt-24 px-6 py-20">
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto max-w-xl text-center">
-            <h2 className="font-display text-3xl text-foreground">What's inside</h2>
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground">What's inside</h2>
           </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {CAPABILITIES.map((c) => (
@@ -175,7 +175,7 @@ export default function Home() {
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft">
                   <c.icon className="h-5 w-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
                 </div>
-                <h3 className="font-display text-lg text-foreground">{c.title}</h3>
+                <h3 className="text-lg font-semibold tracking-tight text-foreground">{c.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{c.body}</p>
               </div>
             ))}
@@ -186,7 +186,7 @@ export default function Home() {
       <section id="one-engine" className="scroll-mt-24 border-y border-border bg-surface px-6 py-20">
         <div className="mx-auto max-w-5xl">
           <div className="mx-auto max-w-xl text-center">
-            <h2 className="font-display text-3xl text-foreground">One engine. Any business.</h2>
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground">One engine. Any business.</h2>
             <p className="mt-3 text-sm text-muted">
               Klaros doesn't have a template per industry. The same steps produce a different blueprint, different requirements and a different map for each business.
             </p>
@@ -205,7 +205,7 @@ export default function Home() {
               },
             ].map((b) => (
               <div key={b.title} className="klaros-card p-6">
-                <h3 className="font-display text-xl text-foreground">{b.title}</h3>
+                <h3 className="text-xl font-semibold tracking-tight text-foreground">{b.title}</h3>
                 <p className="mt-1 text-xs text-muted-foreground">{b.note}</p>
                 <ul className="mt-4 space-y-2 text-sm text-muted">
                   {b.items.map((it) => (
@@ -223,7 +223,7 @@ export default function Home() {
 
       <section id="faq" className="scroll-mt-24 px-6 py-20">
         <div className="mx-auto max-w-3xl">
-          <h2 className="text-center font-display text-3xl text-foreground">Questions worth answering honestly</h2>
+          <h2 className="text-center text-3xl font-semibold tracking-tight text-foreground">Questions worth answering honestly</h2>
           <div className="mt-12 space-y-4">
             {FAQS.map((item) => (
               <details key={item.q} className="klaros-card group p-5">

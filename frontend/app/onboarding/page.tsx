@@ -150,7 +150,7 @@ export default function OnboardingPage() {
 
           {step === 0 && (
             <>
-              <h1 className="font-display text-2xl text-foreground">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                 Welcome{user ? `, ${user.full_name.split(" ")[0]}` : ""}
               </h1>
               <p className="mt-1 text-sm text-muted">
@@ -168,7 +168,7 @@ export default function OnboardingPage() {
                   <button
                     onClick={() => handleSubscribe("solo")}
                     disabled={subscribingPlan !== null}
-                    className="mt-3 w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                    className="mt-3 w-full klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                   >
                     {subscribingPlan === "solo" ? "Redirecting..." : "Subscribe to Solo"}
                   </button>
@@ -182,7 +182,7 @@ export default function OnboardingPage() {
                   <button
                     onClick={() => handleSubscribe("growth")}
                     disabled={subscribingPlan !== null}
-                    className="mt-3 w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                    className="mt-3 w-full klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                   >
                     {subscribingPlan === "growth" ? "Redirecting..." : "Subscribe to Growth"}
                   </button>
@@ -205,7 +205,7 @@ export default function OnboardingPage() {
 
           {step === 1 && (
             <>
-              <h1 className="font-display text-2xl text-foreground">Set your business hours</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Set your business hours</h1>
               <p className="mt-1 text-sm text-muted">
                 So Klaros runs on your business's own schedule, not generic defaults. Can be changed
                 later in Settings.
@@ -252,7 +252,7 @@ export default function OnboardingPage() {
 
           {step === 2 && (
             <>
-              <h1 className="font-display text-2xl text-foreground">Teach Klaros your business</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Teach Klaros your business</h1>
               <p className="mt-1 text-sm text-muted">
                 This writes real, editable files into your Knowledge Layer — the same source Klaros
                 reads from for Ask AI and AI-drafted content. Answer as much or as little as you
@@ -317,7 +317,7 @@ export default function OnboardingPage() {
 
           {step === 3 && (
             <>
-              <h1 className="font-display text-2xl text-foreground">You&apos;re set up</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">You&apos;re set up</h1>
               <p className="mt-1 text-sm text-muted">
                 Klaros now knows your timezone and what you told it about your business. Next, connect
                 the tools you actually use — Stripe, QuickBooks, Google Calendar — from the checklist on

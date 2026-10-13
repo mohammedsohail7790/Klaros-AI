@@ -73,6 +73,7 @@ const PRIMARY_NAV: NavItem[] = [
   { href: "/business/map", label: "Business", icon: MapIcon },
   { href: "/workforce", label: "AI Workforce", icon: Headset },
   { href: "/website", label: "Website", icon: Globe },
+  { href: "/builder", label: "App Builder", icon: Sparkles },
   { href: "/business/integrations", label: "Integrations", icon: Plug },
   { href: "/business/data", label: "Data", icon: Database },
   { href: "/business/workflows", label: "Automation", icon: Workflow },

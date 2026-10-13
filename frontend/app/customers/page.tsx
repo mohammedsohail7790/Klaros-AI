@@ -1,5 +1,6 @@
 "use client";
 
+import { Avatar } from "@/components/ui/Avatar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Users } from "lucide-react";
@@ -51,13 +52,13 @@ export default function CustomersPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Customers ({total})</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Customers ({total})</h1>
           <div className="flex gap-2">
             <button
               onClick={() => setShowImport(true)}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+              className="klaros-btn-secondary !px-3 !py-1.5"
             >
               Import CSV
             </button>
@@ -74,7 +75,8 @@ export default function CustomersPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name or email..."
-          className="mb-4 w-72 rounded-md border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
+          aria-label="Search customers"
+          className="klaros-input mb-4 w-full max-w-sm"
         />
 
         {authLoading || loading ? (
@@ -94,7 +96,7 @@ export default function CustomersPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowImport(true)}
-                  className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                  className="klaros-btn-secondary !px-3 !py-1.5"
                 >
                   Import CSV
                 </button>
@@ -119,7 +121,8 @@ export default function CustomersPage() {
                 {customers.map((c) => (
                   <tr key={c.id} className="border-t border-border hover:bg-surface">
                     <td className="px-4 py-2">
-                      <Link href={`/customers/${c.id}`} className="hover:underline">
+                      <Link href={`/customers/${c.id}`} className="flex items-center gap-3 font-medium text-foreground hover:underline">
+                        <Avatar name={c.name} />
                         {c.name}
                       </Link>
                     </td>

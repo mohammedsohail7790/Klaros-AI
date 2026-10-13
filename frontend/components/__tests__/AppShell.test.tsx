@@ -22,11 +22,11 @@ const renderAt = (p: string, props: Record<string, unknown> = {}) => {
 };
 
 describe("AppShell navigation", () => {
-  it("always shows the nine primary destinations, in the order a business is built and run", () => {
+  it("always shows the ten primary destinations, in the order a business is built and run", () => {
     renderAt("/business/home");
     const primary = screen.getByRole("navigation", { name: "Primary" });
-    const links = within(primary).getAllByRole("link").slice(0, 9).map((a) => a.textContent);
-    expect(links).toEqual(["Home", "Build", "Business", "AI Workforce", "Website", "Integrations", "Data", "Automation", "Analytics"]);
+    const links = within(primary).getAllByRole("link").slice(0, 10).map((a) => a.textContent);
+    expect(links).toEqual(["Home", "Build", "Business", "AI Workforce", "Website", "App Builder", "Integrations", "Data", "Automation", "Analytics"]);
   });
 
   it("keeps the day-to-day work one click away and the long tail tucked into All modules", () => {

@@ -112,6 +112,15 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("klaros_in_process_event_worker_started")
 
     try:
+        from app.api.v1.builder import get_orchestrator
+
+        recovered = await get_orchestrator().store.recover_stale_runs()
+        if recovered:
+            logger.info("builder_runs_recovered", count=recovered)
+    except Exception:  # noqa: BLE001 - a sweep problem must never stop the API starting
+        logger.warning("builder_recovery_sweep_failed")
+
+    try:
         yield
     finally:
         if worker_task is not None:

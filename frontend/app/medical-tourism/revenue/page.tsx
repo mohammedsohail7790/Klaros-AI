@@ -49,7 +49,7 @@ export default function MedicalTourismRevenuePage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <PageHeader
           title="Revenue"
           description="Commission by the stage it has actually reached. Potential is not revenue."
@@ -66,7 +66,7 @@ export default function MedicalTourismRevenuePage() {
           <div className="space-y-8">
             {currencies.map((cur) => (
               <section key={cur} aria-label={`Revenue in ${cur}`}>
-                <h2 className="font-display text-lg text-foreground">{cur}</h2>
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">{cur}</h2>
                 <div className="klaros-table-wrap mt-2">
                   <table className="klaros-table">
                     <thead className="bg-surface text-muted">

@@ -124,8 +124,8 @@ export default function ReviewsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-6">Reviews &amp; Reputation</h1>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-6">Reviews &amp; Reputation</h1>
         <p className="mb-6 text-xs text-muted">
           External Google/Yelp reviews are NOT CONNECTED — no external review has ever been fetched. Everything below is
           internal.
@@ -153,7 +153,7 @@ export default function ReviewsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-sm font-medium text-muted">Record feedback</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Record feedback</h2>
             <div className="mb-6 flex flex-wrap items-end gap-2">
               <div>
                 <label className="block text-xs text-muted">Customer ID</label>
@@ -188,13 +188,13 @@ export default function ReviewsPage() {
               <button
                 disabled={busy || !fbCustomerId.trim()}
                 onClick={handleRecordFeedback}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Record
               </button>
             </div>
 
-            <h2 className="mb-3 text-sm font-medium text-muted">Review requests</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Review requests</h2>
             {requests.length === 0 ? (
               <div className="mb-6">
                 <EmptyState icon={Star} title="No review requests yet." />
@@ -232,7 +232,7 @@ export default function ReviewsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-sm font-medium text-muted">
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">
               Positive feedback ({positiveFeedback.length})
             </h2>
             {positiveFeedback.length === 0 ? (

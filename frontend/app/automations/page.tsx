@@ -446,9 +446,9 @@ export default function AutomationsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Automations</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Automations</h1>
           {mode !== "list" ? (
             <button
               onClick={() => setMode("list")}
