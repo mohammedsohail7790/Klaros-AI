@@ -228,6 +228,12 @@ export default function BlueprintPage() {
   if (!data || !journey) return null;
 
   const isDraft = data.blueprint.status === "DRAFT";
+  // The journey, not the blueprint row, owns the human checkpoint. A blueprint
+  // can already be ACTIVE (activated directly, or by the Medical Tourism setup)
+  // while the journey is still BLUEPRINT_REVIEW; without a Confirm action the
+  // journey never reaches BLUEPRINT_ACTIVE and /business/requirements bounces
+  // back here. The backend resumes that case without re-activating.
+  const awaitingConfirm = isDraft || journey.status === "BLUEPRINT_REVIEW";
   const claimsBySection = data.claims.reduce<Record<string, BlueprintClaim[]>>((acc, c) => {
     (acc[c.section_key] ??= []).push(c);
     return acc;
@@ -249,9 +255,9 @@ export default function BlueprintPage() {
         <PageHeader
           icon={FileText}
           title="Here's what Klaros thinks your business is"
-          description={isDraft ? "Check it over, fix anything that's off, then confirm. Nothing is final until you do." : "Confirmed. This is the foundation everything else is built from."}
+          description={awaitingConfirm ? "Check it over, fix anything that's off, then confirm. Nothing is final until you do." : "Confirmed. This is the foundation everything else is built from."}
           actions={
-            isDraft ? (
+            awaitingConfirm ? (
               <Button onClick={handleConfirmBlueprint} disabled={busy}>
                 {busy ? "Confirming…" : "Confirm and continue"}
               </Button>
