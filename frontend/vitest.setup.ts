@@ -24,3 +24,19 @@ if (typeof Element !== "undefined") {
   Element.prototype.hasPointerCapture ??= () => false;
   Element.prototype.scrollIntoView ??= () => {};
 }
+
+// jsdom has no IntersectionObserver; framer-motion's scroll-reveal (whileInView) needs one. A no-op is enough: nothing scrolls in a test.
+if (typeof globalThis.IntersectionObserver === "undefined") {
+  class NoopIntersectionObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return [];
+    }
+    root = null;
+    rootMargin = "";
+    thresholds = [];
+  }
+  globalThis.IntersectionObserver = NoopIntersectionObserver as unknown as typeof IntersectionObserver;
+}

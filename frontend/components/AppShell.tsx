@@ -391,7 +391,7 @@ export default function AppShell({
       {mobileNavOpen && <div aria-hidden onClick={() => setMobileNavOpen(false)} className="fixed inset-0 z-40 bg-black/30 lg:hidden" />}
       <aside
         aria-label="Main"
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-white/5 bg-accent-2 text-slate-300 transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col klaros-dark border-r border-white/5 bg-accent-2 text-slate-300 transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -501,7 +501,7 @@ export default function AppShell({
           <div className="border-t border-white/10 p-3">
             <DropdownMenu.Root>
               <DropdownMenu.Trigger className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left outline-none transition-colors hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent">
-                <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-[rgb(124_58_237)] text-xs font-semibold text-white">
+                <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white">
                   {(user.full_name || user.email).trim().charAt(0).toUpperCase()}
                 </span>
                 <span className="min-w-0 flex-1">

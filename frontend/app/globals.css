@@ -3,28 +3,47 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  /* Klaros design tokens — space-separated RGB channels so Tailwind opacity
-     modifiers (bg-accent/10) keep working. Neutral slate surfaces, one indigo
-     brand accent, and a deep slate "ink" for the sidebar and brand panels. */
-  --color-background: 247 248 250;
+  /* Type: the system UI face first (San Francisco on Apple devices, the platform UI font elsewhere), Geist as the web fallback. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", var(--font-geist-sans), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", var(--font-geist-mono), Menlo, monospace;
+  /* Klaros design tokens (space-separated RGB so Tailwind opacity modifiers keep working).
+     Quiet, high-contrast neutrals, one clear blue accent, generous whitespace. */
+  --color-background: 255 255 255;
   --color-surface: 255 255 255;
-  --color-surface-muted: 241 243 247;
-  --color-border: 228 231 237;
-  --color-border-strong: 207 212 222;
-  --color-foreground: 15 23 42;
-  --color-muted: 91 102 122;
-  --color-muted-foreground: 108 118 138;
-  --color-accent: 79 70 229;
-  --color-accent-hover: 67 56 202;
+  --color-surface-muted: 245 245 247;
+  --color-border: 229 229 234;
+  --color-border-strong: 210 210 215;
+  --color-foreground: 29 29 31;
+  --color-muted: 99 99 104;
+  --color-muted-foreground: 110 110 115;
+  --color-accent: 0 102 204;
+  --color-accent-hover: 0 85 170;
   --color-accent-foreground: 255 255 255;
-  --color-accent-soft: 238 240 255;
-  --color-accent-2: 15 23 42;
+  --color-accent-soft: 235 244 253;
+  --color-accent-2: 29 29 31;
   --color-success: 21 128 84;
   --color-warning: 180 98 8;
   --color-danger: 200 48 48;
+  --ease-apple: cubic-bezier(0.28, 0.11, 0.32, 1);
 }
+
+/* A dark band: re-points the tokens for everything inside it, so any component reads correctly on black. */
+.klaros-dark {
+  --color-background: 0 0 0;
+  --color-surface: 28 28 30;
+  --color-surface-muted: 44 44 46;
+  --color-border: 58 58 60;
+  --color-border-strong: 72 72 74;
+  --color-foreground: 245 245 247;
+  --color-muted: 174 174 178;
+  --color-muted-foreground: 152 152 157;
+  --color-accent: 41 151 255;
+  --color-accent-hover: 94 178 255;
+  --color-accent-soft: 16 40 66;
+  background-color: rgb(var(--color-background));
+  color: rgb(var(--color-foreground));
+}
+
 
 /* Keyboard users always get a visible focus indicator; pointer users do not. */
 :where(a, button, summary, [role="button"], input, textarea, select):focus-visible {
@@ -40,7 +59,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.006em;
 }
-h1, h2, h3, .font-display { letter-spacing: -0.02em; }
+h1, h2, h3, .font-display { letter-spacing: -0.022em; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
 ::selection { background: rgb(var(--color-accent) / 0.18); }
 * { scrollbar-width: thin; scrollbar-color: rgb(var(--color-border-strong)) transparent; }
 
@@ -122,7 +143,7 @@ select:not([multiple]):not([size]):disabled {
 
 @layer components {
   .klaros-card {
-    @apply rounded-xl border border-border bg-surface shadow-card;
+    @apply rounded-2xl border border-border bg-surface;
   }
 
   /* A card that's itself a click target (a summary tile linking to a
@@ -130,11 +151,11 @@ select:not([multiple]):not([size]):disabled {
      shadow on hover so it reads as interactive before the cursor even
      changes, the same restrained affordance StatCard uses. */
   .klaros-card-interactive {
-    @apply cursor-pointer transition-all duration-200 ease-out hover:border-border-strong hover:shadow-raised;
+    @apply cursor-pointer transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:shadow-raised;
   }
 
   .klaros-input {
-    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft;
+    @apply w-full rounded-xl border border-border-strong bg-surface px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft;
   }
 
   .klaros-label {
@@ -146,11 +167,11 @@ select:not([multiple]):not([size]):disabled {
      same "hover adds a colored glow" language as the Halla AI family's
      own primary buttons, not just a flat color swap. */
   .klaros-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-card transition-all duration-200 ease-out hover:bg-accent-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground transition-all duration-200 ease-out hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .klaros-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground shadow-card transition-all duration-200 ease-out hover:border-border-strong hover:bg-surface-muted active:translate-y-px disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-border-strong bg-transparent px-5 py-2 text-sm font-medium text-accent transition-all duration-200 ease-out hover:bg-accent-soft active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .klaros-table-wrap {

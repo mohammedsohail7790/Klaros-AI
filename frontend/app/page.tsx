@@ -3,6 +3,7 @@ import {
   BarChart3,
   Bot,
   Boxes,
+  Plus,
   ClipboardList,
   Compass,
   FileText,
@@ -10,16 +11,15 @@ import {
   ListChecks,
   Network,
   Rocket,
-  Settings2,
   Sparkles,
   Workflow,
 } from "lucide-react";
-import GradientBackdrop from "@/components/GradientBackdrop";
 import MarketingHeader from "@/components/MarketingHeader";
 import MarketingFooter from "@/components/MarketingFooter";
 import { BuildCta } from "@/components/marketing/BuildCta";
 import { HeroIdeaForm } from "@/components/marketing/HeroIdeaForm";
 import { BuilderPreview } from "@/components/marketing/BuilderPreview";
+import { Parallax, Reveal, ScrollStage, Stagger, StaggerItem, WordReveal } from "@/components/marketing/motion";
 
 const JOURNEY = [
   { icon: Sparkles, title: "Idea", body: "Say what you want to build, in your own words." },
@@ -99,99 +99,114 @@ const FAQS = [
   },
 ];
 
+const BENTO_SPAN = ["md:col-span-4", "md:col-span-2", "md:col-span-2", "md:col-span-2", "md:col-span-2", "md:col-span-3", "md:col-span-3", "md:col-span-6"];
+
 export default function Home() {
   return (
-    <main className="min-h-screen overflow-x-hidden">
-      <GradientBackdrop />
+    <main className="min-h-screen overflow-x-hidden bg-background">
       <MarketingHeader />
 
-      <section className="mx-auto max-w-4xl px-6 pb-16 pt-14 text-center sm:pt-20">
-        <div className="mx-auto mb-6 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted">
-          <Sparkles className="h-3.5 w-3.5 text-accent" strokeWidth={2} aria-hidden="true" />
-          The AI business builder
-        </div>
-        <h1 className="font-display text-4xl font-semibold leading-[1.08] tracking-tight text-foreground sm:text-6xl">
-          Build and operate
-          <br />
-          <span className="bg-gradient-to-r from-accent to-violet-600 bg-clip-text text-transparent">your business with AI.</span>
-        </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-relaxed text-muted">
-          Describe what you want to build. Klaros figures out what your business needs — then helps you build it and operate it.
-        </p>
+      {/* HERO */}
+      <section className="relative px-6 pb-10 pt-16 text-center sm:pt-24">
+        <Parallax distance={30} className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[620px]">
+          <div
+            aria-hidden="true"
+            className="mx-auto h-full max-w-4xl"
+            style={{ background: "radial-gradient(55% 55% at 50% 30%, rgb(var(--color-accent) / 0.10) 0%, transparent 70%)" }}
+          />
+        </Parallax>
+        <Reveal y={16}>
+          <p className="text-[15px] font-semibold text-accent sm:text-lg">Klaros</p>
+        </Reveal>
+        <Reveal delay={0.06}>
+          <h1 className="mx-auto mt-3 max-w-5xl text-balance font-display text-[2.75rem] font-semibold leading-[1.04] tracking-[-0.03em] text-foreground sm:text-7xl lg:text-[6rem]">
+            Build and operate
+            <br />
+            <span className="bg-gradient-to-b from-foreground to-foreground/60 bg-clip-text text-transparent">your business with AI.</span>
+          </h1>
+        </Reveal>
+        <Reveal delay={0.14}>
+          <p className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-snug text-muted sm:text-2xl">
+            Describe what you want to build. Klaros works out what your business needs, then helps you build it and run it.
+          </p>
+        </Reveal>
+        <Reveal delay={0.22}>
+          <HeroIdeaForm />
+          <div className="mt-6 flex items-center justify-center gap-6 text-[17px]">
+            <Link href="#how-it-works" className="text-accent transition-colors hover:underline">
+              See How It Works <span aria-hidden="true">&rsaquo;</span>
+            </Link>
+          </div>
+        </Reveal>
 
-        <HeroIdeaForm />
-
-        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="#how-it-works" className="klaros-btn-secondary px-6 py-3 text-base">
-            See How It Works
-          </Link>
-        </div>
-
-        <ol aria-label="How Klaros works" className="mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs font-medium text-muted">
-          {["Idea", "Discovery", "Blueprint", "Architecture", "Website", "AI workforce", "Operations"].map((step, i, a) => (
-            <li key={step} className="flex items-center gap-2">
-              {step}
-              {i < a.length - 1 && <span aria-hidden="true" className="text-accent">→</span>}
-            </li>
-          ))}
-        </ol>
-
-        <BuilderPreview />
+        <ScrollStage className="mx-auto mt-16 max-w-5xl">
+          <BuilderPreview />
+        </ScrollStage>
       </section>
 
-      <section id="how-it-works" className="scroll-mt-24 border-y border-border bg-surface px-6 py-20">
-        <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">From business idea to operating business</h2>
-            <p className="mt-3 text-sm text-muted">One continuous journey — not a pile of unrelated admin pages.</p>
-          </div>
-          <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* STATEMENT */}
+      <section className="klaros-dark px-6 py-28 sm:py-44">
+        <div className="mx-auto max-w-4xl">
+          <WordReveal
+            className="text-balance font-display text-3xl font-semibold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl"
+            text="Tell Klaros the idea. It asks the few questions that matter, writes the blueprint, and becomes the place where the business runs."
+          />
+        </div>
+      </section>
+
+      {/* JOURNEY */}
+      <section id="how-it-works" className="scroll-mt-16 px-6 py-24 sm:py-36">
+        <div className="mx-auto max-w-5xl">
+          <Reveal className="max-w-2xl">
+            <h2 className="text-balance font-display text-4xl font-semibold leading-[1.08] tracking-tight sm:text-6xl">From idea to operating business.</h2>
+            <p className="mt-5 text-xl leading-snug text-muted">One continuous journey, not a pile of unrelated admin pages.</p>
+          </Reveal>
+          <ol className="mt-16 divide-y divide-border border-y border-border">
             {JOURNEY.map((step, i) => (
-              <li key={step.title} className="klaros-card flex gap-4 p-5">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground" aria-hidden="true">
-                  {i + 1}
+              <Reveal as="li" key={step.title} className="group grid grid-cols-[3.25rem_1fr] items-baseline gap-x-4 py-7 sm:grid-cols-[6rem_16rem_1fr] sm:py-9">
+                <span className="font-display text-2xl font-semibold tabular-nums text-muted-foreground transition-colors duration-500 group-hover:text-accent sm:text-4xl">
+                  {String(i + 1).padStart(2, "0")}
                 </span>
-                <div>
-                  <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-                    <step.icon className="h-4 w-4 text-accent" strokeWidth={1.75} aria-hidden="true" />
-                    {step.title}
-                  </h3>
-                  <p className="mt-1 text-sm leading-relaxed text-muted">{step.body}</p>
-                </div>
-              </li>
+                <h3 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{step.title}</h3>
+                <p className="col-start-2 mt-2 text-lg leading-snug text-muted sm:col-start-3 sm:mt-0">{step.body}</p>
+              </Reveal>
             ))}
           </ol>
         </div>
       </section>
 
-      <section id="product" className="scroll-mt-24 px-6 py-20">
+      {/* BENTO */}
+      <section id="product" className="scroll-mt-16 bg-surface-muted px-6 py-24 sm:py-36">
         <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">What's inside</h2>
-          </div>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {CAPABILITIES.map((c) => (
-              <div key={c.title} className="klaros-card p-6 transition-shadow hover:shadow-raised">
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft">
-                  <c.icon className="h-5 w-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
+          <Reveal className="mx-auto max-w-3xl text-center">
+            <h2 className="text-balance font-display text-4xl font-semibold leading-[1.08] tracking-tight sm:text-6xl">What&apos;s inside.</h2>
+          </Reveal>
+          <Stagger className="mt-16 grid gap-4 md:grid-cols-6">
+            {CAPABILITIES.map((c, i) => (
+              <StaggerItem key={c.title} className={BENTO_SPAN[i] ?? "md:col-span-2"}>
+                <div className="group flex h-full flex-col rounded-3xl bg-surface p-7 transition-all duration-500 ease-apple hover:-translate-y-1 hover:shadow-popover sm:p-9">
+                  <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft transition-transform duration-500 ease-apple group-hover:scale-110">
+                    <c.icon className="h-5 w-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
+                  </div>
+                  <h3 className="font-display text-2xl font-semibold leading-tight tracking-tight">{c.title}</h3>
+                  <p className="mt-3 text-[17px] leading-snug text-muted">{c.body}</p>
                 </div>
-                <h3 className="text-lg font-semibold tracking-tight text-foreground">{c.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{c.body}</p>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         </div>
       </section>
 
-      <section id="one-engine" className="scroll-mt-24 border-y border-border bg-surface px-6 py-20">
+      {/* ONE ENGINE */}
+      <section id="one-engine" className="klaros-dark scroll-mt-16 px-6 py-28 sm:py-40">
         <div className="mx-auto max-w-5xl">
-          <div className="mx-auto max-w-xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">One engine. Any business.</h2>
-            <p className="mt-3 text-sm text-muted">
-              Klaros doesn't have a template per industry. The same steps produce a different blueprint, different requirements and a different map for each business.
+          <Reveal className="mx-auto max-w-3xl text-center">
+            <h2 className="text-balance font-display text-4xl font-semibold leading-[1.06] tracking-tight sm:text-7xl">One engine. Any business.</h2>
+            <p className="mt-6 text-xl leading-snug text-muted">
+              Klaros has no template per industry. The same steps produce a different blueprint, different requirements and a different map for each business.
             </p>
-          </div>
-          <div className="mt-12 grid gap-6 md:grid-cols-2">
+          </Reveal>
+          <Stagger className="mt-20 grid gap-4 md:grid-cols-2" step={0.12}>
             {[
               {
                 title: "Medical tourism",
@@ -204,48 +219,54 @@ export default function Home() {
                 items: ["Storefront", "Supplier connection", "Product catalog & inventory", "Orders & fulfilment"],
               },
             ].map((b) => (
-              <div key={b.title} className="klaros-card p-6">
-                <h3 className="text-xl font-semibold tracking-tight text-foreground">{b.title}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">{b.note}</p>
-                <ul className="mt-4 space-y-2 text-sm text-muted">
-                  {b.items.map((it) => (
-                    <li key={it} className="flex items-center gap-2">
-                      <Boxes className="h-4 w-4 text-accent" strokeWidth={1.75} aria-hidden="true" />
-                      {it}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <StaggerItem key={b.title}>
+                <div className="h-full rounded-3xl bg-surface p-8 sm:p-10">
+                  <h3 className="font-display text-3xl font-semibold tracking-tight">{b.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{b.note}</p>
+                  <ul className="mt-8 space-y-3.5 text-[17px] text-muted">
+                    {b.items.map((it) => (
+                      <li key={it} className="flex items-start gap-3">
+                        <Boxes className="mt-1 h-4 w-4 shrink-0 text-accent" strokeWidth={1.75} aria-hidden="true" />
+                        {it}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         </div>
       </section>
 
-      <section id="faq" className="scroll-mt-24 px-6 py-20">
+      {/* FAQ */}
+      <section id="faq" className="scroll-mt-16 px-6 py-24 sm:py-36">
         <div className="mx-auto max-w-3xl">
-          <h2 className="text-center text-3xl font-semibold tracking-tight text-foreground">Questions worth answering honestly</h2>
-          <div className="mt-12 space-y-4">
+          <Reveal>
+            <h2 className="text-balance text-center font-display text-4xl font-semibold leading-[1.08] tracking-tight sm:text-6xl">Questions worth answering honestly.</h2>
+          </Reveal>
+          <div className="mt-14 divide-y divide-border border-y border-border">
             {FAQS.map((item) => (
-              <details key={item.q} className="klaros-card group p-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+              <details key={item.q} className="group py-1">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-xl font-semibold tracking-tight text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
                   {item.q}
-                  <Settings2 className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden="true" />
+                  <Plus className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-500 ease-apple group-open:rotate-45" aria-hidden="true" />
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed text-muted">{item.a}</p>
+                <p className="pb-6 pr-10 text-[17px] leading-relaxed text-muted">{item.a}</p>
               </details>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-t border-border bg-surface px-6 py-20 text-center">
-        <h2 className="font-display text-3xl font-semibold text-foreground">What are you building?</h2>
-        <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-muted">
-          Tell Klaros your idea and see what your business needs — it takes a few minutes.
-        </p>
-        <div className="mt-8">
-          <BuildCta>Build My Business</BuildCta>
-        </div>
+      {/* CTA */}
+      <section className="bg-surface-muted px-6 py-28 text-center sm:py-40">
+        <Reveal>
+          <h2 className="text-balance font-display text-4xl font-semibold tracking-tight sm:text-7xl">What are you building?</h2>
+          <p className="mx-auto mt-5 max-w-xl text-xl leading-snug text-muted">Tell Klaros your idea and see what your business needs. It takes a few minutes.</p>
+          <div className="mt-10">
+            <BuildCta>Build My Business</BuildCta>
+          </div>
+        </Reveal>
       </section>
 
       <MarketingFooter />

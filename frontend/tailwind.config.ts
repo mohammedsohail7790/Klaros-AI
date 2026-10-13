@@ -55,9 +55,11 @@ const config: Config = {
         glow: "0 10px 28px -8px rgb(var(--color-accent) / 0.45)",
       },
       borderRadius: {
-        xl: "0.75rem",
-        "2xl": "1rem",
+        xl: "0.875rem",
+        "2xl": "1.25rem",
+        "3xl": "1.75rem",
       },
+      transitionTimingFunction: { apple: "cubic-bezier(0.28, 0.11, 0.32, 1)" },
     },
   },
   plugins: [],
