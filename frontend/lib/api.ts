@@ -5990,6 +5990,8 @@ export const builderApi = {
   list: (token: string) => request<BuilderProject[]>("/api/v1/builder/projects", { headers: authHeaders(token) }),
   create: (token: string, prompt: string, name?: string) =>
     request<{ project: BuilderProject; run: BuilderRun }>("/api/v1/builder/projects", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ prompt, name: name || null }) }),
+  importSite: (token: string, name: string, files: Record<string, string>) =>
+    request<{ project: BuilderProject; validation: BuilderValidation }>("/api/v1/builder/projects/import", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ name, files }) }),
   get: (token: string, id: string) => request<{ project: BuilderProject; latest_run: BuilderRun | null }>(`/api/v1/builder/projects/${id}`, { headers: authHeaders(token) }),
   remove: (token: string, id: string) => request<void>(`/api/v1/builder/projects/${id}`, { method: "DELETE", headers: authHeaders(token) }),
   run: (token: string, id: string, runId: string) => request<BuilderRun>(`/api/v1/builder/projects/${id}/runs/${runId}`, { headers: authHeaders(token) }),
