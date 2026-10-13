@@ -32,6 +32,7 @@ import {
   rejectRecommendation,
 } from "@/lib/api";
 import { getJourneyDestination, isJourneyAtStage } from "@/lib/businessJourneyController";
+import { dedupeRecommendations } from "@/lib/recommendationDedupe";
 import { StageTracker } from "@/components/business/StageTracker";
 import { StatusPill } from "@/components/business/StatusPill";
 import { actionLabel } from "@/lib/opsLabels";
@@ -76,7 +77,7 @@ export default function RecommendationsPage() {
   const loadRecs = useCallback(async () => {
     if (!token || !overview?.journey) return;
     try {
-      setRecs(await listRecommendations(token, overview.journey.blueprint_id ? { blueprintId: overview.journey.blueprint_id } : undefined));
+      setRecs(dedupeRecommendations(await listRecommendations(token, overview.journey.blueprint_id ? { blueprintId: overview.journey.blueprint_id } : undefined)));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "We couldn't load your recommendations. Please try again.");
     }
@@ -297,7 +298,7 @@ function Card({
       {altNames.length > 0 && <p className="mt-1 text-xs text-muted"><span className="klaros-label mr-1.5">Alternatives</span>{altNames.join(", ")}</p>}
       {!decided && (
         <div className="mt-3 flex gap-2">
-          <Button size="sm" disabled={busy} onClick={() => onDecide(rec, "accept")}>{busy ? "Saving…" : "Accept"}<span className="sr-only"> {what}</span></Button>
+          <Button size="sm" disabled={busy} onClick={() => onDecide(rec, "accept")}>{busy ? "Saving…" : rec.provider_implementation_status === "STUB" ? "Keep on my list" : "Accept"}<span className="sr-only"> {what}</span></Button>
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDecide(rec, "reject")}>Not for me<span className="sr-only"> — {what}</span></Button>
         </div>
       )}
