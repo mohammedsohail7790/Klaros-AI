@@ -104,7 +104,7 @@ export default function LeadsPage() {
                   setStatus(s);
                   setOffset(0);
                 }}
-                className={`klaros-filter-tab ${status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted hover:text-foreground"}`}
+                className={`klaros-filter-tab ${status === s ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}
               >
                 {s === "ALL" ? "All" : leadStatusLabel(s)}
               </button>
