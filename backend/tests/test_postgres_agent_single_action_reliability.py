@@ -241,6 +241,63 @@ async def test_five_way_duplicate_execution_request_one_logical_execution(tool_r
 
 
 @requires_real_postgres
+async def test_a_duplicate_that_meets_the_concurrency_ceiling_is_still_reported_as_a_duplicate(tool_registry, monkeypatch) -> None:
+    """Deterministic version of the window the five-way race above can land in: the duplicate passes the first idempotency lookup (the original had
+    not been written yet), then the original appears and the concurrency ceiling refuses it. It must resolve to the original, not to a refusal."""
+    from app.services.agent_execution_service import AgentNotExecutableError, DuplicateExecutionRequestError
+
+    tenant_id = uuid.uuid4()
+    tool_registry.register(IdempotentCounterTool())
+    agent, _version = await _active_agent(tool_registry, tenant_id, extra_tool="test.idempotent_counter")
+    key = f"dup-{uuid.uuid4()}"
+    service = _exec_service(tool_registry)
+    original = await service.run_action(
+        tenant_id, agent.id, tool_name="test.idempotent_counter", tool_input={}, triggered_by=None, idempotency_key=key,
+    )
+
+    real_lookup = service._find_by_idempotency_key
+    calls = {"n": 0}
+
+    async def stale_first_lookup(*args, **kwargs):
+        calls["n"] += 1
+        return None if calls["n"] == 1 else await real_lookup(*args, **kwargs)
+
+    async def at_the_ceiling(*args, **kwargs):
+        raise AgentNotExecutableError("Agent has reached its concurrent execution ceiling (1)")
+
+    monkeypatch.setattr(service, "_find_by_idempotency_key", stale_first_lookup)
+    monkeypatch.setattr(service, "_enforce_rate_and_concurrency", at_the_ceiling)
+
+    with pytest.raises(DuplicateExecutionRequestError) as caught:
+        await service.run_action(
+            tenant_id, agent.id, tool_name="test.idempotent_counter", tool_input={}, triggered_by=None, idempotency_key=key,
+        )
+    assert caught.value.existing_execution_id == original.id
+    assert calls["n"] == 2
+
+
+@requires_real_postgres
+async def test_a_request_with_no_matching_key_is_still_refused_at_the_concurrency_ceiling(tool_registry, monkeypatch) -> None:
+    """The ceiling still does its job: only a request whose idempotency key matches an accepted execution is turned into a duplicate."""
+    from app.services.agent_execution_service import AgentNotExecutableError
+
+    tenant_id = uuid.uuid4()
+    tool_registry.register(IdempotentCounterTool())
+    agent, _version = await _active_agent(tool_registry, tenant_id, extra_tool="test.idempotent_counter")
+    service = _exec_service(tool_registry)
+
+    async def at_the_ceiling(*args, **kwargs):
+        raise AgentNotExecutableError("Agent has reached its concurrent execution ceiling (1)")
+
+    monkeypatch.setattr(service, "_enforce_rate_and_concurrency", at_the_ceiling)
+    for key in (f"new-{uuid.uuid4()}", None):
+        with pytest.raises(AgentNotExecutableError):
+            await service.run_action(
+                tenant_id, agent.id, tool_name="test.idempotent_counter", tool_input={}, triggered_by=None, idempotency_key=key,
+            )
+
+
+@requires_real_postgres
 async def test_five_way_concurrent_idempotent_tool_calls_one_logical_side_effect(tool_registry) -> None:
     """5 concurrent recovery attempts at retrying the SAME mid-flight step
     for a tool with verified `supports_idempotency=True` must all reuse the
