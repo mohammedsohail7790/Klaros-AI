@@ -63,7 +63,7 @@ export default function PricingPage() {
       <MarketingHeader />
 
       <section className="mx-auto max-w-3xl px-6 pb-8 pt-16 text-center sm:pt-24">
-        <h1 className="font-display text-4xl text-foreground sm:text-5xl">
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
           Simple pricing, <span className="text-accent">built to earn its keep.</span>
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-balance text-lg leading-relaxed text-muted">
@@ -89,10 +89,10 @@ export default function PricingPage() {
                   Most popular
                 </div>
               )}
-              <h2 className="font-display text-2xl text-foreground">{tier.name}</h2>
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground">{tier.name}</h2>
               <p className="mt-1.5 text-sm text-muted">{tier.description}</p>
               <div className="mt-6 flex items-baseline gap-1">
-                <span className="font-display text-4xl text-foreground">{tier.price}</span>
+                <span className="text-4xl font-semibold tracking-tight text-foreground">{tier.price}</span>
                 {tier.period && <span className="text-sm text-muted-foreground">{tier.period}</span>}
               </div>
               <ul className="mt-6 flex-1 space-y-3">

@@ -141,9 +141,9 @@ export default function ApprovalsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Approvals</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Approvals</h1>
           <div className="flex gap-2">
             {STATUS_FILTERS.map((f) => (
               <button
@@ -311,7 +311,7 @@ export default function ApprovalsPage() {
                     <button
                       disabled={busy}
                       onClick={handleRetry}
-                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                      className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                     >
                       Retry execution
                     </button>

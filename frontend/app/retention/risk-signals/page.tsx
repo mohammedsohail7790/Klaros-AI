@@ -69,28 +69,28 @@ export default function RiskSignalsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <header className="mb-1 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Risk & Advocacy</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Risk & Advocacy</h1>
           <div className="flex flex-wrap gap-2">
             <button
               disabled={busy !== null}
               onClick={() => runDetection("At-risk/inactive sweep", detectAtRisk)}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
             >
               {busy === "At-risk/inactive sweep" ? "Running..." : "Run at-risk sweep"}
             </button>
             <button
               disabled={busy !== null}
               onClick={() => runDetection("Payment risk sweep", detectPaymentRisk)}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
             >
               {busy === "Payment risk sweep" ? "Running..." : "Run payment risk sweep"}
             </button>
             <button
               disabled={busy !== null}
               onClick={() => runDetection("Advocate sweep", detectAdvocates)}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+              className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
             >
               {busy === "Advocate sweep" ? "Running..." : "Run advocate sweep"}
             </button>
@@ -109,7 +109,7 @@ export default function RiskSignalsPage() {
           <Skeleton />
         ) : (
           <>
-            <h2 className="mb-3 font-medium">Open risk signals</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight">Open risk signals</h2>
             {signals.length === 0 ? (
               <EmptyState icon={AlertTriangle} title="No open risk signals." />
             ) : (
@@ -139,7 +139,7 @@ export default function RiskSignalsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 font-medium">Advocate candidates</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight">Advocate candidates</h2>
             {candidates.length === 0 ? (
               <EmptyState icon={Star} title="No advocate candidates yet." />
             ) : (

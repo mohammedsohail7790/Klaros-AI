@@ -3905,7 +3905,9 @@ export interface WebsiteSection {
     | "FOOTER"
     | "STEPS"
     | "FAQ"
-    | "TRUST_BAR";
+    | "TRUST_BAR"
+    | "SHOWCASE"
+    | "SPLIT";
   props: Record<string, unknown>;
   data_source?: { provider_key: string; params?: Record<string, unknown> } | null;
   order_index?: number;

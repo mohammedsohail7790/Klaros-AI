@@ -540,7 +540,7 @@ function IntegrationsPageInner() {
                       <button
                         onClick={handleConnectStripe}
                         disabled={stripeActionPending || !stripeKeyInput.trim()}
-                        className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
+                        className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                       >
                         {stripeActionPending ? "Working..." : "Connect"}
                       </button>
@@ -549,7 +549,7 @@ function IntegrationsPageInner() {
                           <button
                             onClick={handleVerifyStripe}
                             disabled={stripeActionPending}
-                            className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
+                            className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                           >
                             Verify
                           </button>
@@ -629,7 +629,7 @@ function IntegrationsPageInner() {
                       <button
                         onClick={handleConnectQuickBooks}
                         disabled={quickbooksActionPending}
-                        className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
+                        className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                       >
                         {quickbooksActionPending
                           ? "Working..."
@@ -642,7 +642,7 @@ function IntegrationsPageInner() {
                           <button
                             onClick={handleVerifyQuickBooks}
                             disabled={quickbooksActionPending}
-                            className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
+                            className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                           >
                             Verify
                           </button>
@@ -667,7 +667,7 @@ function IntegrationsPageInner() {
                         <button
                           onClick={handleImportFromQuickBooks}
                           disabled={quickbooksImportPending}
-                          className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
+                          className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                         >
                           {quickbooksImportPending ? "Importing..." : "Import existing data"}
                         </button>
@@ -756,7 +756,7 @@ function IntegrationsPageInner() {
                       <button
                         onClick={handleConnectGoogleCalendar}
                         disabled={googleCalendarActionPending}
-                        className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
+                        className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                       >
                         {googleCalendarActionPending
                           ? "Working..."
@@ -769,7 +769,7 @@ function IntegrationsPageInner() {
                           <button
                             onClick={handleVerifyGoogleCalendar}
                             disabled={googleCalendarActionPending}
-                            className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
+                            className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                           >
                             Verify
                           </button>
@@ -794,7 +794,7 @@ function IntegrationsPageInner() {
                         <button
                           onClick={handleImportFromGoogleCalendar}
                           disabled={googleCalendarImportPending}
-                          className="rounded border border-border-strong px-3 py-1.5 text-sm text-muted hover:bg-surface-muted disabled:opacity-50"
+                          className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                         >
                           {googleCalendarImportPending ? "Importing..." : "Import existing events"}
                         </button>

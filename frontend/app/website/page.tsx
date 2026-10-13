@@ -91,7 +91,7 @@ export default function WebsitePage() {
   if (website === undefined) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
           <Skeleton />
         </div>
       </AppShell>
@@ -107,7 +107,7 @@ export default function WebsitePage() {
           note="Built from your Business Blueprint: it only includes pages your business actually needs, and nothing goes live until you publish."
         />
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Website</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Website</h1>
           {website &&
             (website.current_published_version_id ? (
               <a href={`/w/${user?.tenant_id}`} target="_blank" rel="noreferrer" className="text-sm text-accent underline">

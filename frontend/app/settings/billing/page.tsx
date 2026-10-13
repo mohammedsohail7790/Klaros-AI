@@ -87,8 +87,8 @@ export default function BillingSettingsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-2">Billing</h1>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-2">Billing</h1>
         <p className="mb-6 max-w-2xl text-sm text-muted">
           Klaros's own subscription — separate from any Stripe key you connect under Settings →
           Integrations, which only ever collects payments from your own customers.
@@ -134,7 +134,7 @@ export default function BillingSettingsPage() {
                 <button
                   onClick={handleManageBilling}
                   disabled={portalBusy}
-                  className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                 >
                   {portalBusy ? "Opening..." : "Manage billing"}
                 </button>

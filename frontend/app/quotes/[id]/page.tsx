@@ -167,7 +167,7 @@ export default function QuoteDetailPage() {
   if (error && !quote) {
     return (
       <AppShell user={user}>
-        <div className="px-8 py-8">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
           <Alert variant="danger">{error}</Alert>
         </div>
       </AppShell>
@@ -178,9 +178,9 @@ export default function QuoteDetailPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Quote {quote.quote_number}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Quote {quote.quote_number}</h1>
           <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{quote.status}</span>
         </div>
 
@@ -245,7 +245,7 @@ export default function QuoteDetailPage() {
                 <button
                   disabled={depositBusy}
                   onClick={handleGenerateDepositLink}
-                  className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                 >
                   {depositBusy ? "Generating..." : "Generate deposit payment link"}
                 </button>
@@ -317,7 +317,7 @@ export default function QuoteDetailPage() {
             </div>
             <button
               onClick={addDraftItem}
-              className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+              className="klaros-btn-secondary !px-3 !py-1.5"
             >
               Add line item
             </button>
@@ -410,14 +410,14 @@ export default function QuoteDetailPage() {
             <>
               <button
                 onClick={startEditing}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted"
+                className="klaros-btn-secondary !px-3 !py-1.5"
               >
                 Edit line items
               </button>
               <button
                 disabled={busy}
                 onClick={handleSend}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Send to customer
               </button>

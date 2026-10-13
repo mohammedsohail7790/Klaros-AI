@@ -228,8 +228,8 @@ export default function SEOPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
-        <h1 className="font-display text-2xl text-foreground mb-6">Local SEO Pages</h1>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-6">Local SEO Pages</h1>
 
         <form onSubmit={handleGenerate} className="mb-6 flex flex-wrap items-end gap-2">
           <div>
@@ -240,7 +240,7 @@ export default function SEOPage() {
             <label className="block text-xs text-muted">Location</label>
             <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Dallas, TX" className="rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
           </div>
-          <button type="submit" disabled={busy || !service.trim() || !location.trim()} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
+          <button type="submit" disabled={busy || !service.trim() || !location.trim()} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
             Generate draft
           </button>
         </form>
@@ -292,7 +292,7 @@ export default function SEOPage() {
 
         <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <h2 className="mb-3 text-sm font-medium text-muted">Keywords ({keywords.length})</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Keywords ({keywords.length})</h2>
             <form onSubmit={handleRecordKeyword} className="mb-3 flex flex-wrap gap-2">
               <input
                 value={keyword}
@@ -309,7 +309,7 @@ export default function SEOPage() {
               <button
                 type="submit"
                 disabled={busy || !keyword.trim()}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Record
               </button>
@@ -334,7 +334,7 @@ export default function SEOPage() {
           </div>
 
           <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <h2 className="mb-3 text-sm font-medium text-muted">SEO opportunities</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">SEO opportunities</h2>
             <form onSubmit={handleCreateOpportunity} className="space-y-2">
               <div className="flex gap-2">
                 <input
@@ -371,7 +371,7 @@ export default function SEOPage() {
                 <button
                   type="submit"
                   disabled={busy || !oppService.trim() || !oppLocation.trim()}
-                  className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                 >
                   Record opportunity
                 </button>
@@ -382,7 +382,7 @@ export default function SEOPage() {
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <h2 className="mb-3 text-sm font-medium text-muted">Local listings ({listings.length})</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Local listings ({listings.length})</h2>
             <form onSubmit={handleCreateListing} className="mb-3 space-y-2">
               <input
                 value={listingName}
@@ -406,7 +406,7 @@ export default function SEOPage() {
                 <button
                   type="submit"
                   disabled={busy || !listingName.trim()}
-                  className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                 >
                   Add
                 </button>
@@ -427,7 +427,7 @@ export default function SEOPage() {
           </div>
 
           <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <h2 className="mb-3 text-sm font-medium text-muted">Local reviews ({reviews.length})</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Local reviews ({reviews.length})</h2>
             <form onSubmit={handleRecordReview} className="mb-3 space-y-2">
               <select
                 value={reviewListingId}
@@ -470,7 +470,7 @@ export default function SEOPage() {
               <button
                 type="submit"
                 disabled={busy || !reviewListingId}
-                className="w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                className="w-full klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
               >
                 Record review
               </button>

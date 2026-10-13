@@ -60,7 +60,7 @@ export function ClinicOffers({ token, refreshKey = 0 }: { token: string; refresh
     <section aria-label="What clinics offer" className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="font-display text-xl text-foreground">What clinics offer</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">What clinics offer</h2>
           <p className="mt-0.5 text-sm text-muted">Which procedures each clinic really performs. A price is optional and should only be one the clinic has approved.</p>
         </div>
         <button type="button" onClick={() => setAdding(true)} disabled={providers.length === 0 || procedures.length === 0} className="klaros-btn-primary">

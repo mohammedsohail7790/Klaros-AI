@@ -286,7 +286,7 @@ export default function BlueprintPage() {
         <div className="space-y-10">
           {GROUPS.map((g) => (
             <section key={g.title} aria-labelledby={`bp-${g.title}`}>
-              <h2 id={`bp-${g.title}`} className="font-display text-xl text-foreground">{g.title}</h2>
+              <h2 id={`bp-${g.title}`} className="text-xl font-semibold tracking-tight text-foreground">{g.title}</h2>
               <p className="mb-3 text-sm text-muted">{g.blurb}</p>
               <div className="space-y-3">
                 {g.keys.map((k) => {
@@ -309,7 +309,7 @@ export default function BlueprintPage() {
           ))}
 
           <section aria-labelledby="bp-unknowns">
-            <h2 id="bp-unknowns" className="flex items-center gap-2 font-display text-xl text-foreground">
+            <h2 id="bp-unknowns" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
               <HelpCircle className="h-5 w-5 text-warning" aria-hidden="true" /> Still unresolved
             </h2>
             {unknowns.length === 0 && assumptions.length === 0 ? (

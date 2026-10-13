@@ -47,9 +47,9 @@ export default function JobsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Jobs ({total})</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Jobs ({total})</h1>
           <button
             onClick={() => setShowCreate(true)}
             className="klaros-btn-primary"

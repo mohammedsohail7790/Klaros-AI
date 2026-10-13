@@ -25,7 +25,7 @@ function Row({ label, count, route, text, hint }: { label: string; count?: numbe
         {hint && <span className="block text-xs text-muted">{hint}</span>}
       </span>
       <span className="flex shrink-0 items-center gap-3">
-        <span className={text ? "text-sm font-medium text-foreground" : "font-display text-2xl text-foreground"}>{text ?? count}</span>
+        <span className={text ? "text-sm font-medium text-foreground" : "text-2xl font-semibold tracking-tight text-foreground"}>{text ?? count}</span>
         {count === 0 && <span className="text-xs text-muted-foreground">nothing yet</span>}
       </span>
     </>

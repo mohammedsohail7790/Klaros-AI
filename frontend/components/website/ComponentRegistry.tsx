@@ -13,6 +13,7 @@
 import { Check, ChevronDown, Clock, Globe, Heart, MapPin, Phone, ShieldCheck, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { PublicConsentState, RenderedSection } from "@/lib/api";
+import { ArtTile, safeImage } from "@/components/website/siteArt";
 import { ApiError, getPublicConsent, submitPublicWebsiteLead } from "@/lib/api";
 
 type Item = Record<string, unknown>;
@@ -53,8 +54,9 @@ function Hero({ props, contactHref }: { props: Item; contactHref?: string }) {
   const second = safeHref(props.secondary_cta_url);
   return (
     <Band tone="hero" className="klaros-site-hero">
-      <div className="klaros-site-hero-grid" data-has-route={route.length > 0}>
+      <div className="klaros-site-hero-grid" data-has-route={route.length > 0} data-visual={route.length === 0}>
         <div>
+          {props.eyebrow ? <p className="klaros-site-eyebrow">{str(props.eyebrow)}</p> : null}
           <h1>{str(props.headline)}</h1>
           {props.subheadline ? <p className="klaros-site-lead">{str(props.subheadline)}</p> : <div style={{ height: "1.5rem" }} />}
           {!(props.cta_text && cta) && contactHref ? (
@@ -78,6 +80,13 @@ function Hero({ props, contactHref }: { props: Item; contactHref?: string }) {
             </div>
           ) : null}
         </div>
+        {route.length === 0 ? (
+          <div className="klaros-site-hero-visual" aria-hidden="true">
+            <ArtTile text={`${str(props.headline)} ${str(props.subheadline)}`} index={1} image={props.background_image_url} className="klaros-site-hero-art" />
+            <span className="klaros-site-hero-chip klaros-site-hero-chip-a"><Check size={14} />{str(props.eyebrow) || "Made for you"}</span>
+            <span className="klaros-site-hero-chip klaros-site-hero-chip-b"><Star size={14} />{str(props.cta_text) || "Get in touch"}</span>
+          </div>
+        ) : null}
         {route.length > 0 ? (
           <aside className="klaros-site-route" aria-label={str(props.highlights_title) || "How it works"}>
             <h2>{str(props.highlights_title) || "How it works"}</h2>
@@ -247,6 +256,69 @@ function ItemList({ props, data, tone }: { props: Item; data: unknown; tone: Ton
           ))}
         </div>
       )}
+    </Band>
+  );
+}
+
+function Showcase({ props, tone }: { props: Item; tone: Tone }) {
+  const items = (Array.isArray(props.items) ? (props.items as Item[]) : []).filter((i) => str(i.title));
+  if (items.length === 0) return null;
+  return (
+    <Band tone={tone}>
+      <div className="klaros-site-showcase-head">
+        {props.title ? <h2 className="klaros-site-section-title">{str(props.title)}</h2> : null}
+        {props.intro ? <p className="klaros-site-steps-intro">{str(props.intro)}</p> : null}
+      </div>
+      <div className="klaros-site-showcase">
+        {items.map((item, i) => (
+          <article key={i} className="klaros-site-product">
+            <div className="klaros-site-product-media">
+              <ArtTile text={str(item.title)} index={i} image={item.image_url} />
+              {item.badge ? <span className="klaros-site-product-badge">{str(item.badge)}</span> : null}
+            </div>
+            <div className="klaros-site-product-body">
+              <h3>{str(item.title)}</h3>
+              {item.description ? <p>{str(item.description)}</p> : null}
+              {item.price ? <p className="klaros-site-product-price">{str(item.price)}</p> : null}
+            </div>
+          </article>
+        ))}
+      </div>
+    </Band>
+  );
+}
+
+function Split({ props, tone, contactHref }: { props: Item; tone: Tone; contactHref?: string }) {
+  const bullets = strs(props.bullets);
+  const cta = safeHref(props.cta_url) ?? contactHref;
+  const left = str(props.image_side) === "LEFT";
+  return (
+    <Band tone={tone}>
+      <div className="klaros-site-split" data-side={left ? "left" : "right"}>
+        <div className="klaros-site-split-text">
+          {props.eyebrow ? <p className="klaros-site-eyebrow">{str(props.eyebrow)}</p> : null}
+          <h2 className="klaros-site-section-title">{str(props.heading)}</h2>
+          <p className="klaros-site-text-body">{str(props.body)}</p>
+          {bullets.length > 0 ? (
+            <ul className="klaros-site-split-bullets">
+              {bullets.map((b, i) => (
+                <li key={i}>
+                  <Check size={18} aria-hidden="true" />
+                  {b}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {props.cta_text && cta ? (
+            <a className="klaros-site-btn" href={cta}>
+              {str(props.cta_text)}
+            </a>
+          ) : null}
+        </div>
+        <div className="klaros-site-split-media">
+          <ArtTile text={`${str(props.heading)} ${str(props.body)}`} index={2} image={safeImage(props.image_url)} />
+        </div>
+      </div>
     </Band>
   );
 }
@@ -448,6 +520,10 @@ export function RenderSection({ section, tenantId, preview = false, alt = false,
       return <Hero props={props} contactHref={contactHref} />;
     case "TRUST_BAR":
       return <TrustBar props={props} />;
+    case "SHOWCASE":
+      return <Showcase props={props} tone={tone} />;
+    case "SPLIT":
+      return <Split props={props} tone={tone} contactHref={contactHref} />;
     case "TEXT":
       return <Text props={props} tone={tone} />;
     case "CTA":

@@ -17,7 +17,7 @@ function Stat({ label, value, hint }: { label: string; value: number | string; h
   return (
     <div className="klaros-card p-4">
       <p className="klaros-label">{label}</p>
-      <p className="mt-1 font-display text-3xl text-foreground">{value}</p>
+      <p className="mt-1 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
       {hint && <p className="mt-0.5 text-xs text-muted">{hint}</p>}
     </div>
   );

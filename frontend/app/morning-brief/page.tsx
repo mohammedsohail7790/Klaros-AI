@@ -151,13 +151,13 @@ export default function MorningBriefPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Morning Brief</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Morning Brief</h1>
           <button
             disabled={busy}
             onClick={handleGenerate}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+            className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
           >
             Generate now
           </button>
@@ -188,7 +188,7 @@ export default function MorningBriefPage() {
                   <p className="text-lg">{brief.headline}</p>
                 </div>
 
-                <h2 className="mb-3 text-sm font-medium text-muted">Needs attention</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Needs attention</h2>
                 {brief.insights.length === 0 ? (
                   <p className="mb-6 text-sm text-muted">No significant activity.</p>
                 ) : (
@@ -213,7 +213,7 @@ export default function MorningBriefPage() {
                   </div>
                 )}
 
-                <h2 className="mb-3 text-sm font-medium text-muted">Recommended actions</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Recommended actions</h2>
                 {brief.recommendations.length === 0 ? (
                   <EmptyState icon={Lightbulb} title="No recommendations." compact />
                 ) : (
@@ -303,7 +303,7 @@ export default function MorningBriefPage() {
 
             {settings && (
               <div className="mt-10 rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Schedule</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Schedule</h2>
                 <div className="flex flex-wrap items-end gap-3 text-sm">
                   <label className="flex items-center gap-2">
                     <input
