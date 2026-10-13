@@ -119,3 +119,25 @@ async def test_a_failed_ai_step_is_reported_not_hidden(client, halla, monkeypatc
     monkeypatch.setattr(cs, "bound_ai_provider", lambda ai, *a, **k: ai)
     r = await cs.source_clinics(tid, None, ["TR"], [], search=FakeSearch([PAGE]), ai=Refused([]))
     assert r.added == [] and r.ai_failed == 1 and "blocked_by_ai_boundary" in r.notes[0]
+
+
+async def test_a_gated_tenant_may_use_an_external_ai_only_for_public_content(client, halla) -> None:  # noqa: F811
+    from app.services import ai_boundary
+
+    _, tid = await _gated(client, "Gate Co", "gate@example.com")
+
+    class External:
+        name, model, is_connected = "openai", "m", True
+
+    sf = async_session_maker
+    assert (await ai_boundary._decide(External(), sf, tid, "clinic_sourcing"))[0] is True
+    for purpose in ("agent_reasoning", "discovery_extraction", "lead_qualification", "anything_else"):
+        assert (await ai_boundary._decide(External(), sf, tid, purpose))[0] is False  # tenant content stays behind the boundary
+    assert ai_boundary.PUBLIC_CONTENT_PURPOSES == frozenset({"clinic_sourcing"})
+
+
+def test_the_sourcing_prompt_is_built_from_the_public_page_alone() -> None:
+    import inspect
+
+    assert list(inspect.signature(cs._prompt).parameters) == ["hit"]  # no tenant, user or patient argument can reach the model
+    assert "tenant" not in inspect.getsource(cs._prompt).lower()

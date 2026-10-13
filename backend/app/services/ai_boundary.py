@@ -28,6 +28,8 @@ from app.tools.redact import scrub_text
 
 logger = structlog.get_logger()
 BLOCKED_PREFIX = "blocked_by_ai_boundary"
+# Purposes whose model input is PUBLIC web text only (never tenant, patient or lead data).
+PUBLIC_CONTENT_PURPOSES = frozenset({"clinic_sourcing"})
 
 
 def allowed_external_providers() -> frozenset[str]:
@@ -45,6 +47,8 @@ async def _decide(provider: Any, session_factory, tenant_id: uuid.UUID | None, p
         return True, False, "local_provider"
     from app.services import consent_gate
 
+    if purpose in PUBLIC_CONTENT_PURPOSES:
+        return True, False, "public_content_only"
     if tenant_id is None:
         return False, False, "tenant_unknown"
     if not await consent_gate.tenant_requires_consent(session_factory, tenant_id):
