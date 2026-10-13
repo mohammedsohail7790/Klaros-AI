@@ -112,14 +112,17 @@ export default function RecommendationsPage() {
     const order = new Map((overview?.requirements ?? []).map((r, i) => [r.key, i]));
     return [...groups.entries()]
       .sort(([a], [b]) => (order.get(a) ?? 1e6) - (order.get(b) ?? 1e6))
-      .map(([key, g]) => ({
-        key,
-        requirement: g.requirement,
-        cap: g.cap,
-        capRecs: g.items.filter((i) => i.type === "CAPABILITY"),
-        integrations: g.items.filter((i) => i.type === "INTEGRATION"),
-        tools: g.items.filter((i) => i.type === "TOOL"),
-      }));
+      .map(([key, g]) => {
+        const items = dedupeRecommendations(g.items, true);
+        return {
+          key,
+          requirement: g.requirement,
+          cap: g.cap,
+          capRecs: items.filter((i) => i.type === "CAPABILITY"),
+          integrations: items.filter((i) => i.type === "INTEGRATION"),
+          tools: items.filter((i) => i.type === "TOOL"),
+        };
+      });
   }, [recs, overview]);
 
   async function decide(rec: Recommendation, decision: "accept" | "reject") {
