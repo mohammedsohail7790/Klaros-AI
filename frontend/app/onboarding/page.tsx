@@ -124,7 +124,7 @@ export default function OnboardingPage() {
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
       <GradientBackdrop />
       <div className="w-full max-w-xl">
-        <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground">
+        <Link href="/" className="font-display mb-8 block text-center text-xl text-foreground">
           Klaros AI
         </Link>
 

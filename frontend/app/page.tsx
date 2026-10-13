@@ -110,10 +110,10 @@ export default function Home() {
           <Sparkles className="h-3.5 w-3.5 text-accent" strokeWidth={2} aria-hidden="true" />
           The AI business builder
         </div>
-        <h1 className="font-display text-4xl font-medium leading-[1.1] tracking-tight text-foreground sm:text-6xl">
+        <h1 className="font-display text-4xl font-semibold leading-[1.08] tracking-tight text-foreground sm:text-6xl">
           Build and operate
           <br />
-          <span className="italic text-accent">your business with AI.</span>
+          <span className="bg-gradient-to-r from-accent to-violet-600 bg-clip-text text-transparent">your business with AI.</span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-relaxed text-muted">
           Describe what you want to build. Klaros figures out what your business needs — then helps you build it and operate it.
@@ -239,7 +239,7 @@ export default function Home() {
       </section>
 
       <section className="border-t border-border bg-surface px-6 py-20 text-center">
-        <h2 className="font-display text-3xl italic text-foreground">What are you building?</h2>
+        <h2 className="font-display text-3xl font-semibold text-foreground">What are you building?</h2>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-muted">
           Tell Klaros your idea and see what your business needs — it takes a few minutes.
         </p>

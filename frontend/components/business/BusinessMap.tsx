@@ -254,7 +254,7 @@ export function BusinessMap({ map, metrics = {} }: { map: BusinessMapData; metri
               ["READY", "A Klaros module is built in and usable."],
               ["AVAILABLE", "A real integration exists; you haven't connected it."],
               ["CONFIGURATION_REQUIRED", "It exists but needs setting up or publishing."],
-              ["INTEGRATION_REQUIRED", "No adapter exists yet, so there is nothing to connect."],
+              ["INTEGRATION_REQUIRED", "Not available yet, so there is nothing to connect."],
               ["PLANNED", "Part of your architecture, but not something Klaros can do today (dashed outline)."],
             ] as [ReadinessState, string][]
           ).map(([st, text]) => (

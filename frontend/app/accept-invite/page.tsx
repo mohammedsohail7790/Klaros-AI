@@ -72,7 +72,7 @@ function AcceptInviteInner() {
     <main className="flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
       <GradientBackdrop />
       <div className="w-full max-w-sm">
-        <Link href="/" className="font-display mb-8 block text-center text-xl italic text-foreground">
+        <Link href="/" className="font-display mb-8 block text-center text-xl text-foreground">
           Klaros AI
         </Link>
         <div className="klaros-glass rounded-2xl p-7">

@@ -64,7 +64,7 @@ export default function PricingPage() {
 
       <section className="mx-auto max-w-3xl px-6 pb-8 pt-16 text-center sm:pt-24">
         <h1 className="font-display text-4xl text-foreground sm:text-5xl">
-          Simple pricing, <span className="italic text-accent">built to earn its keep.</span>
+          Simple pricing, <span className="text-accent">built to earn its keep.</span>
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-balance text-lg leading-relaxed text-muted">
           No per-seat games — Klaros is priced for a business run by one person, not a

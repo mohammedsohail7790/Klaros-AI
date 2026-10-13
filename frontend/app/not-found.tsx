@@ -6,7 +6,7 @@ export default function NotFound() {
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-6">
       <GradientBackdrop />
       <div className="max-w-md text-center">
-        <p className="font-display text-6xl italic text-accent">404</p>
+        <p className="font-display text-6xl text-accent">404</p>
         <h1 className="mt-4 font-display text-2xl text-foreground">We can't find that page</h1>
         <p className="mt-2 text-sm text-muted">The link may be old or mistyped. Here are some places to go instead.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">

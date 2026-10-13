@@ -7,6 +7,7 @@
  * change the Blueprint; there is deliberately no second place to edit it.
  */
 
+import { plainLanguage } from "@/lib/plainLanguage";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -163,13 +164,13 @@ export default function RequirementsPage() {
                           <span className="klaros-label">Status</span>
                           <StatusPill state={r.readiness} />
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">{r.readiness_detail}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{plainLanguage(r.readiness_detail)}</p>
                         <p className="mt-1 text-xs text-foreground">
                           <span className="klaros-label mr-1.5">Next</span>
                           {r.next_step.route ? (
-                            <Link href={r.next_step.route} className="underline underline-offset-2">{r.next_step.text}</Link>
+                            <Link href={r.next_step.route} className="underline underline-offset-2">{plainLanguage(r.next_step.text)}</Link>
                           ) : (
-                            r.next_step.text
+                            plainLanguage(r.next_step.text)
                           )}
                         </p>
                       </div>

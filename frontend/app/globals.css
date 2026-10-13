@@ -3,31 +3,27 @@
 @tailwind utilities;
 
 :root {
-  /* Klaros brand palette — now sharing the Halla AI family's own warm
-     porcelain/gold system exactly (same hex values as hallaai.com's
-     --accent/--accent-dark/--accent-light), not just typography: one
-     shared color identity across Consultancy, AI Receptionist, and
-     Klaros itself. Klaros's original navy lives on as --color-accent-2,
-     a secondary/decorative accent (gradient backdrop, badges) rather
-     than being deleted outright.
-     Space-separated RGB channels (not hex) so Tailwind can apply opacity
-     modifiers like bg-accent-soft/40 via rgb(var(--x) / <alpha-value>). */
-  --color-background: 250 249 246;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  /* Klaros design tokens — space-separated RGB channels so Tailwind opacity
+     modifiers (bg-accent/10) keep working. Neutral slate surfaces, one indigo
+     brand accent, and a deep slate "ink" for the sidebar and brand panels. */
+  --color-background: 247 248 250;
   --color-surface: 255 255 255;
-  --color-surface-muted: 244 242 236;
-  --color-border: 231 227 217;
-  --color-border-strong: 216 211 196;
-  --color-foreground: 28 26 22;
-  --color-muted: 107 101 88;
-  --color-muted-foreground: 118 111 96; /* 4.7:1 on the page background (was 3.1:1) */
-  --color-accent: 199 162 90;
-  --color-accent-hover: 122 96 50; /* text-safe on accent-soft: 4.9:1 (was 3.9:1) */
-  --color-accent-foreground: 28 26 22; /* dark text on gold: 7.2:1 (white was 2.4:1) */
-  --color-accent-soft: 238 234 226;
-  --color-accent-2: 43 58 99;
-  --color-success: 47 107 79;
-  --color-warning: 140 88 8;
-  --color-danger: 173 59 44;
+  --color-surface-muted: 241 243 247;
+  --color-border: 228 231 237;
+  --color-border-strong: 207 212 222;
+  --color-foreground: 15 23 42;
+  --color-muted: 91 102 122;
+  --color-muted-foreground: 108 118 138;
+  --color-accent: 79 70 229;
+  --color-accent-hover: 67 56 202;
+  --color-accent-foreground: 255 255 255;
+  --color-accent-soft: 238 240 255;
+  --color-accent-2: 15 23 42;
+  --color-success: 21 128 84;
+  --color-warning: 180 98 8;
+  --color-danger: 200 48 48;
 }
 
 /* Keyboard users always get a visible focus indicator; pointer users do not. */
@@ -40,7 +36,13 @@ body {
   background-color: rgb(var(--color-background));
   color: rgb(var(--color-foreground));
   position: relative;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.006em;
 }
+h1, h2, h3, .font-display { letter-spacing: -0.02em; }
+::selection { background: rgb(var(--color-accent) / 0.18); }
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--color-border-strong)) transparent; }
 
 /* Every <select> in the app, styled globally rather than per-file — the
    native OS dropdown arrow was the single most "unstyled browser default"
@@ -51,7 +53,7 @@ body {
    own OS chrome, which this treatment isn't designed for. */
 select:not([multiple]):not([size]) {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236B6558' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%235B667A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.65rem center;
   padding-right: 1.75rem;
@@ -65,19 +67,6 @@ select:not([multiple]):not([size]):focus {
 }
 select:not([multiple]):not([size]):disabled {
   cursor: not-allowed;
-}
-
-/* Subtle film-grain texture for tactile depth — applied as a fixed,
-   near-invisible overlay so flat color fields don't read as flat/generated. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  opacity: 0.025;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* Modal entrance — backdrop fades in while the panel itself scales up
@@ -141,7 +130,7 @@ body::before {
      shadow on hover so it reads as interactive before the cursor even
      changes, the same restrained affordance StatCard uses. */
   .klaros-card-interactive {
-    @apply cursor-pointer transition-all duration-200 ease-out hover:-translate-y-px hover:border-border-strong hover:shadow-raised;
+    @apply cursor-pointer transition-all duration-200 ease-out hover:border-border-strong hover:shadow-raised;
   }
 
   .klaros-input {
@@ -149,7 +138,7 @@ body::before {
   }
 
   .klaros-label {
-    @apply text-xs font-medium uppercase tracking-wide text-muted;
+    @apply text-[11px] font-semibold uppercase tracking-wider text-muted-foreground;
   }
 
   /* Both buttons get the same tactile shape: a soft shadow at rest, a
@@ -157,11 +146,11 @@ body::before {
      same "hover adds a colored glow" language as the Halla AI family's
      own primary buttons, not just a flat color swap. */
   .klaros-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-card transition-all duration-200 ease-out hover:-translate-y-px hover:brightness-95 hover:shadow-glow active:translate-y-0 active:shadow-card disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-card transition-all duration-200 ease-out hover:bg-accent-hover active:translate-y-px disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
   }
 
   .klaros-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground shadow-card transition-all duration-200 ease-out hover:-translate-y-px hover:border-border-strong hover:bg-surface-muted hover:shadow-raised active:translate-y-0 active:shadow-card disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground shadow-card transition-all duration-200 ease-out hover:border-border-strong hover:bg-surface-muted active:translate-y-px disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0;
   }
 
   .klaros-table-wrap {
@@ -200,7 +189,7 @@ body::before {
   }
 
   .klaros-filter-tab-active {
-    @apply border-accent bg-accent-soft text-accent;
+    @apply border-accent/40 bg-accent-soft text-accent-hover;
   }
 
   .klaros-filter-tab-inactive {
@@ -213,11 +202,11 @@ body::before {
      readability regression for dense text/numbers, which is why Stripe's
      and Linear's own dashboards never apply this to their data views. */
   .klaros-glass {
-    @apply border border-white/40 bg-white/60 shadow-popover backdrop-blur-xl;
+    @apply border border-border bg-surface/85 shadow-card backdrop-blur-xl;
   }
 
   .klaros-glass-dark {
-    @apply border border-white/10 bg-foreground/70 text-white shadow-popover backdrop-blur-xl;
+    @apply border border-white/10 bg-foreground/80 text-white shadow-popover backdrop-blur-xl;
   }
 }
 

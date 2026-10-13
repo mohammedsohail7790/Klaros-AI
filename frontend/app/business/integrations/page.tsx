@@ -47,7 +47,7 @@ function requiredConfiguration(i: OpsIntegration): string {
     case "INTEGRATION_REQUIRED":
       return "Needs the integration to be built — Klaros has defined the contract only.";
     default:
-      return "Needs an adapter — none exists yet.";
+      return "Not available yet.";
   }
 }
 

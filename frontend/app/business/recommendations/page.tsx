@@ -10,6 +10,7 @@
  * still required.
  */
 
+import { plainLanguage } from "@/lib/plainLanguage";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -47,7 +48,7 @@ function availability(
     if (!real) {
       return {
         state: "INTEGRATION_REQUIRED",
-        text: "Integration adapter required — Klaros can't connect this yet.",
+        text: "Not available yet — Klaros can't connect this yet.",
         next: { text: "Nothing to connect today." },
       };
     }
@@ -190,7 +191,7 @@ export default function RecommendationsPage() {
                   </div>
                   {requirement && (
                     <p className="mb-3 text-sm text-muted">
-                      {requirement.why} {requirement.readiness_detail}
+                      {requirement.why} {plainLanguage(requirement.readiness_detail)}
                     </p>
                   )}
                   {optionalCap && capRecs.slice(0, 1).map((c) => (

@@ -178,8 +178,9 @@ export function HallaConnectionPanel({ token, setup, onChanged }: { token: strin
         )}
 
         {halla.webhook_url && (
-          <div className="rounded-lg bg-surface-muted/70 p-3 text-sm">
-            <p className="klaros-label mb-1">Webhook address to register in Halla</p>
+          <details className="rounded-lg bg-surface-muted/70 p-3 text-sm">
+            <summary className="cursor-pointer text-muted">Advanced — webhook address for Halla</summary>
+            <p className="klaros-label mb-1 mt-3">Webhook address to register in Halla</p>
             <div className="flex flex-wrap items-center gap-2">
               <code className="break-all text-xs text-foreground">{halla.webhook_url}</code>
               <button type="button" className="klaros-btn-secondary !px-2 !py-1 text-xs" onClick={() => navigator.clipboard?.writeText(halla.webhook_url as string)}>
@@ -187,13 +188,13 @@ export function HallaConnectionPanel({ token, setup, onChanged }: { token: strin
               </button>
             </div>
             <p className="mt-1 text-xs text-muted">Halla signs every event with the secret you stored here; Klaros ignores anything that doesn&apos;t verify.</p>
-          </div>
+          </details>
         )}
 
         {canCreate && (
           <div className="space-y-2 rounded-lg border border-border p-4">
             <p className="text-sm text-foreground">Klaros can create your AI receptionist for you. You don&apos;t need a Halla account or any key.</p>
-            <p className="text-xs text-muted">It starts with no phone number and takes no calls. Patient calls only begin when you connect a number and switch it on.</p>
+            <p className="text-xs text-muted">It starts with no phone number and takes no calls. Calls only begin when you connect a number and switch it on.</p>
             <Button onClick={create} disabled={busy !== null}>
               <Bot className="h-4 w-4" aria-hidden="true" /> {busy === "provision" ? "Creating…" : "Create my AI receptionist"}
             </Button>

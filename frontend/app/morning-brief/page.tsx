@@ -178,7 +178,7 @@ export default function MorningBriefPage() {
                   <div className="mb-2 flex items-center gap-2">
                     <span className="rounded-full border border-border-strong px-2 py-0.5 text-xs">
                       {brief.mode === "DETERMINISTIC"
-                        ? "DETERMINISTIC SUMMARY — AI NOT CONNECTED"
+                        ? "Standard summary — AI not connected"
                         : `AI — ${brief.ai_provider ?? "unknown"}${brief.ai_model ? ` (${brief.ai_model})` : ""}`}
                     </span>
                     <span className="text-xs text-muted">

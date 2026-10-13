@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { toast as sonner } from "sonner";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 
 function Trigger() {
@@ -13,6 +14,11 @@ function Trigger() {
 }
 
 describe("Toast", () => {
+  // Sonner keeps one global toast store; clear it so tests do not see each other's toasts.
+  afterEach(() => {
+    sonner.dismiss();
+  });
+
   it("renders a pushed toast message via the ToastProvider stack", async () => {
     const user = userEvent.setup();
     render(
@@ -37,7 +43,7 @@ describe("Toast", () => {
     await user.click(screen.getByRole("button", { name: "fire" }));
     expect(await screen.findByText("Quote sent.")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Dismiss" }));
+    await user.click(screen.getByRole("button", { name: /close toast/i }));
     await waitFor(() => expect(screen.queryByText("Quote sent.")).not.toBeInTheDocument());
   });
 

@@ -301,10 +301,10 @@ export default function DashboardPage() {
       <div className="px-8 py-10">
         <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
           <div>
-            <h1 className="font-display text-2xl text-foreground">Owner Cockpit</h1>
+            <h1 className="font-display text-2xl text-foreground">{user ? `Welcome back, ${user.full_name.split(" ")[0]}` : "Your business today"}</h1>
             {user && (
               <p className="text-sm text-muted">
-                Signed in as {user.full_name} · {user.email} · role {user.role}
+                Here is what your business and your AI team did today.
               </p>
             )}
           </div>
@@ -326,7 +326,7 @@ export default function DashboardPage() {
               )}
               <span>
                 {killSwitch.ai_paused
-                  ? "AI is PAUSED tenant-wide — every AI and automation action is refused until you turn it back on. You can still work manually."
+                  ? "AI is paused for your whole workspace — no AI or automation action will run until you turn it back on. You can still work manually."
                   : "AI is active — automations and AI-initiated actions are running normally."}
               </span>
             </div>
@@ -568,7 +568,7 @@ export default function DashboardPage() {
             <div className="klaros-card p-6">
               <div className="mb-2 flex items-center gap-2">
                 <Badge status={brief.mode === "DETERMINISTIC" ? "DRAFT" : "AI"}>
-                  {brief.mode === "DETERMINISTIC" ? "DETERMINISTIC SUMMARY — AI NOT CONNECTED" : "AI"}
+                  {brief.mode === "DETERMINISTIC" ? "Standard summary — AI not connected" : "AI"}
                 </Badge>
               </div>
               <p className="mb-4">{brief.headline}</p>
