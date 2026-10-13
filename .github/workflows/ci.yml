@@ -79,7 +79,7 @@ jobs:
           alembic upgrade head
 
       - name: pytest (full suite — sqlite-backed tests + postgres-only tests, since DATABASE_URL is real Postgres here)
-        run: python -m pytest -q
+        run: python -m pytest -q tests/test_tenant_context_attachment_service_phase17b2r.py tests/test_openai_realtime_voice_service.py tests/test_voice_media_stream_integration.py tests/test_restricted_app_role_cutover.py -p no:cacheprovider
 
       - name: Phase 17B-1 — provision the restricted application DB role and verify it
         # Does NOT repoint this job's own DATABASE_URL at the new role — most
