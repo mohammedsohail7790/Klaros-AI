@@ -19,7 +19,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { ClinicVerification } from "@/components/mt/ClinicVerification";
-import { Hero, Page } from "@/components/ui/layout";
+import { Hero, Page, StatusSummary } from "@/components/ui/layout";
 
 const STATUS_TABS = ["ALL", "ACTIVE", "INACTIVE"];
 
@@ -87,6 +87,8 @@ export default function MedicalTourismProvidersPage() {
             </button>
           }
         />
+
+        <StatusSummary rows={providers.map((p) => ({ status: p.verification_status ?? "UNVERIFIED" }))} noun="clinics" />
 
         <section aria-label="Find clinics automatically" className="mb-12 rounded-3xl bg-surface-muted p-7 sm:p-9">
           <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] text-foreground">Find clinics automatically</h2>

@@ -117,7 +117,7 @@ export default function EventsPage() {
           <>
             {metrics && (
               <div className="mb-8">
-                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Worker metrics (real, in-process counters)</h2>
+                <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Worker metrics (real, in-process counters)</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
                   <StatCard label="Processed" value={metrics.events_processed} tone="success" />
                   <StatCard label="Failed (retrying)" value={metrics.events_failed} tone={metrics.events_failed > 0 ? "warning" : "neutral"} />
@@ -174,7 +174,7 @@ export default function EventsPage() {
                 <button
                   key={s}
                   onClick={() => setStatus(s)}
-                  className={`rounded-full border px-3 py-1 text-xs ${status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"}`}
+                  className={`klaros-filter-tab ${status === s ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}
                 >
                   {s}
                 </button>

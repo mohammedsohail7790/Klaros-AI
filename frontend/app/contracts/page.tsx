@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { FileSignature } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, Contract, detectPendingContracts, listContracts } from "@/lib/api";
 
@@ -77,16 +78,16 @@ export default function ContractsPage() {
           e-signature.
         </p>
 
+        <StatusSummary rows={contracts} noun="contracts" />
+
         <div className="mb-4 flex flex-wrap gap-2">
           {STATUS_TABS.map((s) => (
             <button
               key={s}
               onClick={() => setStatus(s)}
-              className={`rounded-full border px-3 py-1 text-xs ${
-                status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"
-              }`}
+              className={`klaros-filter-tab ${status === s ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}
             >
-              {s}
+              {s === "ALL" ? "All" : s.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}
             </button>
           ))}
         </div>

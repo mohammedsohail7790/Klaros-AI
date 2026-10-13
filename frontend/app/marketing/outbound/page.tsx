@@ -187,7 +187,7 @@ export default function OutboundPage() {
 
         <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-3xl bg-surface-muted p-4 ">
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Lists</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Lists</h2>
             <form onSubmit={handleCreateList} className="mb-3 flex gap-2">
               <input value={listName} onChange={(e) => setListName(e.target.value)} placeholder="List name" className="flex-1 rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
               <button type="submit" disabled={busy || !listName.trim()} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
@@ -208,7 +208,7 @@ export default function OutboundPage() {
           </div>
 
           <div className="rounded-3xl bg-surface-muted p-4 ">
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Add contact</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Add contact</h2>
             <form onSubmit={handleAddContact} className="space-y-2">
               <select value={selectedList} onChange={(e) => setSelectedList(e.target.value)} className="w-full rounded-xl border border-border-strong bg-surface-muted px-2 py-1.5 text-sm">
                 <option value="">Select a list...</option>
@@ -225,7 +225,7 @@ export default function OutboundPage() {
           </div>
         </div>
 
-        <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Contacts ({contacts.length})</h2>
+        <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Contacts ({contacts.length})</h2>
         {contacts.length === 0 ? (
           <EmptyState icon={Contact} title="No contacts yet." />
         ) : (

@@ -355,7 +355,7 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div className="mb-3 flex items-center justify-between">
-                  <h2 className="text-base font-semibold tracking-tight text-foreground">Getting started</h2>
+                  <h2 className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Getting started</h2>
                   <span className="text-xs text-muted">{gettingStartedRemaining} step(s) left</span>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -389,7 +389,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold tracking-tight text-foreground">Needs your attention</h2>
+            <h2 className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Needs your attention</h2>
             {attention && attention.items.length > 0 && (
               <span className="text-xs text-muted">
                 {attention.critical_count > 0 && <span className="text-danger">{attention.critical_count} critical</span>}
@@ -436,7 +436,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold tracking-tight text-foreground">What your AI did today</h2>
+            <h2 className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">What your AI did today</h2>
             <Link href="/settings/automation" className="text-xs text-muted underline">
               Configure automation
             </Link>
@@ -459,7 +459,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold tracking-tight text-foreground">AI Control Center</h2>
+            <h2 className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">AI Control Center</h2>
             <Link href="/ai-activity" className="text-xs text-muted underline">
               View AI activity
             </Link>
@@ -522,7 +522,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold tracking-tight text-foreground">Automations</h2>
+            <h2 className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Automations</h2>
             <Link href="/automations" className="text-xs text-muted underline">
               Manage automations
             </Link>
@@ -558,7 +558,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold tracking-tight text-foreground">Morning Brief</h2>
+            <h2 className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Morning Brief</h2>
             <Link href="/morning-brief" className="text-xs text-muted underline">
               View full brief
             </Link>
@@ -633,7 +633,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Today — CRM</h2>
+          <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Today — CRM</h2>
           {authLoading || loading ? (
             <Skeleton />
           ) : error ? (
@@ -658,7 +658,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold tracking-tight text-foreground">Commercial Pipeline — Quote → Contract → Deposit → Job</h2>
+            <h2 className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Commercial Pipeline — Quote → Contract → Deposit → Job</h2>
             <Link href="/quotes" className="text-xs text-muted underline">
               View quotes
             </Link>
@@ -710,7 +710,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold tracking-tight text-foreground">Operations — Jobs in flight</h2>
+            <h2 className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Operations — Jobs in flight</h2>
             <Link href="/operations" className="text-xs text-muted underline">
               View operations
             </Link>
@@ -760,7 +760,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Business Health — Finance</h2>
+          <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Business Health — Finance</h2>
           {finance?.needs_attention && (
             <Alert variant="warning" className="mb-4">
               FINANCE NEEDS ATTENTION — {finance.overdue_invoice_count} overdue invoice(s),{" "}
@@ -782,7 +782,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Marketing &amp; Demand Generation</h2>
+          <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Marketing &amp; Demand Generation</h2>
           {marketing?.needs_attention && (
             <Alert variant="warning" className="mb-4">
               MARKETING NEEDS ATTENTION — {marketing.open_marketing_exception_count} open marketing exception(s).
@@ -801,7 +801,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Retention &amp; Referral</h2>
+          <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Retention &amp; Referral</h2>
           {retention?.needs_attention && (
             <Alert variant="warning" className="mb-4">
               RETENTION NEEDS ATTENTION — {retention.open_retention_exception_count} open retention exception(s).
@@ -829,7 +829,7 @@ export default function DashboardPage() {
 
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold tracking-tight text-foreground">Recent Activity</h2>
+            <h2 className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Recent Activity</h2>
             <div className="flex items-center gap-2">
               <select
                 value={activityCategory}

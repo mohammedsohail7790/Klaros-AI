@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileText } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -93,16 +94,16 @@ export default function QuotesPage() {
           </div>
         </header>
 
+        <StatusSummary rows={quotes} noun="quotes" />
+
         <div className="mb-4 flex flex-wrap gap-2">
           {STATUS_TABS.map((s) => (
             <button
               key={s}
               onClick={() => setStatus(s)}
-              className={`rounded-full border px-3 py-1 text-xs ${
-                status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"
-              }`}
+              className={`klaros-filter-tab ${status === s ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}
             >
-              {s}
+              {s === "ALL" ? "All" : s.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}
             </button>
           ))}
         </div>

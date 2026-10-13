@@ -167,3 +167,78 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
     </div>
   );
 }
+
+/** A row of big-number tiles: the headline figures for a list, shown above it. */
+export function SummaryRow({ items }: { items: { label: string; value: React.ReactNode; hint?: React.ReactNode; tone?: "default" | "success" | "warning" | "danger" }[] }) {
+  const tone = { default: "text-foreground", success: "text-success", warning: "text-warning", danger: "text-danger" } as const;
+  return (
+    <ul className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Summary">
+      {items.map((it) => (
+        <li key={it.label} className="rounded-3xl bg-surface-muted p-5">
+          <p className="text-[13px] font-medium text-muted">{it.label}</p>
+          <p className={cn("mt-3 font-display text-[2rem] font-semibold leading-none tracking-[-0.03em]", tone[it.tone ?? "default"])}>{it.value}</p>
+          {it.hint && <p className="mt-2 text-[13px] leading-snug text-muted">{it.hint}</p>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Counts rows by their `status` and shows the total plus the most common statuses as tiles. */
+export function StatusSummary({ rows, noun, max = 3 }: { rows: { status?: string | null }[]; noun: string; max?: number }) {
+  if (rows.length === 0) return null;
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    const s = (r.status ?? "UNKNOWN").toString();
+    counts.set(s, (counts.get(s) ?? 0) + 1);
+  }
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, max);
+  const pretty = (s: string) => s.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+  return <SummaryRow items={[{ label: `Total ${noun}`, value: rows.length }, ...top.map(([s, n]) => ({ label: pretty(s), value: n }))]} />;
+}
+
+/** Label/value facts as a grid of small tiles, in place of a plain definition list. Empty values show a muted dash. */
+export function InfoGrid({ items, cols = 3 }: { items: { label: string; value?: React.ReactNode }[]; cols?: 2 | 3 | 4 }) {
+  const grid = { 2: "sm:grid-cols-2", 3: "sm:grid-cols-2 lg:grid-cols-3", 4: "sm:grid-cols-2 lg:grid-cols-4" } as const;
+  return (
+    <dl className={cn("grid grid-cols-1 gap-3", grid[cols])}>
+      {items.map((it) => (
+        <div key={it.label} className="rounded-2xl bg-surface-muted px-5 py-4">
+          <dt className="text-[13px] font-medium text-muted">{it.label}</dt>
+          <dd className="mt-1 break-words text-[16px] font-medium text-foreground">{it.value ?? <span className="text-muted-foreground">Not given</span>}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** A small rounded label. */
+export function Chip({ children, tone = "neutral", className }: { children: React.ReactNode; tone?: "neutral" | "accent" | "success" | "warning" | "danger"; className?: string }) {
+  const tones = {
+    neutral: "bg-surface-muted text-muted",
+    accent: "bg-accent-soft text-accent-hover",
+    success: "bg-success/10 text-success",
+    warning: "bg-warning/10 text-warning",
+    danger: "bg-danger/10 text-danger",
+  } as const;
+  return <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium", tones[tone], className)}>{children}</span>;
+}
+
+/** The top of a detail page: a large initial or icon, the name, a subtitle, chips and actions, on one soft panel. */
+export function DetailHeader({ initial, icon: Icon, title, subtitle, chips, actions }: { initial?: string; icon?: LucideIcon; title: React.ReactNode; subtitle?: React.ReactNode; chips?: React.ReactNode; actions?: React.ReactNode }) {
+  return (
+    <header className="mb-10 flex flex-col gap-6 rounded-3xl bg-surface-muted p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+      <div className="flex min-w-0 items-center gap-5">
+        <span aria-hidden="true" className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-accent font-display text-2xl font-semibold text-white">
+          {Icon ? <Icon className="h-7 w-7" strokeWidth={1.5} /> : (initial ?? "•").slice(0, 1).toUpperCase()}
+        </span>
+        <div className="min-w-0">
+          <h1 className="text-balance font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-foreground sm:text-[2.25rem]">{title}</h1>
+          {subtitle && <p className="mt-1 text-[15px] text-muted sm:text-[17px]">{subtitle}</p>}
+          {chips && <div className="mt-3 flex flex-wrap gap-2">{chips}</div>}
+        </div>
+      </div>
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+    </header>
+  );
+}

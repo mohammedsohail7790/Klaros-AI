@@ -185,7 +185,7 @@ export default function RecommendationsPage() {
               return (
                 <section key={key} aria-labelledby={`rec-${key}`} className="klaros-card p-5 sm:p-6">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <h2 id={`rec-${key}`} className="text-base font-semibold tracking-tight text-foreground">{requirement?.label ?? label(cap)}</h2>
+                    <h2 id={`rec-${key}`} className="font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">{requirement?.label ?? label(cap)}</h2>
                     {requirement && <StatusPill state={requirement.readiness} />}
                     <span className={`rounded-xl px-2 py-0.5 text-xs font-medium ${optionalCap ? "border border-border text-muted" : "bg-accent-soft text-accent-hover"}`}>{optionalCap ? "Suggested" : "Required"}</span>
                   </div>

@@ -153,7 +153,7 @@ export default function ReviewsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Record feedback</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Record feedback</h2>
             <div className="mb-6 flex flex-wrap items-end gap-2">
               <div>
                 <label className="block text-xs text-muted">Customer ID</label>
@@ -194,7 +194,7 @@ export default function ReviewsPage() {
               </button>
             </div>
 
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Review requests</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Review requests</h2>
             {requests.length === 0 ? (
               <div className="mb-6">
                 <EmptyState icon={Star} title="No review requests yet." />
@@ -232,7 +232,7 @@ export default function ReviewsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">
               Positive feedback ({positiveFeedback.length})
             </h2>
             {positiveFeedback.length === 0 ? (

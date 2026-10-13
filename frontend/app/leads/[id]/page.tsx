@@ -292,7 +292,7 @@ export default function LeadDetailPage() {
 
               {(convertedJobId || (lead.status !== "CONVERTED" && lead.status !== "LOST")) && (
                 <div className="rounded-3xl bg-surface-muted p-6">
-                  <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Convert to job</h2>
+                  <h2 className="mb-2 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Convert to job</h2>
                   <p className="mb-3 text-xs text-muted">
                     One step: match or create the customer, book the appointment, and create the job together.
                   </p>
@@ -356,7 +356,7 @@ export default function LeadDetailPage() {
 
             <section className="space-y-4">
               <div className="rounded-3xl bg-surface-muted p-6">
-                <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Qualification</h2>
+                <h2 className="mb-2 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Qualification</h2>
                 <p className="text-sm text-muted">
                   Status: <span className="text-foreground">{lead.qualification_status}</span>
                 </p>
@@ -377,7 +377,7 @@ export default function LeadDetailPage() {
               </div>
 
               <div className="rounded-3xl bg-surface-muted p-6">
-                <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">AI recommendation</h2>
+                <h2 className="mb-2 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">AI recommendation</h2>
                 <p className="text-xs text-muted-foreground">
                   Advisory only — never applied automatically. Review it, then use &ldquo;Re-run qualification&rdquo;
                   above or edit the lead directly to act on it.
@@ -432,7 +432,7 @@ export default function LeadDetailPage() {
               </div>
 
               <div className="rounded-3xl bg-surface-muted p-6">
-                <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Marketing attribution</h2>
+                <h2 className="mb-2 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Marketing attribution</h2>
                 <p className="mb-3 text-xs text-muted-foreground">
                   Record where this lead really came from — campaign, source/medium, UTM params — for campaign
                   performance and CAC reporting. Only one attribution is kept per lead: with SOURCE_ONLY or

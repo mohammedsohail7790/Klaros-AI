@@ -56,9 +56,7 @@ export default function ExceptionsPage() {
             <button
               key={s}
               onClick={() => setStatus(s)}
-              className={`rounded-full border px-3 py-1 text-xs ${
-                status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"
-              }`}
+              className={`klaros-filter-tab ${status === s ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}
             >
               {s}
             </button>

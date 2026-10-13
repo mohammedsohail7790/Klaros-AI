@@ -103,7 +103,7 @@ export default function ContentPage() {
             <button
               key={v}
               onClick={() => setStatus(v)}
-              className={`rounded-full border px-3 py-1 text-xs ${status === v ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"}`}
+              className={`klaros-filter-tab ${status === v ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}
             >
               {v}
             </button>

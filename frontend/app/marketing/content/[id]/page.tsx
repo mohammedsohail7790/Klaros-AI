@@ -165,7 +165,7 @@ export default function ContentDetailPage() {
             </div>
 
             <div className="rounded-3xl bg-surface-muted p-6">
-              <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Channel variants</h2>
+              <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Channel variants</h2>
               {content.variants.length === 0 ? (
                 <p className="text-sm text-muted">No variants yet — add one per channel below.</p>
               ) : (

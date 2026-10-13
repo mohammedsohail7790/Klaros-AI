@@ -294,66 +294,74 @@ export default function CustomerDetailPage() {
                   </form>
                 ) : (
                   <>
-                    <div className="flex items-start justify-between">
-                      <h1 className="text-2xl font-semibold tracking-tight text-foreground">{customer.name}</h1>
-                      <button
-                        onClick={startEditingCustomer}
-                        className="text-xs text-muted underline hover:text-foreground"
-                      >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex min-w-0 items-center gap-5">
+                        <span aria-hidden="true" className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-accent font-display text-2xl font-semibold text-white">
+                          {customer.name.trim().charAt(0).toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <h1 className="text-balance font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-foreground sm:text-[2.25rem]">{customer.name}</h1>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Badge status={customer.status}>{customer.status}</Badge>
+                            <select
+                              value={customer.status}
+                              onChange={(e) => handleStatusChange(e.target.value)}
+                              aria-label="Customer status"
+                              className="rounded-full bg-surface px-3 py-1 text-xs"
+                            >
+                              {CUSTOMER_STATUSES.map((s) => (
+                                <option key={s} value={s}>
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      <button onClick={startEditingCustomer} className="klaros-btn-secondary shrink-0 !px-4 !py-1.5">
                         Edit
                       </button>
                     </div>
-                    <p className="text-sm text-muted">
-                      {customer.email ?? "no email"} · {customer.phone ?? "no phone"}
-                    </p>
-                    {customer.address && (
-                      <p className="mt-1 text-sm text-muted">
-                        {customer.address}, {customer.city} {customer.state} {customer.postal_code}
-                      </p>
-                    )}
-                    <div className="mt-2 flex items-center gap-2">
-                      <Badge status={customer.status}>{customer.status}</Badge>
-                      <select
-                        value={customer.status}
-                        onChange={(e) => handleStatusChange(e.target.value)}
-                        className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-xs"
-                      >
-                        {CUSTOMER_STATUSES.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <dl className="mt-6 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl bg-surface px-5 py-4">
+                        <dt className="text-[13px] font-medium text-muted">Email</dt>
+                        <dd className="mt-1 break-all text-[15px] font-medium text-foreground">{customer.email ?? <span className="text-muted-foreground">no email</span>}</dd>
+                      </div>
+                      <div className="rounded-2xl bg-surface px-5 py-4">
+                        <dt className="text-[13px] font-medium text-muted">Phone</dt>
+                        <dd className="mt-1 text-[15px] font-medium text-foreground">{customer.phone ?? <span className="text-muted-foreground">no phone</span>}</dd>
+                      </div>
+                      <div className="rounded-2xl bg-surface px-5 py-4">
+                        <dt className="text-[13px] font-medium text-muted">Address</dt>
+                        <dd className="mt-1 text-[15px] font-medium text-foreground">
+                          {customer.address ? `${customer.address}, ${customer.city ?? ""} ${customer.state ?? ""} ${customer.postal_code ?? ""}` : <span className="text-muted-foreground">no address</span>}
+                        </dd>
+                      </div>
+                    </dl>
                   </>
                 )}
               </div>
 
               <div className="rounded-3xl bg-surface-muted p-6">
-                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Timeline</h2>
+                <h2 className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Timeline</h2>
                 {timeline.length === 0 ? (
                   <EmptyState icon={Clock} title="No activity recorded yet." compact />
                 ) : (
-                  <ul className="space-y-3">
+                  <ol className="relative space-y-5 border-l border-border pl-6" aria-label="Customer timeline">
                     {timeline.map((entry, i) => (
-                      <li key={i} className="flex gap-3 text-sm">
-                        <span className="mt-0.5 rounded-full border border-border-strong px-2 py-0.5 text-xs uppercase text-muted">
-                          {entry.type}
-                        </span>
-                        <div>
-                          <p>{entry.summary}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(entry.timestamp).toLocaleString()}
-                          </p>
-                        </div>
+                      <li key={i} className="relative">
+                        <span aria-hidden="true" className="absolute -left-[31px] top-1 flex h-3 w-3 items-center justify-center rounded-full bg-accent ring-4 ring-surface-muted" />
+                        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-medium capitalize text-muted">{entry.type}</span>
+                        <p className="mt-1.5 text-[15px] text-foreground">{entry.summary}</p>
+                        <p className="text-[13px] text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</p>
                       </li>
                     ))}
-                  </ul>
+                  </ol>
                 )}
               </div>
 
               <div className="rounded-3xl bg-surface-muted p-6">
-                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">
+                <h2 className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">
                   Appointments ({appointmentEntries.length})
                 </h2>
                 {appointmentEntries.length === 0 ? (
@@ -370,7 +378,7 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="rounded-3xl bg-surface-muted p-6">
-                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Invoices / Payments</h2>
+                <h2 className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Invoices / Payments</h2>
                 {invoices.length === 0 ? (
                   <EmptyState icon={Receipt} title="No financial history for this customer yet." compact />
                 ) : (
@@ -390,7 +398,7 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="rounded-3xl bg-surface-muted p-6">
-                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Payments received</h2>
+                <h2 className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Payments received</h2>
                 {refundNotice && <p className="mb-2 text-sm text-success">{refundNotice}</p>}
                 {payments.length === 0 ? (
                   <EmptyState icon={Receipt} title="No payments recorded for this customer yet." compact />
@@ -460,7 +468,7 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="rounded-3xl bg-surface-muted p-6">
-                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Add note</h2>
+                <h2 className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Add note</h2>
                 <form onSubmit={submitNote} className="flex gap-2">
                   <input
                     value={note}
@@ -482,7 +490,7 @@ export default function CustomerDetailPage() {
             <section className="space-y-4">
               {health && (
                 <div className="rounded-3xl bg-surface-muted p-6">
-                  <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Customer health</h2>
+                  <h2 className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Customer health</h2>
                   <dl className="space-y-1.5 text-sm">
                     <div className="flex justify-between">
                       <dt className="text-muted">Lifecycle</dt>
@@ -530,7 +538,7 @@ export default function CustomerDetailPage() {
               )}
 
               <div className="rounded-3xl bg-surface-muted p-6">
-                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Retention timeline</h2>
+                <h2 className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Retention timeline</h2>
                 {retentionTimeline.length === 0 ? (
                   <EmptyState icon={Heart} title="No retention activity recorded yet." compact />
                 ) : (
@@ -551,7 +559,7 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="rounded-3xl bg-surface-muted p-6">
-                <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">AI summary</h2>
+                <h2 className="mb-2 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">AI summary</h2>
                 {summary ? (
                   <p className="text-sm text-muted">{summary}</p>
                 ) : (

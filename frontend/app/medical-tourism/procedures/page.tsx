@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
-import { Hero } from "@/components/ui/layout";
+import { Hero, StatusSummary } from "@/components/ui/layout";
 import { ClinicOffers } from "@/components/mt/ClinicOffers";
 
 const STATUS_TABS = ["ALL", "ACTIVE", "INACTIVE"];
@@ -66,6 +66,8 @@ export default function MedicalTourismProceduresPage() {
             </button>
           }
         />
+
+        <StatusSummary rows={procedures} noun="procedures" />
 
         <div className="mb-6 flex flex-wrap items-center gap-2">
           {STATUS_TABS.map((s) => (

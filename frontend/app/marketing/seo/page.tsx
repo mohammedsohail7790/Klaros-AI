@@ -292,7 +292,7 @@ export default function SEOPage() {
 
         <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-3xl bg-surface-muted p-4 ">
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Keywords ({keywords.length})</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Keywords ({keywords.length})</h2>
             <form onSubmit={handleRecordKeyword} className="mb-3 flex flex-wrap gap-2">
               <input
                 value={keyword}
@@ -334,7 +334,7 @@ export default function SEOPage() {
           </div>
 
           <div className="rounded-3xl bg-surface-muted p-4 ">
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">SEO opportunities</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">SEO opportunities</h2>
             <form onSubmit={handleCreateOpportunity} className="space-y-2">
               <div className="flex gap-2">
                 <input
@@ -382,7 +382,7 @@ export default function SEOPage() {
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-3xl bg-surface-muted p-4 ">
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Local listings ({listings.length})</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Local listings ({listings.length})</h2>
             <form onSubmit={handleCreateListing} className="mb-3 space-y-2">
               <input
                 value={listingName}
@@ -427,7 +427,7 @@ export default function SEOPage() {
           </div>
 
           <div className="rounded-3xl bg-surface-muted p-4 ">
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Local reviews ({reviews.length})</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Local reviews ({reviews.length})</h2>
             <form onSubmit={handleRecordReview} className="mb-3 space-y-2">
               <select
                 value={reviewListingId}

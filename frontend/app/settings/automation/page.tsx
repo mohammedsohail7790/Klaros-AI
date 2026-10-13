@@ -179,7 +179,7 @@ export default function AutomationSettingsPage() {
         ) : (
           <>
             <section className="mb-10">
-              <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Automation Policies</h2>
+              <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Automation Policies</h2>
               {!policies || policies.length === 0 ? (
                 <EmptyState icon={Settings2} title="No configurable automation actions found." />
               ) : (

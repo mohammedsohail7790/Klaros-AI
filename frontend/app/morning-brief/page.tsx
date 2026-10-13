@@ -188,7 +188,7 @@ export default function MorningBriefPage() {
                   <p className="text-lg">{brief.headline}</p>
                 </div>
 
-                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Needs attention</h2>
+                <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Needs attention</h2>
                 {brief.insights.length === 0 ? (
                   <p className="mb-6 text-sm text-muted">No significant activity.</p>
                 ) : (
@@ -213,7 +213,7 @@ export default function MorningBriefPage() {
                   </div>
                 )}
 
-                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Recommended actions</h2>
+                <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Recommended actions</h2>
                 {brief.recommendations.length === 0 ? (
                   <EmptyState icon={Lightbulb} title="No recommendations." compact />
                 ) : (
@@ -303,7 +303,7 @@ export default function MorningBriefPage() {
 
             {settings && (
               <div className="mt-10 rounded-3xl bg-surface-muted p-6">
-                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Schedule</h2>
+                <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Schedule</h2>
                 <div className="flex flex-wrap items-end gap-3 text-sm">
                   <label className="flex items-center gap-2">
                     <input

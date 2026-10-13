@@ -100,7 +100,7 @@ export default function ReactivationPage() {
           <Skeleton />
         ) : (
           <>
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Campaigns</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Campaigns</h2>
             {campaigns.length === 0 ? (
               <div className="mb-6">
                 <EmptyState icon={Heart} title="No reactivation campaigns yet." />
@@ -123,7 +123,7 @@ export default function ReactivationPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Candidates ({candidates.length})</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Candidates ({candidates.length})</h2>
             {candidates.length === 0 ? (
               <EmptyState icon={Target} title="No candidates identified yet." />
             ) : (

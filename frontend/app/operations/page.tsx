@@ -114,7 +114,7 @@ export default function OperationsPage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Needs your attention</h2>
+              <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Needs your attention</h2>
               {exceptions.length === 0 ? (
                 <EmptyState icon={CheckCircle2} title="No open exceptions." compact />
               ) : (

@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
-import { Hero } from "@/components/ui/layout";
+import { Hero, StatusSummary } from "@/components/ui/layout";
 
 const STATUS_TABS = ["ALL", "SCHEDULED", "COMPLETED", "CANCELLED", "NO_SHOW"];
 const NEXT_STATUS: Record<string, string[]> = {
@@ -97,6 +97,8 @@ export default function MedicalTourismConsultationsPage() {
             </button>
           }
         />
+
+        <StatusSummary rows={consultations} noun="consultations" />
 
         <div className="mb-6 flex flex-wrap items-center gap-2">
           {STATUS_TABS.map((s) => (

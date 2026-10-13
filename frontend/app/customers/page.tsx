@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Users } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { StatusSummary } from "@/components/ui/layout";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -70,6 +71,8 @@ export default function CustomersPage() {
             </button>
           </div>
         </header>
+
+        <StatusSummary rows={customers} noun="customers" />
 
         <input
           value={q}

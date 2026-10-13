@@ -196,7 +196,7 @@ function CalendarPageInner() {
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <section>
-              <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">
+              <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">
                 Appointments ({appointments.length})
               </h2>
               {appointments.length === 0 ? (
@@ -283,7 +283,7 @@ function CalendarPageInner() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Open slots ({slots.length})</h2>
+              <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Open slots ({slots.length})</h2>
               {slots.length === 0 ? (
                 <EmptyState icon={CalendarX} title="No open slots this day." compact />
               ) : (

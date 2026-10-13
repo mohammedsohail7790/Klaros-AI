@@ -194,7 +194,7 @@ export default function ReferralsPage() {
               <StatCard label="Collected revenue" value={`$${revenue.toFixed(2)}`} icon={Gift} tone="accent" />
             </div>
 
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Programs</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Programs</h2>
             <div className="mb-4 flex flex-wrap items-end gap-2">
               <div>
                 <label className="block text-xs text-muted">Program name</label>
@@ -245,7 +245,7 @@ export default function ReferralsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Referral codes</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Referral codes</h2>
             <div className="mb-4 flex flex-wrap items-end gap-2">
               <div>
                 <label className="block text-xs text-muted">Program ID</label>
@@ -319,7 +319,7 @@ export default function ReferralsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Referrals</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Referrals</h2>
             {referrals.length === 0 ? (
               <div className="mb-8">
                 <EmptyState icon={Users} title="No referrals yet." />
@@ -349,7 +349,7 @@ export default function ReferralsPage() {
               </div>
             )}
 
-            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Rewards</h2>
+            <h2 className="mb-3 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">Rewards</h2>
             {rewards.length === 0 ? (
               <EmptyState icon={Award} title="No referral rewards yet." />
             ) : (
