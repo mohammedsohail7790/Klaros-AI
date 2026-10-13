@@ -60,14 +60,14 @@ async def _make_org_and_job(tenant_id: uuid.UUID) -> uuid.UUID:
 
 
 @requires_real_postgres
-async def test_add_document_sets_tenant_context(monkeypatch, spy) -> None:
+async def test_add_document_sets_tenant_context(monkeypatch, spy, tmp_path) -> None:
     import app.services.attachment_service as attachment_service_module
 
     monkeypatch.setattr(attachment_service_module, "set_tenant_context", spy)
 
     tenant_id = uuid.uuid4()
     job_id = await _make_org_and_job(tenant_id)
-    service = AttachmentService(async_session_maker, LocalFilesystemStorageAdapter("/private/tmp/claude-501/-Users-mohammedsohail-Desktop-Klaros-AI/67bf650e-b0da-4e10-8b67-614af1c48252/scratchpad/attachment_test_storage"))
+    service = AttachmentService(async_session_maker, LocalFilesystemStorageAdapter(str(tmp_path)))
 
     await service.add_document(
         tenant_id, job_id, kind=AttachmentKind.PHOTO, filename="before.jpg", content=b"fake-bytes",
@@ -81,11 +81,11 @@ async def test_add_document_sets_tenant_context(monkeypatch, spy) -> None:
 
 
 @requires_real_postgres
-async def test_tenant_a_cannot_add_document_to_tenant_bs_job() -> None:
+async def test_tenant_a_cannot_add_document_to_tenant_bs_job(tmp_path) -> None:
     tenant_a, tenant_b = uuid.uuid4(), uuid.uuid4()
     job_a = await _make_org_and_job(tenant_a)
     await _make_org_and_job(tenant_b)
-    service = AttachmentService(async_session_maker, LocalFilesystemStorageAdapter("/private/tmp/claude-501/-Users-mohammedsohail-Desktop-Klaros-AI/67bf650e-b0da-4e10-8b67-614af1c48252/scratchpad/attachment_test_storage"))
+    service = AttachmentService(async_session_maker, LocalFilesystemStorageAdapter(str(tmp_path)))
 
     with pytest.raises(JobNotFoundError):
         await service.add_document(
