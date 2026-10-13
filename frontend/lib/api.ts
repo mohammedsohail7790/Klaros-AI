@@ -5825,7 +5825,7 @@ export function getMedicalTourismSetup(token: string) {
   return request<MedicalTourismSetup>("/api/v1/business-setup/medical-tourism", { headers: authHeaders(token) });
 }
 
-export function submitMedicalTourismSetup(token: string, body: { business_name: string; patient_markets: string[]; destinations: string[]; procedures: string[]; business_model: string }) {
+export function submitMedicalTourismSetup(token: string, body: { business_name: string; patient_markets: string[]; destinations: string[]; procedures: string[]; business_model: string; channels?: string[]; currencies?: string[]; goals?: string }) {
   return request<MedicalTourismSetup>("/api/v1/business-setup/medical-tourism", { method: "POST", headers: authHeaders(token), body: JSON.stringify(body) });
 }
 
