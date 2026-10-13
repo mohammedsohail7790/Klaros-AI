@@ -579,3 +579,85 @@ def test_voice_stream_route_dispatches_to_realtime_engine_when_configured(monkey
         # Realtime session for, and the route must end cleanly.
     finally:
         get_settings.cache_clear()
+
+
+def test_realtime_route_never_ends_a_call_when_the_start_event_has_no_tenant_or_call_id(monkeypatch) -> None:
+    """A `start` with no signed tenant/call parameters identifies no call, so there is nothing to end: the route must close cleanly WITHOUT calling
+    end_call() (it used to call it with tenant_id=None and call_id=None, which on real Postgres reached the database from the wrong event loop)."""
+    import json
+
+    from starlette.testclient import TestClient
+
+    import app.api.v1.voice_stream as voice_stream
+    from app.core.config import get_settings
+    from app.main import app
+
+    class _CallServiceSpy:
+        def __init__(self) -> None:
+            self.ended: list[tuple] = []
+
+        async def end_call(self, *args, **kwargs):
+            self.ended.append((args, kwargs))
+
+    spy = _CallServiceSpy()
+    monkeypatch.setattr(voice_stream, "get_voice_call_service", lambda: spy)
+    get_settings.cache_clear()
+    monkeypatch.setenv("VOICE_AI_ENGINE", "openai_realtime")
+    get_settings.cache_clear()
+    try:
+        with TestClient(app) as test_client:
+            with test_client.websocket_connect("/api/v1/voice-stream") as ws:
+                ws.send_text(json.dumps({"event": "connected", "protocol": "Call", "version": "1.0.0"}))
+                ws.send_text(json.dumps({"event": "start", "start": {"streamSid": "MZ1", "callSid": "CA-no-tenant"}}))
+                ws.send_text(json.dumps({"event": "stop", "stop": {}}))
+    finally:
+        get_settings.cache_clear()
+    assert spy.ended == []
+
+
+def test_realtime_route_still_ends_a_call_it_really_opened_when_the_caller_stops(monkeypatch) -> None:
+    """The guard must not weaken the normal path: a start that DOES carry a tenant and call id, whose session cannot be opened, is still refused, and
+    nothing is ended for a call that never existed (the forged-pair case in the route's own comment)."""
+    import json
+    import uuid
+
+    from starlette.testclient import TestClient
+
+    import app.api.v1.voice_stream as voice_stream
+    from app.core.config import get_settings
+    from app.main import app
+    from app.services.voice_call_service import CallSessionNotFoundError
+
+    class _CallServiceSpy:
+        def __init__(self) -> None:
+            self.ended: list[tuple] = []
+
+        async def end_call(self, *args, **kwargs):
+            self.ended.append((args, kwargs))
+
+    class _BridgeStub:
+        async def open(self, tenant_id, call_session_id):
+            raise CallSessionNotFoundError("forged pair")
+
+        async def close(self):
+            return None
+
+    spy = _CallServiceSpy()
+    monkeypatch.setattr(voice_stream, "get_voice_call_service", lambda: spy)
+    monkeypatch.setattr(voice_stream, "get_openai_realtime_voice_bridge", lambda *_a, **_k: _BridgeStub())
+    get_settings.cache_clear()
+    monkeypatch.setenv("VOICE_AI_ENGINE", "openai_realtime")
+    get_settings.cache_clear()
+    try:
+        with TestClient(app) as test_client:
+            with test_client.websocket_connect("/api/v1/voice-stream") as ws:
+                ws.send_text(json.dumps({"event": "connected", "protocol": "Call", "version": "1.0.0"}))
+                ws.send_text(json.dumps({
+                    "event": "start",
+                    "start": {"streamSid": "MZ1", "callSid": "CA1", "customParameters": {"tenant_id": str(uuid.uuid4()), "call_session_id": str(uuid.uuid4())}},
+                }))
+                ws.send_text(json.dumps({"event": "stop", "stop": {}}))
+    finally:
+        get_settings.cache_clear()
+    assert spy.ended == []  # a forged pair resolves to no real call, so nothing is ended
+
