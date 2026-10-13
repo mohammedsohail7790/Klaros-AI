@@ -161,9 +161,9 @@ export function BusinessMap({ map, metrics = {} }: { map: BusinessMapData; metri
                             {n.sublabel && <span className="mt-0.5 block text-xs text-muted">{n.sublabel}</span>}
                             {metrics[n.id] && <span className="mt-1 block text-xs font-medium text-foreground">{metrics[n.id]}</span>}
                             {n.state && n.kind !== "core" && n.kind !== "outcome" && n.kind !== "actor" && (
-                              <StatusPill state={n.state} className="mt-1.5" />
+                              <StatusPill state={n.state} className="mt-1.5 max-w-full whitespace-normal text-left" />
                             )}
-                            {n.kind === "actor" && n.state && n.planned && <StatusPill state={n.state} className="mt-1.5" />}
+                            {n.kind === "actor" && n.state && n.planned && <StatusPill state={n.state} className="mt-1.5 max-w-full whitespace-normal text-left" />}
                           </span>
                         </span>
                         {/* Narrow screens: the connections as text, since the diagram is hidden. */}

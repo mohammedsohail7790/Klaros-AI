@@ -179,15 +179,15 @@ export default function RecommendationsPage() {
         {sections.length === 0 ? (
           <EmptyState title="No recommendations were generated. Your Blueprint may not list any required capabilities yet." />
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-5">
             {sections.map(({ key, requirement, cap, capRecs, integrations, tools }) => {
               const optionalCap = requirement ? requirement.required === false : capRecs.some((c) => !c.required);
               return (
-                <section key={key} aria-labelledby={`rec-${key}`}>
+                <section key={key} aria-labelledby={`rec-${key}`} className="klaros-card p-5 sm:p-6">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <h2 id={`rec-${key}`} className="text-base font-semibold text-foreground">{requirement?.label ?? label(cap)}</h2>
+                    <h2 id={`rec-${key}`} className="text-base font-semibold tracking-tight text-foreground">{requirement?.label ?? label(cap)}</h2>
                     {requirement && <StatusPill state={requirement.readiness} />}
-                    <span className="text-xs text-muted-foreground">{optionalCap ? "Suggested" : "Required"}</span>
+                    <span className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${optionalCap ? "border border-border text-muted" : "bg-accent-soft text-accent-hover"}`}>{optionalCap ? "Suggested" : "Required"}</span>
                   </div>
                   {requirement && (
                     <p className="mb-3 text-sm text-muted">
@@ -198,7 +198,7 @@ export default function RecommendationsPage() {
                     <Card key={c.id} rec={c} busy={busyId === c.id} onDecide={decide} requirement={requirement} />
                   ))}
                   {integrations.length > 0 && (
-                    <div className="mt-3 border-l-2 border-border pl-4">
+                    <div className="mt-4 rounded-xl bg-surface-muted/60 p-3 sm:p-4">
                       <p className="klaros-label mb-2">Integrations that could cover it</p>
                       <div className="space-y-3">
                         {integrations.map((o) => (

@@ -95,7 +95,7 @@ export default function RequirementsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto max-w-5xl px-6 py-8">
         <StageTracker stages={overview.stages} activeKey="requirements" />
         <PageHeader
           icon={ClipboardList}
@@ -142,24 +142,24 @@ export default function RequirementsPage() {
           <div className="space-y-8">
             {groups.map(([group, items]) => (
               <section key={group} aria-labelledby={`g-${group}`}>
-                <h2 id={`g-${group}`} className="klaros-label mb-3">{group}</h2>
+                <h2 id={`g-${group}`} className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground"><span aria-hidden="true" className="h-4 w-1 rounded-full bg-accent" />{group}<span className="text-xs font-normal text-muted-foreground">{items.length}</span></h2>
                 <ul className="grid gap-3 md:grid-cols-2">
                   {items.map((r) => (
-                    <li key={r.key} className="klaros-card flex flex-col p-4">
-                      <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <h3 className="text-sm font-semibold text-foreground">{r.label}</h3>
-                        <span className={r.required ? "rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent-hover" : "rounded-full border border-border px-2 py-0.5 text-[11px] text-muted"}>
+                    <li key={r.key} className="klaros-card klaros-card-interactive flex flex-col p-5">
+                      <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                        <h3 className="text-[15px] font-semibold tracking-tight text-foreground">{r.label}</h3>
+                        <span className={r.required ? "rounded-md bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent-hover" : "rounded-md border border-border px-2 py-0.5 text-[11px] text-muted"}>
                           {r.required ? "Required" : "Suggested"}
                         </span>
                       </div>
                       <p className="text-sm text-muted">{r.description}</p>
-                      <p className="mt-2 text-sm text-foreground"><span className="klaros-label mr-1.5">Why</span>{r.why}</p>
+                      <p className="mt-3 rounded-lg bg-surface-muted/70 px-3 py-2 text-sm leading-relaxed text-foreground"><span className="klaros-label mr-1.5">Why</span>{r.why}</p>
                       {r.evidence.filter((e) => e.statement && !r.why.includes(e.statement)).slice(0, 1).map((e, i) => (
                         <blockquote key={e.claim_id ?? `${e.kind}-${i}`} className="mt-2 flex gap-1.5 border-l-2 border-accent/50 pl-2 text-xs italic text-muted">
                           <Quote className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />“{e.statement}”
                         </blockquote>
                       ))}
-                      <div className="mt-auto pt-3">
+                      <div className="mt-auto border-t border-border pt-3 mt-4">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="klaros-label">Status</span>
                           <StatusPill state={r.readiness} />

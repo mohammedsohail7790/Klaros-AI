@@ -3,6 +3,7 @@
  * Everything shown to a business owner goes through here so the product speaks plainly.
  */
 const REPLACEMENTS: [RegExp, string][] = [
+  [/Integration required — Klaros has the contract, but the Halla adapter has not been built, so nothing can be connected yet\./gi, "Halla can't be connected yet — it isn't available for this workspace."],
   [/Integration adapter required/gi, "Not available yet"],
   [/Klaros has no module or integration for this yet/gi, "Klaros can't do this yet"],
   [/\bNeeds an adapter\b/gi, "Not available yet"],

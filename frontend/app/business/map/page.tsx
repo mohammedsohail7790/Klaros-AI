@@ -84,7 +84,7 @@ export default function BusinessMapPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-6 py-8">
         <StageTracker stages={overview.stages} activeKey="map" />
         <PageHeader
           icon={Network}

@@ -162,7 +162,7 @@ select:not([multiple]):not([size]):disabled {
   }
 
   .klaros-table thead {
-    @apply sticky top-0 z-10 bg-surface-muted/95 text-xs font-medium uppercase tracking-wide text-muted backdrop-blur-sm;
+    @apply sticky top-0 z-10 bg-surface-muted/95 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur-sm;
   }
 
   .klaros-table th {
@@ -170,7 +170,7 @@ select:not([multiple]):not([size]):disabled {
   }
 
   .klaros-table td {
-    @apply px-4 py-3;
+    @apply px-4 py-3.5;
   }
 
   .klaros-table tbody tr {

@@ -149,20 +149,21 @@ export default function BillingSettingsPage() {
               </div>
             </div>
 
-            <h2 className="mb-3 font-medium">Change plan</h2>
+            <h2 className="mb-3 text-lg font-semibold tracking-tight">Change plan</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {PLANS.map((plan) => (
                 <div
                   key={plan.id}
-                  className={`rounded-lg border p-4 ${
+                  className={`relative rounded-xl border p-5 shadow-card transition-shadow hover:shadow-raised ${
                     status.plan === plan.id && status.billing_status === "active"
                       ? "border-accent bg-accent-soft"
                       : "border-border bg-surface"
                   }`}
                 >
+                  {plan.id === "growth" && <span className="absolute -top-2.5 right-4 rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-medium text-accent-foreground">Most popular</span>}
                   <div className="flex items-baseline justify-between">
-                    <h3 className="font-medium">{plan.name}</h3>
-                    <span className="text-sm text-muted">{plan.price}</span>
+                    <h3 className="text-base font-semibold">{plan.name}</h3>
+                    <span className="text-lg font-semibold text-foreground">{plan.price}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted">{plan.blurb}</p>
                   {status.plan === plan.id && status.billing_status === "active" ? (
@@ -171,7 +172,7 @@ export default function BillingSettingsPage() {
                     <button
                       onClick={() => handleSubscribe(plan.id)}
                       disabled={busyPlan !== null}
-                      className="mt-3 rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                      className="klaros-btn-secondary mt-4 w-full disabled:opacity-50"
                     >
                       {busyPlan === plan.id ? "Redirecting..." : `Subscribe to ${plan.name}`}
                     </button>
