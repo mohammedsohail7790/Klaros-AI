@@ -241,10 +241,10 @@ function NavLink({ item, active, badge }: { item: NavItem; active: boolean; badg
       href={item.href}
       aria-current={active ? "page" : undefined}
       className={`group relative flex items-center gap-3 rounded-xl px-3 py-2 text-[14px] transition-all duration-300 ease-apple ${
-        active ? "bg-white/[0.12] font-medium text-white" : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
+        active ? "bg-black/[0.07] font-medium text-foreground" : "text-muted hover:bg-black/[0.04] hover:text-foreground"
       }`}
     >
-      <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? "text-accent" : "text-slate-500 group-hover:text-slate-300"}`} strokeWidth={1.75} />
+      <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? "text-accent" : "text-muted-foreground group-hover:text-foreground"}`} strokeWidth={1.75} />
       {item.label}
       {badge !== undefined && badge > 0 && (
         <span aria-label={`${badge} open`} className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-xs font-medium leading-none text-accent-foreground">
@@ -388,34 +388,34 @@ export default function AppShell({
   return (
     <div className="flex min-h-screen bg-background">
       {mobileNavOpen && <div aria-hidden onClick={() => setMobileNavOpen(false)} className="fixed inset-0 z-40 bg-black/30 lg:hidden" />}
-      <aside style={{ backgroundColor: "rgb(28 28 30)" }}
+      <aside
         aria-label="Main"
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col klaros-dark border-r border-white/5 bg-accent-2 text-slate-300 transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-border/70 bg-surface-muted/80 text-muted backdrop-blur-2xl transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between px-4 pb-3 pt-4">
-          <Logo href={pilot ? "/medical-tourism/overview" : "/business/home"} tone="light" />
+          <Logo href={pilot ? "/medical-tourism/overview" : "/business/home"} />
           <button
             type="button"
             onClick={() => setMobileNavOpen(false)}
             aria-label="Close menu"
-            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 lg:hidden"
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-muted hover:bg-black/[0.06] lg:hidden"
           >
             <X className="h-4 w-4" strokeWidth={2} />
           </button>
         </div>
         <div className="px-3 pb-3">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" strokeWidth={2} />
-            <kbd aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-white/10 px-1 text-xs font-medium text-slate-500">⌘K</kbd>
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" strokeWidth={2} />
+            <kbd aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-border px-1 text-xs font-medium text-muted-foreground">⌘K</kbd>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Find a page…"
               aria-label="Find a page"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.05] py-1.5 pl-8 pr-10 text-[13px] text-slate-100 placeholder:text-slate-500 focus:border-accent focus:bg-white/[0.08] focus:outline-none"
+              className="w-full rounded-xl border border-border bg-black/[0.04] py-1.5 pl-8 pr-10 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-accent focus:bg-surface focus:outline-none"
             />
           </div>
         </div>
@@ -425,14 +425,14 @@ export default function AppShell({
               {searchResults.map((item) => (
                 <NavLink key={item.href} item={item} active={item.href === activeHref} />
               ))}
-              {searchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-500">No pages match &ldquo;{query}&rdquo;.</p>}
+              {searchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-muted-foreground">No pages match &ldquo;{query}&rdquo;.</p>}
             </div>
           ) : (
             pilot ? (
               <>
                 {PILOT_GROUPS.map((g, i) => (
                   <div key={g.label}>
-                    <div className={`klaros-label !text-slate-500 px-2.5 pb-1 ${i === 0 ? "pt-2" : "pt-5"}`}>{g.label}</div>
+                    <div className={`klaros-label px-2.5 pb-1 ${i === 0 ? "pt-2" : "pt-5"}`}>{g.label}</div>
                     <div className="space-y-0.5">
                       {g.items.map((item) => (
                         <NavLink key={item.href} item={item} active={item.href === activeHref} badge={item.href === "/medical-tourism/tasks" ? openTasks : undefined} />
@@ -448,18 +448,18 @@ export default function AppShell({
                   <NavLink key={item.href} item={item} active={item.href === activeHref} />
                 ))}
               </div>
-              <div className="klaros-label !text-slate-500 px-2.5 pb-1 pt-5">Work</div>
+              <div className="klaros-label px-2.5 pb-1 pt-5">Work</div>
               <div className="space-y-0.5">
                 {WORK_NAV.map((item) => (
                   <NavLink key={item.href} item={item} active={item.href === activeHref} />
                 ))}
               </div>
-              <div className="mt-4 border-t border-white/10 pt-3">
+              <div className="mt-4 border-t border-border/70 pt-3">
                 <button
                   type="button"
                   onClick={toggleMore}
                   aria-expanded={moreOpen}
-                  className="flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-left text-[13px] text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                  className="flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-left text-[13px] text-muted hover:bg-black/[0.04] hover:text-foreground"
                 >
                   <span>All modules</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`} strokeWidth={2} />
@@ -476,8 +476,8 @@ export default function AppShell({
                             aria-expanded={isOpen}
                             className="flex w-full items-center justify-between rounded-xl px-2.5 py-1 text-left"
                           >
-                            <span className="klaros-label !text-slate-500">{section.label}</span>
-                            <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`} strokeWidth={2} />
+                            <span className="klaros-label">{section.label}</span>
+                            <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} strokeWidth={2} />
                           </button>
                           {isOpen && (
                             <div className="space-y-0.5">
@@ -497,17 +497,17 @@ export default function AppShell({
           )}
         </nav>
         {user && (
-          <div className="border-t border-white/10 p-3">
+          <div className="border-t border-border/70 p-3">
             <DropdownMenu.Root>
-              <DropdownMenu.Trigger className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left outline-none transition-colors hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent">
+              <DropdownMenu.Trigger className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left outline-none transition-colors hover:bg-black/[0.04] focus-visible:ring-2 focus-visible:ring-accent">
                 <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white">
                   {(user.full_name || user.email).trim().charAt(0).toUpperCase()}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium text-slate-100">{user.full_name}</span>
-                  <span className="block truncate text-xs text-slate-500">{user.email}</span>
+                  <span className="block truncate text-[13px] font-medium text-foreground">{user.full_name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{user.email}</span>
                 </span>
-                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" strokeWidth={2} />
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={2} />
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content side="top" align="start" sideOffset={8} className="z-[70] min-w-[14rem] rounded-xl border border-border bg-surface p-1.5 text-sm shadow-popover">
