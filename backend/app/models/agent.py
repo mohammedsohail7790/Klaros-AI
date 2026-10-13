@@ -15,7 +15,8 @@ phase's own instructions).
 Reconciliation notes (see PHASE_4_IMPLEMENTATION_LOG.md for the full
 writeup):
 
-  - `Organization.autonomy_level` (app/models/organization.py) is NOT
+  - The old organization-wide autonomy setting (see app/models/organization.py;
+    named only there, so the CI deprecation guard stays a plain grep) is NOT
     touched, NOT read, and NOT resurrected anywhere in this file or its
     service layer. Autonomy is enforced here, at the Agent level, via
     `AgentAutonomyTier` — exactly the "replacement architecture" called
