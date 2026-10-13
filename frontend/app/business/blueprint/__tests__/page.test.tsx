@@ -255,4 +255,64 @@ describe("Blueprint page", () => {
     await waitFor(() => expect(updateBlueprintSectionMock).toHaveBeenCalledWith("test-token", expect.any(String), "b1", expect.any(Object)));
     await waitFor(() => expect(getActiveBlueprintMock.mock.calls.length).toBeGreaterThan(1));
   });
+
+  describe("owner-friendly editing", () => {
+    function activeWith(extra: unknown[] = [], caps: unknown = {}) {
+      const base = draftBlueprintResponse();
+      return {
+        ...base,
+        blueprint: { ...base.blueprint, status: "ACTIVE" },
+        claims: [],
+        sections: [
+          base.sections[0],
+          { ...base.sections[1], status: caps && Object.keys(caps as object).length ? "COMPLETE" : "EMPTY", data: caps },
+          ...extra,
+        ],
+      };
+    }
+
+    it("asks a plain question for a Missing section and saves the answer under its own key, without name/value boxes up front", async () => {
+      getCurrentBusinessJourneyMock.mockResolvedValue(journey("BLUEPRINT_ACTIVE"));
+      getActiveBlueprintMock.mockResolvedValue(activeWith([{ id: "s9", section_key: "GOALS", status: "EMPTY", data: {}, updated_by: null, updated_at: "x" }]));
+      updateBlueprintSectionMock.mockResolvedValue({});
+      render(<BlueprintPage />);
+      fireEvent.click(await screen.findByRole("button", { name: "Edit GOALS" }));
+      const box = await screen.findByLabelText("What are you aiming for?");
+      expect(box).toHaveAttribute("placeholder", expect.stringContaining("For example"));
+      fireEvent.change(box, { target: { value: "50 referred patients in six months" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(updateBlueprintSectionMock).toHaveBeenCalledWith("test-token", "GOALS", "b1", { goals: "50 referred patients in six months" }));
+    });
+
+    it("does not save an empty answer as if the section were filled in", async () => {
+      getCurrentBusinessJourneyMock.mockResolvedValue(journey("BLUEPRINT_ACTIVE"));
+      getActiveBlueprintMock.mockResolvedValue(activeWith([{ id: "s9", section_key: "GOALS", status: "EMPTY", data: {}, updated_by: null, updated_at: "x" }]));
+      updateBlueprintSectionMock.mockResolvedValue({});
+      render(<BlueprintPage />);
+      fireEvent.click(await screen.findByRole("button", { name: "Edit GOALS" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Save" }));
+      await waitFor(() => expect(updateBlueprintSectionMock).toHaveBeenCalledWith("test-token", "GOALS", "b1", {}));
+    });
+
+    it("offers the capabilities as a tick-list in everyday words and keeps what is already listed", async () => {
+      getCurrentBusinessJourneyMock.mockResolvedValue(journey("BLUEPRINT_ACTIVE"));
+      getActiveBlueprintMock.mockResolvedValue(activeWith([], { capabilities: ["medical_tourism.provider_directory", "Website"] }));
+      updateBlueprintSectionMock.mockResolvedValue({});
+      render(<BlueprintPage />);
+      fireEvent.click(await screen.findByRole("button", { name: "Edit Required Capabilities" }));
+      expect(await screen.findByLabelText("Website")).toBeChecked();
+      expect(screen.getByLabelText("Payments")).not.toBeChecked();
+      fireEvent.click(screen.getByLabelText("Payments"));
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(updateBlueprintSectionMock).toHaveBeenCalledWith("test-token", "REQUIRED_CAPABILITIES", "b1", { capabilities: ["medical_tourism.provider_directory", "Website", "Payments"] }));
+    });
+
+    it("shows stored capability keys as readable words, never as raw keys", async () => {
+      getCurrentBusinessJourneyMock.mockResolvedValue(journey("BLUEPRINT_ACTIVE"));
+      getActiveBlueprintMock.mockResolvedValue(activeWith([], { capabilities: ["medical_tourism.provider_directory", "medical_tourism.cross_border_commission"] }));
+      render(<BlueprintPage />);
+      expect(await screen.findByText(/Provider directory, Cross border commission/)).toBeInTheDocument();
+      expect(screen.queryByText(/medical_tourism./)).not.toBeInTheDocument();
+    });
+  });
 });
