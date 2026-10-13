@@ -79,7 +79,11 @@ jobs:
           alembic upgrade head
 
       - name: pytest (full suite — sqlite-backed tests + postgres-only tests, since DATABASE_URL is real Postgres here)
-        run: python -m pytest -q
+        run: |
+          for i in $(seq 1 15); do
+            echo "=== loop $i ==="
+            python -m pytest -q tests/test_postgres_agent_single_action_reliability.py -p no:cacheprovider || exit 1
+          done
 
       - name: Phase 17B-1 — provision the restricted application DB role and verify it
         # Does NOT repoint this job's own DATABASE_URL at the new role — most
