@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { Hero } from "@/components/ui/layout";
 import { ClinicOffers } from "@/components/mt/ClinicOffers";
 
 const STATUS_TABS = ["ALL", "ACTIVE", "INACTIVE"];
@@ -57,10 +57,9 @@ export default function MedicalTourismProceduresPage() {
   return (
     <AppShell user={user}>
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        <PageHeader
+        <Hero
           title={`Procedures (${total})`}
-          description="The treatments you arrange, and which clinics offer them."
-          icon={FileText}
+          lede="The treatments you arrange, and which clinics offer them."
           actions={
             <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">
               New procedure
@@ -68,14 +67,12 @@ export default function MedicalTourismProceduresPage() {
           }
         />
 
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
           {STATUS_TABS.map((s) => (
             <button
               key={s}
               onClick={() => setStatus(s)}
-              className={`rounded-full border px-3 py-1 text-xs ${
-                status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"
-              }`}
+              className={`klaros-filter-tab ${status === s ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}
             >
               {s}
             </button>
@@ -84,7 +81,7 @@ export default function MedicalTourismProceduresPage() {
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder="Category"
-            className="ml-auto w-48 rounded-xl border border-border-strong bg-surface-muted px-3 py-1.5 text-sm"
+            className="klaros-input ml-auto !w-48 !rounded-full"
           />
         </div>
 
@@ -108,30 +105,19 @@ export default function MedicalTourismProceduresPage() {
             }
           />
         ) : (
-          <div className="klaros-table-wrap">
-            <table className="klaros-table">
-              <thead className="bg-surface text-muted">
-                <tr>
-                  <th className="px-4 py-2">Name</th>
-                  <th className="px-4 py-2">Category</th>
-                  <th className="px-4 py-2">Typical destinations</th>
-                  <th className="px-4 py-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {procedures.map((p) => (
-                  <tr key={p.id} className="border-t border-border hover:bg-surface">
-                    <td className="px-4 py-2 font-medium text-foreground">{p.name}</td>
-                    <td className="px-4 py-2 text-muted">{p.category || "—"}</td>
-                    <td className="px-4 py-2 text-muted">{p.typical_destination_countries || "—"}</td>
-                    <td className="px-4 py-2">
-                      <Badge status={p.status}>{p.status}</Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted" aria-label="Procedures">
+            {procedures.map((p) => (
+              <li key={p.id} className="flex flex-col gap-2 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[17px] font-semibold tracking-tight text-foreground">{p.name}</p>
+                  <p className="mt-0.5 text-[14px] text-muted">
+                    {[p.category, p.typical_destination_countries].filter(Boolean).join(" · ") || "No category or destinations yet"}
+                  </p>
+                </div>
+                <Badge status={p.status}>{p.status}</Badge>
+              </li>
+            ))}
+          </ul>
         )}
 
         {token && <ClinicOffers token={token} refreshKey={offersRefresh} />}

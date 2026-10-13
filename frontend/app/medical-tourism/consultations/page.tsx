@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { Hero } from "@/components/ui/layout";
 
 const STATUS_TABS = ["ALL", "SCHEDULED", "COMPLETED", "CANCELLED", "NO_SHOW"];
 const NEXT_STATUS: Record<string, string[]> = {
@@ -88,10 +88,9 @@ export default function MedicalTourismConsultationsPage() {
   return (
     <AppShell user={user}>
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        <PageHeader
+        <Hero
           title={`Consultations (${total})`}
-          description="Consultations booked between a patient and a clinic, and how each one went."
-          icon={CalendarCheck}
+          lede="Consultations booked between a patient and a clinic, and how each one went."
           actions={
             <button onClick={() => setShowCreate(true)} className="klaros-btn-primary">
               New consultation
@@ -99,14 +98,12 @@ export default function MedicalTourismConsultationsPage() {
           }
         />
 
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
           {STATUS_TABS.map((s) => (
             <button
               key={s}
               onClick={() => setStatus(s)}
-              className={`rounded-full border px-3 py-1 text-xs ${
-                status === s ? "border-foreground bg-surface text-foreground" : "border-border-strong text-muted"
-              }`}
+              className={`klaros-filter-tab ${status === s ? "klaros-filter-tab-active" : "klaros-filter-tab-inactive"}`}
             >
               {s}
             </button>
@@ -133,45 +130,31 @@ export default function MedicalTourismConsultationsPage() {
             }
           />
         ) : (
-          <div className="klaros-table-wrap">
-            <table className="klaros-table">
-              <thead className="bg-surface text-muted">
-                <tr>
-                  <th className="px-4 py-2">Provider</th>
-                  <th className="px-4 py-2">Appointment</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Notes</th>
-                  <th className="px-4 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {consultations.map((c) => (
-                  <tr key={c.id} className="border-t border-border hover:bg-surface">
-                    <td className="px-4 py-2 font-medium text-foreground">{providerName(c.provider_id)}</td>
-                    <td className="px-4 py-2 font-mono text-xs text-muted">{c.appointment_id}</td>
-                    <td className="px-4 py-2">
-                      <Badge status={c.status}>{c.status}</Badge>
-                    </td>
-                    <td className="px-4 py-2 text-muted">{c.notes || "—"}</td>
-                    <td className="px-4 py-2">
-                      <div className="flex flex-wrap gap-1">
-                        {(NEXT_STATUS[c.status] || []).map((next) => (
-                          <button
-                            key={next}
-                            disabled={busyId === c.id}
-                            onClick={() => handleStatusChange(c.id, next)}
-                            className="rounded-full border border-border-strong px-2 py-0.5 text-xs text-muted hover:border-foreground hover:text-foreground disabled:opacity-50"
-                          >
-                            {next.replace("_", " ").toLowerCase()}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted" aria-label="Consultations">
+            {consultations.map((c) => (
+              <li key={c.id} className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p className="text-[17px] font-semibold tracking-tight text-foreground">{providerName(c.provider_id)}</p>
+                    <Badge status={c.status}>{c.status}</Badge>
+                  </div>
+                  <p className="mt-1 text-[14px] leading-snug text-muted">{c.notes || "No notes"}</p>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  {(NEXT_STATUS[c.status] || []).map((next) => (
+                    <button
+                      key={next}
+                      disabled={busyId === c.id}
+                      onClick={() => handleStatusChange(c.id, next)}
+                      className="rounded-full bg-surface px-4 py-1.5 text-[13px] font-medium text-foreground transition-colors duration-300 hover:bg-border disabled:opacity-50"
+                    >
+                      {next.replace("_", " ").toLowerCase()}
+                    </button>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
