@@ -5895,3 +5895,126 @@ export function createProviderCommission(
 export function transitionCommission(token: string, commissionId: string, status: CommissionStatus, note?: string) {
   return post<{ commission: DeskCommission }>(token, `${MTR}/commissions/${commissionId}/transition`, { status, note });
 }
+
+// ---------------------------------------------------------------------------
+// App Builder (backend/app/builder): requirements-driven multi-page projects.
+// Generated projects are static files; the preview is a signed, sandboxed URL.
+// ---------------------------------------------------------------------------
+
+export type BuilderRunState = "queued" | "planning" | "generating" | "validating" | "repairing" | "ready" | "failed" | "cancelled";
+export const BUILDER_ACTIVE_STATES: BuilderRunState[] = ["queued", "planning", "generating", "validating", "repairing"];
+
+export interface BuilderFeature {
+  key: string;
+  label: string;
+  status: "implemented" | "client_side" | "needs_setup" | "unsupported";
+  note: string;
+}
+
+export interface BuilderRoute {
+  path: string;
+  title: string;
+  nav: boolean;
+  detail: boolean;
+}
+
+export interface BuilderProject {
+  id: string;
+  name: string;
+  slug: string;
+  status: "new" | "working" | "ready" | "failed";
+  current_version_id: string | null;
+  published_version_id: string | null;
+  published_at: string | null;
+  routes: BuilderRoute[];
+  features: BuilderFeature[];
+  assumptions: string[];
+  design: Record<string, unknown> | null;
+  locked_paths: string[];
+  updated_at: string | null;
+}
+
+export interface BuilderIssue {
+  severity: "error" | "warning";
+  code: string;
+  path: string;
+  message: string;
+}
+
+export interface BuilderValidation {
+  ok: boolean;
+  errors: number;
+  warnings: number;
+  checks: Record<string, boolean>;
+  stats: Record<string, number>;
+  issues?: BuilderIssue[];
+}
+
+export interface BuilderRun {
+  id: string;
+  project_id: string;
+  kind: "create" | "edit";
+  state: BuilderRunState;
+  source: "ai" | "deterministic" | null;
+  progress: { at: string; state: BuilderRunState; message: string }[];
+  error: string | null;
+  validation: BuilderValidation | null;
+  usage: { calls?: number; input_tokens?: number; output_tokens?: number; models?: string[] };
+  repair_attempts: number;
+  cancel_requested: boolean;
+  result_version_id: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export interface BuilderVersion {
+  id: string;
+  number: number;
+  kind: "create" | "edit" | "file_edit" | "rollback";
+  summary: string;
+  prompt: string;
+  created_at: string;
+  changes: { added?: string[]; removed?: string[]; changed?: string[] };
+  validation: Partial<BuilderValidation>;
+}
+
+export interface BuilderMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  run_id: string | null;
+  created_at: string;
+}
+
+export const builderApi = {
+  list: (token: string) => request<BuilderProject[]>("/api/v1/builder/projects", { headers: authHeaders(token) }),
+  create: (token: string, prompt: string, name?: string) =>
+    request<{ project: BuilderProject; run: BuilderRun }>("/api/v1/builder/projects", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ prompt, name: name || null }) }),
+  get: (token: string, id: string) => request<{ project: BuilderProject; latest_run: BuilderRun | null }>(`/api/v1/builder/projects/${id}`, { headers: authHeaders(token) }),
+  remove: (token: string, id: string) => request<void>(`/api/v1/builder/projects/${id}`, { method: "DELETE", headers: authHeaders(token) }),
+  run: (token: string, id: string, runId: string) => request<BuilderRun>(`/api/v1/builder/projects/${id}/runs/${runId}`, { headers: authHeaders(token) }),
+  cancel: (token: string, id: string, runId: string) => request<BuilderRun>(`/api/v1/builder/projects/${id}/runs/${runId}/cancel`, { method: "POST", headers: authHeaders(token) }),
+  send: (token: string, id: string, message: string) => request<{ run: BuilderRun }>(`/api/v1/builder/projects/${id}/messages`, { method: "POST", headers: authHeaders(token), body: JSON.stringify({ message }) }),
+  messages: (token: string, id: string) => request<BuilderMessage[]>(`/api/v1/builder/projects/${id}/messages`, { headers: authHeaders(token) }),
+  versions: (token: string, id: string) => request<BuilderVersion[]>(`/api/v1/builder/projects/${id}/versions`, { headers: authHeaders(token) }),
+  restore: (token: string, id: string, versionId: string) => request<BuilderVersion>(`/api/v1/builder/projects/${id}/versions/${versionId}/restore`, { method: "POST", headers: authHeaders(token) }),
+  files: (token: string, id: string) => request<{ version_id: string; files: { path: string; sha: string; size: number }[]; validation: BuilderValidation }>(`/api/v1/builder/projects/${id}/files`, { headers: authHeaders(token) }),
+  file: (token: string, id: string, path: string) => request<{ path: string; content: string }>(`/api/v1/builder/projects/${id}/files/${path}`, { headers: authHeaders(token) }),
+  saveFile: (token: string, id: string, path: string, content: string) =>
+    request<BuilderVersion>(`/api/v1/builder/projects/${id}/files/${path}`, { method: "PUT", headers: authHeaders(token), body: JSON.stringify({ content }) }),
+  previewToken: (token: string, id: string) => request<{ url: string; expires_at: number; version_id: string }>(`/api/v1/builder/projects/${id}/preview-token`, { method: "POST", headers: authHeaders(token) }),
+  publish: (token: string, id: string, acknowledgeExamples: boolean) =>
+    request<{ project: BuilderProject; url: string }>(`/api/v1/builder/projects/${id}/publish`, { method: "POST", headers: authHeaders(token), body: JSON.stringify({ acknowledge_examples: acknowledgeExamples }) }),
+  unpublish: (token: string, id: string) => request<{ project: BuilderProject }>(`/api/v1/builder/projects/${id}/publish`, { method: "DELETE", headers: authHeaders(token) }),
+  exportUrl: (id: string) => `${API_URL}/api/v1/builder/projects/${id}/export`,
+  async downloadExport(token: string, id: string, filename: string) {
+    const res = await fetch(`${API_URL}/api/v1/builder/projects/${id}/export`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new ApiError(res.status, "Could not export the project");
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  },
+};
