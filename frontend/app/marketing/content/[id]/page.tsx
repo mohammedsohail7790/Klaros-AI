@@ -123,8 +123,8 @@ export default function ContentDetailPage() {
             <div className="rounded-3xl bg-surface-muted p-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <h1 className="text-2xl font-semibold tracking-tight text-foreground">{content.title}</h1>
-                  <p className="mt-1 text-sm text-muted">
+                  <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">{content.title}</h1>
+                  <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
                     {content.ai_generated ? "AI generated" : "Manually created"}
                     {content.source_job_id && " · from a completed job"}
                   </p>

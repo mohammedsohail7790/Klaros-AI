@@ -124,8 +124,8 @@ export default function VendorsPage() {
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <header className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Vendors</h1>
-            <p className="mt-1 text-sm text-muted">
+            <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Vendors</h1>
+            <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
               Subcontractors and suppliers — a bill linked to a job feeds real job costing automatically.
             </p>
           </div>

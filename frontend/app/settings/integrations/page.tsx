@@ -369,8 +369,8 @@ function IntegrationsPageInner() {
       <div className="mx-auto max-w-4xl px-5 py-10 sm:px-8 sm:py-12">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1 basis-80">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Integrations</h1>
-            <p className="mt-1 text-sm text-muted">
+            <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Integrations</h1>
+            <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
               The accounts Klaros connects to. Each status is checked live with the provider, so what you see is what is really working.
               {rows && ` ${connectedCount} of ${visibleRows.length} connected.`}
             </p>

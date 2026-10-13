@@ -150,10 +150,10 @@ export default function OnboardingPage() {
 
           {step === 0 && (
             <>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">
                 Welcome{user ? `, ${user.full_name.split(" ")[0]}` : ""}
               </h1>
-              <p className="mt-1 text-sm text-muted">
+              <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
                 You&apos;re already on a real 14-day free trial with full access — no card needed. Subscribe
                 now if you'd rather start paid right away, or just continue on the trial.
               </p>
@@ -205,8 +205,8 @@ export default function OnboardingPage() {
 
           {step === 1 && (
             <>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Set your business hours</h1>
-              <p className="mt-1 text-sm text-muted">
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Set your business hours</h1>
+              <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
                 So Klaros runs on your business's own schedule, not generic defaults. Can be changed
                 later in Settings.
               </p>
@@ -252,8 +252,8 @@ export default function OnboardingPage() {
 
           {step === 2 && (
             <>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Teach Klaros your business</h1>
-              <p className="mt-1 text-sm text-muted">
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Teach Klaros your business</h1>
+              <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
                 This writes real, editable files into your Knowledge Layer — the same source Klaros
                 reads from for Ask AI and AI-drafted content. Answer as much or as little as you
                 like; you can expand it anytime in Settings → Knowledge.
@@ -317,8 +317,8 @@ export default function OnboardingPage() {
 
           {step === 3 && (
             <>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">You&apos;re set up</h1>
-              <p className="mt-1 text-sm text-muted">
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">You&apos;re set up</h1>
+              <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
                 Klaros now knows your timezone and what you told it about your business. Next, connect
                 the tools you actually use — Stripe, QuickBooks, Google Calendar — from the checklist on
                 your dashboard, and Klaros will verify each connection for real before marking it

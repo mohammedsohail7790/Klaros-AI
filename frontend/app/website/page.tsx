@@ -107,7 +107,7 @@ export default function WebsitePage() {
           note="Built from your Business Blueprint: it only includes pages your business actually needs, and nothing goes live until you publish."
         />
         <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Website</h1>
+          <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Website</h1>
           {website &&
             (website.current_published_version_id ? (
               <a href={`/w/${user?.tenant_id}`} target="_blank" rel="noreferrer" className="text-sm text-accent underline">

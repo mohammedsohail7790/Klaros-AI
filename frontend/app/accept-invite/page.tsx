@@ -80,7 +80,7 @@ function AcceptInviteInner() {
             <Skeleton />
           ) : previewError || !preview ? (
             <>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Invite not available</h1>
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Invite not available</h1>
               <p className="mt-2 text-sm text-danger">{previewError}</p>
               <p className="mt-4 text-sm text-muted">
                 Ask whoever invited you to send a new invite from Settings → Team.
@@ -88,8 +88,8 @@ function AcceptInviteInner() {
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Join {preview.organization_name}</h1>
-              <p className="mt-1 text-sm text-muted">
+              <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Join {preview.organization_name}</h1>
+              <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
                 You&apos;ve been invited as <span className="font-medium text-foreground">{preview.role}</span>.
                 Set a password to finish joining {preview.email}.
               </p>

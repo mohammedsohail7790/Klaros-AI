@@ -172,7 +172,7 @@ function PublicQuoteViewInner() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Quote {quote.quote_number}</h1>
+        <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Quote {quote.quote_number}</h1>
         <Badge status={quote.status}>{quote.status.replace(/_/g, " ")}</Badge>
       </div>
 

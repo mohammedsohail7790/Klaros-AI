@@ -100,7 +100,7 @@ export default function EventsPage() {
     <AppShell user={user}>
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Event Worker</h1>
+          <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Event Worker</h1>
           <button onClick={load} className="klaros-btn-secondary !px-3 !py-1.5">
             Refresh
           </button>

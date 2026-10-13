@@ -97,7 +97,7 @@ export default function ContractDetailPage() {
     <AppShell user={user}>
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <div className="mb-2 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Contract {contract.contract_number}</h1>
+          <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Contract {contract.contract_number}</h1>
           <span className="rounded-full border border-border-strong px-3 py-1 text-xs">{contract.status}</span>
         </div>
         <p className="mb-6 text-sm text-muted">
