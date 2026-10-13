@@ -146,6 +146,19 @@ describe("Blueprint page", () => {
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/business/requirements"));
   });
 
+  it("still offers Confirm when the journey is in review but its blueprint is already ACTIVE (otherwise Requirements bounces back forever)", async () => {
+    getCurrentBusinessJourneyMock.mockResolvedValue(journey("BLUEPRINT_REVIEW"));
+    const full = draftBlueprintResponse();
+    getDraftBlueprintMock.mockResolvedValue({ ...full, blueprint: { ...full.blueprint, status: "ACTIVE" }, claims: [] });
+    confirmBlueprintJourneyStepMock.mockResolvedValue(journey("BLUEPRINT_ACTIVE"));
+
+    render(<BlueprintPage />);
+    expect(screen.queryByText("Continue to requirements")).toBeNull();
+    fireEvent.click(await screen.findByText("Confirm and continue"));
+    await waitFor(() => expect(confirmBlueprintJourneyStepMock).toHaveBeenCalledWith("test-token", "j1"));
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/business/requirements"));
+  });
+
   it("handles an incomplete/invalid blueprint confirmation (409) by reconciling instead of getting stuck", async () => {
     getCurrentBusinessJourneyMock.mockResolvedValue(journey("BLUEPRINT_REVIEW"));
     getDraftBlueprintMock.mockResolvedValue(draftBlueprintResponse());
