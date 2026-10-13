@@ -297,12 +297,12 @@ export default function DashboardPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-10">
-        <header className="mb-8 flex items-center justify-between">
+      <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
+        <header className="mb-10 flex items-end justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{user ? `Welcome back, ${user.full_name.split(" ")[0]}` : "Your business today"}</h1>
+            <h1 className="font-display text-[2.25rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[3rem]">{user ? `Welcome back, ${user.full_name.split(" ")[0]}` : "Your business today"}</h1>
             {user && (
-              <p className="text-sm text-muted">
+              <p className="mt-3 text-[17px] text-muted sm:text-xl">
                 Here is what your business and your AI team did today.
               </p>
             )}
@@ -311,10 +311,10 @@ export default function DashboardPage() {
 
         {killSwitch && (
           <div
-            className={`mb-6 flex items-center justify-between rounded-xl border px-4 py-3 text-sm ${
+            className={`mb-8 flex flex-wrap items-center justify-between gap-3 rounded-3xl px-6 py-4 text-[15px] ${
               killSwitch.ai_paused
-                ? "border-danger/40 bg-danger/10 text-danger"
-                : "border-border bg-surface text-muted"
+                ? "bg-danger/10 text-danger"
+                : "bg-surface-muted text-muted"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -333,10 +333,10 @@ export default function DashboardPage() {
               <button
                 onClick={handleToggleKillSwitch}
                 disabled={killSwitchBusy}
-                className={`shrink-0 rounded-xl border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+                className={`shrink-0 rounded-full px-4 py-1.5 text-[13px] font-medium disabled:opacity-50 ${
                   killSwitch.ai_paused
-                    ? "border-success/40 bg-success/[0.06] text-success hover:bg-success/15"
-                    : "border-danger/40 bg-danger/[0.06] text-danger hover:bg-danger/10"
+                    ? "bg-success/15 text-success hover:bg-success/25"
+                    : "bg-danger/10 text-danger hover:bg-danger/20"
                 }`}
               >
                 {killSwitchBusy ? "Working..." : killSwitch.ai_paused ? "Resume AI" : "Pause all AI"}
@@ -348,7 +348,7 @@ export default function DashboardPage() {
         {gettingStartedChecks && (
           <section className="mb-8">
             {gettingStartedRemaining === 0 ? (
-              <div className="flex items-center gap-2 rounded-xl border border-success/20 bg-success/10 px-4 py-2.5 text-sm text-success">
+              <div className="flex items-center gap-3 rounded-3xl bg-success/10 px-6 py-4 text-[15px] text-success">
                 <Check className="h-4 w-4 shrink-0" strokeWidth={2} />
                 All set — payments, accounting, scheduling, and your AI assistant are connected.
               </div>
@@ -363,8 +363,8 @@ export default function DashboardPage() {
                     <Link
                       key={item.provider}
                       href="/settings/integrations"
-                      className={`rounded-xl border p-4 transition hover:border-border-strong ${
-                        item.connected ? "border-success/20 bg-success/10" : "border-border bg-surface"
+                      className={`rounded-3xl p-5 transition-all duration-500 ease-apple hover:-translate-y-0.5 hover:shadow-raised ${
+                        item.connected ? "bg-success/10" : "bg-surface-muted"
                       }`}
                     >
                       <div className="mb-1 flex items-center justify-between">
@@ -401,16 +401,16 @@ export default function DashboardPage() {
           {!attention ? (
             <Skeleton stats={0} rows={3} />
           ) : attention.items.length === 0 ? (
-            <p className="klaros-card border-success/20 bg-success/10 p-4 text-sm text-success">
+            <p className="rounded-3xl bg-success/10 px-6 py-5 text-[15px] text-success">
               Nothing needs your attention right now.
             </p>
           ) : (
-            <ul className="klaros-card divide-y divide-border overflow-hidden">
+            <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted">
               {attention.items.slice(0, 8).map((item) => (
                 <li key={`${item.category}-${item.entity_id}`}>
                   <Link
                     href={item.link}
-                    className="flex items-start justify-between gap-4 p-4 transition-colors hover:bg-accent-soft/40"
+                    className="flex items-start justify-between gap-4 px-6 py-5 transition-colors duration-300 hover:bg-black/[0.03]"
                   >
                     <div className="min-w-0">
                       <div className="mb-1 flex items-center gap-2">

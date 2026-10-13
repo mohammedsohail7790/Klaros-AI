@@ -106,15 +106,21 @@ export default function WebsitePage() {
           activeKey="website"
           note="Built from your Business Blueprint: it only includes pages your business actually needs, and nothing goes live until you publish."
         />
-        <header className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Website</h1>
+        <header className="mb-10 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Website</h1>
+            <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted sm:text-[17px]">
+              A site drafted from your Business Blueprint. Already have your own? Import it in{" "}
+              <a href="/builder" className="text-accent hover:underline">App Builder</a>.
+            </p>
+          </div>
           {website &&
             (website.current_published_version_id ? (
-              <a href={`/w/${user?.tenant_id}`} target="_blank" rel="noreferrer" className="text-sm text-accent underline">
+              <a href={`/w/${user?.tenant_id}`} target="_blank" rel="noreferrer" className="klaros-btn-primary">
                 View public site
               </a>
             ) : (
-              <span className="text-sm text-muted-foreground">Not published yet — there is no public site.</span>
+              <span className="rounded-full bg-surface-muted px-4 py-1.5 text-[13px] font-medium text-muted">Not published yet</span>
             ))}
         </header>
 
@@ -134,16 +140,16 @@ export default function WebsitePage() {
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr]">
             <div>
-              <div className="mb-3 text-sm text-muted">
-                {website.name} <span className="text-muted-foreground">/{website.slug}</span>
+              <div className="mb-4 rounded-2xl bg-surface-muted px-4 py-3 text-[14px] text-muted">
+                <span className="font-medium text-foreground">{website.name}</span> <span className="text-muted-foreground">/{website.slug}</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {versions.map((v) => (
                   <button
                     key={v.id}
                     onClick={() => setSelectedVersionId(v.id)}
-                    className={`w-full rounded-xl border p-2 text-left text-sm ${
-                      v.id === selectedVersionId ? "border-accent bg-accent-soft" : "border-border"
+                    className={`w-full rounded-2xl px-4 py-3 text-left text-[15px] transition-all duration-300 ease-apple ${
+                      v.id === selectedVersionId ? "bg-accent-soft ring-2 ring-accent" : "bg-surface-muted hover:bg-border"
                     }`}
                   >
                     <div className="flex items-center justify-between">

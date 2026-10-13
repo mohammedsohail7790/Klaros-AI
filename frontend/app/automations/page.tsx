@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { History, Workflow } from "lucide-react";
+import { History, Workflow, ChevronRight } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { Hero } from "@/components/ui/layout";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -447,45 +448,40 @@ export default function AutomationsPage() {
   return (
     <AppShell user={user}>
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">Automations</h1>
-          {mode !== "list" ? (
-            <button
-              onClick={() => setMode("list")}
-              className="rounded-xl border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-muted"
-            >
-              Back to list
-            </button>
-          ) : (
-            <button onClick={startCreate} className="klaros-btn-primary text-xs">
-              New automation
-            </button>
-          )}
-        </div>
+        <Hero
+          title="Automations"
+          lede="Event, then condition, then action, running against the same governed Tool Registry every other part of Klaros uses. No automation can call an action outside a fixed allowlist, and editing one always creates a new version."
+          actions={
+            mode !== "list" ? (
+              <button onClick={() => setMode("list")} className="klaros-btn-secondary">
+                Back to list
+              </button>
+            ) : (
+              <button onClick={startCreate} className="klaros-btn-primary">
+                New automation
+              </button>
+            )
+          }
+        />
 
-        <p className="mb-4 text-xs text-muted">
-          Event → condition → action, running against the exact same governed Tool Registry pipeline every
-          other part of Klaros uses — no automation can call an action outside a fixed, hardcoded allowlist.
-          Editing an automation always creates a new version; an execution already in flight keeps running
-          against the version it started with.
-        </p>
-
-        <div className="mb-6 flex items-center gap-2 rounded-2xl bg-surface-muted p-3 text-xs">
-          <span className="text-muted">Business timezone (used by all Schedule triggers):</span>
+        <div className="mb-10 flex flex-wrap items-center gap-3 rounded-3xl bg-surface-muted px-6 py-4 text-[14px]">
+          <span className="font-medium text-foreground">Business timezone</span>
+          <span className="text-muted">used by all Schedule triggers</span>
           <input
             value={timezoneInput}
             onChange={(e) => setTimezoneInput(e.target.value)}
             placeholder="America/New_York"
-            className="w-48 rounded-xl border border-border-strong bg-background px-2 py-1 text-xs"
+            aria-label="Business timezone"
+            className="ml-auto w-52 rounded-full bg-surface px-4 py-1.5 text-[13px]"
           />
           <button
             onClick={handleSaveTimezone}
             disabled={busy || timezoneInput === tenantTimezone}
-            className="rounded-xl border border-border-strong bg-surface-muted px-2 py-1 text-xs hover:bg-surface-muted disabled:opacity-50"
+            className="klaros-btn-secondary !py-1.5 disabled:opacity-50"
           >
             Save
           </button>
-          {tenantTimezone && <span className="text-muted-foreground">Current: {tenantTimezone}</span>}
+          {tenantTimezone && <span className="text-[13px] text-muted-foreground">Current: {tenantTimezone}</span>}
         </div>
 
         {error && (
@@ -507,23 +503,22 @@ export default function AutomationsPage() {
                 }
               />
             ) : (
-              <div className="space-y-2">
+              <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted" aria-label="Automations">
                 {automations.map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => openDetail(a.id)}
-                    className="block w-full rounded-xl border border-border p-3 text-left text-sm hover:bg-surface-muted"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{a.name}</span>
-                      <Badge status={a.status} className="text-xs">
-                        {a.status}
-                      </Badge>
-                    </div>
-                    {a.description && <p className="mt-1 text-muted">{a.description}</p>}
-                  </button>
+                  <li key={a.id}>
+                    <button onClick={() => openDetail(a.id)} className="group flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition-colors duration-300 hover:bg-black/[0.03]">
+                      <span className="min-w-0">
+                        <span className="block text-[17px] font-semibold tracking-tight text-foreground">{a.name}</span>
+                        {a.description && <span className="mt-0.5 block text-[14px] leading-snug text-muted">{a.description}</span>}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-3">
+                        <Badge status={a.status}>{a.status}</Badge>
+                        <ChevronRight className="h-4 w-4 text-border-strong transition-transform duration-300 ease-apple group-hover:translate-x-0.5" aria-hidden="true" />
+                      </span>
+                    </button>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </div>
         )}
