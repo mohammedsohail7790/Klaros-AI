@@ -42,6 +42,8 @@ brief here is `mode=DETERMINISTIC` — checked in code, not just asserted.
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import contextvars
 import json
 import time
 from abc import ABC, abstractmethod
@@ -95,6 +97,48 @@ class AIProviderResult(BaseModel):
     provider: str
     model: str
     generation_ms: int
+
+
+@dataclass(frozen=True)
+class AICallBudget:
+    """Per-task limits. A website plan needs thousands of output tokens and a longer wait than a one-line brief; the defaults in Settings are
+    deliberately small and stay the default for every existing caller."""
+
+    max_output_tokens: int | None = None
+    timeout_seconds: float | None = None
+    model: str | None = None
+
+
+_BUDGET: contextvars.ContextVar[AICallBudget | None] = contextvars.ContextVar("ai_call_budget", default=None)
+
+
+@contextlib.contextmanager
+def ai_call_budget(budget: AICallBudget):
+    """Apply a budget to every provider call made inside the `with` block (task-local, so concurrent requests never see each other's)."""
+    token = _BUDGET.set(budget)
+    try:
+        yield
+    finally:
+        _BUDGET.reset(token)
+
+
+def _budget_tokens(default: int) -> int:
+    b = _BUDGET.get()
+    return b.max_output_tokens if b and b.max_output_tokens else default
+
+
+def _budget_timeout(default: float) -> float:
+    b = _BUDGET.get()
+    return b.timeout_seconds if b and b.timeout_seconds else default
+
+
+def _budget_model(default: str) -> str:
+    b = _BUDGET.get()
+    return b.model if b and b.model else default
+
+
+class AIOutputTruncated(Exception):
+    """The model hit its output limit mid-answer. The text is cut off, so it is never parsed or retried as-is."""
 
 
 class AIErrorType(StrEnum):
@@ -306,6 +350,8 @@ class _HTTPAIProvider(AIProvider):
 
     def _classify_exception(self, exc: Exception) -> tuple[AIErrorType, bool]:
         """Returns (error_type, is_retryable)."""
+        if isinstance(exc, AIOutputTruncated):
+            return AIErrorType.MALFORMED_RESPONSE, False
         if isinstance(exc, httpx.TimeoutException):
             return AIErrorType.TIMEOUT, True
         if isinstance(exc, httpx.HTTPStatusError):
@@ -410,7 +456,7 @@ class AnthropicAIProvider(_HTTPAIProvider):
         self._max_output_tokens = settings.ANTHROPIC_MAX_OUTPUT_TOKENS
 
     async def _call_api(self, prompt: str) -> _ProviderResponse:
-        async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+        async with httpx.AsyncClient(timeout=_budget_timeout(self._timeout_seconds)) as client:
             response = await client.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
@@ -419,14 +465,16 @@ class AnthropicAIProvider(_HTTPAIProvider):
                     "content-type": "application/json",
                 },
                 json={
-                    "model": self.model,
-                    "max_tokens": self._max_output_tokens,
+                    "model": _budget_model(self.model),
+                    "max_tokens": _budget_tokens(self._max_output_tokens),
                     "messages": [{"role": "user", "content": prompt}],
                 },
             )
             response.raise_for_status()
             body: dict[str, Any] = response.json()
             usage = body.get("usage", {})
+            if body.get("stop_reason") == "max_tokens":
+                raise AIOutputTruncated("the answer was cut off at the output limit")
             return _ProviderResponse(
                 text=body["content"][0]["text"],
                 input_tokens=usage.get("input_tokens"),
@@ -446,7 +494,7 @@ class OpenAIAIProvider(_HTTPAIProvider):
         self._max_output_tokens = settings.OPENAI_MAX_OUTPUT_TOKENS
 
     async def _call_api(self, prompt: str) -> _ProviderResponse:
-        async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+        async with httpx.AsyncClient(timeout=_budget_timeout(self._timeout_seconds)) as client:
             response = await client.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={
@@ -454,15 +502,17 @@ class OpenAIAIProvider(_HTTPAIProvider):
                     "content-type": "application/json",
                 },
                 json={
-                    "model": self.model,
+                    "model": _budget_model(self.model),
                     "messages": [{"role": "user", "content": prompt}],
                     "response_format": {"type": "json_object"},
-                    "max_tokens": self._max_output_tokens,
+                    "max_tokens": _budget_tokens(self._max_output_tokens),
                 },
             )
             response.raise_for_status()
             body: dict[str, Any] = response.json()
             usage = body.get("usage", {})
+            if body["choices"][0].get("finish_reason") == "length":
+                raise AIOutputTruncated("the answer was cut off at the output limit")
             return _ProviderResponse(
                 text=body["choices"][0]["message"]["content"],
                 input_tokens=usage.get("prompt_tokens"),
@@ -495,7 +545,7 @@ class _OpenAICompatibleProvider(_HTTPAIProvider):
         self._base_url = base_url
 
     async def _call_api(self, prompt: str) -> _ProviderResponse:
-        async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+        async with httpx.AsyncClient(timeout=_budget_timeout(self._timeout_seconds)) as client:
             response = await client.post(
                 f"{self._base_url}/chat/completions",
                 headers={
@@ -503,14 +553,16 @@ class _OpenAICompatibleProvider(_HTTPAIProvider):
                     "content-type": "application/json",
                 },
                 json={
-                    "model": self.model,
+                    "model": _budget_model(self.model),
                     "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": self._max_output_tokens,
+                    "max_tokens": _budget_tokens(self._max_output_tokens),
                 },
             )
             response.raise_for_status()
             body: dict[str, Any] = response.json()
             usage = body.get("usage", {})
+            if body["choices"][0].get("finish_reason") == "length":
+                raise AIOutputTruncated("the answer was cut off at the output limit")
             return _ProviderResponse(
                 text=body["choices"][0]["message"]["content"],
                 input_tokens=usage.get("prompt_tokens"),

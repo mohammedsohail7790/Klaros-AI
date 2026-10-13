@@ -218,7 +218,7 @@ export default function CustomerDetailPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <Link href="/customers" className="text-sm text-muted hover:underline">
           ← Back to customers
         </Link>
@@ -295,7 +295,7 @@ export default function CustomerDetailPage() {
                 ) : (
                   <>
                     <div className="flex items-start justify-between">
-                      <h1 className="font-display text-2xl text-foreground">{customer.name}</h1>
+                      <h1 className="text-2xl font-semibold tracking-tight text-foreground">{customer.name}</h1>
                       <button
                         onClick={startEditingCustomer}
                         className="text-xs text-muted underline hover:text-foreground"
@@ -330,7 +330,7 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Timeline</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Timeline</h2>
                 {timeline.length === 0 ? (
                   <EmptyState icon={Clock} title="No activity recorded yet." compact />
                 ) : (
@@ -353,7 +353,7 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">
                   Appointments ({appointmentEntries.length})
                 </h2>
                 {appointmentEntries.length === 0 ? (
@@ -370,7 +370,7 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Invoices / Payments</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Invoices / Payments</h2>
                 {invoices.length === 0 ? (
                   <EmptyState icon={Receipt} title="No financial history for this customer yet." compact />
                 ) : (
@@ -390,7 +390,7 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Payments received</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Payments received</h2>
                 {refundNotice && <p className="mb-2 text-sm text-success">{refundNotice}</p>}
                 {payments.length === 0 ? (
                   <EmptyState icon={Receipt} title="No payments recorded for this customer yet." compact />
@@ -460,7 +460,7 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Add note</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Add note</h2>
                 <form onSubmit={submitNote} className="flex gap-2">
                   <input
                     value={note}
@@ -471,7 +471,7 @@ export default function CustomerDetailPage() {
                   <button
                     type="submit"
                     disabled={noteSubmitting || !note.trim()}
-                    className="rounded-md border border-border-strong px-3 py-2 text-sm hover:bg-surface-muted disabled:opacity-50"
+                    className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                   >
                     {noteSubmitting ? "Saving..." : "Save"}
                   </button>
@@ -482,7 +482,7 @@ export default function CustomerDetailPage() {
             <section className="space-y-4">
               {health && (
                 <div className="rounded-lg border border-border bg-surface p-6">
-                  <h2 className="mb-3 text-sm font-medium text-muted">Customer health</h2>
+                  <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Customer health</h2>
                   <dl className="space-y-1.5 text-sm">
                     <div className="flex justify-between">
                       <dt className="text-muted">Lifecycle</dt>
@@ -530,7 +530,7 @@ export default function CustomerDetailPage() {
               )}
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-3 text-sm font-medium text-muted">Retention timeline</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Retention timeline</h2>
                 {retentionTimeline.length === 0 ? (
                   <EmptyState icon={Heart} title="No retention activity recorded yet." compact />
                 ) : (
@@ -551,7 +551,7 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-2 text-sm font-medium text-muted">AI summary</h2>
+                <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">AI summary</h2>
                 {summary ? (
                   <p className="text-sm text-muted">{summary}</p>
                 ) : (
@@ -561,7 +561,7 @@ export default function CustomerDetailPage() {
                 <button
                   onClick={loadSummary}
                   disabled={summaryLoading}
-                  className="mt-4 w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="mt-4 w-full klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                 >
                   {summaryLoading ? "Generating..." : "Generate summary"}
                 </button>

@@ -87,7 +87,10 @@
 }
 .klaros-site-band[data-tone="hero"] {
   padding-block: calc(var(--klaros-site-section-y) * 0.85) var(--klaros-site-section-y);
-  background: linear-gradient(to bottom, var(--klaros-site-surface), var(--klaros-site-bg));
+  background:
+    radial-gradient(60% 80% at 100% 0%, color-mix(in srgb, var(--klaros-site-secondary) 16%, transparent) 0%, transparent 70%),
+    radial-gradient(50% 70% at 0% 100%, color-mix(in srgb, var(--klaros-site-primary) 12%, transparent) 0%, transparent 70%),
+    linear-gradient(to bottom, var(--klaros-site-surface), var(--klaros-site-bg));
 }
 .klaros-site-band[data-tone="trust"] {
   padding-block: 1.1rem;
@@ -284,8 +287,8 @@
 }
 .klaros-site-hero h1 {
   font-size: clamp(2.3rem, 5.2vw, 3.9rem);
-  letter-spacing: -0.01em;
-  max-width: 18ch;
+  letter-spacing: -0.02em;
+  max-width: 22ch;
 }
 .klaros-site-hero p.klaros-site-lead {
   margin-block: 1.4rem 2rem;
@@ -708,4 +711,218 @@
   .klaros-site-root * {
     transition: none !important;
   }
+}
+
+
+/* ---- v3: designed visuals, showcase and split blocks ---- */
+.klaros-site-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block-end: 1rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--klaros-site-primary);
+  background: color-mix(in srgb, var(--klaros-site-primary) 9%, transparent);
+}
+.klaros-site-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 11rem;
+  overflow: hidden;
+  border-radius: calc(var(--klaros-site-radius) * 1.4);
+  color: #fff;
+}
+.klaros-site-art-photo {
+  display: block;
+  object-fit: cover;
+}
+.klaros-site-art-orb {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+.klaros-site-art-orb-a {
+  width: 70%;
+  aspect-ratio: 1;
+  inset-block-start: -28%;
+  inset-inline-end: -18%;
+}
+.klaros-site-art-orb-b {
+  width: 46%;
+  aspect-ratio: 1;
+  inset-block-end: -22%;
+  inset-inline-start: -10%;
+  background: rgba(255, 255, 255, 0.1);
+}
+.klaros-site-art-glass {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38%;
+  max-width: 6.5rem;
+  min-width: 3.5rem;
+  aspect-ratio: 1;
+  border-radius: 28%;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(6px);
+}
+.klaros-site-art-glass svg {
+  width: 52%;
+  height: 52%;
+}
+
+.klaros-site-hero-grid[data-visual="true"] {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+}
+.klaros-site-hero-visual {
+  position: relative;
+  aspect-ratio: 4 / 3.4;
+  min-height: 18rem;
+}
+.klaros-site-hero-visual .klaros-site-hero-art {
+  border-radius: calc(var(--klaros-site-radius) * 2.2);
+  box-shadow: 0 30px 60px -20px color-mix(in srgb, var(--klaros-site-primary) 55%, transparent);
+}
+.klaros-site-hero-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  background: var(--klaros-site-bg);
+  color: var(--klaros-site-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: var(--klaros-site-shadow);
+}
+.klaros-site-hero-chip svg {
+  color: var(--klaros-site-primary);
+}
+.klaros-site-hero-chip-a {
+  inset-block-start: 9%;
+  inset-inline-start: -4%;
+}
+.klaros-site-hero-chip-b {
+  inset-block-end: 10%;
+  inset-inline-end: -3%;
+}
+
+.klaros-site-showcase-head {
+  max-width: 44rem;
+  margin-block-end: 2.25rem;
+}
+.klaros-site-showcase-head .klaros-site-section-title {
+  margin-block-end: 0.75rem;
+}
+.klaros-site-showcase {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+.klaros-site-product {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--klaros-site-line);
+  border-radius: calc(var(--klaros-site-radius) * 1.6);
+  background: var(--klaros-site-bg);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.klaros-site-product:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -16px color-mix(in srgb, var(--klaros-site-primary) 40%, transparent);
+}
+.klaros-site-product-media {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  padding: 0.6rem;
+}
+.klaros-site-product-badge {
+  position: absolute;
+  inset-block-start: 1.1rem;
+  inset-inline-start: 1.1rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--klaros-site-bg);
+  color: var(--klaros-site-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.klaros-site-product-body {
+  padding: 0.9rem 1.2rem 1.3rem;
+}
+.klaros-site-product-body h3 {
+  font-size: 1.15rem;
+  text-transform: capitalize;
+}
+.klaros-site-product-body p {
+  margin-block-start: 0.4rem;
+  font-size: 0.95rem;
+  color: var(--klaros-site-muted);
+}
+.klaros-site-product-body .klaros-site-product-price {
+  font-weight: 700;
+  color: var(--klaros-site-text);
+}
+
+.klaros-site-split {
+  display: grid;
+  gap: 3.5rem;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.klaros-site-split[data-side="left"] .klaros-site-split-media {
+  order: -1;
+}
+.klaros-site-split-media {
+  aspect-ratio: 5 / 4;
+}
+.klaros-site-split-text .klaros-site-section-title {
+  margin-block-end: 1.1rem;
+}
+.klaros-site-split-bullets {
+  list-style: none;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+.klaros-site-split-bullets li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 500;
+}
+.klaros-site-split-bullets svg {
+  flex: none;
+  color: var(--klaros-site-primary);
+}
+.klaros-site-split-text .klaros-site-btn {
+  margin-block-start: 1.8rem;
+}
+@media (max-width: 860px) {
+  .klaros-site-hero-grid[data-visual="true"],
+  .klaros-site-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.25rem;
+  }
+  .klaros-site-split[data-side="left"] .klaros-site-split-media {
+    order: 0;
+  }
+  .klaros-site-hero-visual {
+    min-height: 14rem;
+  }
+  .klaros-site-hero-chip-a { inset-inline-start: 2%; }
+  .klaros-site-hero-chip-b { inset-inline-end: 2%; }
 }

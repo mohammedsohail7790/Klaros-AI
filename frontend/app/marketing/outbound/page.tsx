@@ -171,13 +171,13 @@ export default function OutboundPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Outbound &amp; List Building</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Outbound &amp; List Building</h1>
           <button
             disabled={busy}
             onClick={handleExecuteDue}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+            className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
           >
             Execute due activities
           </button>
@@ -187,10 +187,10 @@ export default function OutboundPage() {
 
         <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <h2 className="mb-3 text-sm font-medium text-muted">Lists</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Lists</h2>
             <form onSubmit={handleCreateList} className="mb-3 flex gap-2">
               <input value={listName} onChange={(e) => setListName(e.target.value)} placeholder="List name" className="flex-1 rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
-              <button type="submit" disabled={busy || !listName.trim()} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
+              <button type="submit" disabled={busy || !listName.trim()} className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
                 Create
               </button>
             </form>
@@ -208,7 +208,7 @@ export default function OutboundPage() {
           </div>
 
           <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
-            <h2 className="mb-3 text-sm font-medium text-muted">Add contact</h2>
+            <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Add contact</h2>
             <form onSubmit={handleAddContact} className="space-y-2">
               <select value={selectedList} onChange={(e) => setSelectedList(e.target.value)} className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm">
                 <option value="">Select a list...</option>
@@ -218,14 +218,14 @@ export default function OutboundPage() {
               </select>
               <input value={contactCompany} onChange={(e) => setContactCompany(e.target.value)} placeholder="Company (optional)" className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
               <input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="Email" className="w-full rounded-md border border-border-strong bg-surface-muted px-2 py-1.5 text-sm" />
-              <button type="submit" disabled={busy || !selectedList || !contactEmail.trim()} className="w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50">
+              <button type="submit" disabled={busy || !selectedList || !contactEmail.trim()} className="w-full klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50">
                 Add contact
               </button>
             </form>
           </div>
         </div>
 
-        <h2 className="mb-3 text-sm font-medium text-muted">Contacts ({contacts.length})</h2>
+        <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Contacts ({contacts.length})</h2>
         {contacts.length === 0 ? (
           <EmptyState icon={Contact} title="No contacts yet." />
         ) : (
@@ -264,7 +264,7 @@ export default function OutboundPage() {
           <button
             type="submit"
             disabled={busy || !sequenceName.trim()}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+            className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
           >
             Create
           </button>
@@ -333,7 +333,7 @@ export default function OutboundPage() {
                     <button
                       onClick={() => handleAddStep(s.id)}
                       disabled={busy}
-                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                      className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                     >
                       Add
                     </button>
@@ -359,7 +359,7 @@ export default function OutboundPage() {
                     <button
                       onClick={() => handleEnroll(s.id)}
                       disabled={busy || !enrollContactId}
-                      className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                      className="klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                     >
                       Enroll
                     </button>

@@ -113,6 +113,14 @@ async def test_website_provider_directory_data_provider_sets_tenant_context(monk
     await _make_org(tenant_id)
     service = MedicalTourismService(async_session_maker)
     provider, _ = await service.create_provider(tenant_id, CreateProviderInput(name="Directory Co", country="mx"))
+    # The public partner list only shows verified clinics.
+    async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
+        await session.execute(
+            text("UPDATE medical_tourism_providers SET verification_status = 'VERIFIED' WHERE id = :id"),
+            {"id": provider.id},
+        )
+        await session.commit()
     spy.calls.clear()
 
     result = await _provide_website_provider_directory(tenant_id, {"limit": 5})

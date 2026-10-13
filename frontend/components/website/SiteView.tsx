@@ -73,6 +73,8 @@ export function SiteView({
   const theme = site.theme as Record<string, unknown>;
   const wordmark = (typeof theme.logo_text === "string" && theme.logo_text.trim()) || site.seo_defaults?.title || "";
   const home = site.navigation.items[0]?.page_slug ?? site.pages[0]?.slug ?? "home";
+  const contactItem = site.navigation.items.find((i) => i.page_slug === "contact");
+  const contactHref = contactItem && page.slug !== "contact" ? hrefForPage(contactItem.page_slug) : undefined;
   let neutral = 0; // counts the blocks that take the light/tinted alternation; the first one after the banner is light
 
   return (
@@ -124,7 +126,7 @@ export function SiteView({
       <main id="site-main">
         {page.sections.map((section, i) => {
           const alt = !SELF_TONED.has(section.component_type) && neutral++ % 2 === 1;
-          return <RenderSection key={i} section={section} tenantId={tenantId} preview={preview} alt={alt} />;
+          return <RenderSection key={i} section={section} tenantId={tenantId} preview={preview} alt={alt} contactHref={contactHref} />;
         })}
       </main>
     </div>

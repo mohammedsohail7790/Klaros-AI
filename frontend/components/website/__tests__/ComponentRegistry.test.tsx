@@ -188,4 +188,47 @@ describe("CONTACT_FORM — while it finds out whether it may open", () => {
     await screen.findByText(/can't take enquiries through this page right now/);
     expect(screen.queryByRole("status")).toBeNull();
   });
+
+  it("renders SHOWCASE cards with a designed tile when there is no picture, and only https pictures otherwise", () => {
+    const { container } = render(
+      <RenderSection
+        section={section("SHOWCASE", {
+          title: "What we offer",
+          items: [
+            { title: "standing desk mats", description: "Soft underfoot.", badge: "New" },
+            { title: "monitor risers", image_url: "https://example.com/riser.jpg" },
+            { title: "laptop stands", image_url: "javascript:alert(1)" },
+          ],
+        })}
+        tenantId="t1"
+      />
+    );
+    expect(screen.getByText("standing desk mats")).toBeInTheDocument();
+    expect(screen.getByText("Soft underfoot.")).toBeInTheDocument();
+    expect(screen.getByText("New")).toBeInTheDocument();
+    const imgs = container.querySelectorAll("img");
+    expect(imgs).toHaveLength(1);
+    expect(imgs[0].getAttribute("src")).toBe("https://example.com/riser.jpg");
+    // The unsafe address is never put in the page; that card falls back to the drawn tile.
+    expect(container.innerHTML).not.toContain("javascript:");
+    expect(container.querySelectorAll(".klaros-site-art").length).toBe(3);
+  });
+
+  it("renders SPLIT with its key points and falls back to the contact page for the button", () => {
+    render(
+      <RenderSection
+        section={section("SPLIT", { heading: "About us", body: "We curate desk gear.", bullets: ["Curated range"], cta_text: "Talk to us" })}
+        tenantId="t1"
+        contactHref="/w/t1?page=contact"
+      />
+    );
+    expect(screen.getByRole("heading", { name: "About us" })).toBeInTheDocument();
+    expect(screen.getByText("Curated range")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Talk to us" })).toHaveAttribute("href", "/w/t1?page=contact");
+  });
+
+  it("shows the HERO eyebrow", () => {
+    render(<RenderSection section={section("HERO", { headline: "Desk gear", eyebrow: "Home-office essentials" })} tenantId="t1" />);
+    expect(screen.getAllByText("Home-office essentials").length).toBeGreaterThan(0);
+  });
 });

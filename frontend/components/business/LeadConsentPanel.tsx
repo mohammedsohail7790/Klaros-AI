@@ -101,7 +101,7 @@ export function LeadConsentPanel({ token, leadId, onChanged }: { token: string |
           <ShieldCheck className="h-4 w-4" strokeWidth={2} />
         </span>
         <div className="min-w-0">
-          <h2 id="lead-consent-h" className="font-display text-xl text-foreground">Consent</h2>
+          <h2 id="lead-consent-h" className="text-xl font-semibold tracking-tight text-foreground">Consent</h2>
           <p className="mt-0.5 text-sm text-muted">What this patient has agreed to now. Their newest answer is the one that counts.</p>
         </div>
       </div>

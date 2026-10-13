@@ -113,7 +113,9 @@ async def test_deterministic_generation_uses_blueprint_content(
     spec = result.specification
     home = next(p for p in spec.pages if p.slug == "home")
     hero = next(s for s in home.sections if s.component_type.value == "HERO")
-    assert hero.props["headline"] == "Acme Clinic"
+    # The business name is the page title/header; the hero says what the business does (derived from stated facts).
+    assert home.title == "Acme Clinic"
+    assert hero.props["headline"] == "Consultation for international patients"
     assert result.provenance["business_name"] == "USER_STATED"
     assert result.ai_used is False
 
@@ -247,7 +249,8 @@ async def test_malformed_or_unsafe_ai_output_falls_back_to_deterministic(
     assert result.ai_used is False
     home = next(p for p in result.specification.pages if p.slug == "home")
     hero = next(s for s in home.sections if s.component_type.value == "HERO")
-    assert hero.props["headline"] == "Safe Name"
+    assert home.title == "Safe Name"
+    assert hero.props["headline"] == "Consultation for international patients"
     assert "<script>" not in str(result.specification.model_dump())
 
 
@@ -268,3 +271,69 @@ async def test_malicious_content_in_each_narrative_field_individually_rejected(
     assert result.provenance["business_name"] == "SYSTEM_DEFAULT"
     serialized = str(result.specification.model_dump())
     assert "onerror=" not in serialized
+
+
+def test_derived_hero_copy_uses_only_stated_facts() -> None:
+    from app.services.website_generation_service import _derived_hero_copy
+
+    headline, sub = _derived_hero_copy(
+        ["ergonomic home-office accessories", "standing desk mats", "monitor risers", "laptop stands"],
+        "remote workers",
+        "US",
+    )
+    assert headline == "Ergonomic home-office accessories for remote workers"
+    assert sub == "Including standing desk mats, monitor risers and laptop stands. Serving US."
+
+
+def test_derived_hero_copy_needs_something_stated() -> None:
+    from app.services.website_generation_service import _derived_hero_copy
+
+    assert _derived_hero_copy([], "remote workers", "US") == (None, None)
+    headline, sub = _derived_hero_copy(["haircuts"], None, None)
+    assert headline == "Haircuts" and sub is None
+
+
+_RICH_AI_REPLY = {
+    "headline": "Desk gear that keeps you comfortable",
+    "subheadline": "Thoughtful accessories for people who work from home.",
+    "eyebrow": "Home-office essentials",
+    "about": {"heading": "Built around your desk", "body": "We curate ergonomic accessories for remote workers.", "bullets": ["Curated range", "Made for daily use"]},
+    "benefits": [{"title": "Comfort first", "description": "Designed to support a better working posture."}],
+    "products": [{"name": "Not a real product", "blurb": "Should be dropped"}],
+    "faq": [{"question": "Who is this for?", "answer": "Remote workers and freelancers."}],
+    "cta": {"heading": "Set up your desk", "body": "Tell us what you need."},
+}
+
+
+async def test_rich_ai_copy_builds_a_full_modern_site(
+    blueprint_service: BusinessBlueprintService, generation_service: WebsiteGenerationService
+) -> None:
+    tenant_id = uuid.uuid4()
+    await _build_active_blueprint(blueprint_service, tenant_id)
+    result = await generation_service.generate_from_active_blueprint(
+        tenant_id, actor_id=None, ai_provider=FakeAIProvider(_RICH_AI_REPLY)
+    )
+    home = next(p for p in result.specification.pages if p.slug == "home")
+    types = [s.component_type.value for s in home.sections]
+    assert types[0] == "HERO" and types[-1] == "FOOTER"
+    assert "SPLIT" in types and "FEATURE_GRID" in types and "FAQ" in types
+    hero = home.sections[0].props
+    assert hero["headline"] == "Desk gear that keeps you comfortable" and hero["eyebrow"] == "Home-office essentials"
+    # A product the owner never listed can never get a card, whatever the AI returns.
+    showcase = [s for s in home.sections if s.component_type.value == "SHOWCASE"]
+    for section in showcase:
+        assert all(i["title"] != "Not a real product" for i in section.props["items"])
+    assert result.provenance["site_copy"] == "AI_GENERATED"
+
+
+async def test_one_unsafe_ai_piece_is_dropped_without_losing_the_rest(
+    blueprint_service: BusinessBlueprintService, generation_service: WebsiteGenerationService
+) -> None:
+    tenant_id = uuid.uuid4()
+    await _build_active_blueprint(blueprint_service, tenant_id)
+    reply = {**_RICH_AI_REPLY, "benefits": [{"title": "<script>alert(1)</script>", "description": "x"}]}
+    result = await generation_service.generate_from_active_blueprint(tenant_id, actor_id=None, ai_provider=FakeAIProvider(reply))
+    home = next(p for p in result.specification.pages if p.slug == "home")
+    assert result.ai_used is True
+    assert all(s.component_type.value != "FEATURE_GRID" for s in home.sections)
+    assert "<script>" not in str(result.specification.model_dump())

@@ -72,7 +72,7 @@ export function ConsentWordingCard({ token, onChanged }: { token: string | null;
       <div className="flex items-start gap-2">
         <ShieldCheck className="mt-0.5 h-5 w-5 text-success" aria-hidden="true" />
         <div>
-          <h2 id="consent-wording-title" className="font-display text-lg text-foreground">Consent wording for your enquiry form</h2>
+          <h2 id="consent-wording-title" className="text-lg font-semibold tracking-tight text-foreground">Consent wording for your enquiry form</h2>
           <p className="mt-0.5 text-sm text-muted">The exact words a visitor agrees to before sending their details. Until you approve a wording, the enquiry form on your website stays closed.</p>
         </div>
       </div>

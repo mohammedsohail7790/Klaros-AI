@@ -197,7 +197,7 @@ export default function LeadDetailPage() {
               <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h1 className="font-display text-2xl text-foreground sm:text-3xl">{lead.name}</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{lead.name}</h1>
                     <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
                       <span>{sourceLabel(lead.source)}</span>
                       <span>Priority: <span className="text-foreground">{titleCase(lead.urgency.toLowerCase())}</span></span>
@@ -251,7 +251,7 @@ export default function LeadDetailPage() {
                 <>
                   <GenericNextAction action={interaction.next_action} />
                   <section aria-labelledby="lead-tl-h" className="rounded-lg border border-border bg-surface p-5 sm:p-6">
-                    <h2 id="lead-tl-h" className="font-display text-xl text-foreground">Timeline</h2>
+                    <h2 id="lead-tl-h" className="text-xl font-semibold tracking-tight text-foreground">Timeline</h2>
                     <ol className="mt-3 space-y-2 border-l border-border pl-4" aria-label="Lead timeline">
                       {[{ at: lead.created_at, text: `Lead received from ${sourceLabel(lead.source).toLowerCase()}` }, ...interaction.events.map((e) => ({ at: e.at, text: e.text }))]
                         .sort((a, b) => a.at.localeCompare(b.at))
@@ -292,7 +292,7 @@ export default function LeadDetailPage() {
 
               {(convertedJobId || (lead.status !== "CONVERTED" && lead.status !== "LOST")) && (
                 <div className="rounded-lg border border-border bg-surface p-6">
-                  <h2 className="mb-2 text-sm font-medium text-muted">Convert to job</h2>
+                  <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Convert to job</h2>
                   <p className="mb-3 text-xs text-muted">
                     One step: match or create the customer, book the appointment, and create the job together.
                   </p>
@@ -356,7 +356,7 @@ export default function LeadDetailPage() {
 
             <section className="space-y-4">
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-2 text-sm font-medium text-muted">Qualification</h2>
+                <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Qualification</h2>
                 <p className="text-sm text-muted">
                   Status: <span className="text-foreground">{lead.qualification_status}</span>
                 </p>
@@ -369,7 +369,7 @@ export default function LeadDetailPage() {
                 <button
                   onClick={handleQualify}
                   disabled={qualifying}
-                  className="mt-4 w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="mt-4 w-full klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                 >
                   {qualifying ? "Qualifying..." : "Re-run qualification"}
                 </button>
@@ -377,7 +377,7 @@ export default function LeadDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-2 text-sm font-medium text-muted">AI recommendation</h2>
+                <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">AI recommendation</h2>
                 <p className="text-xs text-muted-foreground">
                   Advisory only — never applied automatically. Review it, then use &ldquo;Re-run qualification&rdquo;
                   above or edit the lead directly to act on it.
@@ -424,7 +424,7 @@ export default function LeadDetailPage() {
                 <button
                   onClick={handleAdvisory}
                   disabled={advisoryLoading}
-                  className="mt-4 w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                  className="mt-4 w-full klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                 >
                   {advisoryLoading ? "Generating..." : "Generate AI recommendation"}
                 </button>
@@ -432,7 +432,7 @@ export default function LeadDetailPage() {
               </div>
 
               <div className="rounded-lg border border-border bg-surface p-6">
-                <h2 className="mb-2 text-sm font-medium text-muted">Marketing attribution</h2>
+                <h2 className="mb-2 text-base font-semibold tracking-tight text-foreground">Marketing attribution</h2>
                 <p className="mb-3 text-xs text-muted-foreground">
                   Record where this lead really came from — campaign, source/medium, UTM params — for campaign
                   performance and CAC reporting. Only one attribution is kept per lead: with SOURCE_ONLY or
@@ -519,7 +519,7 @@ export default function LeadDetailPage() {
                   <button
                     type="submit"
                     disabled={attrSaving}
-                    className="w-full rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted disabled:opacity-50"
+                    className="w-full klaros-btn-secondary !px-3 !py-1.5 disabled:opacity-50"
                   >
                     {attrSaving ? "Saving..." : "Save attribution"}
                   </button>

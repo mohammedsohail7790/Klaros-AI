@@ -84,7 +84,7 @@ export default function BusinessMapPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-6 py-8">
         <StageTracker stages={overview.stages} activeKey="map" />
         <PageHeader
           icon={Network}
@@ -117,7 +117,7 @@ export default function BusinessMapPage() {
         )}
 
         <section className="mt-10" aria-labelledby="next-actions">
-          <h2 id="next-actions" className="font-display text-xl text-foreground">Next actions</h2>
+          <h2 id="next-actions" className="text-xl font-semibold tracking-tight text-foreground">Next actions</h2>
           <p className="mt-1 text-sm text-muted">Generated from the current state of your business — they update as you make progress.</p>
           {overview.next_actions.length === 0 ? (
             <p className="mt-4 text-sm text-muted">Nothing left to do right now.</p>

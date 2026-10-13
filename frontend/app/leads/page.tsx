@@ -1,5 +1,6 @@
 "use client";
 
+import { Avatar } from "@/components/ui/Avatar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Users } from "lucide-react";
@@ -178,8 +179,8 @@ export default function LeadsPage() {
                   {leads.map((l) => (
                     <tr key={l.id}>
                       <td>
-                        <Link href={`/leads/${l.id}`} className="font-medium text-foreground hover:underline">{l.name}</Link>
-                        <p className="text-xs text-muted">{[l.service, sourceLabel(l.source)].filter(Boolean).join(" · ")}</p>
+                        <span className="flex items-center gap-3"><Avatar name={l.name} /><Link href={`/leads/${l.id}`} className="font-medium text-foreground hover:underline">{l.name}</Link></span>
+                        <p className="pl-11 text-xs text-muted">{[l.service, sourceLabel(l.source)].filter(Boolean).join(" · ")}</p>
                       </td>
                       <td><Badge status={l.status}>{leadStatusLabel(l.status)}</Badge></td>
                       <td className={priority(l.priority).tone}>{priority(l.priority).label}</td>

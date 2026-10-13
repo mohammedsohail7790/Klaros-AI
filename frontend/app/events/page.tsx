@@ -98,10 +98,10 @@ export default function EventsPage() {
 
   return (
     <AppShell user={user}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Event Worker</h1>
-          <button onClick={load} className="rounded-md border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-muted">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Event Worker</h1>
+          <button onClick={load} className="klaros-btn-secondary !px-3 !py-1.5">
             Refresh
           </button>
         </div>
@@ -117,7 +117,7 @@ export default function EventsPage() {
           <>
             {metrics && (
               <div className="mb-8">
-                <h2 className="mb-3 text-sm font-medium text-muted">Worker metrics (real, in-process counters)</h2>
+                <h2 className="mb-3 text-base font-semibold tracking-tight text-foreground">Worker metrics (real, in-process counters)</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
                   <StatCard label="Processed" value={metrics.events_processed} tone="success" />
                   <StatCard label="Failed (retrying)" value={metrics.events_failed} tone={metrics.events_failed > 0 ? "warning" : "neutral"} />

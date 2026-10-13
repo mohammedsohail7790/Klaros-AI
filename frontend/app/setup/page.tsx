@@ -48,6 +48,9 @@ export default function SetupPage() {
   const [destinations, setDestinations] = useState("");
   const [procedures, setProcedures] = useState("");
   const [model, setModel] = useState("");
+  const [channels, setChannels] = useState("");
+  const [currencies, setCurrencies] = useState("");
+  const [goals, setGoals] = useState("");
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -84,7 +87,17 @@ export default function SetupPage() {
     setSaving(true);
     setError(null);
     try {
-      const result = await submitMedicalTourismSetup(token, { business_name: name, patient_markets: list(markets), destinations: list(destinations), procedures: list(procedures), business_model: model });
+      // The last three are optional: they fill Blueprint sections that would otherwise be left "Missing", and are only sent when answered.
+      const result = await submitMedicalTourismSetup(token, {
+        business_name: name,
+        patient_markets: list(markets),
+        destinations: list(destinations),
+        procedures: list(procedures),
+        business_model: model,
+        ...(list(channels).length ? { channels: list(channels) } : {}),
+        ...(list(currencies).length ? { currencies: list(currencies) } : {}),
+        ...(goals.trim() ? { goals: goals.trim() } : {}),
+      });
       setSetup(result);
       setEditing(false);
       try {
@@ -126,7 +139,7 @@ export default function SetupPage() {
             <div className="flex items-start gap-3">
               <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft text-accent"><Stethoscope className="h-4 w-4" aria-hidden="true" /></span>
               <div>
-                <h2 className="font-display text-xl text-foreground">{available[0]?.name ?? "Medical Tourism"}</h2>
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">{available[0]?.name ?? "Medical Tourism"}</h2>
                 <p className="text-sm text-muted">{available[0]?.description}</p>
               </div>
             </div>
@@ -138,6 +151,12 @@ export default function SetupPage() {
               <input aria-label="Destinations" value={destinations} onChange={(e) => setDestinations(e.target.value)} className="klaros-input mt-1" placeholder="India, Turkey" /></label>
             <label className="block text-sm">Procedures you will offer (one per line, or separated by commas)
               <textarea aria-label="Procedures" value={procedures} onChange={(e) => setProcedures(e.target.value)} className="klaros-input mt-1 min-h-[96px]" placeholder={"Dental implants\nHair transplant"} /></label>
+            <label className="block text-sm">How patients find you (optional, one per line or separated by commas)
+              <textarea aria-label="Channels" value={channels} onChange={(e) => setChannels(e.target.value)} className="klaros-input mt-1 min-h-[64px]" placeholder={"Website enquiries\nWhatsApp\nPartner agents"} /></label>
+            <label className="block text-sm">Currencies you quote in (optional, three-letter codes)
+              <input aria-label="Currencies" value={currencies} onChange={(e) => setCurrencies(e.target.value)} className="klaros-input mt-1" placeholder="AED, GBP, USD" /></label>
+            <label className="block text-sm">What you are aiming for (optional)
+              <textarea aria-label="Goals" value={goals} onChange={(e) => setGoals(e.target.value)} className="klaros-input mt-1 min-h-[64px]" maxLength={500} placeholder="For example: 50 referred patients in the first six months" /></label>
             <fieldset>
               <legend className="text-sm">How the business earns</legend>
               <div className="mt-1 space-y-1.5">
@@ -160,7 +179,7 @@ export default function SetupPage() {
             <section aria-label="Your business" className="klaros-card p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-xl text-foreground">{setup.profile.business_name}</h2>
+                  <h2 className="text-xl font-semibold tracking-tight text-foreground">{setup.profile.business_name}</h2>
                   <p className="mt-1 text-sm text-muted">{setup.profile.business_model_label} · patients in {setup.profile.patient_markets.join(", ")} · treatment in {setup.profile.destinations.join(", ")}</p>
                   <p className="mt-1 text-sm text-muted">Procedures: {setup.profile.procedures.join(", ")}</p>
                 </div>
@@ -169,7 +188,7 @@ export default function SetupPage() {
             </section>
 
             <section aria-label="Launch checklist">
-              <h2 className="font-display text-lg text-foreground">Launch checklist</h2>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">Launch checklist</h2>
               <p className="mt-0.5 text-sm text-muted" data-testid="checklist-summary">{setup.ready_to_launch ? "Everything on the list is in place." : `${setup.open_items} item${setup.open_items === 1 ? "" : "s"} still open.`} Klaros only marks what it can see as done.</p>
               <ul className="mt-3 divide-y divide-border rounded-md border border-border">
                 {(setup.checklist ?? []).map((i) => (
@@ -197,7 +216,7 @@ export default function SetupPage() {
             <ConsentWordingCard token={token} onChanged={async () => { if (token) setSetup(await getMedicalTourismSetup(token)); }} />
 
             <section aria-label="Drafts">
-              <h2 className="font-display text-lg text-foreground">Drafts for your approval</h2>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">Drafts for your approval</h2>
               <p className="mt-0.5 text-sm text-muted">{setup.note}</p>
               <div className="mt-3 space-y-2">
                 {Object.entries(setup.drafts ?? {}).map(([key, d]) => (

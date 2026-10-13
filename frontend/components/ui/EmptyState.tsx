@@ -19,18 +19,18 @@ export function EmptyState({
     <div
       className={cn(
         "flex flex-col items-center text-center",
-        compact ? "gap-2 py-6" : "klaros-card gap-3 px-6 py-14"
+        compact ? "gap-2 py-6" : "klaros-card gap-3 border-dashed px-6 py-16"
       )}
     >
       <div
         className={cn(
-          "flex items-center justify-center rounded-full bg-surface-muted",
-          compact ? "h-8 w-8" : "h-11 w-11"
+          "flex items-center justify-center rounded-xl bg-accent-soft ring-1 ring-accent/10",
+          compact ? "h-8 w-8" : "h-12 w-12"
         )}
       >
-        <Icon className={compact ? "h-3.5 w-3.5 text-muted-foreground" : "h-5 w-5 text-muted-foreground"} strokeWidth={1.75} />
+        <Icon className={compact ? "h-3.5 w-3.5 text-accent" : "h-5 w-5 text-accent"} strokeWidth={1.75} />
       </div>
-      <p className="text-sm text-muted">{title}</p>
+      <p className="max-w-md text-sm text-muted">{title}</p>
       {action}
     </div>
   );

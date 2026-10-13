@@ -134,7 +134,7 @@ async def test_full_medical_tourism_website_builder_scenario(
     home = next(p for p in spec.pages if p.slug == "home")
     component_types = [s.component_type.value for s in home.sections]
     assert "HERO" in component_types
-    assert "FEATURE_GRID" in component_types  # the generic "service/procedure" section
+    assert "SHOWCASE" in component_types  # the generic "service/procedure" section
     assert "PROVIDER_DIRECTORY" in component_types
     assert "CTA" in component_types
     contact_page = next(p for p in spec.pages if p.slug == "contact")
