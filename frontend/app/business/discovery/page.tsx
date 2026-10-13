@@ -228,7 +228,7 @@ export default function DiscoveryPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-2xl px-6 py-8">
+      <div className="mx-auto w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
         <StageTracker stages={DISCOVERY_STAGES} activeKey="discovery" />
         <PageHeader
           icon={MessageCircleQuestion}
@@ -237,9 +237,9 @@ export default function DiscoveryPage() {
         />
 
         {session?.business_idea && (
-          <div className="mb-4 rounded-3xl bg-surface-muted-muted px-4 py-3 text-sm">
-            <p className="klaros-label mb-0.5">Your idea</p>
-            <p className="text-foreground">{session.business_idea}</p>
+          <div className="mb-8 rounded-3xl bg-surface-muted px-6 py-5">
+            <p className="mb-1 text-[13px] font-medium text-muted">Your idea</p>
+            <p className="text-[17px] leading-snug text-foreground">{session.business_idea}</p>
           </div>
         )}
 
@@ -249,7 +249,7 @@ export default function DiscoveryPage() {
           </div>
         )}
 
-        <div className="klaros-card space-y-4 p-5 sm:p-6">
+        <div className="space-y-6 rounded-3xl bg-surface-muted p-7 sm:p-10">
           {advancing ? (
             <p className="text-sm text-muted" aria-live="polite">
               That's everything we need — pulling your business together…
@@ -273,16 +273,16 @@ export default function DiscoveryPage() {
                   </div>
                 </div>
               )}
-              <label htmlFor="discovery-answer" className="block text-base font-medium text-foreground">{question}</label>
+              <label htmlFor="discovery-answer" className="block text-balance font-display text-[1.6rem] font-semibold leading-tight tracking-[-0.025em] text-foreground sm:text-[2.1rem]">{question}</label>
               <textarea
                 id="discovery-answer"
-                className="klaros-input min-h-[110px]"
+                className="klaros-input min-h-[150px] !rounded-2xl !p-5 !text-[17px]"
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 placeholder="Type your answer…"
                 disabled={busy}
               />
-              <Button onClick={handleSubmitAnswer} disabled={busy || !answer.trim()} className="w-full sm:w-auto">
+              <Button size="lg" onClick={handleSubmitAnswer} disabled={busy || !answer.trim()} className="w-full sm:w-auto">
                 {busy ? "Saving…" : "Continue"}
               </Button>
               <p className="text-xs text-muted-foreground">
@@ -330,14 +330,14 @@ export default function DiscoveryPage() {
 
         {answered.length > 0 && (
           <section className="mt-8" aria-labelledby="answers-so-far">
-            <h2 id="answers-so-far" className="klaros-label mb-3">What you've told us so far</h2>
-            <ol className="space-y-3">
+            <h2 id="answers-so-far" className="mb-4 font-display text-[1.35rem] font-semibold tracking-[-0.02em] text-foreground">What you've told us so far</h2>
+            <ol className="space-y-4">
               {answered.map((t) => (
-                <li key={t.id} className="flex gap-3 text-sm">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
-                  <div className="min-w-0">
-                    {t.question && <p className="text-muted-foreground">{t.question}</p>}
-                    <p className="text-foreground">{t.answer}</p>
+                <li key={t.id} className="flex gap-3">
+                  <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success/10"><Check className="h-3.5 w-3.5 text-success" aria-hidden="true" /></span>
+                  <div className="min-w-0 flex-1">
+                    {t.question && <p className="mb-1.5 text-[14px] text-muted-foreground">{t.question}</p>}
+                    <p className="rounded-2xl bg-surface-muted px-5 py-3.5 text-[16px] leading-snug text-foreground">{t.answer}</p>
                   </div>
                 </li>
               ))}

@@ -112,19 +112,19 @@ export default function BusinessJourneyEntryPage() {
 
   return (
     <AppShell user={user}>
-      <div className="mx-auto max-w-2xl px-6 py-10 sm:py-16">
-        <div className="mb-8 text-center">
-          <span className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-accent-soft text-accent">
-            <Sparkles className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+      <div className="mx-auto w-full max-w-3xl px-5 py-10 sm:px-8 sm:py-20">
+        <div className="mb-12 text-center">
+          <span className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <Sparkles className="h-6 w-6" strokeWidth={1.75} aria-hidden="true" />
           </span>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">What are you building?</h1>
-          <p className="mx-auto mt-3 max-w-md text-sm text-muted sm:text-base">
+          <h1 className="text-balance font-display text-[2.5rem] font-semibold leading-[1.04] tracking-[-0.03em] text-foreground sm:text-[3.75rem]">What are you building?</h1>
+          <p className="mx-auto mt-5 max-w-xl text-[17px] leading-snug text-muted sm:text-xl">
             Describe your business in your own words. Klaros will ask a few questions, work out what the business needs, and help you
             build it.
           </p>
         </div>
 
-        <Link href="/setup" className="klaros-card mb-4 flex items-center justify-between gap-3 p-4 text-sm hover:bg-surface-muted">
+        <Link href="/setup" className="klaros-card klaros-card-interactive mb-5 flex items-center justify-between gap-4 px-6 py-5 text-[15px]">
           <span>
             <span className="font-medium text-foreground">Starting a Medical Tourism business?</span>
             <span className="block text-muted">Answer one form and Klaros builds the draft workspace and a launch checklist.</span>
@@ -132,28 +132,28 @@ export default function BusinessJourneyEntryPage() {
           <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
         </Link>
 
-        <div className="klaros-card space-y-4 p-5 sm:p-6">
+        <div className="space-y-5 rounded-3xl bg-surface-muted p-6 sm:p-9">
           {error && <Alert variant="danger">{error}</Alert>}
-          <label htmlFor="business-idea" className="klaros-label">
+          <label htmlFor="business-idea" className="text-[13px] font-medium text-muted">
             Your business idea
           </label>
           <textarea
             id="business-idea"
-            className="klaros-input min-h-[140px]"
+            className="klaros-input min-h-[170px] !rounded-2xl !p-5 !text-[17px]"
             value={businessIdea}
             onChange={(e) => setBusinessIdea(e.target.value)}
             placeholder="Tell us what you want to build, who it's for, and how it makes money."
             disabled={busy}
             maxLength={4000}
           />
-          <Button onClick={handleStart} disabled={busy || !businessIdea.trim()} className="w-full gap-2 sm:w-auto">
+          <Button size="lg" onClick={handleStart} disabled={busy || !businessIdea.trim()} className="w-full gap-2 sm:w-auto">
             {busy ? "Starting…" : "Start building"}
             {!busy && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
           </Button>
         </div>
 
-        <div className="mt-6">
-          <p className="klaros-label mb-2">Need a nudge? Try one of these</p>
+        <div className="mt-10">
+          <p className="mb-3 text-[13px] font-medium text-muted">Need a nudge? Try one of these</p>
           <ul className="flex flex-col gap-2">
             {EXAMPLES.map((ex) => (
               <li key={ex}>
@@ -161,7 +161,7 @@ export default function BusinessJourneyEntryPage() {
                   type="button"
                   disabled={busy}
                   onClick={() => setBusinessIdea(ex)}
-                  className="w-full rounded-3xl bg-surface-muted px-3 py-2 text-left text-sm text-muted transition-colors hover:border-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="w-full rounded-2xl bg-surface-muted px-5 py-3.5 text-left text-[15px] leading-snug text-muted transition-colors hover:border-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {ex}
                 </button>
