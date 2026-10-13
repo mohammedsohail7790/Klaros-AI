@@ -102,7 +102,7 @@ async def run_clinic_sourcing(body: dict, u: CurrentUser = Depends(get_current_u
         raise HTTPException(status_code=422, detail="countries is required")
     r = await mt_clinic_sourcing.source_clinics(u.tenant_id, u.id, countries, procedures)
     return {"status": r.status, "queries": r.queries, "pages_read": r.pages_read, "added": r.added, "skipped_duplicate": r.skipped_duplicate,
-            "rejected_unsupported": r.rejected_unsupported, "notes": r.notes}
+            "rejected_unsupported": r.rejected_unsupported, "ai_failed": r.ai_failed, "notes": r.notes}
 
 
 # --- referrals --------------------------------------------------------------

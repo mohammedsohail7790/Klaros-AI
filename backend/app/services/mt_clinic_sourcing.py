@@ -95,6 +95,7 @@ class SourcingResult:
     added: list[dict[str, Any]] = field(default_factory=list)
     skipped_duplicate: int = 0
     rejected_unsupported: int = 0
+    ai_failed: int = 0
     notes: list[str] = field(default_factory=list)
 
 
@@ -188,6 +189,9 @@ async def source_clinics(tenant_id: uuid.UUID, actor_id: uuid.UUID | None, count
             result.pages_read += 1
             outcome = await bound_ai_provider(ai, session_factory, tenant_id, "clinic_sourcing").generate_structured(_prompt(hit))
             if not outcome.success:
+                result.ai_failed += 1
+                if result.ai_failed == 1:
+                    result.notes.append(f"The AI step could not read a page ({outcome.error_detail or outcome.error_type or 'unknown error'}).")
                 continue
             kept, rejected = validate_candidates(_parse(outcome.raw_text), hit, country)
             result.rejected_unsupported += rejected

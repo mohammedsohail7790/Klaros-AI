@@ -107,3 +107,15 @@ async def test_the_route_needs_countries_and_manage_permission(client, halla, mo
     ok = await client.post(f"{BASE}/clinic-sourcing/run", json={"countries": ["TR"]}, headers=_h(token))
     assert ok.status_code == 200 and ok.json()["status"] == "not_configured"
     assert (await client.post(f"{BASE}/clinic-sourcing/run", json={"countries": ["TR"]})).status_code == 401
+
+
+async def test_a_failed_ai_step_is_reported_not_hidden(client, halla, monkeypatch) -> None:  # noqa: F811
+    _, tid = await _gated(client, "Blocked Co", "blocked@example.com")
+
+    class Refused(FakeAI):
+        async def generate_structured(self, prompt):
+            return AICallOutcome(success=False, provider="fake", model="fake", latency_ms=0, error_detail="blocked_by_ai_boundary:provider_not_allowlisted")
+
+    monkeypatch.setattr(cs, "bound_ai_provider", lambda ai, *a, **k: ai)
+    r = await cs.source_clinics(tid, None, ["TR"], [], search=FakeSearch([PAGE]), ai=Refused([]))
+    assert r.added == [] and r.ai_failed == 1 and "blocked_by_ai_boundary" in r.notes[0]
