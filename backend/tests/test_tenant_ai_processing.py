@@ -54,3 +54,19 @@ async def _audit(tid):
     async with async_session_maker() as s:
         await set_tenant_context(s, tid)
         return list((await s.execute(select(AuditLog).where(AuditLog.tenant_id == tid))).scalars())
+
+
+def test_only_the_owner_role_may_change_it() -> None:
+    import uuid
+
+    from fastapi import HTTPException
+
+    from app.api.deps import CurrentUser
+    from app.api.v1.tenant_settings import _owner_only
+    from app.models.rbac import Role
+
+    _owner_only(CurrentUser(id=uuid.uuid4(), tenant_id=uuid.uuid4(), role=Role.OWNER))  # no error
+    for role in (Role.MANAGER, Role.STAFF if hasattr(Role, "STAFF") else Role.MANAGER):
+        with pytest.raises(HTTPException) as err:
+            _owner_only(CurrentUser(id=uuid.uuid4(), tenant_id=uuid.uuid4(), role=role))
+        assert err.value.status_code == 403

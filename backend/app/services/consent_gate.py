@@ -83,6 +83,13 @@ async def tenant_requires_consent(session_factory, tenant_id: uuid.UUID | None) 
                     return True
             except VerticalExtensionNotFoundError:
                 continue  # the catalogue has no such vertical: an established "not enabled", not a lookup failure
+        # A module can also declare in its own registry data that it handles personal or medical information and needs consent (`requires_consent: true` in
+        # its extra metadata), so a new business type needs no code change. This only ever ADDS gated tenants: the keys above remain a floor.
+        enabled_ids = {row.vertical_extension_id for row in await service.list_enabled_for_organization(tenant_id)}
+        if enabled_ids:
+            for vertical in await service.list_verticals():
+                if vertical.id in enabled_ids and isinstance(vertical.extra_metadata, dict) and vertical.extra_metadata.get("requires_consent") is True:
+                    return True
         return False
     except Exception:  # noqa: BLE001 - status unknown: fail closed, never open
         logger.warning("consent_gate_status_unknown_failing_closed", tenant_id=str(tenant_id))
