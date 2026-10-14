@@ -62,7 +62,8 @@ async def _decide(provider: Any, session_factory, tenant_id: uuid.UUID | None, p
         return False, False, "tenant_unknown"
     if not await consent_gate.tenant_requires_consent(session_factory, tenant_id):
         return True, False, "not_gated"
-    if str(getattr(provider, "name", "")).lower() in allowed_external_providers():
+    provider_name = str(getattr(provider, "name", "")).lower()
+    if provider_name in allowed_external_providers() or provider_name in await _tenant_allowed_providers(session_factory, tenant_id):
         return True, True, "allowlisted"
     logger.warning("ai_boundary_blocked_external_call", tenant_id=str(tenant_id), provider=str(getattr(provider, "name", "?")), purpose=purpose)
     return False, False, "provider_not_allowlisted"

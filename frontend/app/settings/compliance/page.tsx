@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/lib/useAuth";
 import { useToast } from "@/components/ui/Toast";
+import { AIProcessingCard } from "@/components/AIProcessingCard";
 import {
   ApiError,
   License,
@@ -245,6 +246,7 @@ export default function CompliancePage() {
             </button>
           </form>
         )}
+        <AIProcessingCard token={token} />
       </div>
 
       {showCreate && (

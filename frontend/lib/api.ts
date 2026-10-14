@@ -6048,6 +6048,21 @@ export function getOperatingCrew(token: string) {
   return request<OperatingCrew>("/api/v1/operating-crew", { headers: authHeaders(token) });
 }
 
+/** Which external AI providers the OWNER allows to process this business's own data (owner-only to change; requires an acknowledgement). */
+export type AIProcessingSetting = { external_providers: string[]; acknowledged_by?: string | null; acknowledged_at?: string | null };
+
+export function getAIProcessing(token: string) {
+  return request<AIProcessingSetting>("/api/v1/tenant/settings/ai-processing", { headers: authHeaders(token) });
+}
+
+export function updateAIProcessing(token: string, body: { external_providers: string[]; acknowledged: boolean }) {
+  return request<AIProcessingSetting>("/api/v1/tenant/settings/ai-processing", {
+    method: "PUT",
+    headers: { ...authHeaders(token), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 /** The tenant's own crew choices: set the crew up automatically, and which members are switched off (the full list each time). */
 export function updateOperatingCrewSettings(token: string, body: { auto_provision?: boolean; disabled_members?: string[] }) {
   return request<{ auto_provision: boolean; disabled_members: string[] }>("/api/v1/operating-crew/settings", {
