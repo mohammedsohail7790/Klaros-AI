@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Aesthetic Tourism: compare hospitals, clinics and surgeons abroad</title>
+<meta name="description" content="Compare dental, hair transplant and aesthetic surgery in Turkey, Thailand, South Korea and India. See hospitals, surgeons and typical savings side by side.">
+<meta property="og:title" content="Aesthetic Tourism: compare hospitals, clinics and surgeons abroad">
+<meta property="og:description" content="Compare dental, hair transplant and aesthetic surgery in Turkey, Thailand, South Korea and India.">
+<meta name="klaros-api" content="https://klaros-backend.onrender.com">
+<meta name="klaros-tenant" content="bea98419-5358-4a5b-ab53-7b9d7df27bba">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="mark" aria-hidden="true">A</span>Aesthetic Tourism</a>
+    <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
+    <nav class="nav" id="nav" aria-label="Main" data-open="false">
+      <a href="#treatments">Treatments</a>
+      <a href="#destinations">Destinations</a>
+      <a href="#hospitals">Hospitals</a>
+      <a href="#surgeons">Surgeons</a>
+      <a href="#how">How it works</a>
+      <a class="btn btn-sm" href="#quote">Get a quote</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<span id="top"></span>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow rise d0">Compare before you travel</p>
+      <h1><span class="ln rise d1">Pick a procedure.</span><span class="ln rise d2">Compare the countries that do it best.</span></h1>
+      <p class="lede rise d3">Dental work, hair transplants and aesthetic surgery in Turkey, Thailand, South Korea and India. See the savings, hospitals and surgeons side by side, then ask for a quote.</p>
+      <div class="hero-actions rise d4">
+        <a class="btn" href="#quote">Get a quote</a>
+        <a class="btn btn-quiet" href="#how">How it works</a>
+      </div>
+      <dl class="facts rise d5">
+        <div><dt>Destinations</dt><dd class="num">4</dd></div>
+        <div><dt>Hospitals and clinics listed</dt><dd class="num">12</dd></div>
+        <div><dt>Surgeons listed</dt><dd class="num">6</dd></div>
+        <div><dt>Treatment types</dt><dd class="num">3</dd></div>
+      </dl>
+    </div>
+
+    <div class="finder rise d3" id="finder">
+      <p class="finder-q" id="finderQ">Which procedure are you considering?</p>
+      <div class="seg" role="radiogroup" aria-labelledby="finderQ" id="seg" data-i="0">
+        <span class="pill" aria-hidden="true"></span>
+        <button type="button" role="radio" aria-checked="true" data-t="dental" tabindex="0">Dental</button>
+        <button type="button" role="radio" aria-checked="false" data-t="hair" tabindex="-1">Hair transplant</button>
+        <button type="button" role="radio" aria-checked="false" data-t="aesthetic" tabindex="-1">Aesthetic surgery</button>
+      </div>
+      <ul class="rows" id="rows" aria-live="polite"></ul>
+      <p class="foot-note">Savings are typical ranges from published industry sources, compared with US prices. Your written quote is what counts.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="treatments">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Treatments</p>
+      <h2>Three kinds of treatment, one place to compare them</h2>
+      <p class="lede">Each one has a different best destination. Choose a treatment to see how the four countries line up.</p>
+    </div>
+    <ul class="trt-grid"><li class="trt"><span class="trt-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-2.2-1.6-5.5-1-6.5 1.8-.8 2.3.2 4.4.8 6.2.7 2.1.6 5.5 1.7 7 .6.8 1.6.7 2-.4l1.1-3.6c.3-.9 1.9-.9 2.2 0l1.1 3.6c.4 1.1 1.4 1.2 2 .4 1.1-1.5 1-4.9 1.7-7 .6-1.8 1.6-3.9.8-6.2C17.5 2 14.2 1.4 12 3Z"/></svg></span><h3>Dental</h3><p class="procs">Implants, veneers, crowns and full-mouth restorations. Often combined with a few days of recovery near the coast.</p><button class="btn btn-quiet btn-sm go" type="button" data-pick="dental">Compare countries</button></li><li class="trt"><span class="trt-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-4 0-6-2.5-6-6 0-2.2 1-3.4 1-5.5C7 6.6 9 3 12 3s5 3.600 5 6.500c0 2.100 1 3.300 1 5.500 0 3.500-2 6-6 6Zm0-5v-5m-2.500 3v-3m5 3v-3"/></svg></span><h3>Hair transplant</h3><p class="procs">Scalp, beard and eyebrow restoration with FUE and DHI techniques. Usually a single procedure with a short stay.</p><button class="btn btn-quiet btn-sm go" type="button" data-pick="hair">Compare countries</button></li><li class="trt"><span class="trt-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.800 4.700L18.500 9.500l-4.700 1.800L12 16l-1.800-4.700L5.500 9.500l4.700-1.800L12 3Zm7 11l.9 2.100 2.100.9-2.100.9L19 20l-.9-2.100-2.100-.9 2.100-.9.900-2.100Z"/></svg></span><h3>Aesthetic surgery</h3><p class="procs">Rhinoplasty, tummy tuck, facelift and breast procedures, in hospitals and specialist cosmetic clinics.</p><button class="btn btn-quiet btn-sm go" type="button" data-pick="aesthetic">Compare countries</button></li></ul>
+  </div>
+</section>
+
+<section class="sec alt" id="destinations">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Destinations</p>
+      <h2>Four destinations, compared</h2>
+      <p class="lede">What each country is known for, where the clinics are, and how its hospitals are accredited.</p>
+    </div>
+    <div class="tablewrap" tabindex="0" role="region" aria-label="Destination comparison table">
+      <table>
+        <thead><tr><th scope="col">Country</th><th scope="col">Best known for</th><th scope="col">Main hubs</th><th scope="col">Typical saving vs US</th><th scope="col">Accreditation and support</th></tr></thead>
+        <tbody><tr data-c="tr"><th scope="row"><span class="dot"></span>Turkey</th><td>Hair transplants, cosmetic surgery, dental</td><td>Istanbul, Antalya, Bursa, Ankara</td><td class="num">50–70%<svg class="range" viewBox="0 0 100 6" role="img" aria-label="Typical saving 50 to 70 percent"><rect class="trk" width="100" height="6" rx="3"/><rect class="rng" x="50" width="20" height="6" rx="3"/></svg></td><td>40+ JCI-accredited hospitals and a national Health Türkiye programme</td></tr><tr data-c="th"><th scope="row"><span class="dot"></span>Thailand</th><td>Cosmetic and dental care with resort-style recovery</td><td>Bangkok, Phuket</td><td class="num">50–70%<svg class="range" viewBox="0 0 100 6" role="img" aria-label="Typical saving 50 to 70 percent"><rect class="trk" width="100" height="6" rx="3"/><rect class="rng" x="50" width="20" height="6" rx="3"/></svg></td><td>60+ JCI-accredited hospitals</td></tr><tr data-c="kr"><th scope="row"><span class="dot"></span>South Korea</th><td>Plastic and cosmetic surgery</td><td>Seoul</td><td class="num">Varies by clinic<svg class="range" viewBox="0 0 100 6" role="img" aria-label="Savings vary by clinic"><rect class="trk" width="100" height="6" rx="3"/><rect class="vary" width="100" height="6" rx="3"/></svg></td><td>Government visa facilitation and multilingual patient services</td></tr><tr data-c="in"><th scope="row"><span class="dot"></span>India</th><td>Lowest prices, plus complex surgery</td><td>Delhi, Gurugram, Ahmedabad</td><td class="num">75–80%<svg class="range" viewBox="0 0 100 6" role="img" aria-label="Typical saving 75 to 80 percent"><rect class="trk" width="100" height="6" rx="3"/><rect class="rng" x="75" width="5" height="6" rx="3"/></svg></td><td>65+ JCI-accredited healthcare entities</td></tr></tbody>
+      </table>
+    </div>
+    <p class="foot-note">Savings are estimates from published industry sources and change by clinic, procedure and season. South Korea is quoted clinic by clinic.</p>
+  </div>
+</section>
+
+<section class="sec" id="how">
+  <div class="wrap split">
+    <div class="sec-head">
+      <p class="eyebrow">How it works</p>
+      <h2>From first question to follow-up care</h2>
+      <p class="lede">Five steps, and you decide at each one.</p>
+    </div>
+    <ol class="steps"><li><div><h3>Tell us what you need</h3><p>Your procedure, the countries you&#x27;re considering, your budget and any photos or records a surgeon should see.</p></div></li><li><div><h3>Compare matched options</h3><p>We line up hospitals and surgeons that fit, with a written list of what each quote includes.</p></div></li><li><div><h3>Speak to your surgeon</h3><p>Ask your questions in a video consultation before you book anything.</p></div></li><li><div><h3>Travel and treatment</h3><p>Flights, hotel, transfers and translation, where your package includes them.</p></div></li><li><div><h3>Recover and follow up</h3><p>A written aftercare plan and check-ins once you&#x27;re home.</p></div></li></ol>
+  </div>
+</section>
+
+<section class="sec alt" id="quote-check">
+  <div class="wrap split">
+    <div class="sec-head">
+      <p class="eyebrow">Before you accept a quote</p>
+      <h2>What a good quote spells out</h2>
+      <p class="lede">A low price can hide gaps. Ask for a written quote that says, for each of these, whether it is included.</p>
+    </div>
+    <ul class="checks"><li>Follow-up visits</li><li>Extra hospital nights</li><li>Translation</li><li>Travel insurance</li><li>Treatment for complications</li></ul>
+  </div>
+</section>
+
+<section class="sec" id="hospitals">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Hospitals and clinics</p>
+      <h2>Hospitals and clinics</h2>
+      <p class="lede">Filter by country to see who we list.</p>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Filter by country"><button class="chip" type="button" data-f="all" aria-pressed="true">All countries</button><button class="chip" type="button" data-f="tr" aria-pressed="false">Turkey</button><button class="chip" type="button" data-f="th" aria-pressed="false">Thailand</button><button class="chip" type="button" data-f="kr" aria-pressed="false">South Korea</button><button class="chip" type="button" data-f="in" aria-pressed="false">India</button></div>
+    <ul class="hosp" id="hosp"><li data-c="tr"><span class="d"></span><span><span class="n">Medical Park Bahçelievler</span><span class="t">Multispecialty hospital</span></span><span class="w">Istanbul, Turkey</span></li><li data-c="tr"><span class="d"></span><span><span class="n">Vanity Cosmetic Surgery</span><span class="t">Cosmetic surgery clinic</span></span><span class="w">Istanbul, Turkey</span></li><li data-c="tr"><span class="d"></span><span><span class="n">Estetik International</span><span class="t">Cosmetic surgery clinic</span></span><span class="w">Istanbul, Turkey</span></li><li data-c="th"><span class="d"></span><span><span class="n">Bumrungrad International</span><span class="t">Multispecialty hospital</span></span><span class="w">Bangkok, Thailand</span></li><li data-c="th"><span class="d"></span><span><span class="n">Bangpakok 9 International</span><span class="t">Multispecialty hospital</span></span><span class="w">Bangkok, Thailand</span></li><li data-c="th"><span class="d"></span><span><span class="n">MedPark Hospital</span><span class="t">Multispecialty hospital</span></span><span class="w">Bangkok, Thailand</span></li><li data-c="kr"><span class="d"></span><span><span class="n">Asan Medical Center</span><span class="t">Multispecialty hospital</span></span><span class="w">Seoul, South Korea</span></li><li data-c="kr"><span class="d"></span><span><span class="n">VG Plastic Surgery</span><span class="t">Cosmetic surgery clinic</span></span><span class="w">Seoul, South Korea</span></li><li data-c="kr"><span class="d"></span><span><span class="n">ID Hospital</span><span class="t">Cosmetic surgery clinic</span></span><span class="w">Seoul, South Korea</span></li><li data-c="in"><span class="d"></span><span><span class="n">Apollo Hospital</span><span class="t">Multispecialty hospital</span></span><span class="w">Ahmedabad, India</span></li><li data-c="in"><span class="d"></span><span><span class="n">Max Smart Super Speciality</span><span class="t">Multispecialty hospital</span></span><span class="w">Delhi, India</span></li><li data-c="in"><span class="d"></span><span><span class="n">Eugenix Hair Sciences</span><span class="t">Hair clinic</span></span><span class="w">India, India</span></li></ul>
+    <p class="foot-note">Listings are for comparison only and are not an endorsement. Details come from public sources and can change, so confirm them directly with the hospital or clinic.</p>
+  </div>
+</section>
+
+<section class="sec alt" id="surgeons">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Surgeons</p>
+      <h2>Surgeons</h2>
+      <p class="lede">Every surgeon is tied to a hospital or clinic you can look up.</p>
+    </div>
+    <ul class="docs"><li data-c="tr"><span class="av" aria-hidden="true">LA</span><div><p class="n">Levent Acar, MD</p><p>Hair transplant, Turkey</p></div></li><li data-c="tr"><span class="av" aria-hidden="true">SM</span><div><p class="n">Semih Tiber Menteşe</p><p>Cosmetic surgery, VM Medical Park, Istanbul. 14 years of experience.</p></div></li><li data-c="tr"><span class="av" aria-hidden="true">EE</span><div><p class="n">Ergin Er</p><p>Cosmetic surgery, Turkey. 34 years of experience.</p></div></li><li data-c="tr"><span class="av" aria-hidden="true">BC</span><div><p class="n">Bulent Cihantimur</p><p>Estetik International, Istanbul</p></div></li><li data-c="kr"><span class="av" aria-hidden="true">SP</span><div><p class="n">Sang Hoon Park</p><p>ID Hospital, Seoul</p></div></li><li data-c="in"><span class="av" aria-hidden="true">PS</span><div><p class="n">Pradeep Sethi</p><p>Eugenix Hair Sciences, India</p></div></li></ul>
+  </div>
+</section>
+
+<section class="sec" id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Questions</p>
+      <h2>Questions people ask before they book</h2>
+    </div>
+    <div class="faq"><details class="q"><summary>How do I know a hospital is accredited?</summary><p>Look for Joint Commission International (JCI) accreditation and ask the hospital for its certificate. Turkey, Thailand and India each have dozens of JCI-accredited hospitals. Accreditation covers the hospital, so also ask about your surgeon&#x27;s own training and case history.</p></details><details class="q"><summary>What can a quote leave out?</summary><p>Follow-up visits, extra hospital nights, translation, travel insurance and treatment for complications are the usual gaps. Ask for a written quote that lists exactly what is included and what is not.</p></details><details class="q"><summary>Can I combine dental and cosmetic treatment in one trip?</summary><p>Often, yes. It depends on your health, how long each procedure takes to heal and what your surgeon recommends. Your surgeon should confirm the plan before you book flights.</p></details><details class="q"><summary>Do I need a visa?</summary><p>It depends on your passport. As of early 2026, Turkey allows US, UK and most EU citizens to enter visa-free for up to 90 days, while some nationalities need an e-visa. Rules for Thailand, South Korea and India differ, so check the official government site before you book.</p></details><details class="q"><summary>What happens if something goes wrong after I fly home?</summary><p>Ask before you book: how long the hospital keeps in touch, whether follow-up appointments can be remote, and who pays if a revision is needed. Get the answers in writing.</p></details><details class="q"><summary>Is Aesthetic Tourism a medical provider?</summary><p>No. We help you compare independent hospitals, clinics and surgeons and request quotes. Your treatment, and your medical decisions, are between you and your surgeon.</p></details></div>
+  </div>
+</section>
+
+<section class="sec quote" id="quote">
+  <div class="wrap quote-grid">
+    <div class="sec-head">
+      <p class="eyebrow">Get a quote</p>
+      <h2>Tell us what you're planning</h2>
+      <p class="lede">Share the procedure and the countries you're leaning towards. We'll come back with options and what each quote includes.</p>
+      <p class="safe-note">Please keep your notes brief and don't add detailed medical history or photos here. If anything is urgent or an emergency, contact your local emergency services, not this site.</p>
+    </div>
+    <form id="quoteForm" novalidate>
+      <div class="two">
+        <label>Procedure
+          <select id="fTreatment" name="treatment">
+            <option value="Dental">Dental</option>
+            <option value="Hair transplant">Hair transplant</option>
+            <option value="Aesthetic surgery">Aesthetic surgery</option>
+          </select>
+        </label>
+        <label>Destination
+          <select id="fCountry" name="country"><option value="">Not sure yet</option><option value="TR">Turkey</option><option value="TH">Thailand</option><option value="KR">South Korea</option><option value="IN">India</option></select>
+        </label>
+      </div>
+      <div class="two">
+        <label>Your name<input id="fName" name="name" type="text" autocomplete="name" required></label>
+        <label>Email<input id="fEmail" name="email" type="email" autocomplete="email" required></label>
+      </div>
+      <label>Anything we should know<textarea id="fNotes" name="notes" maxlength="1000" placeholder="Timing, budget, what you'd like changed"></textarea></label>
+      <label class="hp">Leave this empty<input name="website" type="text" tabindex="-1" autocomplete="off"></label>
+      <div class="consent" id="consentBox" hidden>
+        <label class="check"><input id="fConsent" type="checkbox"><span id="consentText"></span></label>
+      </div>
+      <div><button class="btn" id="submitBtn" type="submit">Request a quote</button></div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div>
+        <a class="brand" href="#top"><span class="mark" aria-hidden="true">A</span>Aesthetic Tourism</a>
+        <p class="muted small foot-lead">Compare hospitals, clinics and surgeons abroad.</p>
+      </div>
+      <div>
+        <p class="foot-h">Explore</p>
+        <ul>
+          <li><a href="#treatments">Treatments</a></li>
+          <li><a href="#destinations">Destinations</a></li>
+          <li><a href="#hospitals">Hospitals</a></li>
+          <li><a href="#surgeons">Surgeons</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="foot-h">Get started</p>
+        <ul>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#faq">Questions</a></li>
+          <li><a href="#quote">Get a quote</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="legal">© 2026 Aesthetic Tourism LLC. Aesthetic Tourism connects patients with independent hospitals, clinics and surgeons and does not provide medical care. Nothing on this site is medical advice. Prices and savings are estimates and change by clinic, procedure and season.</p>
+  </div>
+</footer>
+
+<script src="assets/app.js" defer></script>
+</body>
+</html>
