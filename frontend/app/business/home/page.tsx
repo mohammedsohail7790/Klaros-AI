@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { Hero, Page } from "@/components/ui/layout";
+import { CrewCard } from "@/components/business/CrewCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StageTracker } from "@/components/business/StageTracker";
 import { useBuilderOverview } from "@/components/business/useBuilderOverview";
@@ -155,6 +156,7 @@ export default function BusinessHomePage() {
 
           {/* SIDE RAIL */}
           <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+            <CrewCard token={token} />
             <ConsoleSection id="launch" title="Launch readiness" hint={operating ? "Everything that makes this business complete." : "What is ready, and what is holding up launch."}>
               <LaunchPanel overview={overview} rows={model.launch} token={token} tenantId={user?.tenant_id} onLaunched={onLaunched} />
             </ConsoleSection>

@@ -6032,3 +6032,17 @@ export const builderApi = {
     URL.revokeObjectURL(a.href);
   },
 };
+
+
+// --- Operating crew: the standing AI team that runs the business from the tenant's playbook ---
+export type OperatingCrewMember = { key: string; name: string; purpose: string; trigger: string; status: string; running: boolean; agent_id: string | null };
+export type OperatingCrew = { verticals: string[]; members: OperatingCrewMember[]; running: number; total: number };
+export type OperatingCrewProvision = { verticals: string[]; created: string[]; already_running: string[]; skipped_tools: Record<string, string[]>; failed: Record<string, string> };
+
+export function getOperatingCrew(token: string) {
+  return request<OperatingCrew>("/api/v1/operating-crew", { headers: authHeaders(token) });
+}
+
+export function provisionOperatingCrew(token: string) {
+  return request<OperatingCrewProvision>("/api/v1/operating-crew/provision", { method: "POST", headers: authHeaders(token) });
+}
