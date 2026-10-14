@@ -600,6 +600,11 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(EnrollLeadInNurture(nurture_service))
     registry.register(ExecuteDueNurtureActivities(nurture_service))
 
+    from app.api.tool_deps_business_builder import get_halla_integration_service
+    from app.tools.builtin.workforce_tools import CallLead
+
+    registry.register(CallLead(session_factory, get_halla_integration_service()))
+
     registry.register(CreateReactivationCampaign(reactivation_service))
     registry.register(IdentifyInactiveCustomers(reactivation_service))
     registry.register(IdentifyUnbookedQualifiedLeads(reactivation_service))

@@ -109,6 +109,57 @@ GENERIC_CREW: tuple[CrewMember, ...] = (
         schedule_time="09:30",
         goal="Detect at-risk and inactive customers, mark due reminders and expiring warranties, and run today's due retention activities.",
     ),
+    CrewMember(
+        key="speed-to-lead",
+        name="Speed-to-Lead Caller",
+        purpose="Asks the AI receptionist to phone each newly qualified lead straight away, so no enquiry waits.",
+        instructions=_COMMON_RULES + " For a qualified lead: fetch it, and if it has a phone number ask the AI receptionist to call it, with a short opening line that mentions only "
+        "what the lead asked about. Each call waits for a person's approval unless the business has switched automatic calling on. If the call is refused or skipped, "
+        "record the reason in a note and stop. Never promise prices, availability or outcomes.",
+        tools=("crm.get_lead", "workforce.call_lead", "crm.create_note"),
+        event_type="lead.qualified",
+        goal="A lead has just been qualified. Ask the AI receptionist to call it if it has a phone number, and note what happened.",
+    ),
+    CrewMember(
+        key="sales-pipeline-keeper",
+        name="Sales Pipeline Keeper",
+        purpose="Every morning finds expired quotes and unsigned contracts and proposes the next follow-up for each.",
+        instructions=_COMMON_RULES + " Each run: detect expired quotes and pending contracts, review the sales snapshot, propose a follow-up for each expired quote, and send one "
+        "notification summarising what needs a person. Do not change prices or terms.",
+        tools=("quotes.detect_expired_quotes", "contracts.detect_pending", "ai.propose_quote_followup", "insights.get_sales_snapshot", "notifications.create_notification"),
+        schedule_time="10:00",
+        goal="Detect expired quotes and pending contracts, propose follow-ups, and notify the team of what needs a person.",
+    ),
+    CrewMember(
+        key="marketing-manager",
+        name="Marketing Manager",
+        purpose="Every morning reviews campaign results and budget and records what needs attention.",
+        instructions=_COMMON_RULES + " Each run: review the marketing snapshot, campaign performance and budget status, detect performance exceptions, and notify the team of anything "
+        "off track. You may record a content idea for something that is working. You cannot publish anything or change a campaign.",
+        tools=("insights.get_marketing_snapshot", "marketing.get_campaign_performance", "marketing.get_budget_status", "marketing.detect_performance_exceptions", "marketing.create_content_idea", "notifications.create_notification"),
+        schedule_time="10:30",
+        goal="Review campaign performance and budget, detect exceptions, and notify the team of anything off track.",
+    ),
+    CrewMember(
+        key="finance-watch",
+        name="Finance Watch",
+        purpose="Every morning checks cash and unpaid vendor bills and records what needs attention.",
+        instructions=_COMMON_RULES + " Each run: review the finance snapshot, generate the cash forecast and list unpaid vendor bills, and notify the team of any shortfall, large "
+        "or late bill. Do not pay, approve, write off or refund anything.",
+        tools=("insights.get_finance_snapshot", "finance.generate_cash_forecast", "finance.list_vendor_bills", "notifications.create_notification"),
+        schedule_time="08:00",
+        goal="Review cash and unpaid vendor bills, and notify the team of any shortfall or late bill.",
+    ),
+    CrewMember(
+        key="owner-brief",
+        name="Owner Brief",
+        purpose="Every morning writes the owner a one-page brief across sales, marketing, finance and operations.",
+        instructions=_COMMON_RULES + " Each run: generate the morning brief, read the snapshots for sales, marketing, finance, retention and operations, and send one notification "
+        "to the owner with the three things that matter most today and why.",
+        tools=("insights.generate_morning_brief", "insights.get_sales_snapshot", "insights.get_marketing_snapshot", "insights.get_finance_snapshot", "insights.get_retention_snapshot", "insights.get_operations_snapshot", "notifications.create_notification"),
+        schedule_time="07:00",
+        goal="Generate the morning brief and notify the owner of the three things that matter most today.",
+    ),
 )
 
 MEDICAL_TOURISM_CREW: tuple[CrewMember, ...] = (

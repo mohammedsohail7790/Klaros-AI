@@ -330,6 +330,8 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "marketing.find_stale_lead_candidates": ActionPolicy.AUTO,
     "marketing.enroll_lead_in_nurture": ActionPolicy.AUTO,
     "marketing.execute_due_nurture_activities": ActionPolicy.AUTO,
+    # An outbound call reaches a real person: a person approves each one unless the tenant sets this tool to AUTO in its own automation policy.
+    "workforce.call_lead": ActionPolicy.APPROVAL_REQUIRED,
     "marketing.create_reactivation_campaign": ActionPolicy.AUTO,
     "marketing.identify_inactive_customers": ActionPolicy.AUTO,  # read-only candidate selection, no contact made
     "marketing.identify_unbooked_qualified_leads": ActionPolicy.AUTO,
