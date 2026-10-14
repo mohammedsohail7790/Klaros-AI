@@ -37,6 +37,15 @@ def allowed_external_providers() -> frozenset[str]:
     return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
 
 
+async def _tenant_allowed_providers(session_factory, tenant_id: uuid.UUID) -> frozenset[str]:
+    """The AI providers this business's owner has allowed for its own data (tenant setting `ai_processing`), added to the platform default above.
+    A missing or unreadable setting is the strict default: no extra provider."""
+    from app.services.tenant_settings_service import AI_PROCESSING, TenantSettingsService
+
+    value = await TenantSettingsService(session_factory).get(tenant_id, AI_PROCESSING)
+    return frozenset(str(x).strip().lower() for x in (value.get("external_providers") or []) if str(x).strip())
+
+
 def _is_local(provider: Any) -> bool:
     return type(provider) in (DeterministicAIProvider, DeterministicEmbeddingProvider)
 

@@ -131,6 +131,9 @@ async def apply_setup(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID,
         await verticals.enable_for_organization(tenant_id, "medical_tourism", enabled_by=user_id)
     except VerticalExtensionAlreadyExistsError:
         pass  # idempotent
+    from app.services.operating_crew import ensure_crew
+
+    await ensure_crew(session_factory, tenant_id, user_id)  # the business's AI crew starts without anyone pressing a button
     service = MedicalTourismService(session_factory)
     for name in data["procedures"]:
         await service.create_procedure(tenant_id, CreateProcedureInput(name=name, category="General", idempotency_key=f"setup-{_slug(name)}"))

@@ -58,3 +58,21 @@ async def test_a_lead_without_a_phone_or_without_a_connected_receptionist_is_ski
     out = await get_tool_registry().execute("workforce.call_lead", {"lead_id": lead}, _ctx(other_tid), skip_approval_gate=True)
     assert out.requested is False and out.skipped_reason
     assert halla.sent("POST", "/calls/outbound") == []
+
+
+@pytest.mark.asyncio
+async def test_a_business_can_let_its_crew_call_on_its_own_and_only_that_business(client, halla) -> None:  # noqa: F811
+    from app.db.session import async_session_maker
+    from app.services.policy_service import PolicyService
+
+    token, tid = await _connected(client, "Auto Call Co", "autocall@example.com")
+    lead_id = await _lead(client, token, phone="+971500000013")
+    await PolicyService(async_session_maker).set_policy(tid, "workforce.call_lead", ActionPolicy.AUTO, actor_id=None)
+    out = await get_tool_registry().execute("workforce.call_lead", {"lead_id": lead_id}, _ctx(tid))  # the tenant's own policy lets it through, no approval needed
+    assert out.requested is True and len(halla.sent("POST", "/calls/outbound")) == 1
+
+    other_token, other_tid = await _connected(client, "Approval Co", "approvalco@example.com")
+    other_lead = await _lead(client, other_token, phone="+971500000014")
+    with pytest.raises(ToolApprovalRequiredError):  # another business is unaffected
+        await get_tool_registry().execute("workforce.call_lead", {"lead_id": other_lead}, _ctx(other_tid))
+    assert len(halla.sent("POST", "/calls/outbound")) == 1

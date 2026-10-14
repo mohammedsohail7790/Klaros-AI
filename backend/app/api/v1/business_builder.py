@@ -595,4 +595,8 @@ async def enable_module(
         await verticals.enable_for_organization(current_user.tenant_id, key, enabled_by=current_user.id)
     except VerticalExtensionAlreadyExistsError:
         pass  # idempotent: already enabled
+    from app.db.session import async_session_maker
+    from app.services.operating_crew import ensure_crew
+
+    await ensure_crew(async_session_maker, current_user.tenant_id, current_user.id)  # the business's AI crew starts without anyone pressing a button
     return {"key": vertical.key, "name": vertical.name, "enabled": True}

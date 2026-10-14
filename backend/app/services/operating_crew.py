@@ -229,6 +229,7 @@ class ProvisionResult:
     already: list[str] = field(default_factory=list)
     skipped_tools: dict[str, list[str]] = field(default_factory=dict)
     failed: dict[str, str] = field(default_factory=dict)
+    switched_off: list[str] = field(default_factory=list)
 
 
 def _display(m: CrewMember) -> str:
@@ -249,12 +250,16 @@ async def provision_crew(
     vertical_keys: list[str],
     *,
     autonomy_tier: str = AgentAutonomyTier.EXECUTE_AUTONOMOUS,
+    disabled: frozenset[str] = frozenset(),
 ) -> ProvisionResult:
     """Create, publish and activate every crew member that does not already exist and run. Safe to call repeatedly."""
     result = ProvisionResult()
     have = await existing_crew(service, tenant_id)
     for m in crew_for(vertical_keys):
         current = have.get(m.name)
+        if m.key in disabled:  # the owner switched this member off: never create or restart it
+            result.switched_off.append(m.name)
+            continue
         if current is not None and current.status == AgentStatus.ACTIVE and current.current_version_id:
             result.already.append(m.name)
             continue
@@ -284,3 +289,39 @@ async def provision_crew(
             logger.warning("operating_crew_member_failed", member=m.key, error=type(exc).__name__)
             result.failed[m.name] = type(exc).__name__
     return result
+
+
+async def enabled_verticals(session_factory, tenant_id: uuid.UUID) -> list[str]:
+    """The business modules this tenant has enabled that have a crew playbook. Read from the vertical registry, never from the request."""
+    from app.services.vertical_extension_service import VerticalExtensionService
+
+    service = VerticalExtensionService(session_factory)
+    enabled: list[str] = []
+    for key in PLAYBOOKS:
+        if key == "generic":
+            continue
+        try:
+            if await service.is_enabled_for_organization(tenant_id, key):
+                enabled.append(key)
+        except Exception:  # a missing catalogue row means the module is not enabled
+            continue
+    return enabled
+
+
+async def ensure_crew(session_factory, tenant_id: uuid.UUID, actor_id: uuid.UUID | None) -> ProvisionResult | None:
+    """Set up this tenant's crew without anyone pressing a button. Called when a business is set up or enables a module. Respects the tenant's own settings
+    (auto-provision on/off and members switched off). Idempotent, and never raises: a failure here must not break the action that triggered it."""
+    from app.api.tool_deps import get_tool_registry
+    from app.services.tenant_settings_service import CREW, TenantSettingsService
+
+    try:
+        settings = await TenantSettingsService(session_factory).get(tenant_id, CREW)
+        if not settings.get("auto_provision", True):
+            return None
+        verticals = await enabled_verticals(session_factory, tenant_id)
+        return await provision_crew(
+            AgentService(session_factory), get_tool_registry(), tenant_id, actor_id, verticals, disabled=frozenset(settings.get("disabled_members") or []),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("ensure_crew_failed", error=type(exc).__name__)
+        return None

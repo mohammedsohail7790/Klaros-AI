@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Bot } from "lucide-react";
-import { ApiError, OperatingCrew, getOperatingCrew, provisionOperatingCrew } from "@/lib/api";
+import { ApiError, OperatingCrew, getOperatingCrew, provisionOperatingCrew, updateOperatingCrewSettings } from "@/lib/api";
 import { ProgressRing } from "@/components/ui/layout";
 import { Button } from "@/components/ui/Button";
 
@@ -43,8 +43,23 @@ export function CrewCard({ token }: { token: string | null }) {
     }
   }
 
+  async function toggleMember(key: string, off: boolean) {
+    if (!token || busy || !crew) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const current = crew.members.filter((m) => m.switched_off).map((m) => m.key);
+      await updateOperatingCrewSettings(token, { disabled_members: off ? [...current, key] : current.filter((k) => k !== key) });
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "We couldn't change that just now. Nothing was changed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!crew) return null;
-  const allOn = crew.total > 0 && crew.running === crew.total;
+  const allOn = crew.total > 0 && crew.members.every((m) => m.running || m.switched_off);
   return (
     <section aria-label="Autopilot" className="mb-12 overflow-hidden rounded-3xl bg-surface-muted">
       <div className="flex items-center gap-5 px-6 py-6">
@@ -52,7 +67,7 @@ export function CrewCard({ token }: { token: string | null }) {
         <div className="min-w-0">
           <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">Autopilot</h2>
           <p className="mt-0.5 text-[15px] leading-snug text-muted">
-            {allOn ? "Your AI crew is running the business." : `${crew.running} of ${crew.total} crew members are running.`}
+            {allOn ? (crew.running === crew.total ? "Your AI crew is running the business." : `${crew.running} of ${crew.total} crew members are running; the rest are switched off.`) : `${crew.running} of ${crew.total} crew members are running.`}
           </p>
         </div>
       </div>
@@ -67,7 +82,14 @@ export function CrewCard({ token }: { token: string | null }) {
               <p className="text-[13px] leading-snug text-muted">{m.purpose}</p>
               <p className="mt-0.5 text-[12px] text-muted-foreground">{m.trigger}</p>
             </div>
-            <span className={`shrink-0 text-[12px] font-medium ${m.running ? "text-success" : "text-muted-foreground"}`}>{m.running ? "Running" : "Not set up"}</span>
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <span className={`text-[12px] font-medium ${m.running ? "text-success" : "text-muted-foreground"}`}>{m.running ? "Running" : m.switched_off ? "Switched off" : "Not set up"}</span>
+              {(m.running || m.switched_off) && (
+                <button type="button" disabled={busy} onClick={() => toggleMember(m.key, !m.switched_off)} className="text-[12px] text-accent hover:underline disabled:opacity-50">
+                  {m.switched_off ? "Switch on" : "Switch off"}
+                </button>
+              )}
+            </div>
           </li>
         ))}
       </ul>

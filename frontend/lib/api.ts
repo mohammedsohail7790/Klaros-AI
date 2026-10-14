@@ -6040,12 +6040,21 @@ export const builderApi = {
 
 
 // --- Operating crew: the standing AI team that runs the business from the tenant's playbook ---
-export type OperatingCrewMember = { key: string; name: string; purpose: string; trigger: string; status: string; running: boolean; agent_id: string | null };
-export type OperatingCrew = { verticals: string[]; members: OperatingCrewMember[]; running: number; total: number };
+export type OperatingCrewMember = { key: string; name: string; purpose: string; trigger: string; status: string; running: boolean; switched_off?: boolean; agent_id: string | null };
+export type OperatingCrew = { verticals: string[]; members: OperatingCrewMember[]; running: number; total: number; auto_provision?: boolean };
 export type OperatingCrewProvision = { verticals: string[]; created: string[]; already_running: string[]; skipped_tools: Record<string, string[]>; failed: Record<string, string> };
 
 export function getOperatingCrew(token: string) {
   return request<OperatingCrew>("/api/v1/operating-crew", { headers: authHeaders(token) });
+}
+
+/** The tenant's own crew choices: set the crew up automatically, and which members are switched off (the full list each time). */
+export function updateOperatingCrewSettings(token: string, body: { auto_provision?: boolean; disabled_members?: string[] }) {
+  return request<{ auto_provision: boolean; disabled_members: string[] }>("/api/v1/operating-crew/settings", {
+    method: "PUT",
+    headers: { ...authHeaders(token), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 export function provisionOperatingCrew(token: string) {

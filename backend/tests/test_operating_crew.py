@@ -97,3 +97,47 @@ async def test_the_api_shows_the_playbook_and_provisions_it_once(client, halla) 
 @pytest.mark.asyncio
 async def test_provisioning_needs_the_manage_agents_permission(client, halla) -> None:  # noqa: F811
     assert (await client.post("/api/v1/operating-crew/provision")).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_ensure_crew_sets_up_a_business_without_a_button_and_adds_a_modules_members(client, halla) -> None:  # noqa: F811
+    from tests.test_consent_gate_intake import _enable_vertical
+
+    _, tid = await _gated(client, "Auto Crew Co", "autocrew@example.com")
+    await _enable_vertical(tid)
+    first = await oc.ensure_crew(async_session_maker, tid, None)
+    assert first is not None and sorted(first.created) == sorted(m.name for m in oc.crew_for([oc.MEDICAL_TOURISM])) and not first.failed
+    again = await oc.ensure_crew(async_session_maker, tid, None)
+    assert again is not None and again.created == []  # idempotent
+
+
+@pytest.mark.asyncio
+async def test_a_tenant_can_switch_a_member_off_and_the_whole_crew_off(client, halla) -> None:  # noqa: F811
+    from tests.test_halla_integration import _h
+
+    token, tid = await _gated(client, "Off Crew Co", "offcrew@example.com")
+    assert (await client.get("/api/v1/operating-crew", headers=_h(token))).json()["auto_provision"] is True
+    await client.post("/api/v1/operating-crew/provision", headers=_h(token))
+    r = await client.put("/api/v1/operating-crew/settings", json={"disabled_members": ["growth-scout"]}, headers=_h(token))
+    assert r.status_code == 200 and r.json()["disabled_members"] == ["growth-scout"]
+    crew = (await client.get("/api/v1/operating-crew", headers=_h(token))).json()
+    scout = next(m for m in crew["members"] if m["key"] == "growth-scout")
+    assert scout["switched_off"] is True and scout["running"] is False and scout["status"] == "PAUSED"
+    assert crew["running"] == crew["total"] - 1
+    # provisioning again never restarts it
+    assert "Growth Scout" in (await client.post("/api/v1/operating-crew/provision", headers=_h(token))).json()["switched_off"]
+    # switching it back on starts it
+    await client.put("/api/v1/operating-crew/settings", json={"disabled_members": []}, headers=_h(token))
+    assert (await client.get("/api/v1/operating-crew", headers=_h(token))).json()["running"] == crew["total"]
+    # the whole crew can be left to the owner: nothing is set up automatically
+    await client.put("/api/v1/operating-crew/settings", json={"auto_provision": False}, headers=_h(token))
+    assert await oc.ensure_crew(async_session_maker, tid, None) is None
+
+
+@pytest.mark.asyncio
+async def test_unknown_members_are_refused_and_settings_need_manage_agents(client, halla) -> None:  # noqa: F811
+    from tests.test_halla_integration import _h
+
+    token, _ = await _gated(client, "Bad Crew Co", "badcrew@example.com")
+    assert (await client.put("/api/v1/operating-crew/settings", json={"disabled_members": ["no-such"]}, headers=_h(token))).status_code == 422
+    assert (await client.put("/api/v1/operating-crew/settings", json={})).status_code == 401
