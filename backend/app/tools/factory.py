@@ -756,4 +756,10 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(CreateProcedure(medical_tourism_service))
     registry.register(CreateProviderOffering(medical_tourism_service))
 
+    from app.tools.builtin.mt_referral_tools import ListReferralWork, RemindClinic, SendReferral
+
+    registry.register(ListReferralWork())
+    registry.register(SendReferral())
+    registry.register(RemindClinic())
+
     return registry

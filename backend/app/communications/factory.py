@@ -22,6 +22,13 @@ def get_communication_provider(session_factory: async_sessionmaker) -> Communica
     return ConsentGuardedProvider(_build_provider(session_factory), session_factory)
 
 
+def get_clinic_channel(session_factory: async_sessionmaker) -> CommunicationProvider:
+    """The raw provider, for messages addressed to a CLINIC (a business, not a patient). Used only by the Medical Tourism referral transport and clinic reminders,
+    which send ONLY to a clinic's own stored contact address and only after the referral gate (verified clinic, patient approval, permitted fields) has passed.
+    A message addressed to a patient never uses this: it always goes through `get_communication_provider` and its consent guard."""
+    return _build_provider(session_factory)
+
+
 def _build_provider(session_factory: async_sessionmaker) -> CommunicationProvider:
     settings = get_settings()
     internal_test = InternalTestCommunicationAdapter(session_factory)

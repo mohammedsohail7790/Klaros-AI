@@ -197,6 +197,39 @@ MEDICAL_TOURISM_CREW: tuple[CrewMember, ...] = (
         schedule_time="07:30",
         goal="Review the clinic directory against the procedures offered, and notify the team of any destination or procedure with no clinic.",
     ),
+    CrewMember(
+        key="referral-coordinator",
+        name="Referral Coordinator",
+        purpose="When a patient's approval to share with a clinic is recorded, sends that referral to the clinic.",
+        instructions=_COMMON_RULES + " A patient's approval for one clinic was just recorded. The referral id is the entity_id in the triggering event note. Send that referral with the send_referral tool. "
+        "If it is refused or not sent, notify the team with the short reason and stop; do not try again. You cannot verify a clinic or record an approval.",
+        tools=("medical_tourism.send_referral", "notifications.create_notification"),
+        event_type="mt.referral.approved",
+        goal="A patient's approval to share with a clinic was recorded. Send that referral, and notify the team if it could not be sent.",
+        max_tool_chain_depth=4,
+    ),
+    CrewMember(
+        key="clinic-follow-up",
+        name="Clinic Follow-up",
+        purpose="Every morning chases clinics that have not answered a referral and flags referrals that need a person.",
+        instructions=_COMMON_RULES + " Each run: list the referral work. For each referral awaiting a clinic response (at most five) send the clinic a reminder. Then send ONE notification to the team "
+        "naming anything else that needs a person: approved referrals that were not sent, accepted referrals with no outcome after two weeks. Never put a patient's details in a notification.",
+        tools=("medical_tourism.list_referral_work", "medical_tourism.remind_clinic", "notifications.create_notification"),
+        schedule_time="09:15",
+        goal="List the referral work, remind clinics that have not answered, and notify the team of anything that needs a person.",
+        max_tool_chain_depth=10,
+    ),
+    CrewMember(
+        key="verification-assistant",
+        name="Verification Assistant",
+        purpose="Every morning tells the team which clinics have verified evidence and are ready for a person to mark verified.",
+        instructions=_COMMON_RULES + " Each run: list the referral work and read the clinics that are ready for verification. If there are any, send one notification naming them. "
+        "You cannot verify a clinic: only a person can, and only with a verified, unexpired credential on record.",
+        tools=("medical_tourism.list_referral_work", "notifications.create_notification"),
+        schedule_time="07:45",
+        goal="List the clinics that are ready for verification and notify the team of them.",
+        max_tool_chain_depth=4,
+    ),
 )
 
 PLAYBOOKS: dict[str, tuple[CrewMember, ...]] = {"generic": GENERIC_CREW, MEDICAL_TOURISM: MEDICAL_TOURISM_CREW}

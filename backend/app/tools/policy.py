@@ -409,6 +409,10 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "medical_tourism.create_provider": ActionPolicy.AUTO,
     "medical_tourism.create_procedure": ActionPolicy.AUTO,
     "medical_tourism.create_provider_offering": ActionPolicy.AUTO,
+    "medical_tourism.list_referral_work": ActionPolicy.AUTO,  # read-only: ids and clinic names
+    # These two reach a clinic, so a person approves each one unless the tenant sets them to AUTO in its own automation policy. The referral gate still applies either way.
+    "medical_tourism.send_referral": ActionPolicy.APPROVAL_REQUIRED,
+    "medical_tourism.remind_clinic": ActionPolicy.APPROVAL_REQUIRED,
 }
 
 

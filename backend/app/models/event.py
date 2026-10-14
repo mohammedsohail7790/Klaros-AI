@@ -29,6 +29,7 @@ class EventType(StrEnum):
     LEAD_LOST = "lead.lost"
     LEAD_CONVERTED = "lead.converted"
     LEAD_SAFETY_ESCALATED = "lead.safety_escalated"  # a Medical Tourism safety category needs a person; payload carries the CATEGORY only
+    MT_REFERRAL_APPROVED = "mt.referral.approved"  # a patient's approval to share with ONE clinic was recorded; payload carries ids only, never patient data
 
     QUOTE_CREATED = "quote.created"
     QUOTE_SENT = "quote.sent"

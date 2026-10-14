@@ -166,6 +166,14 @@ async def post_approval(referral_id: uuid.UUID, body: dict, u: CurrentUser = Dep
                                                   wording_version=str(body.get("wording_version") or ""), channel=body.get("channel"))
     except ReferralError as exc:
         raise _err(exc) from exc
+    if a.decision == "GRANTED":  # lets a crew member send the referral without anyone pressing a button; the send itself is still gated and approval-controlled
+        from app.events.factory import get_event_bus
+        from app.models.event import EventType
+
+        await get_event_bus().publish(
+            tenant_id=u.tenant_id, event_type=EventType.MT_REFERRAL_APPROVED, source="medical_tourism", entity_type="provider_referral", entity_id=r.id,
+            payload={"referral_id": str(r.id), "provider_id": str(r.provider_id)},
+        )
     return {"referral": mt_referrals.referral_to_dict(r), "approval_id": str(a.id)}
 
 

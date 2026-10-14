@@ -296,6 +296,38 @@ class SandboxTransport:
         return None
 
 
+class EmailTransport:
+    """Emails the referral to the clinic's OWN stored contact address, and nowhere else (the recipient is never taken from the caller). It carries only the fields the patient
+    approved plus a reference. Delivery goes through the platform's real e-mail provider; if none is configured on this deployment the send FAILS and nothing is marked sent."""
+
+    name = "email"
+
+    def __init__(self, session_factory, tenant_id: uuid.UUID) -> None:
+        self._session_factory, self._tenant_id = session_factory, tenant_id
+
+    async def send(self, provider: Provider, payload: dict[str, Any]) -> None:
+        from app.communications.base import MessageTemplate
+        from app.communications.factory import get_clinic_channel
+
+        to = (provider.contact_email or "").strip()
+        if not to:
+            raise RuntimeError("the clinic has no contact e-mail on record")
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        if not (settings.SENDGRID_API_KEY and settings.SENDGRID_FROM_EMAIL):
+            raise RuntimeError("no real e-mail provider is configured on this deployment")
+        channel = get_clinic_channel(self._session_factory)
+        lines = [f"{k.replace('_', ' ').capitalize()}: {v}" for k, v in payload.items() if k != "reference"]
+        body = (
+            f"A patient has asked to be introduced to {provider.name}.\n\n" + "\n".join(lines) +
+            f"\n\nReference: {payload.get('reference')}\nPlease reply to confirm whether you can see this patient. Share only what is needed to arrange the consultation."
+        )
+        ok = await channel.send_email(self._tenant_id, to=to, subject="New patient introduction", body=body, template=MessageTemplate.REFERRAL_INVITATION)
+        if not ok:
+            raise RuntimeError("the e-mail provider did not deliver the message")
+
+
 def get_transport(name: str | None = None):
     from app.core.config import get_settings
 
@@ -303,6 +335,15 @@ def get_transport(name: str | None = None):
     if chosen == "sandbox":
         return SandboxTransport()
     raise ReferralError("transport_not_configured", "No clinic transport is configured; referrals can only be recorded in the sandbox.", status=503)
+
+
+def _resolve_transport(session_factory, tenant_id: uuid.UUID):
+    """The configured transport. `email` needs the tenant (to log the send), everything else is `get_transport`."""
+    from app.core.config import get_settings
+
+    if getattr(get_settings(), "MT_REFERRAL_TRANSPORT", "sandbox") == "email":
+        return EmailTransport(session_factory, tenant_id)
+    return get_transport()
 
 
 async def _payload(session, tenant_id: uuid.UUID, referral: ProviderReferral, lead: Lead, fields: tuple[str, ...]) -> dict[str, Any]:
@@ -340,7 +381,7 @@ async def send_referral(session_factory, tenant_id: uuid.UUID, referral_id: uuid
         lead = await session.get(Lead, referral.lead_id)
         if dup is None:
             payload = await _payload(session, tenant_id, referral, lead, gate.fields)
-            chosen = transport or get_transport()
+            chosen = transport or _resolve_transport(session_factory, tenant_id)
             try:
                 await chosen.send(provider, payload)
             except Exception:  # noqa: BLE001 - any transport failure is retryable and leaves nothing marked as sent

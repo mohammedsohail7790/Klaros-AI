@@ -380,7 +380,7 @@ async def test_a_non_sandbox_transport_fails_closed(client, halla) -> None:  # n
     lead = await _patient(client, token)
     ref = await _approved(client, token, lead, provider["id"])
     s = get_settings()
-    old, s.MT_REFERRAL_TRANSPORT = s.MT_REFERRAL_TRANSPORT, "email"
+    old, s.MT_REFERRAL_TRANSPORT = s.MT_REFERRAL_TRANSPORT, "carrier-pigeon"
     try:
         r = await _send(client, token, ref)
     finally:
@@ -461,3 +461,63 @@ async def test_the_commission_desk_lists_commissions_and_referrals_still_waiting
     assert desk["awaiting"] == [] and [(c["id"], c["status"], c["lead_id"], c["provider_name"], c["outcome"]) for c in desk["commissions"]] == [(made["id"], "PENDING", lead, "Desk Clinic", "TREATMENT_COMPLETED")]
     other, _ = await _gated(client, "Desk Other", "deskother@example.com")
     assert (await client.get(f"{BASE}/commissions", headers=_h(other))).json() == {"commissions": [], "awaiting": []}  # tenant scoped
+
+
+class _FakeChannel:
+    provider_name = "fake_sendgrid"
+
+    def __init__(self) -> None:
+        self.sent: list[dict] = []
+
+    async def send_email(self, tenant_id, *, to, subject, body, template) -> bool:
+        self.sent.append({"to": to, "subject": subject, "body": body, "template": str(template)})
+        return True
+
+
+async def _email_ready(client, token, tid, *, contact_email: str | None):
+    provider = await _provider(client, token)
+    if contact_email:
+        async with async_session_maker() as s:
+            await set_tenant_context(s, tid)
+            row = await s.get(Provider, uuid.UUID(provider["id"]))
+            row.contact_email = contact_email
+            await s.commit()
+    lead = await _patient(client, token)
+    return await _approved(client, token, lead, provider["id"])
+
+
+async def test_the_email_transport_sends_only_the_approved_fields_to_the_clinics_own_address(client, halla, monkeypatch) -> None:  # noqa: F811
+    from app.core.config import get_settings
+
+    token, tid = await _gated(client, "Email Co", "emailco@example.com")
+    ref = await _email_ready(client, token, tid, contact_email="intake@clinic.example")
+    fake = _FakeChannel()
+    s = get_settings()
+    monkeypatch.setattr(s, "MT_REFERRAL_TRANSPORT", "email")
+    monkeypatch.setattr(s, "SENDGRID_API_KEY", "key-for-test")
+    monkeypatch.setattr(s, "SENDGRID_FROM_EMAIL", "from@klaros.example")
+    monkeypatch.setattr("app.communications.factory.get_clinic_channel", lambda session_factory: fake)
+    r = await _send(client, token, ref)
+    assert r.status_code == 200 and r.json()["newly_sent"] is True
+    assert len(fake.sent) == 1 and fake.sent[0]["to"] == "intake@clinic.example"  # the clinic's own stored address, nobody else
+    assert "Reference:" in fake.sent[0]["body"]
+    assert len(await _deliveries(tid, ref)) == 1
+    again = await _send(client, token, ref)
+    assert again.json()["newly_sent"] is False and len(fake.sent) == 1  # a repeat sends nothing more
+
+
+async def test_the_email_transport_fails_closed_without_a_provider_or_an_address(client, halla, monkeypatch) -> None:  # noqa: F811
+    from app.core.config import get_settings
+
+    s = get_settings()
+    monkeypatch.setattr(s, "MT_REFERRAL_TRANSPORT", "email")
+    token, tid = await _gated(client, "Email Closed Co", "emailclosed@example.com")
+    ref = await _email_ready(client, token, tid, contact_email="intake@clinic.example")
+    monkeypatch.setattr(s, "SENDGRID_API_KEY", None)
+    no_provider = await _send(client, token, ref)
+    assert no_provider.status_code == 502 and await _deliveries(tid, ref) == []  # nothing marked sent, retryable
+    monkeypatch.setattr(s, "SENDGRID_API_KEY", "key-for-test")
+    monkeypatch.setattr(s, "SENDGRID_FROM_EMAIL", "from@klaros.example")
+    ref2 = await _email_ready(client, token, tid, contact_email=None)
+    no_address = await _send(client, token, ref2)
+    assert no_address.status_code == 502 and await _deliveries(tid, ref2) == []
