@@ -22,33 +22,33 @@ const renderAt = (p: string, props: Record<string, unknown> = {}) => {
 };
 
 describe("AppShell navigation", () => {
-  it("always shows the ten primary destinations, in the order a business is built and run", () => {
+  it("shows the areas of the business, in the order it is built and then run", () => {
     renderAt("/business/home");
     const primary = screen.getByRole("navigation", { name: "Primary" });
-    const links = within(primary).getAllByRole("link").slice(0, 10).map((a) => a.textContent);
-    expect(links).toEqual(["Home", "Build", "Business", "AI Workforce", "Website", "App Builder", "Integrations", "Data", "Automation", "Analytics"]);
+    expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual([
+      "Home", "People", "Work", "Money", "Growth", "AI team", "Website", "Business", "Medical Tourism", "Settings",
+    ]);
+    expect(within(primary).getByRole("link", { name: "Money" })).toHaveAttribute("href", "/quotes");
   });
 
-  it("keeps the day-to-day work one click away and the long tail tucked into All modules", () => {
+  it("shows the tabs of the current area, with exactly one active", () => {
+    renderAt("/finance/ar");
+    const tabs = screen.getByRole("navigation", { name: "Money sections" });
+    expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Quotes", "Contracts", "Invoices", "Receivables", "Cash", "Profitability", "Vendors"]);
+    expect(within(tabs).getByRole("link", { name: "Receivables" })).toHaveAttribute("aria-current", "page");
+    const active = within(screen.getByRole("navigation", { name: "Primary" })).getAllByRole("link").filter((a) => a.getAttribute("aria-current") === "page");
+    expect(active.map((a) => a.textContent)).toEqual(["Money"]);
+  });
+
+  it("files a page under the area of its most specific tab", () => {
+    let view = renderAt("/retention/reviews");
+    expect(screen.getByRole("link", { name: "Customer care" })).toHaveAttribute("aria-current", "page");
+    view.unmount();
+    view = renderAt("/business/discovery");
+    expect(within(screen.getByRole("navigation", { name: "Primary" })).getByRole("link", { name: "Business" })).toHaveAttribute("aria-current", "page");
+    view.unmount();
     renderAt("/business/home");
-    expect(screen.getByRole("link", { name: "Leads" })).toHaveAttribute("href", "/leads");
-    expect(screen.queryByRole("link", { name: "Invoices" })).not.toBeInTheDocument(); // collapsed by default
-    fireEvent.click(screen.getByRole("button", { name: /All modules/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Finance/ }));
-    expect(screen.getByRole("link", { name: "Invoices" })).toHaveAttribute("href", "/finance/invoices");
-  });
-
-  it("opens All modules by itself when the current page lives inside it", () => {
-    renderAt("/finance/invoices");
-    expect(screen.getByRole("link", { name: "Invoices" })).toHaveAttribute("aria-current", "page");
-  });
-
-  it("marks exactly one item active — the most specific", () => {
-    renderAt("/business/discovery");
-    const active = screen.getAllByRole("link").filter((a) => a.getAttribute("aria-current") === "page");
-    expect(active.map((a) => a.textContent)).toEqual(["Build"]);
-    renderAt("/business/map");
-    expect(screen.getAllByRole("link").filter((a) => a.getAttribute("aria-current") === "page").map((a) => a.textContent)).toContain("Business");
+    expect(within(screen.getByRole("navigation", { name: "Primary" })).getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
   });
 
   it("shows a breadcrumb for the current page and accepts a custom trail and page actions", () => {
@@ -62,11 +62,11 @@ describe("AppShell navigation", () => {
     expect(screen.getByRole("button", { name: "Do it" })).toBeInTheDocument();
   });
 
-  it("finds any page by name, including ones inside All modules", () => {
+  it("finds any page by name, including ones that live in another area's tabs", () => {
     renderAt("/business/home");
     fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "invoice" } });
     expect(screen.getByRole("link", { name: "Invoices" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Analytics" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Leads" })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "zzzz" } });
     expect(screen.getByText(/No pages match/)).toBeInTheDocument();
   });
@@ -93,7 +93,6 @@ describe("AppShell navigation", () => {
       expect(within(primary).getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
       expect(within(primary).getByRole("link", { name: "Referrals" })).toHaveAttribute("href", "/medical-tourism/provider-referrals");
       expect(within(primary).getByRole("link", { name: "Business setup" })).toHaveAttribute("href", "/setup");
-      expect(screen.queryByRole("button", { name: /All modules/ })).not.toBeInTheDocument();
       for (const hidden of ["Jobs", "Warranties", "Quotes", "Vendors", "Invoices", "Finance", "Retention"]) {
         expect(screen.queryByRole("link", { name: hidden })).not.toBeInTheDocument();
       }
@@ -115,8 +114,7 @@ describe("AppShell navigation", () => {
       getMode.mockResolvedValue({ pilot_console: false, consent_gated: false });
       signedIn("/business/home");
       await waitFor(() => expect(getMode).toHaveBeenCalled());
-      expect(screen.getByRole("link", { name: "Leads" })).toHaveAttribute("href", "/leads");
-      expect(screen.getByRole("button", { name: /All modules/ })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "People" })).toHaveAttribute("href", "/leads");
       expect(screen.queryByRole("link", { name: "Patients" })).not.toBeInTheDocument();
       afterEach_();
     });
@@ -125,8 +123,7 @@ describe("AppShell navigation", () => {
       getMode.mockRejectedValue(new Error("network"));
       signedIn("/business/home");
       await waitFor(() => expect(getMode).toHaveBeenCalled());
-      expect(screen.getByRole("link", { name: "Leads" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /All modules/ })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "People" })).toBeInTheDocument();
       afterEach_();
     });
   });

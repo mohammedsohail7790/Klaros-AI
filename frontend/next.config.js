@@ -15,6 +15,17 @@ const appPaths = ["/dashboard", "/business/:path*", "/medical-tourism/:path*", "
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Pages that only duplicated another page. They stay out of the navigation and send anyone with an old link to the page that replaced them.
+  async redirects() {
+    return [
+      { source: "/dashboard", destination: "/business/home", permanent: false },
+      { source: "/business/analytics", destination: "/business/home", permanent: false },
+      { source: "/business/workflows", destination: "/automations", permanent: false },
+      { source: "/business/integrations", destination: "/settings/integrations", permanent: false },
+      { source: "/finance", destination: "/finance/invoices", permanent: false },
+      { source: "/medical-tourism/leads", destination: "/medical-tourism/pipeline", permanent: false },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

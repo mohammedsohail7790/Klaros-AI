@@ -63,116 +63,9 @@ import CommandPalette from "./CommandPalette";
 import { Logo } from "./Logo";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { usePilotMode } from "@/lib/usePilotMode";
+import { AREAS, locate } from "./navAreas";
 
 type NavItem = { href: string; label: string; icon: any };
-
-// The product's spine — always visible, in the order a business is built and then run.
-const PRIMARY_NAV: NavItem[] = [
-  { href: "/business/home", label: "Home", icon: Home },
-  { href: "/business", label: "Build", icon: Hammer },
-  { href: "/business/map", label: "Business", icon: MapIcon },
-  { href: "/workforce", label: "AI Workforce", icon: Headset },
-  { href: "/website", label: "Website", icon: Globe },
-  { href: "/builder", label: "App Builder", icon: Sparkles },
-  { href: "/business/integrations", label: "Integrations", icon: Plug },
-  { href: "/business/data", label: "Data", icon: Database },
-  { href: "/business/workflows", label: "Automation", icon: Workflow },
-  { href: "/business/analytics", label: "Analytics", icon: BarChart3 },
-];
-
-// Day-to-day work with people.
-const WORK_NAV: NavItem[] = [
-  { href: "/leads", label: "Leads", icon: Users },
-  { href: "/customers", label: "Customers", icon: Users },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/morning-brief", label: "Morning Brief", icon: Sunrise },
-];
-
-const MODULE_SECTIONS: { label: string; items: NavItem[] }[] = [
-  {
-    label: "Operations",
-    items: [
-      { href: "/operations", label: "Operations", icon: Wrench },
-      { href: "/jobs", label: "Jobs", icon: Wrench },
-      { href: "/operations/workers", label: "Workers", icon: Users },
-      { href: "/exceptions", label: "Exceptions", icon: AlertTriangle },
-    ],
-  },
-  {
-    label: "Finance",
-    items: [
-      { href: "/finance", label: "Finance", icon: DollarSign },
-      { href: "/quotes", label: "Quotes", icon: FileText },
-      { href: "/contracts", label: "Contracts", icon: FileSignature },
-      { href: "/finance/invoices", label: "Invoices", icon: Receipt },
-      { href: "/finance/ar", label: "AR", icon: Landmark },
-      { href: "/finance/profitability", label: "Profitability", icon: TrendingUp },
-      { href: "/finance/cash", label: "Cash", icon: Wallet },
-      { href: "/vendors", label: "Vendors", icon: Truck },
-    ],
-  },
-  {
-    label: "Marketing",
-    items: [
-      { href: "/marketing", label: "Marketing", icon: Megaphone },
-      { href: "/marketing/campaigns", label: "Campaigns", icon: Megaphone },
-      { href: "/marketing/content", label: "Content", icon: FileText },
-      { href: "/marketing/seo", label: "SEO", icon: TrendingUp },
-      { href: "/marketing/outbound", label: "Outbound", icon: Radio },
-      { href: "/marketing/nurture", label: "Nurture", icon: Mail },
-      { href: "/marketing/reactivation", label: "Reactivation", icon: Heart },
-    ],
-  },
-  {
-    label: "Retention",
-    items: [
-      { href: "/retention", label: "Retention", icon: Heart },
-      { href: "/retention/campaigns", label: "Campaigns", icon: Megaphone },
-      { href: "/retention/opportunities", label: "Opportunities", icon: TrendingUp },
-      { href: "/retention/risk-signals", label: "Risk & Advocacy", icon: AlertTriangle },
-      { href: "/retention/reminders", label: "Reminders", icon: AlertTriangle },
-      { href: "/retention/reviews", label: "Reviews", icon: FileText },
-      { href: "/retention/referrals", label: "Referrals", icon: Users },
-      { href: "/retention/warranties", label: "Warranties", icon: ShieldCheck },
-    ],
-  },
-  {
-    label: "AI & Automation",
-    items: [
-      { href: "/agents", label: "Agents", icon: Bot },
-      { href: "/events", label: "Events", icon: Radio },
-      { href: "/automations", label: "Automations", icon: Workflow },
-      { href: "/approvals", label: "Approvals", icon: CheckSquare },
-      { href: "/ai-activity", label: "AI Activity", icon: BrainCircuit },
-    ],
-  },
-  {
-    label: "Medical Tourism",
-    items: [
-      { href: "/medical-tourism/providers", label: "Providers", icon: Stethoscope },
-      { href: "/medical-tourism/procedures", label: "Procedures", icon: FileText },
-      { href: "/medical-tourism/leads", label: "Patient Leads", icon: Users },
-      { href: "/medical-tourism/consultations", label: "Consultations", icon: CalendarCheck },
-      { href: "/medical-tourism/referrals", label: "Referral Commissions", icon: HandCoins },
-    ],
-  },
-  {
-    label: "Settings",
-    items: [
-      { href: "/settings/automation", label: "Automation Settings", icon: Settings2 },
-      { href: "/settings/knowledge", label: "Knowledge Layer", icon: BookOpen },
-      { href: "/settings/memory", label: "Company Memory", icon: Layers },
-      { href: "/settings/voice", label: "Voice Receptionist", icon: Phone },
-      { href: "/settings/integrations", label: "Integrations", icon: Plug },
-      { href: "/settings/billing", label: "Billing", icon: CreditCard },
-      { href: "/settings/team", label: "Team", icon: UserPlus },
-      { href: "/settings/account", label: "Account & security", icon: UserCog },
-      { href: "/settings/compliance", label: "Compliance", icon: ShieldCheck },
-    ],
-  },
-];
-
 
 /**
  * The focused navigation for a consent-gated Medical Tourism pilot organisation (see usePilotMode): only what a clinic coordinator needs to
@@ -224,12 +117,10 @@ const PILOT_GROUPS: { label: string; items: NavItem[] }[] = [
 ];
 const PILOT_ITEMS: NavItem[] = PILOT_GROUPS.flatMap((g) => g.items);
 
-const ALL_ITEMS: NavItem[] = [...PRIMARY_NAV, ...WORK_NAV, ...MODULE_SECTIONS.flatMap((s) => s.items)];
+const ALL_ITEMS: (NavItem & { area: string })[] = AREAS.flatMap((a) => a.tabs.map((t) => ({ href: t.href, label: t.label, icon: a.icon, area: a.label })));
 
 function groupOf(href: string): string {
-  if (PRIMARY_NAV.some((i) => i.href === href)) return "Build & run";
-  if (WORK_NAV.some((i) => i.href === href)) return "Work";
-  return MODULE_SECTIONS.find((s) => s.items.some((i) => i.href === href))?.label ?? PILOT_GROUPS.find((g) => g.items.some((i) => i.href === href))?.label ?? "Pages";
+  return ALL_ITEMS.find((i) => i.href === href)?.area ?? PILOT_GROUPS.find((g) => g.items.some((i) => i.href === href))?.label ?? "Pages";
 }
 
 export type Crumb = { label: string; href?: string };
@@ -272,8 +163,6 @@ export default function AppShell({
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [moreOpen, setMoreOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const pilot = usePilotMode(token);
@@ -290,21 +179,22 @@ export default function AppShell({
   }, [pilot, token, pathname]);
   const navItems = pilot ? PILOT_ITEMS : ALL_ITEMS;
 
-  // Only the single most specific matching item is "active" — otherwise /finance/ar would
-  // light up both "Finance" and "AR", and every /business/* page would light up "Build".
+  // Only the single most specific matching item is "active". In the full navigation that is an area (and its tab); in the pilot navigation it is one item.
+  const located = pilot ? null : locate(pathname);
   const activeHref = (() => {
     if (!pathname) return null;
+    if (!pilot) return located?.tab.href ?? null;
     if (pathname.startsWith("/medical-tourism/patients/")) return "/medical-tourism/pipeline";
     let best: string | null = null;
-    for (const item of [...ALL_ITEMS, ...PILOT_ITEMS]) {
+    for (const item of PILOT_ITEMS) {
       const matches = pathname === item.href || pathname.startsWith(`${item.href}/`);
       if (matches && (!best || item.href.length > best.length)) best = item.href;
     }
     return best;
   })();
 
-  const activeItem = [...ALL_ITEMS, ...PILOT_ITEMS].find((i) => i.href === activeHref) ?? null;
-  const activeModuleSection = pilot ? null : MODULE_SECTIONS.find((s) => s.items.some((i) => i.href === activeHref))?.label ?? null;
+  const activeItem = (pilot ? PILOT_ITEMS.find((i) => i.href === activeHref) : located ? { label: located.tab.label, icon: located.area.icon } : null) ?? null;
+  const activeArea = located?.area ?? null;
   const ActiveIcon = activeItem?.icon ?? null;
 
   useEffect(() => {
@@ -315,49 +205,6 @@ export default function AppShell({
   useEffect(() => {
     setMobileNavOpen(false);
   }, [pathname]);
-
-  // "All modules" stays closed unless the current page lives inside it; the user's own
-  // choices are then remembered per browser.
-  useEffect(() => {
-    let stored: Record<string, boolean> = {};
-    let storedMore: boolean | undefined;
-    try {
-      stored = JSON.parse(localStorage.getItem("klaros_nav_expanded") ?? "{}");
-      const m = localStorage.getItem("klaros_nav_more");
-      storedMore = m === null ? undefined : m === "1";
-    } catch {
-      stored = {};
-    }
-    const initial: Record<string, boolean> = {};
-    for (const section of MODULE_SECTIONS) initial[section.label] = stored[section.label] ?? section.label === activeModuleSection;
-    setExpanded(initial);
-    setMoreOpen(activeModuleSection !== null || storedMore === true);
-    // Seed once from the page the user landed on; later navigation must not re-open what they closed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function remember(key: string, value: string) {
-    try {
-      localStorage.setItem(key, value);
-    } catch {
-      // best-effort only
-    }
-  }
-
-  function toggleMore() {
-    setMoreOpen((v) => {
-      remember("klaros_nav_more", v ? "0" : "1");
-      return !v;
-    });
-  }
-
-  function toggleSection(label: string) {
-    setExpanded((prev) => {
-      const next = { ...prev, [label]: !prev[label] };
-      remember("klaros_nav_expanded", JSON.stringify(next));
-      return next;
-    });
-  }
 
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -380,7 +227,7 @@ export default function AppShell({
     crumbs ??
     (activeItem
       ? [
-          ...(activeModuleSection ? [{ label: activeModuleSection }] : []),
+          ...(activeArea && activeArea.tabs.length > 1 ? [{ label: activeArea.label }] : []),
           { label: activeItem.label },
         ]
       : []);
@@ -442,57 +289,11 @@ export default function AppShell({
                 ))}
               </>
             ) : (
-            <>
-              <div className="space-y-0.5 py-1">
-                {PRIMARY_NAV.map((item) => (
-                  <NavLink key={item.href} item={item} active={item.href === activeHref} />
-                ))}
-              </div>
-              <div className="klaros-label px-2.5 pb-1 pt-5">Work</div>
-              <div className="space-y-0.5">
-                {WORK_NAV.map((item) => (
-                  <NavLink key={item.href} item={item} active={item.href === activeHref} />
-                ))}
-              </div>
-              <div className="mt-4 border-t border-border/70 pt-3">
-                <button
-                  type="button"
-                  onClick={toggleMore}
-                  aria-expanded={moreOpen}
-                  className="flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-left text-[13px] text-muted hover:bg-black/[0.04] hover:text-foreground"
-                >
-                  <span>All modules</span>
-                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`} strokeWidth={2} />
-                </button>
-                {moreOpen && (
-                  <div className="mt-1 space-y-1">
-                    {MODULE_SECTIONS.map((section) => {
-                      const isOpen = expanded[section.label] ?? false;
-                      return (
-                        <div key={section.label}>
-                          <button
-                            type="button"
-                            onClick={() => toggleSection(section.label)}
-                            aria-expanded={isOpen}
-                            className="flex w-full items-center justify-between rounded-xl px-2.5 py-1 text-left"
-                          >
-                            <span className="klaros-label">{section.label}</span>
-                            <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} strokeWidth={2} />
-                          </button>
-                          {isOpen && (
-                            <div className="space-y-0.5">
-                              {section.items.map((item) => (
-                                <NavLink key={item.href} item={item} active={item.href === activeHref} />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </>
+            <div className="space-y-0.5 py-1">
+              {AREAS.map((area) => (
+                <NavLink key={area.key} item={{ href: area.tabs[0].href, label: area.label, icon: area.icon }} active={area.key === activeArea?.key} />
+              ))}
+            </div>
             )
           )}
         </nav>
@@ -579,7 +380,21 @@ export default function AppShell({
             <NotificationBell token={token} />
           </div>
         </header>
-        <main key={pathname} className="klaros-page-in min-w-0 flex-1 overflow-x-clip">{children}</main>
+        <main key={pathname} className="klaros-page-in min-w-0 flex-1 overflow-x-clip">
+          {activeArea && activeArea.tabs.length > 1 && (
+            <nav aria-label={`${activeArea.label} sections`} className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-5 pt-5 sm:px-8">
+              {activeArea.tabs.map((t) => {
+                const on = t.href === activeHref;
+                return (
+                  <Link key={t.href} href={t.href} aria-current={on ? "page" : undefined} className={`shrink-0 rounded-full px-3.5 py-1.5 text-[13px] transition-colors ${on ? "bg-foreground font-medium text-background" : "text-muted hover:bg-black/[0.05] hover:text-foreground"}`}>
+                    {t.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+          {children}
+        </main>
       </div>
       <CommandPalette
         open={paletteOpen}
