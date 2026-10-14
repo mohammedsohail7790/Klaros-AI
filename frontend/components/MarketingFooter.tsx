@@ -11,11 +11,12 @@ export default function MarketingFooter() {
             © {new Date().getFullYear()} Klaros AI. Build and operate your business with AI.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Part of the{" "}
-            <a href="https://hallaai.com" target="_blank" rel="noopener" className="underline hover:text-foreground">
-              Halla AI
-            </a>{" "}
-            family — Halla AI is Klaros's separate AI workforce platform.
+            Part of the Halla AI family:{" "}
+            <a href="https://hallaai.com/consultancy" target="_blank" rel="noopener" className="underline hover:text-foreground">Consultancy</a>
+            {" · "}
+            <a href="https://hallaai.com/home" target="_blank" rel="noopener" className="underline hover:text-foreground">AI Receptionist</a>
+            {" · "}
+            <span>AI Intelligence (Klaros)</span>
           </p>
         </div>
         <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-muted">
