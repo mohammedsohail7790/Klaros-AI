@@ -2,11 +2,11 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { describe, expect, it, vi } from "vitest";
 
 let path = "/business/home";
-const getMode = vi.fn();
+const getModules = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => path }));
 vi.mock("@/lib/api", () => ({
   logout: vi.fn(),
-  getMedicalTourismMode: (...a: unknown[]) => getMode(...a),
+  getTenantModules: (...a: unknown[]) => getModules(...a),
   listHandoffTasks: vi.fn().mockResolvedValue({ tasks: [], total: 3 }),
   listNotifications: vi.fn().mockResolvedValue({ notifications: [] }),
   getUnreadNotificationCount: vi.fn().mockResolvedValue({ count: 0 }),
@@ -26,7 +26,7 @@ describe("AppShell navigation", () => {
     renderAt("/business/home");
     const primary = screen.getByRole("navigation", { name: "Primary" });
     expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual([
-      "Home", "People", "Work", "Money", "Growth", "AI team", "Website", "Business", "Medical Tourism", "Settings",
+      "Home", "People", "Work", "Money", "Growth", "AI team", "Website", "Business", "Settings",
     ]);
     expect(within(primary).getByRole("link", { name: "Money" })).toHaveAttribute("href", "/quotes");
   });
@@ -71,79 +71,66 @@ describe("AppShell navigation", () => {
     expect(screen.getByText(/No pages match/)).toBeInTheDocument();
   });
 
-  describe("Medical Tourism pilot organisation", () => {
+  describe("modules a tenant has enabled", () => {
     const signedIn = (p: string) => {
       sessionStorage.setItem("klaros_access_token", "tok");
       return renderAt(p);
     };
-    const afterEach_ = () => { sessionStorage.clear(); getMode.mockReset(); };
+    const reset = () => { sessionStorage.clear(); getModules.mockReset(); };
+    const primary = () => within(screen.getByRole("navigation", { name: "Primary" }));
 
-    it("shows the owner's console as five areas, without the general-purpose ERP pages", async () => {
-      getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
-      signedIn("/medical-tourism/overview");
-      const primary = screen.getByRole("navigation", { name: "Primary" });
-      await waitFor(() => expect(within(primary).getByRole("link", { name: /^Patients/ })).toHaveAttribute("href", "/medical-tourism/overview"));
-      expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual(["Patients3", "Clinics", "Money", "Business", "AI team", "Settings"]);
-      expect(within(primary).getByRole("link", { name: /^Patients/ })).toHaveAttribute("aria-current", "page");
-      const tabs = screen.getByRole("navigation", { name: "Patients sections" });
-      expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Today", "Patients", "Tasks3", "Referrals", "Consultations"]);
-      expect(within(tabs).getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
-      expect(within(tabs).getByRole("link", { name: "Referrals" })).toHaveAttribute("href", "/medical-tourism/provider-referrals");
-      for (const hidden of ["Jobs", "Warranties", "Quotes", "Vendors", "Invoices", "Finance", "Retention", "People", "Growth"]) {
-        expect(screen.queryByRole("link", { name: hidden })).not.toBeInTheDocument();
-      }
-      afterEach_();
+    it("shows the same areas to every business, and adds a module's tabs and area only when it is enabled", async () => {
+      getModules.mockResolvedValue({ modules: ["medical_tourism"] });
+      signedIn("/medical-tourism/pipeline");
+      await waitFor(() => expect(primary().getByRole("link", { name: /^Clinics/ })).toBeInTheDocument());
+      expect(primary().getAllByRole("link").map((a) => a.textContent)).toEqual(["Home", "People", "Work3", "Money", "Growth", "Clinics", "AI team", "Website", "Business", "Settings"]);
+      const tabs = screen.getByRole("navigation", { name: "People sections" });
+      expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Leads", "Customers", "Calendar", "Patients", "Consultations"]);
+      expect(within(tabs).getByRole("link", { name: "Patients" })).toHaveAttribute("aria-current", "page");
+      reset();
     });
 
-    it("keeps a patient's case under Patients and lists the clinic area's tabs", async () => {
-      getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
+    it("keeps a patient's case under Patients and puts tasks and referrals under Work", async () => {
+      getModules.mockResolvedValue({ modules: ["medical_tourism"] });
       const view = signedIn("/medical-tourism/patients/abc");
-      await waitFor(() => expect(screen.getByRole("navigation", { name: "Patients sections" })).toBeInTheDocument());
-      expect(within(screen.getByRole("navigation", { name: "Patients sections" })).getByRole("link", { name: "Patients" })).toHaveAttribute("aria-current", "page");
+      await waitFor(() => expect(screen.getByRole("navigation", { name: "People sections" })).toBeInTheDocument());
+      expect(within(screen.getByRole("navigation", { name: "People sections" })).getByRole("link", { name: "Patients" })).toHaveAttribute("aria-current", "page");
       view.unmount();
-      signedIn("/contracts");
-      await waitFor(() => expect(screen.getByRole("navigation", { name: "Clinics sections" })).toBeInTheDocument());
-      expect(within(screen.getByRole("navigation", { name: "Clinics sections" })).getAllByRole("link").map((a) => a.textContent)).toEqual(["Providers", "Procedures & offers", "Contracts"]);
-      afterEach_();
+      signedIn("/medical-tourism/tasks");
+      await waitFor(() => expect(screen.getByRole("navigation", { name: "Work sections" })).toBeInTheDocument());
+      const work = within(screen.getByRole("navigation", { name: "Work sections" }));
+      expect(work.getByRole("link", { name: /^Tasks/ })).toHaveAttribute("aria-current", "page");
+      expect(work.getByRole("link", { name: "Referrals" })).toHaveAttribute("href", "/medical-tourism/provider-referrals");
+      reset();
     });
 
-    it("gives the pilot an AI team area with the receptionist, the agents and the approvals", async () => {
-      getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
-      signedIn("/approvals");
-      await waitFor(() => expect(screen.getByRole("navigation", { name: "AI team sections" })).toBeInTheDocument());
-      const tabs = screen.getByRole("navigation", { name: "AI team sections" });
-      expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["AI receptionist", "Agents", "Approvals"]);
-      expect(within(tabs).getByRole("link", { name: "Approvals" })).toHaveAttribute("aria-current", "page");
-      expect(within(tabs).getByRole("link", { name: "Agents" })).toHaveAttribute("href", "/agents");
-      afterEach_();
+    it("shows a business with no module the core areas only, with no Medical Tourism pages", async () => {
+      getModules.mockResolvedValue({ modules: [] });
+      signedIn("/leads");
+      await waitFor(() => expect(getModules).toHaveBeenCalled());
+      expect(primary().getAllByRole("link").map((a) => a.textContent)).toEqual(["Home", "People", "Work", "Money", "Growth", "AI team", "Website", "Business", "Settings"]);
+      const tabs = within(screen.getByRole("navigation", { name: "People sections" }));
+      expect(tabs.getAllByRole("link").map((a) => a.textContent)).toEqual(["Leads", "Customers", "Calendar"]);
+      expect(screen.queryByRole("link", { name: "Patients" })).not.toBeInTheDocument();
+      reset();
     });
 
-    it("searches only the pilot pages", async () => {
-      getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
-      signedIn("/medical-tourism/overview");
-      await waitFor(() => expect(within(screen.getByRole("navigation", { name: "Primary" })).getByRole("link", { name: /^Clinics/ })).toBeInTheDocument());
-      fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "invoice" } });
-      expect(screen.getByText(/No pages match/)).toBeInTheDocument();
+    it("fails OPEN: if the modules cannot be read, the core navigation is still there", async () => {
+      getModules.mockRejectedValue(new Error("network"));
+      signedIn("/leads");
+      await waitFor(() => expect(getModules).toHaveBeenCalled());
+      expect(primary().getByRole("link", { name: "People" })).toBeInTheDocument();
+      expect(primary().getByRole("link", { name: "Money" })).toBeInTheDocument();
+      reset();
+    });
+
+    it("searches the pages the tenant can see, including a module's", async () => {
+      getModules.mockResolvedValue({ modules: ["medical_tourism"] });
+      signedIn("/leads");
+      await waitFor(() => expect(primary().getByRole("link", { name: /^Clinics/ })).toBeInTheDocument());
       fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "provider" } });
       expect(screen.getByRole("link", { name: "Providers" })).toBeInTheDocument();
-      afterEach_();
-    });
-
-    it("keeps the full navigation for an organisation that is not a pilot", async () => {
-      getMode.mockResolvedValue({ pilot_console: false, consent_gated: false });
-      signedIn("/business/home");
-      await waitFor(() => expect(getMode).toHaveBeenCalled());
-      expect(screen.getByRole("link", { name: "People" })).toHaveAttribute("href", "/leads");
-      expect(screen.queryByRole("link", { name: "Patients" })).not.toBeInTheDocument();
-      afterEach_();
-    });
-
-    it("fails OPEN: if the mode cannot be read, nothing is hidden", async () => {
-      getMode.mockRejectedValue(new Error("network"));
-      signedIn("/business/home");
-      await waitFor(() => expect(getMode).toHaveBeenCalled());
-      expect(screen.getByRole("link", { name: "People" })).toBeInTheDocument();
-      afterEach_();
+      reset();
     });
   });
 

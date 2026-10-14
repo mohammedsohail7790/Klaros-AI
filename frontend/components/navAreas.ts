@@ -1,30 +1,42 @@
 import {
-  Home, Users, Wrench, DollarSign, Megaphone, Bot, Globe, Hammer, Stethoscope, Settings2, Building2, Receipt,
+  Home, Users, Wrench, DollarSign, Megaphone, Bot, Globe, Hammer, Building2, Settings2,
 } from "lucide-react";
 
-export type AreaTab = { href: string; label: string };
+/** `module` names a business module (vertical extension) that must be enabled for the tenant to see this tab. No `module` means every tenant sees it. */
+export type AreaTab = { href: string; label: string; module?: string };
 export type NavArea = { key: string; label: string; icon: any; tabs: AreaTab[] };
 
+const MT = "medical_tourism";
+
 /**
- * The product's navigation: a handful of areas, each with tabs. Every page keeps its own URL; an area only groups them, so no bookmark breaks.
- * A page belongs to the area whose most specific tab href it sits under (so /retention/reviews is under "Customer care" in Growth).
+ * The product's navigation, the same for every business: a handful of areas, each with tabs. Every page keeps its own URL; an area only groups them.
+ * What differs per tenant is its configuration: a module adds its own tabs to the areas where they belong (Medical Tourism adds Patients to People,
+ * Tasks to Work, Commissions to Money, and the Clinics area), and an area with no visible tab is not shown.
+ * A page belongs to the area of its most specific tab href (so /retention/reviews is under "Customer care" in Growth).
  * Developer-only pages such as /events are deliberately not listed: they stay reachable by URL.
  */
 export const AREAS: NavArea[] = [
-  { key: "home", label: "Home", icon: Home, tabs: [{ href: "/business/home", label: "Home" }] },
+  { key: "home", label: "Home", icon: Home, tabs: [{ href: "/business/home", label: "Home" }, { href: "/medical-tourism/overview", label: "Today", module: MT }] },
   {
     key: "people", label: "People", icon: Users,
-    tabs: [{ href: "/leads", label: "Leads" }, { href: "/customers", label: "Customers" }, { href: "/calendar", label: "Calendar" }],
+    tabs: [
+      { href: "/leads", label: "Leads" }, { href: "/customers", label: "Customers" }, { href: "/calendar", label: "Calendar" },
+      { href: "/medical-tourism/pipeline", label: "Patients", module: MT }, { href: "/medical-tourism/consultations", label: "Consultations", module: MT },
+    ],
   },
   {
     key: "work", label: "Work", icon: Wrench,
-    tabs: [{ href: "/operations", label: "Overview" }, { href: "/jobs", label: "Jobs" }, { href: "/operations/workers", label: "Workers" }, { href: "/exceptions", label: "Exceptions" }],
+    tabs: [
+      { href: "/operations", label: "Overview" }, { href: "/jobs", label: "Jobs" }, { href: "/operations/workers", label: "Workers" }, { href: "/exceptions", label: "Exceptions" },
+      { href: "/medical-tourism/tasks", label: "Tasks", module: MT }, { href: "/medical-tourism/provider-referrals", label: "Referrals", module: MT },
+    ],
   },
   {
     key: "money", label: "Money", icon: DollarSign,
     tabs: [
       { href: "/quotes", label: "Quotes" }, { href: "/contracts", label: "Contracts" }, { href: "/finance/invoices", label: "Invoices" },
       { href: "/finance/ar", label: "Receivables" }, { href: "/finance/cash", label: "Cash" }, { href: "/finance/profitability", label: "Profitability" }, { href: "/vendors", label: "Vendors" },
+      { href: "/medical-tourism/referrals", label: "Commissions", module: MT }, { href: "/medical-tourism/revenue", label: "Revenue", module: MT },
     ],
   },
   {
@@ -34,6 +46,10 @@ export const AREAS: NavArea[] = [
       { href: "/marketing/seo", label: "SEO" }, { href: "/marketing/outbound", label: "Outbound" }, { href: "/marketing/nurture", label: "Nurture" },
       { href: "/marketing/reactivation", label: "Reactivation" }, { href: "/retention", label: "Customer care" },
     ],
+  },
+  {
+    key: "clinics", label: "Clinics", icon: Building2,
+    tabs: [{ href: "/medical-tourism/providers", label: "Providers", module: MT }, { href: "/medical-tourism/procedures", label: "Procedures & offers", module: MT }],
   },
   {
     key: "ai", label: "AI team", icon: Bot,
@@ -46,14 +62,7 @@ export const AREAS: NavArea[] = [
   { key: "website", label: "Website", icon: Globe, tabs: [{ href: "/website", label: "Website" }, { href: "/builder", label: "App Builder" }] },
   {
     key: "business", label: "Business", icon: Hammer,
-    tabs: [{ href: "/business", label: "Guided setup" }, { href: "/business/blueprint", label: "Blueprint" }, { href: "/business/map", label: "Business map" }],
-  },
-  {
-    key: "medical-tourism", label: "Medical Tourism", icon: Stethoscope,
-    tabs: [
-      { href: "/medical-tourism/overview", label: "Today" }, { href: "/medical-tourism/pipeline", label: "Patients" }, { href: "/medical-tourism/providers", label: "Providers" },
-      { href: "/medical-tourism/procedures", label: "Procedures" }, { href: "/medical-tourism/consultations", label: "Consultations" }, { href: "/medical-tourism/referrals", label: "Commissions" },
-    ],
+    tabs: [{ href: "/business", label: "Guided setup" }, { href: "/setup", label: "Setup" }, { href: "/business/blueprint", label: "Blueprint" }, { href: "/business/map", label: "Business map" }],
   },
   {
     key: "settings", label: "Settings", icon: Settings2,
@@ -64,39 +73,14 @@ export const AREAS: NavArea[] = [
   },
 ];
 
-/**
- * The focused navigation for a consent-gated Medical Tourism pilot organisation (see usePilotMode): only what a clinic coordinator needs to work an enquiry
- * that arrived from the AI receptionist. Everything else stays reachable by URL and for other organisations.
- */
-export const PILOT_AREAS: NavArea[] = [
-  {
-    key: "patients", label: "Patients", icon: Users,
-    tabs: [
-      { href: "/medical-tourism/overview", label: "Today" }, { href: "/medical-tourism/pipeline", label: "Patients" }, { href: "/medical-tourism/tasks", label: "Tasks" },
-      { href: "/medical-tourism/provider-referrals", label: "Referrals" }, { href: "/medical-tourism/consultations", label: "Consultations" },
-    ],
-  },
-  {
-    key: "clinics", label: "Clinics", icon: Building2,
-    tabs: [{ href: "/medical-tourism/providers", label: "Providers" }, { href: "/medical-tourism/procedures", label: "Procedures & offers" }, { href: "/contracts", label: "Contracts" }],
-  },
-  { key: "money", label: "Money", icon: Receipt, tabs: [{ href: "/medical-tourism/referrals", label: "Commissions" }, { href: "/medical-tourism/revenue", label: "Revenue" }] },
-  {
-    key: "business", label: "Business", icon: Hammer,
-    tabs: [{ href: "/setup", label: "Setup" }, { href: "/website", label: "Website" }, { href: "/marketing", label: "Marketing" }],
-  },
-  {
-    key: "ai", label: "AI team", icon: Bot,
-    tabs: [{ href: "/workforce", label: "AI receptionist" }, { href: "/agents", label: "Agents" }, { href: "/approvals", label: "Approvals" }],
-  },
-  {
-    key: "settings", label: "Settings", icon: Settings2,
-    tabs: [{ href: "/settings/team", label: "Team" }, { href: "/settings/account", label: "Account & security" }, { href: "/settings/compliance", label: "Licences & insurance" }],
-  },
-];
+/** The areas this tenant sees: each area keeps only the tabs whose module (if any) is enabled, and an area left with no tab is dropped. */
+export function visibleAreas(modules: string[]): NavArea[] {
+  const on = new Set(modules);
+  return AREAS.map((a) => ({ ...a, tabs: a.tabs.filter((t) => !t.module || on.has(t.module)) })).filter((a) => a.tabs.length > 0);
+}
 
 /** The area and tab a path belongs to: the most specific tab href that the path equals or sits under. */
-export function locate(pathname: string | null, areas: NavArea[] = AREAS): { area: NavArea; tab: AreaTab } | null {
+export function locate(pathname: string | null, areas: NavArea[]): { area: NavArea; tab: AreaTab } | null {
   if (!pathname) return null;
   const path = pathname.startsWith("/medical-tourism/patients/") ? "/medical-tourism/pipeline" : pathname; // a patient's case sits under Patients
   let best: { area: NavArea; tab: AreaTab } | null = null;

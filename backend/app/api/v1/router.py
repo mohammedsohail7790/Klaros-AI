@@ -43,6 +43,7 @@ from app.api.v1 import (
     mcp,
     medical_tourism,
     operating_crew,
+    tenant_modules,
     mt_referrals,
     business_setup,
     mcp_admin,
@@ -104,6 +105,7 @@ api_router.include_router(business_builder.router)
 api_router.include_router(consent_wordings.router)
 api_router.include_router(agents.router)
 api_router.include_router(operating_crew.router)
+api_router.include_router(tenant_modules.router)
 api_router.include_router(quickbooks_oauth.router)
 api_router.include_router(google_calendar_oauth.router)
 api_router.include_router(google_calendar.router)

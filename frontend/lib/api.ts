@@ -5537,6 +5537,11 @@ export async function getLeadOperations(token: string, leadId: string): Promise<
   }
 }
 
+/** The business modules this organisation has enabled (e.g. "medical_tourism"). The UI shows a module's pages only when it is in this list. */
+export function getTenantModules(token: string) {
+  return request<{ modules: string[] }>("/api/v1/tenant/modules", { headers: authHeaders(token) });
+}
+
 // --- Medical Tourism pilot console ---
 
 /** Whether this organisation is a consent-gated Medical Tourism pilot (the UI then shows the focused pilot navigation). */

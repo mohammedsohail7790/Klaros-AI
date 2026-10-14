@@ -62,8 +62,8 @@ import NotificationBell from "./NotificationBell";
 import CommandPalette from "./CommandPalette";
 import { Logo } from "./Logo";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { usePilotMode } from "@/lib/usePilotMode";
-import { AREAS, PILOT_AREAS, locate, type NavArea } from "./navAreas";
+import { useTenantModules } from "@/lib/useTenantModules";
+import { locate, visibleAreas, type NavArea } from "./navAreas";
 
 type NavItem = { href: string; label: string; icon: any };
 
@@ -113,10 +113,11 @@ export default function AppShell({
   const [query, setQuery] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const pilot = usePilotMode(token);
+  const modules = useTenantModules(token);
+  const hasMedicalTourism = modules.includes("medical_tourism");
   const [openTasks, setOpenTasks] = useState(0);
   useEffect(() => {
-    if (!pilot || !token) return;
+    if (!hasMedicalTourism || !token) return;
     let cancelled = false;
     listHandoffTasks(token, { status: "OPEN" })
       .then((r) => !cancelled && setOpenTasks(r.total))
@@ -124,8 +125,8 @@ export default function AppShell({
     return () => {
       cancelled = true;
     };
-  }, [pilot, token, pathname]);
-  const areas: NavArea[] = pilot ? PILOT_AREAS : AREAS;
+  }, [hasMedicalTourism, token, pathname]);
+  const areas: NavArea[] = useMemo(() => visibleAreas(modules), [modules]);
   const navItems: NavItem[] = areas.flatMap((a) => a.tabs.map((t) => ({ href: t.href, label: t.label, icon: a.icon })));
 
   // Only the single most specific matching tab is "active"; its area is highlighted in the sidebar and its sibling tabs are shown above the page.
@@ -180,7 +181,7 @@ export default function AppShell({
         }`}
       >
         <div className="flex items-center justify-between px-4 pb-3 pt-4">
-          <Logo href={pilot ? "/medical-tourism/overview" : "/business/home"} />
+          <Logo href="/business/home" />
           <button
             type="button"
             onClick={() => setMobileNavOpen(false)}
@@ -219,7 +220,7 @@ export default function AppShell({
                   key={area.key}
                   item={{ href: area.tabs[0].href, label: area.label, icon: area.icon }}
                   active={area.key === activeArea?.key}
-                  badge={pilot && area.key === "patients" ? openTasks : undefined}
+                  badge={hasMedicalTourism && area.key === "work" ? openTasks : undefined}
                 />
               ))}
             </div>
@@ -316,7 +317,7 @@ export default function AppShell({
                 return (
                   <Link key={t.href} href={t.href} aria-current={on ? "page" : undefined} className={`shrink-0 rounded-full px-3.5 py-1.5 text-[13px] transition-colors ${on ? "bg-foreground font-medium text-background" : "text-muted hover:bg-black/[0.05] hover:text-foreground"}`}>
                     {t.label}
-                    {pilot && t.href === "/medical-tourism/tasks" && openTasks > 0 && <span aria-label={`${openTasks} open`} className="ml-1.5 rounded-full bg-accent px-1.5 py-0.5 text-xs font-medium leading-none text-accent-foreground">{openTasks}</span>}
+                    {hasMedicalTourism && t.href === "/medical-tourism/tasks" && openTasks > 0 && <span aria-label={`${openTasks} open`} className="ml-1.5 rounded-full bg-accent px-1.5 py-0.5 text-xs font-medium leading-none text-accent-foreground">{openTasks}</span>}
                   </Link>
                 );
               })}
