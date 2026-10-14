@@ -312,10 +312,9 @@ class EmailTransport:
         to = (provider.contact_email or "").strip()
         if not to:
             raise RuntimeError("the clinic has no contact e-mail on record")
-        from app.core.config import get_settings
+        from app.communications.email_config import email_configured
 
-        settings = get_settings()
-        if not (settings.SENDGRID_API_KEY and settings.SENDGRID_FROM_EMAIL):
+        if not email_configured():
             raise RuntimeError("no real e-mail provider is configured on this deployment")
         channel = get_clinic_channel(self._session_factory)
         lines = [f"{k.replace('_', ' ').capitalize()}: {v}" for k, v in payload.items() if k != "reference"]

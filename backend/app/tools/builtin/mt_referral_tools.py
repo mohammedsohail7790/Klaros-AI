@@ -134,8 +134,6 @@ class RemindClinic(Tool):
     async def execute(self, input: RemindClinicInput, context: ExecutionContext) -> RemindClinicOutput:
         from app.communications.base import MessageTemplate
         from app.communications.factory import get_clinic_channel
-        from app.core.config import get_settings
-
         tid = context.tenant_id
         async with async_session_maker() as session:
             await set_tenant_context(session, tid)
@@ -151,8 +149,9 @@ class RemindClinic(Tool):
         to = (provider.contact_email or "").strip() if provider is not None else ""
         if not to:
             return RemindClinicOutput(reminded=False, reason="the clinic has no contact e-mail on record")
-        settings = get_settings()
-        if not (settings.SENDGRID_API_KEY and settings.SENDGRID_FROM_EMAIL):
+        from app.communications.email_config import email_configured
+
+        if not email_configured():
             return RemindClinicOutput(reminded=False, reason="no real e-mail provider is configured on this deployment")
         body = (
             f"We introduced a patient to {provider.name} and have not yet heard back.\n\nReference: {referral.id}\n"

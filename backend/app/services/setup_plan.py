@@ -50,7 +50,9 @@ async def build_plan(session_factory, tenant_id: uuid.UUID) -> dict[str, Any]:
     running = sum(1 for m in crew if (a := have.get(m.name)) is not None and a.status == "ACTIVE" and a.current_version_id)
     connected = await _connected_providers(session_factory, tenant_id)
     website = await _has_website(session_factory, tenant_id)
-    email_ready = bool(settings.SENDGRID_API_KEY and settings.SENDGRID_FROM_EMAIL)
+    from app.communications.email_config import email_configured
+
+    email_ready = email_configured()
     sms_ready = bool(settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_FROM_NUMBER)
 
     steps = [

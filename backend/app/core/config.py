@@ -212,6 +212,13 @@ class Settings(BaseSettings):
     # Verified SendGrid sender identity — SendGrid rejects sends from an
     # unverified address, so this must be a real, verified sender.
     SENDGRID_FROM_EMAIL: str | None = None
+    # Any SMTP account can send Klaros's e-mail instead of SendGrid (Brevo has a free forever plan, Gmail and Zoho work too). All of host, username, password and a from
+    # address are needed; unset = not configured. SendGrid wins if both are set. Port 587 uses STARTTLS, port 465 uses SSL.
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_FROM_EMAIL: str | None = None
     OPENAI_API_KEY: str | None = None
     # Which AI-workforce adapter this deployment wires in. "pending" (default) reports
     # honestly that no workforce is connected. "dev" enables the development simulator

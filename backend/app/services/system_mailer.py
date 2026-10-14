@@ -20,8 +20,9 @@ _TIMEOUT_SECONDS = 15.0
 
 
 def email_is_configured() -> bool:
-    s = get_settings()
-    return bool(s.SENDGRID_API_KEY and s.SENDGRID_FROM_EMAIL)
+    from app.communications.email_config import email_configured
+
+    return email_configured()
 
 
 async def send_system_email(*, to: str, subject: str, body: str) -> bool:
@@ -32,6 +33,17 @@ async def send_system_email(*, to: str, subject: str, body: str) -> bool:
         if settings.ENV != "production":
             logger.info("system_email_dev_outbox", to=to, subject=subject, body=body)
         return False
+    from app.communications.email_config import sendgrid_configured
+
+    if not sendgrid_configured():  # an SMTP account is configured instead
+        from app.communications.smtp_client import send_via_smtp
+
+        try:
+            await send_via_smtp(to=to, subject=subject, body=body, from_name="Klaros AI")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("system_email_failed", subject=subject, error_type=type(exc).__name__)
+            return False
+        return True
     payload = {
         "personalizations": [{"to": [{"email": to}]}],
         "from": {"email": settings.SENDGRID_FROM_EMAIL, "name": "Klaros AI"},

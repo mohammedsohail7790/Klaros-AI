@@ -13,7 +13,9 @@ from app.communications.base import CommunicationProvider
 from app.communications.composite_adapter import CompositeCommunicationAdapter
 from app.communications.consent_guard import ConsentGuardedProvider
 from app.communications.internal_test_adapter import InternalTestCommunicationAdapter
+from app.communications.email_config import sendgrid_configured, smtp_configured
 from app.communications.sendgrid_adapter import SendGridEmailAdapter
+from app.communications.smtp_adapter import SmtpEmailAdapter
 from app.communications.twilio_adapter import TwilioSMSAdapter
 from app.core.config import get_settings
 
@@ -34,10 +36,12 @@ def _build_provider(session_factory: async_sessionmaker) -> CommunicationProvide
     internal_test = InternalTestCommunicationAdapter(session_factory)
 
     email_provider: CommunicationProvider = internal_test
-    if settings.SENDGRID_API_KEY and settings.SENDGRID_FROM_EMAIL:
+    if sendgrid_configured():
         email_provider = SendGridEmailAdapter(
             session_factory, settings.SENDGRID_API_KEY, settings.SENDGRID_FROM_EMAIL
         )
+    elif smtp_configured():
+        email_provider = SmtpEmailAdapter(session_factory)
 
     sms_provider: CommunicationProvider = internal_test
     if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_FROM_NUMBER:
