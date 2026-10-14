@@ -22,6 +22,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Hero, Page } from "@/components/ui/layout";
+import { CrewCard } from "@/components/business/CrewCard";
 
 const PRIORITY_WORD: Record<number, string> = { 1: "Urgent", 2: "Today", 3: "When you can" };
 
@@ -229,6 +230,9 @@ export default function TodayPage() {
             </div>
           </>
         ) : null}
+        <div className="mt-10">
+          <CrewCard token={token} />
+        </div>
       </Page>
     </AppShell>
   );

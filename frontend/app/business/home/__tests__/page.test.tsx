@@ -14,6 +14,7 @@ const getMyWebsiteMock = vi.fn();
 const listVersionsMock = vi.fn();
 const publishMock = vi.fn();
 vi.mock("@/lib/api", () => ({
+  getOperatingCrew: vi.fn().mockRejectedValue(new Error("not under test")),
   ApiError: class ApiError extends Error {
     status: number;
     constructor(status: number, message: string) {
@@ -184,10 +185,11 @@ describe("Business Home — the command center", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Aurora Medical Travel" })).toBeInTheDocument();
   });
 
-  it("sends a tenant with no business journey to the builder", async () => {
+  it("keeps a tenant with no business journey on Home, with the crew and a link to the builder", async () => {
     getBuilderOverviewMock.mockResolvedValue(launched({ journey: null }));
     render(<BusinessHomePage />);
-    await vi.waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/business"));
+    expect(await screen.findByRole("link", { name: "Open the business builder" })).toHaveAttribute("href", "/business");
+    expect(replaceMock).not.toHaveBeenCalled();
   });
 
   it("explains a load failure and offers to retry", async () => {

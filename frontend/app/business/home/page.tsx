@@ -11,9 +11,8 @@
  * "nothing yet" — never sample data. No state is shown that isn't true.
  */
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { Button } from "@/components/ui/Button";
@@ -30,13 +29,8 @@ import { buildActionCenter, buildArchitectureChain, buildHealth, buildLaunchRows
 
 export default function BusinessHomePage() {
   const { token, user } = useAuth();
-  const router = useRouter();
   const { overview, error, reload } = useBuilderOverview(token);
   const { ops, error: opsError, reload: reloadOps } = useOperations(token);
-
-  useEffect(() => {
-    if (overview && !overview.journey) router.replace("/business");
-  }, [overview, router]);
 
   const onLaunched = useCallback(() => {
     reload();
@@ -52,6 +46,22 @@ export default function BusinessHomePage() {
       launch: buildLaunchRows(overview, ops),
     };
   }, [overview, ops]);
+
+  if (overview && !overview.journey) {
+    // A tenant set up outside the guided builder still has a business to run: show the crew, and offer the builder rather than forcing it.
+    return (
+      <AppShell user={user}>
+        <Page>
+          <Hero
+            title="Your business"
+            lede="Klaros is running this business with its standing AI crew. Everything they do goes through the same approvals and audit log."
+            actions={<Link href="/business" className="klaros-btn-secondary">Open the business builder</Link>}
+          />
+          <CrewCard token={token} />
+        </Page>
+      </AppShell>
+    );
+  }
 
   if (!overview || !overview.journey || !model) {
     return (
