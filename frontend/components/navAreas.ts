@@ -1,5 +1,5 @@
 import {
-  Home, Users, Wrench, DollarSign, Megaphone, Bot, Globe, Hammer, Stethoscope, Settings2,
+  Home, Users, Wrench, DollarSign, Megaphone, Bot, Globe, Hammer, Stethoscope, Settings2, Building2, Receipt,
 } from "lucide-react";
 
 export type AreaTab = { href: string; label: string };
@@ -64,13 +64,41 @@ export const AREAS: NavArea[] = [
   },
 ];
 
+/**
+ * The focused navigation for a consent-gated Medical Tourism pilot organisation (see usePilotMode): only what a clinic coordinator needs to work an enquiry
+ * that arrived from the AI receptionist. Everything else stays reachable by URL and for other organisations.
+ */
+export const PILOT_AREAS: NavArea[] = [
+  {
+    key: "patients", label: "Patients", icon: Users,
+    tabs: [
+      { href: "/medical-tourism/overview", label: "Today" }, { href: "/medical-tourism/pipeline", label: "Patients" }, { href: "/medical-tourism/tasks", label: "Tasks" },
+      { href: "/medical-tourism/provider-referrals", label: "Referrals" }, { href: "/medical-tourism/consultations", label: "Consultations" },
+    ],
+  },
+  {
+    key: "clinics", label: "Clinics", icon: Building2,
+    tabs: [{ href: "/medical-tourism/providers", label: "Providers" }, { href: "/medical-tourism/procedures", label: "Procedures & offers" }, { href: "/contracts", label: "Contracts" }],
+  },
+  { key: "money", label: "Money", icon: Receipt, tabs: [{ href: "/medical-tourism/referrals", label: "Commissions" }, { href: "/medical-tourism/revenue", label: "Revenue" }] },
+  {
+    key: "business", label: "Business", icon: Hammer,
+    tabs: [{ href: "/setup", label: "Setup" }, { href: "/website", label: "Website" }, { href: "/marketing", label: "Marketing" }, { href: "/workforce", label: "AI receptionist" }],
+  },
+  {
+    key: "settings", label: "Settings", icon: Settings2,
+    tabs: [{ href: "/settings/team", label: "Team" }, { href: "/settings/account", label: "Account & security" }, { href: "/settings/compliance", label: "Licences & insurance" }],
+  },
+];
+
 /** The area and tab a path belongs to: the most specific tab href that the path equals or sits under. */
-export function locate(pathname: string | null): { area: NavArea; tab: AreaTab } | null {
+export function locate(pathname: string | null, areas: NavArea[] = AREAS): { area: NavArea; tab: AreaTab } | null {
   if (!pathname) return null;
+  const path = pathname.startsWith("/medical-tourism/patients/") ? "/medical-tourism/pipeline" : pathname; // a patient's case sits under Patients
   let best: { area: NavArea; tab: AreaTab } | null = null;
-  for (const area of AREAS) {
+  for (const area of areas) {
     for (const tab of area.tabs) {
-      if ((pathname === tab.href || pathname.startsWith(`${tab.href}/`)) && (!best || tab.href.length > best.tab.href.length)) best = { area, tab };
+      if ((path === tab.href || path.startsWith(`${tab.href}/`)) && (!best || tab.href.length > best.tab.href.length)) best = { area, tab };
     }
   }
   return best;

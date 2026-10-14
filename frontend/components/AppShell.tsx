@@ -63,64 +63,12 @@ import CommandPalette from "./CommandPalette";
 import { Logo } from "./Logo";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { usePilotMode } from "@/lib/usePilotMode";
-import { AREAS, locate } from "./navAreas";
+import { AREAS, PILOT_AREAS, locate, type NavArea } from "./navAreas";
 
 type NavItem = { href: string; label: string; icon: any };
 
-/**
- * The focused navigation for a consent-gated Medical Tourism pilot organisation (see usePilotMode): only what a clinic coordinator needs to
- * work an enquiry that arrived from the AI receptionist. Everything else stays reachable by URL and for other organisations.
- */
-const PILOT_GROUPS: { label: string; items: NavItem[] }[] = [
-  {
-    label: "Patients",
-    items: [
-      { href: "/medical-tourism/overview", label: "Today", icon: Home },
-      { href: "/medical-tourism/pipeline", label: "Patients", icon: Users },
-      { href: "/medical-tourism/tasks", label: "Tasks", icon: ClipboardList },
-      { href: "/medical-tourism/provider-referrals", label: "Referrals", icon: Send },
-      { href: "/medical-tourism/consultations", label: "Consultations", icon: CalendarCheck },
-    ],
-  },
-  {
-    label: "Clinic network",
-    items: [
-      { href: "/medical-tourism/providers", label: "Providers", icon: Stethoscope },
-      { href: "/medical-tourism/procedures", label: "Procedures & offers", icon: FileText },
-      { href: "/contracts", label: "Contracts", icon: FileSignature },
-    ],
-  },
-  {
-    label: "Money",
-    items: [
-      { href: "/medical-tourism/referrals", label: "Commissions", icon: Receipt },
-      { href: "/medical-tourism/revenue", label: "Revenue", icon: HandCoins },
-    ],
-  },
-  {
-    label: "Business",
-    items: [
-      { href: "/setup", label: "Business setup", icon: Hammer },
-      { href: "/website", label: "Website", icon: Globe },
-      { href: "/marketing", label: "Marketing", icon: Megaphone },
-      { href: "/workforce", label: "AI receptionist", icon: Headset },
-    ],
-  },
-  {
-    label: "Settings",
-    items: [
-      { href: "/settings/team", label: "Team", icon: UserPlus },
-      { href: "/settings/account", label: "Account & security", icon: UserCog },
-      { href: "/settings/compliance", label: "Licences & insurance", icon: ShieldCheck },
-    ],
-  },
-];
-const PILOT_ITEMS: NavItem[] = PILOT_GROUPS.flatMap((g) => g.items);
-
-const ALL_ITEMS: (NavItem & { area: string })[] = AREAS.flatMap((a) => a.tabs.map((t) => ({ href: t.href, label: t.label, icon: a.icon, area: a.label })));
-
-function groupOf(href: string): string {
-  return ALL_ITEMS.find((i) => i.href === href)?.area ?? PILOT_GROUPS.find((g) => g.items.some((i) => i.href === href))?.label ?? "Pages";
+function groupOf(areas: NavArea[], href: string): string {
+  return areas.find((a) => a.tabs.some((t) => t.href === href))?.label ?? "Pages";
 }
 
 export type Crumb = { label: string; href?: string };
@@ -177,23 +125,13 @@ export default function AppShell({
       cancelled = true;
     };
   }, [pilot, token, pathname]);
-  const navItems = pilot ? PILOT_ITEMS : ALL_ITEMS;
+  const areas: NavArea[] = pilot ? PILOT_AREAS : AREAS;
+  const navItems: NavItem[] = areas.flatMap((a) => a.tabs.map((t) => ({ href: t.href, label: t.label, icon: a.icon })));
 
-  // Only the single most specific matching item is "active". In the full navigation that is an area (and its tab); in the pilot navigation it is one item.
-  const located = pilot ? null : locate(pathname);
-  const activeHref = (() => {
-    if (!pathname) return null;
-    if (!pilot) return located?.tab.href ?? null;
-    if (pathname.startsWith("/medical-tourism/patients/")) return "/medical-tourism/pipeline";
-    let best: string | null = null;
-    for (const item of PILOT_ITEMS) {
-      const matches = pathname === item.href || pathname.startsWith(`${item.href}/`);
-      if (matches && (!best || item.href.length > best.length)) best = item.href;
-    }
-    return best;
-  })();
-
-  const activeItem = (pilot ? PILOT_ITEMS.find((i) => i.href === activeHref) : located ? { label: located.tab.label, icon: located.area.icon } : null) ?? null;
+  // Only the single most specific matching tab is "active"; its area is highlighted in the sidebar and its sibling tabs are shown above the page.
+  const located = locate(pathname, areas);
+  const activeHref = located?.tab.href ?? null;
+  const activeItem = located ? { label: located.tab.label, icon: located.area.icon } : null;
   const activeArea = located?.area ?? null;
   const ActiveIcon = activeItem?.icon ?? null;
 
@@ -275,26 +213,16 @@ export default function AppShell({
               {searchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-muted-foreground">No pages match &ldquo;{query}&rdquo;.</p>}
             </div>
           ) : (
-            pilot ? (
-              <>
-                {PILOT_GROUPS.map((g, i) => (
-                  <div key={g.label}>
-                    <div className={`klaros-label px-2.5 pb-1 ${i === 0 ? "pt-2" : "pt-5"}`}>{g.label}</div>
-                    <div className="space-y-0.5">
-                      {g.items.map((item) => (
-                        <NavLink key={item.href} item={item} active={item.href === activeHref} badge={item.href === "/medical-tourism/tasks" ? openTasks : undefined} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </>
-            ) : (
             <div className="space-y-0.5 py-1">
-              {AREAS.map((area) => (
-                <NavLink key={area.key} item={{ href: area.tabs[0].href, label: area.label, icon: area.icon }} active={area.key === activeArea?.key} />
+              {areas.map((area) => (
+                <NavLink
+                  key={area.key}
+                  item={{ href: area.tabs[0].href, label: area.label, icon: area.icon }}
+                  active={area.key === activeArea?.key}
+                  badge={pilot && area.key === "patients" ? openTasks : undefined}
+                />
               ))}
             </div>
-            )
           )}
         </nav>
         {user && (
@@ -388,6 +316,7 @@ export default function AppShell({
                 return (
                   <Link key={t.href} href={t.href} aria-current={on ? "page" : undefined} className={`shrink-0 rounded-full px-3.5 py-1.5 text-[13px] transition-colors ${on ? "bg-foreground font-medium text-background" : "text-muted hover:bg-black/[0.05] hover:text-foreground"}`}>
                     {t.label}
+                    {pilot && t.href === "/medical-tourism/tasks" && openTasks > 0 && <span aria-label={`${openTasks} open`} className="ml-1.5 rounded-full bg-accent px-1.5 py-0.5 text-xs font-medium leading-none text-accent-foreground">{openTasks}</span>}
                   </Link>
                 );
               })}
@@ -399,7 +328,7 @@ export default function AppShell({
       <CommandPalette
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
-        items={navItems.map((i) => ({ href: i.href, label: i.label, icon: i.icon, group: groupOf(i.href) }))}
+        items={navItems.map((i) => ({ href: i.href, label: i.label, icon: i.icon, group: groupOf(areas, i.href) }))}
       />
     </div>
   );

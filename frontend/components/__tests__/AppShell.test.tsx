@@ -78,35 +78,43 @@ describe("AppShell navigation", () => {
     };
     const afterEach_ = () => { sessionStorage.clear(); getMode.mockReset(); };
 
-    it("shows the owner's console: patients, clinic network, money, business and settings, without the general-purpose ERP pages", async () => {
+    it("shows the owner's console as five areas, without the general-purpose ERP pages", async () => {
       getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
       signedIn("/medical-tourism/overview");
       const primary = screen.getByRole("navigation", { name: "Primary" });
-      await waitFor(() => expect(within(primary).getByRole("link", { name: "Patients" })).toHaveAttribute("href", "/medical-tourism/pipeline"));
-      expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual([
-        "Today", "Patients", "Tasks3", "Referrals", "Consultations",
-        "Providers", "Procedures & offers", "Contracts",
-        "Commissions", "Revenue",
-        "Business setup", "Website", "Marketing", "AI receptionist",
-        "Team", "Account & security", "Licences & insurance",
-      ]);
-      expect(within(primary).getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
-      expect(within(primary).getByRole("link", { name: "Referrals" })).toHaveAttribute("href", "/medical-tourism/provider-referrals");
-      expect(within(primary).getByRole("link", { name: "Business setup" })).toHaveAttribute("href", "/setup");
-      for (const hidden of ["Jobs", "Warranties", "Quotes", "Vendors", "Invoices", "Finance", "Retention"]) {
+      await waitFor(() => expect(within(primary).getByRole("link", { name: /^Patients/ })).toHaveAttribute("href", "/medical-tourism/overview"));
+      expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual(["Patients3", "Clinics", "Money", "Business", "Settings"]);
+      expect(within(primary).getByRole("link", { name: /^Patients/ })).toHaveAttribute("aria-current", "page");
+      const tabs = screen.getByRole("navigation", { name: "Patients sections" });
+      expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Today", "Patients", "Tasks3", "Referrals", "Consultations"]);
+      expect(within(tabs).getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+      expect(within(tabs).getByRole("link", { name: "Referrals" })).toHaveAttribute("href", "/medical-tourism/provider-referrals");
+      for (const hidden of ["Jobs", "Warranties", "Quotes", "Vendors", "Invoices", "Finance", "Retention", "People", "Growth"]) {
         expect(screen.queryByRole("link", { name: hidden })).not.toBeInTheDocument();
       }
+      afterEach_();
+    });
+
+    it("keeps a patient's case under Patients and lists the clinic area's tabs", async () => {
+      getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
+      const view = signedIn("/medical-tourism/patients/abc");
+      await waitFor(() => expect(screen.getByRole("navigation", { name: "Patients sections" })).toBeInTheDocument());
+      expect(within(screen.getByRole("navigation", { name: "Patients sections" })).getByRole("link", { name: "Patients" })).toHaveAttribute("aria-current", "page");
+      view.unmount();
+      signedIn("/contracts");
+      await waitFor(() => expect(screen.getByRole("navigation", { name: "Clinics sections" })).toBeInTheDocument());
+      expect(within(screen.getByRole("navigation", { name: "Clinics sections" })).getAllByRole("link").map((a) => a.textContent)).toEqual(["Providers", "Procedures & offers", "Contracts"]);
       afterEach_();
     });
 
     it("searches only the pilot pages", async () => {
       getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
       signedIn("/medical-tourism/overview");
-      await waitFor(() => expect(screen.getByRole("link", { name: "Patients" })).toBeInTheDocument());
+      await waitFor(() => expect(within(screen.getByRole("navigation", { name: "Primary" })).getByRole("link", { name: /^Clinics/ })).toBeInTheDocument());
       fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "invoice" } });
       expect(screen.getByText(/No pages match/)).toBeInTheDocument();
-      fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "patient" } });
-      expect(screen.getByRole("link", { name: "Patients" })).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Find a page"), { target: { value: "provider" } });
+      expect(screen.getByRole("link", { name: "Providers" })).toBeInTheDocument();
       afterEach_();
     });
 
