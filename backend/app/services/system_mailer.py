@@ -35,6 +35,17 @@ async def send_system_email(*, to: str, subject: str, body: str) -> bool:
         return False
     from app.communications.email_config import sendgrid_configured
 
+    from app.communications.email_config import brevo_configured
+
+    if not sendgrid_configured() and brevo_configured():
+        from app.communications.brevo_client import send_via_brevo
+
+        try:
+            await send_via_brevo(to=to, subject=subject, body=body, from_name="Klaros AI")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("system_email_failed", subject=subject, error_type=type(exc).__name__)
+            return False
+        return True
     if not sendgrid_configured():  # an SMTP account is configured instead
         from app.communications.smtp_client import send_via_smtp
 
