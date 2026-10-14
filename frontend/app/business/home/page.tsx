@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { Hero, Page } from "@/components/ui/layout";
 import { CrewCard } from "@/components/business/CrewCard";
+import { SetupPlanCard } from "@/components/business/SetupPlanCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StageTracker } from "@/components/business/StageTracker";
 import { useBuilderOverview } from "@/components/business/useBuilderOverview";
@@ -57,6 +58,7 @@ export default function BusinessHomePage() {
             lede="Klaros is running this business with its standing AI crew. Everything they do goes through the same approvals and audit log."
             actions={<Link href="/business" className="klaros-btn-secondary">Open the business builder</Link>}
           />
+          <SetupPlanCard token={token} />
           <CrewCard token={token} />
         </Page>
       </AppShell>
@@ -166,6 +168,7 @@ export default function BusinessHomePage() {
 
           {/* SIDE RAIL */}
           <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+            <SetupPlanCard token={token} />
             <CrewCard token={token} />
             <ConsoleSection id="launch" title="Launch readiness" hint={operating ? "Everything that makes this business complete." : "What is ready, and what is holding up launch."}>
               <LaunchPanel overview={overview} rows={model.launch} token={token} tenantId={user?.tenant_id} onLaunched={onLaunched} />

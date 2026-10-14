@@ -318,6 +318,12 @@ async def ensure_crew(session_factory, tenant_id: uuid.UUID, actor_id: uuid.UUID
         settings = await TenantSettingsService(session_factory).get(tenant_id, CREW)
         if not settings.get("auto_provision", True):
             return None
+        from app.models.organization import Organization
+
+        async with session_factory() as session:
+            org = await session.get(Organization, tenant_id)
+        if org is not None and org.billing_status == "canceled":  # nothing starts for a cancelled business
+            return None
         verticals = await enabled_verticals(session_factory, tenant_id)
         return await provision_crew(
             AgentService(session_factory), get_tool_registry(), tenant_id, actor_id, verticals, disabled=frozenset(settings.get("disabled_members") or []),

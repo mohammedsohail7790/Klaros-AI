@@ -362,7 +362,12 @@ class BusinessJourneyService:
             )
             await session.commit()
             await session.refresh(row)
-            return JourneyActionResult(journey=row, created=created)
+        # The business is now defined, so its AI crew starts on its own (for every business, from the modules it has enabled). Best-effort and idempotent:
+        # a failure here never undoes the confirmation.
+        from app.services.operating_crew import ensure_crew
+
+        await ensure_crew(self._session_factory, tenant_id, actor_id)
+        return JourneyActionResult(journey=row, created=created)
 
     # --- checkpoint 3: recommendations -----------------------------------
 

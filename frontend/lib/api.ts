@@ -6048,6 +6048,18 @@ export function getOperatingCrew(token: string) {
   return request<OperatingCrew>("/api/v1/operating-crew", { headers: authHeaders(token) });
 }
 
+// --- Setup plan: what it takes to run this business on Klaros, the same for every business ---
+export type SetupStep = { key: string; title: string; why: string; owner: "klaros" | "you"; state: "done" | "todo" | "platform"; href: string | null };
+export type SetupPlan = { verticals: string[]; crew: { running: number; total: number }; steps: SetupStep[]; todo: number; activated?: string[] };
+
+export function getSetupPlan(token: string) {
+  return request<SetupPlan>("/api/v1/setup-plan", { headers: authHeaders(token) });
+}
+
+export function activateSetupPlan(token: string) {
+  return request<SetupPlan>("/api/v1/setup-plan/activate", { method: "POST", headers: authHeaders(token) });
+}
+
 /** Which external AI providers the OWNER allows to process this business's own data (owner-only to change; requires an acknowledgement). */
 export type AIProcessingSetting = { external_providers: string[]; acknowledged_by?: string | null; acknowledged_at?: string | null };
 

@@ -45,6 +45,7 @@ from app.api.v1 import (
     operating_crew,
     tenant_modules,
     tenant_settings,
+    setup_plan,
     mt_referrals,
     business_setup,
     mcp_admin,
@@ -108,6 +109,7 @@ api_router.include_router(agents.router)
 api_router.include_router(operating_crew.router)
 api_router.include_router(tenant_modules.router)
 api_router.include_router(tenant_settings.router)
+api_router.include_router(setup_plan.router)
 api_router.include_router(quickbooks_oauth.router)
 api_router.include_router(google_calendar_oauth.router)
 api_router.include_router(google_calendar.router)
