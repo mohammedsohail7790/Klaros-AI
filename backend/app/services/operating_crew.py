@@ -65,6 +65,17 @@ GENERIC_CREW: tuple[CrewMember, ...] = (
         goal="A new lead has just arrived. Review it, qualify it, record a note with your assessment and next step, and start follow-up if appropriate.",
     ),
     CrewMember(
+        key="enquiry-acknowledger",
+        name="Enquiry Acknowledger",
+        purpose="E-mails each new enquiry a short confirmation that it was received.",
+        instructions=_COMMON_RULES + " A new enquiry has just arrived. The lead id is the entity_id in the triggering event note. Send the acknowledgement with the acknowledge_enquiry tool. If it is "
+        "not sent (no consent, no address, or e-mail not set up), say why in your final response and stop. Never add anything the person asked about.",
+        tools=("crm.acknowledge_enquiry",),
+        event_type="lead.created",
+        goal="A new enquiry has arrived. Send the person a short confirmation that it was received.",
+        max_tool_chain_depth=3,
+    ),
+    CrewMember(
         key="booking-coordinator",
         name="Booking Coordinator",
         purpose="Finds a slot and books a consultation for each qualified lead.",
@@ -229,6 +240,17 @@ MEDICAL_TOURISM_CREW: tuple[CrewMember, ...] = (
         schedule_time="07:45",
         goal="List the clinics that are ready for verification and notify the team of them.",
         max_tool_chain_depth=4,
+    ),
+    CrewMember(
+        key="clinic-onboarder",
+        name="Clinic Onboarder",
+        purpose="Every morning invites clinics with a contact address to send their licence, so a person can verify them.",
+        instructions=_COMMON_RULES + " Each run: list the referral work and take the clinics to invite. Invite at most five, one at a time, with the invite_clinic tool. If an invitation is refused, "
+        "skip that clinic. You cannot verify a clinic and you never promise a clinic anything.",
+        tools=("medical_tourism.list_referral_work", "medical_tourism.invite_clinic", "notifications.create_notification"),
+        schedule_time="08:45",
+        goal="Invite up to five clinics that have not yet been asked to send their credentials.",
+        max_tool_chain_depth=12,
     ),
 )
 

@@ -602,6 +602,10 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(EnrollLeadInNurture(nurture_service))
     registry.register(ExecuteDueNurtureActivities(nurture_service))
 
+    from app.tools.builtin.lead_ack_tools import AcknowledgeEnquiry
+
+    registry.register(AcknowledgeEnquiry())
+
     from app.api.tool_deps_business_builder import get_halla_integration_service
     from app.tools.builtin.workforce_tools import CallLead
 
@@ -756,10 +760,11 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(CreateProcedure(medical_tourism_service))
     registry.register(CreateProviderOffering(medical_tourism_service))
 
-    from app.tools.builtin.mt_referral_tools import ListReferralWork, RemindClinic, SendReferral
+    from app.tools.builtin.mt_referral_tools import InviteClinic, ListReferralWork, RemindClinic, SendReferral
 
     registry.register(ListReferralWork())
     registry.register(SendReferral())
     registry.register(RemindClinic())
+    registry.register(InviteClinic())
 
     return registry

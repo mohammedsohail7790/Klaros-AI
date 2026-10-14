@@ -24,6 +24,7 @@ from app.services.halla_integration_service import HallaIntegrationService, Lead
 from app.tools.base import ExecutionContext, Tool
 
 TOOL_NAME = "workforce.call_lead"
+REQUESTED_ACTION = "workforce.call_requested"  # written only when a call was really requested: a skipped attempt must not use up the daily or lifetime allowance
 MIN_HOURS_BETWEEN_CALLS = 24
 MAX_CALLS_PER_LEAD = 3
 
@@ -58,7 +59,7 @@ class CallLead(Tool):
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)
             q = select(func.count(), func.max(AuditLog.created_at)).where(
-                AuditLog.tenant_id == tenant_id, AuditLog.tool == TOOL_NAME, AuditLog.entity_id == lead_id, AuditLog.result == "success",
+                AuditLog.tenant_id == tenant_id, AuditLog.action == REQUESTED_ACTION, AuditLog.entity_id == lead_id,
             )
             count, last = (await session.execute(q)).one()
         return int(count or 0), last
@@ -75,4 +76,11 @@ class CallLead(Tool):
             result = await self._halla.call_lead(context.tenant_id, input.lead_id, reason=input.reason, opening_context=input.opening_context)
         except (LeadNotCallableError, WorkforceNotConnectedError, WorkforceUnavailableError) as exc:
             return CallLeadOutput(requested=False, skipped_reason=str(exc) or type(exc).__name__)
-        return CallLeadOutput(requested=bool(result.get("requested")), call_id=result.get("call_id"))
+        requested = bool(result.get("requested"))
+        if requested:
+            async with self._session_factory() as session:
+                await set_tenant_context(session, context.tenant_id)
+                session.add(AuditLog(tenant_id=context.tenant_id, actor_type=context.actor_type, actor_id=context.actor_id, action=REQUESTED_ACTION, entity_type="lead", entity_id=input.lead_id,
+                                     input_summary={"call_id": result.get("call_id")}, result="success"))
+                await session.commit()
+        return CallLeadOutput(requested=requested, call_id=result.get("call_id"))

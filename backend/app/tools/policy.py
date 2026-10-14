@@ -333,6 +333,8 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "marketing.execute_due_nurture_activities": ActionPolicy.AUTO,
     # An outbound call reaches a real person: a person approves each one unless the tenant sets this tool to AUTO in its own automation policy.
     "workforce.call_lead": ActionPolicy.APPROVAL_REQUIRED,
+    # An acknowledgement e-mail reaches a real person (consent-guarded, once per lead); a business that wants instant replies sets it to AUTO in its own automation policy.
+    "crm.acknowledge_enquiry": ActionPolicy.APPROVAL_REQUIRED,
     "marketing.create_reactivation_campaign": ActionPolicy.AUTO,
     "marketing.identify_inactive_customers": ActionPolicy.AUTO,  # read-only candidate selection, no contact made
     "marketing.identify_unbooked_qualified_leads": ActionPolicy.AUTO,
@@ -413,6 +415,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     # These two reach a clinic, so a person approves each one unless the tenant sets them to AUTO in its own automation policy. The referral gate still applies either way.
     "medical_tourism.send_referral": ActionPolicy.APPROVAL_REQUIRED,
     "medical_tourism.remind_clinic": ActionPolicy.APPROVAL_REQUIRED,
+    "medical_tourism.invite_clinic": ActionPolicy.APPROVAL_REQUIRED,  # first contact with a clinic: a person approves it unless the tenant sets it to AUTO
 }
 
 

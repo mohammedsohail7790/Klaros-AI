@@ -76,3 +76,20 @@ async def test_a_business_can_let_its_crew_call_on_its_own_and_only_that_busines
     with pytest.raises(ToolApprovalRequiredError):  # another business is unaffected
         await get_tool_registry().execute("workforce.call_lead", {"lead_id": other_lead}, _ctx(other_tid))
     assert len(halla.sent("POST", "/calls/outbound")) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_skipped_call_does_not_use_up_the_allowance(client, halla) -> None:  # noqa: F811
+    from app.integrations.workforce import halla_adapter  # noqa: F401
+
+    token = await _register(client, "Skipped Call Co", "skippedcall@example.com")  # Halla is not connected for this business yet
+    tid = await _tenant_id(client, token)
+    lead = await _lead(client, token, phone="+971500000015")
+    reg = get_tool_registry()
+    for _ in range(4):  # more skipped attempts than the three-call lifetime cap
+        out = await reg.execute("workforce.call_lead", {"lead_id": lead}, _ctx(tid), skip_approval_gate=True)
+        assert out.requested is False and "maximum" not in (out.skipped_reason or "") and "24 hours" not in (out.skipped_reason or "")
+    from tests.test_halla_integration import _connect
+    assert (await _connect(client, token)).status_code == 200  # now Halla is connected
+    first = await reg.execute("workforce.call_lead", {"lead_id": lead}, _ctx(tid), skip_approval_gate=True)
+    assert first.requested is True  # the earlier skipped attempts did not block the first real call

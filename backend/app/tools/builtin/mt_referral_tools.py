@@ -28,6 +28,8 @@ AWAITING_RESPONSE_DAYS = 3
 AWAITING_OUTCOME_DAYS = 14
 REMINDER_EVERY_DAYS = 3
 REMINDER_ACTION = "mt.referral.reminder_sent"
+INVITE_ACTION = "mt.provider.invited"
+INVITE_EVERY_DAYS = 14
 
 
 def _aware(value: datetime | None) -> datetime | None:
@@ -43,13 +45,15 @@ class ReferralWorkOutput(BaseModel):
     awaiting_clinic_response: list[dict]
     awaiting_outcome: list[dict]
     ready_for_verification: list[dict]
+    clinics_to_invite: list[dict] = []
 
 
 class ListReferralWork(Tool):
     name = "medical_tourism.list_referral_work"
     description = (
         "List what needs action in the referral pipeline: approved referrals not yet sent, sent referrals the clinic has not answered for 3+ days, accepted referrals with no "
-        "outcome for 14+ days, and clinics with verified evidence that a person has not yet marked verified. Ids and clinic names only. Read-only."
+        "outcome for 14+ days, clinics with verified evidence that a person has not yet marked verified, and clinics with a contact email that have not yet been invited to send their credentials. "
+        "Ids and clinic names only. Read-only."
     )
     input_schema = EmptyInput
     output_schema = ReferralWorkOutput
@@ -81,7 +85,14 @@ class ListReferralWork(Tool):
                 for p in (await session.execute(select(Provider).where(Provider.tenant_id == tid, Provider.verification_status.in_(["UNVERIFIED", "UNDER_REVIEW"])))).scalars()
                 if p.id in with_evidence
             ]
-        return ReferralWorkOutput(approved_not_sent=approved, awaiting_clinic_response=waiting, awaiting_outcome=outcome, ready_for_verification=ready)
+            invited = {e for (e,) in (await session.execute(select(AuditLog.entity_id).where(
+                AuditLog.tenant_id == tid, AuditLog.action == INVITE_ACTION, AuditLog.created_at >= now - timedelta(days=INVITE_EVERY_DAYS)))).all()}
+            to_invite = [
+                {"provider_id": str(p.id), "clinic": p.name}
+                for p in (await session.execute(select(Provider).where(Provider.tenant_id == tid, Provider.verification_status.in_(["UNVERIFIED", "UNDER_REVIEW"])))).scalars()
+                if (p.contact_email or "").strip() and p.id not in with_evidence and p.id not in invited
+            ]
+        return ReferralWorkOutput(approved_not_sent=approved, awaiting_clinic_response=waiting, awaiting_outcome=outcome, ready_for_verification=ready, clinics_to_invite=to_invite)
 
 
 class SendReferralInput(BaseModel):
@@ -166,3 +177,62 @@ class RemindClinic(Tool):
                                  input_summary={"provider_id": str(provider.id)}, result="success"))
             await session.commit()
         return RemindClinicOutput(reminded=True)
+
+
+class InviteClinicInput(BaseModel):
+    provider_id: uuid.UUID
+
+
+class InviteClinicOutput(BaseModel):
+    invited: bool
+    reason: str | None = None
+
+
+class InviteClinic(Tool):
+    name = "medical_tourism.invite_clinic"
+    description = (
+        "E-mail a clinic that is not yet verified and has a contact address, introducing the business and asking it to reply with its licence or accreditation. Goes only to the clinic's own "
+        "stored address, mentions no patient and promises nothing. At most once every 14 days per clinic. It does not verify the clinic: only a person can, with evidence on record."
+    )
+    input_schema = InviteClinicInput
+    output_schema = InviteClinicOutput
+    required_permission = Permission.COORDINATE_MEDICAL_TOURISM
+
+    async def execute(self, input: InviteClinicInput, context: ExecutionContext) -> InviteClinicOutput:
+        from app.communications.base import MessageTemplate
+        from app.communications.email_config import email_configured
+        from app.communications.factory import get_clinic_channel
+        from app.models.organization import Organization
+
+        tid = context.tenant_id
+        async with async_session_maker() as session:
+            await set_tenant_context(session, tid)
+            provider = (await session.execute(select(Provider).where(Provider.id == input.provider_id, Provider.tenant_id == tid))).scalar_one_or_none()
+            org = await session.get(Organization, tid)
+            last = (await session.execute(select(func.max(AuditLog.created_at)).where(AuditLog.tenant_id == tid, AuditLog.action == INVITE_ACTION, AuditLog.entity_id == input.provider_id))).scalar_one()
+        if provider is None:
+            return InviteClinicOutput(invited=False, reason="clinic not found")
+        if provider.verification_status == "VERIFIED":
+            return InviteClinicOutput(invited=False, reason="this clinic is already verified")
+        if last is not None and datetime.now(timezone.utc) - _aware(last) < timedelta(days=INVITE_EVERY_DAYS):
+            return InviteClinicOutput(invited=False, reason="this clinic was invited in the last 14 days")
+        to = (provider.contact_email or "").strip()
+        if not to:
+            return InviteClinicOutput(invited=False, reason="the clinic has no contact e-mail on record")
+        if not email_configured():
+            return InviteClinicOutput(invited=False, reason="no real e-mail provider is configured on this deployment")
+        business = org.name if org is not None else "our team"
+        body = (
+            f"Hello {provider.name},\n\n{business} helps international patients find clinics for treatment abroad. We would like to list {provider.name} as a partner clinic.\n\n"
+            "Before we can introduce any patient, we need to confirm your credentials. Please reply to this email with your current licence or accreditation (for example a certificate or a registry "
+            "link), and the best contact for patient enquiries.\n\nThis is an introduction only. We have not shared any patient information, and nothing is agreed until we have confirmed your details.\n"
+        )
+        ok = await get_clinic_channel(async_session_maker).send_email(tid, to=to, subject=f"Partnership enquiry from {business}", body=body, template=MessageTemplate.REFERRAL_INVITATION)
+        if not ok:
+            return InviteClinicOutput(invited=False, reason="the e-mail provider did not deliver the message")
+        async with async_session_maker() as session:
+            await set_tenant_context(session, tid)
+            session.add(AuditLog(tenant_id=tid, actor_type=context.actor_type, actor_id=context.actor_id, action=INVITE_ACTION, entity_type="medical_tourism_provider", entity_id=provider.id,
+                                 input_summary={"provider_id": str(provider.id)}, result="success"))
+            await session.commit()
+        return InviteClinicOutput(invited=True)
