@@ -83,7 +83,11 @@ export const PILOT_AREAS: NavArea[] = [
   { key: "money", label: "Money", icon: Receipt, tabs: [{ href: "/medical-tourism/referrals", label: "Commissions" }, { href: "/medical-tourism/revenue", label: "Revenue" }] },
   {
     key: "business", label: "Business", icon: Hammer,
-    tabs: [{ href: "/setup", label: "Setup" }, { href: "/website", label: "Website" }, { href: "/marketing", label: "Marketing" }, { href: "/workforce", label: "AI receptionist" }],
+    tabs: [{ href: "/setup", label: "Setup" }, { href: "/website", label: "Website" }, { href: "/marketing", label: "Marketing" }],
+  },
+  {
+    key: "ai", label: "AI team", icon: Bot,
+    tabs: [{ href: "/workforce", label: "AI receptionist" }, { href: "/agents", label: "Agents" }, { href: "/approvals", label: "Approvals" }],
   },
   {
     key: "settings", label: "Settings", icon: Settings2,

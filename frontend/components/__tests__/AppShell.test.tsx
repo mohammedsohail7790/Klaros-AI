@@ -83,7 +83,7 @@ describe("AppShell navigation", () => {
       signedIn("/medical-tourism/overview");
       const primary = screen.getByRole("navigation", { name: "Primary" });
       await waitFor(() => expect(within(primary).getByRole("link", { name: /^Patients/ })).toHaveAttribute("href", "/medical-tourism/overview"));
-      expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual(["Patients3", "Clinics", "Money", "Business", "Settings"]);
+      expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual(["Patients3", "Clinics", "Money", "Business", "AI team", "Settings"]);
       expect(within(primary).getByRole("link", { name: /^Patients/ })).toHaveAttribute("aria-current", "page");
       const tabs = screen.getByRole("navigation", { name: "Patients sections" });
       expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Today", "Patients", "Tasks3", "Referrals", "Consultations"]);
@@ -104,6 +104,17 @@ describe("AppShell navigation", () => {
       signedIn("/contracts");
       await waitFor(() => expect(screen.getByRole("navigation", { name: "Clinics sections" })).toBeInTheDocument());
       expect(within(screen.getByRole("navigation", { name: "Clinics sections" })).getAllByRole("link").map((a) => a.textContent)).toEqual(["Providers", "Procedures & offers", "Contracts"]);
+      afterEach_();
+    });
+
+    it("gives the pilot an AI team area with the receptionist, the agents and the approvals", async () => {
+      getMode.mockResolvedValue({ pilot_console: true, consent_gated: true });
+      signedIn("/approvals");
+      await waitFor(() => expect(screen.getByRole("navigation", { name: "AI team sections" })).toBeInTheDocument());
+      const tabs = screen.getByRole("navigation", { name: "AI team sections" });
+      expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["AI receptionist", "Agents", "Approvals"]);
+      expect(within(tabs).getByRole("link", { name: "Approvals" })).toHaveAttribute("aria-current", "page");
+      expect(within(tabs).getByRole("link", { name: "Agents" })).toHaveAttribute("href", "/agents");
       afterEach_();
     });
 
