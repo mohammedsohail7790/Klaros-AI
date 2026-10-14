@@ -7,6 +7,11 @@ import { ExternalLink, Menu, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { BuildCta } from "@/components/marketing/BuildCta";
 
+const FAMILY = [
+  { href: "https://hallaai.com/consultancy", label: "Consultancy" },
+  { href: "https://hallaai.com/home", label: "AI Receptionist" },
+];
+
 const LINKS = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#product", label: "What's inside" },
@@ -32,17 +37,26 @@ export default function MarketingHeader() {
       }`}
     >
       <div className="mx-auto flex h-12 max-w-6xl items-center justify-between px-5 sm:h-14">
-        <Logo />
+        <div className="flex items-center gap-4">
+          <Logo />
+          <div role="group" aria-label="Halla AI family" className="hidden items-center rounded-full bg-surface-muted p-0.5 text-[12.5px] lg:flex">
+            {FAMILY.map((f) => (
+              <a key={f.href} href={f.href} target="_blank" rel="noopener" className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-muted transition-colors hover:text-foreground">
+                {f.label}
+                <ExternalLink className="h-2.5 w-2.5 opacity-60" strokeWidth={2} aria-hidden="true" />
+              </a>
+            ))}
+            <span aria-current="page" className="rounded-full bg-surface px-3 py-1 font-medium text-foreground shadow-sm">
+              AI Intelligence
+            </span>
+          </div>
+        </div>
         <nav aria-label="Main" className="hidden items-center gap-7 text-[13px] text-muted sm:flex">
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} className="transition-colors duration-200 hover:text-foreground">
               {l.label}
             </Link>
           ))}
-          <a href="https://hallaai.com" target="_blank" rel="noopener" className="inline-flex items-center gap-1 transition-colors duration-200 hover:text-foreground">
-            Halla AI
-            <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
-          </a>
         </nav>
         <div className="hidden items-center gap-4 sm:flex">
           <Link href="/login" className="text-[13px] text-muted transition-colors duration-200 hover:text-foreground">
@@ -75,6 +89,11 @@ export default function MarketingHeader() {
                 <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)} className="border-b border-border/70 py-3">
                   {l.label}
                 </Link>
+              ))}
+              {FAMILY.map((f) => (
+                <a key={f.href} href={f.href} target="_blank" rel="noopener" onClick={() => setMenuOpen(false)} className="border-b border-border/70 py-3">
+                  Halla AI {f.label} <span className="text-muted-foreground">↗</span>
+                </a>
               ))}
               <Link href="/login" onClick={() => setMenuOpen(false)} className="border-b border-border/70 py-3">
                 Sign in
