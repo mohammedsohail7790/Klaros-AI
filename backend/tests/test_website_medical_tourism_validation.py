@@ -118,6 +118,13 @@ async def test_full_medical_tourism_website_builder_scenario(
         tenant_id,
         CreateProviderInput(name="Synthetic Test Hospital", country="TR", city="Istanbul", description="Synthetic test data only."),
     )
+    # The public site lists only VERIFIED clinics (a deliberate product rule), so verify this one the proper way: a credential, then verification.
+    from app.db.session import async_session_maker as session_maker
+    from app.services import mt_referrals
+
+    credential = await medical_tourism_service.add_provider_credential(tenant_id, provider.id, "Licence")
+    await medical_tourism_service.verify_provider_credential(tenant_id, credential.id, uuid.uuid4())
+    await mt_referrals.set_verification(session_maker, tenant_id, provider.id, "VERIFIED", uuid.uuid4())
     procedure, _ = await medical_tourism_service.create_procedure(
         tenant_id, CreateProcedureInput(name="Synthetic Hip Replacement", category="Orthopedics")
     )

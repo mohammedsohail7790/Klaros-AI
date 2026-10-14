@@ -11,8 +11,10 @@ import asyncio
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
+import pytest
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.db.session import async_session_maker, set_tenant_context
 from app.models.halla_consent import HallaConsentEvidence
 from app.models.medical_tourism import Provider, ProviderCredential
@@ -320,6 +322,10 @@ async def test_a_duplicate_send_transfers_the_data_once(client, halla) -> None: 
     assert len(await _deliveries(tid, ref)) == 1
 
 
+# Two simultaneous requests need separate database connections. The in-memory SQLite used by the default test run shares ONE connection between them, so one request's
+# rollback can undo the other's write and the result says nothing about the real service. This is proven on real PostgreSQL (DATABASE_URL pointing at it), like the
+# repo's other concurrency tests; the sequential duplicate-send test above covers the same rule on SQLite.
+@pytest.mark.skipif(not get_settings().DATABASE_URL.startswith("postgresql"), reason="concurrency needs real PostgreSQL (SQLite shares one connection)")
 async def test_two_sends_at_the_same_moment_still_transfer_once(client, halla) -> None:  # noqa: F811
     token, tid = await _gated(client, "Race Co", "race@example.com")
     provider = await _provider(client, token)

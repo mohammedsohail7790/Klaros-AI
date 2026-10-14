@@ -425,6 +425,16 @@ async def test_launch_readiness_explains_every_item_and_never_marks_unreal_thing
     assert (await client.post(f"/api/v1/websites/{w['id']}/versions/{v['id']}/publish", headers=h)).status_code == 200
     r = await client.post("/api/v1/medical-tourism/providers", json={"name": "Apex", "country": "IN", "idempotency_key": "p1"}, headers=h)
     assert r.status_code == 200, r.text
+    # An unverified clinic is not shown on the website, so it does not count as a configured record yet.
+    o = (await client.get("/api/v1/business-builder/overview", headers=h)).json()
+    assert {i["key"]: i for i in o["launch"]["items"]}["data:provider_directory"]["status"] == "NOT_READY"
+    # Verify it the proper way (a verified credential on record), and the website now has something to show.
+    pid = r.json()["provider"]["id"]
+    cred = await client.post(f"/api/v1/medical-tourism/providers/{pid}/credentials", json={"credential_type": "Licence"}, headers=h)
+    assert cred.status_code == 200, cred.text
+    cid = cred.json()["credential"]["id"]
+    assert (await client.post(f"/api/v1/medical-tourism/providers/{pid}/credentials/{cid}/verify", headers=h)).status_code == 200
+    assert (await client.put(f"/api/v1/medical-tourism/providers/{pid}/verification", json={"status": "VERIFIED"}, headers=h)).status_code == 200
     o = (await client.get("/api/v1/business-builder/overview", headers=h)).json()
     by = {i["key"]: i for i in o["launch"]["items"]}
     assert by["website"]["status"] == "READY" and o["launch"]["launched"] is True
