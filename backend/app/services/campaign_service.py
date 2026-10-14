@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.session import set_tenant_context
@@ -84,6 +84,17 @@ class CampaignService:
             payload={"campaign_id": str(campaign.id), "name": name, "channel": channel},
         )
         return campaign
+
+    async def list_campaigns(self, tenant_id: uuid.UUID, *, status: str | None = None, limit: int = 25) -> tuple[list[Campaign], int]:
+        """This tenant's campaigns, newest first, and how many exist in all (optionally only those in one status)."""
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            base = select(Campaign).where(Campaign.tenant_id == tenant_id)
+            if status:
+                base = base.where(Campaign.status == status)
+            rows = (await session.execute(base.order_by(Campaign.created_at.desc()).limit(max(1, min(limit, 100))))).scalars().all()
+            total = (await session.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
+        return list(rows), int(total)
 
     async def set_status(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, status: str) -> Campaign:
         async with self._session_factory() as session:

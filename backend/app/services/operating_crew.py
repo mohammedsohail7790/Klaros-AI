@@ -136,12 +136,12 @@ GENERIC_CREW: tuple[CrewMember, ...] = (
         key="marketing-manager",
         name="Marketing Manager",
         purpose="Every morning reviews campaign results and budget and records what needs attention.",
-        instructions=_COMMON_RULES + " Each run: review the marketing snapshot (active campaigns, spend in the last 30 days, new leads), detect performance exceptions, and notify the team of anything "
-        "off track. You may record a content idea for something that is working. You cannot publish anything or change a campaign.",
-        tools=("insights.get_marketing_snapshot", "marketing.detect_performance_exceptions", "marketing.create_content_idea", "notifications.create_notification"),
+        instructions=_COMMON_RULES + " Each run: review the marketing snapshot (active campaigns, spend in the last 30 days, new leads), list the active campaigns, check the performance and budget of at most three of them "
+        "(the first three listed), detect performance exceptions, and notify the team of anything off track. You may record a content idea for something that is working. You cannot publish anything or change a campaign.",
+        tools=("insights.get_marketing_snapshot", "marketing.list_campaigns", "marketing.get_campaign_performance", "marketing.get_budget_status", "marketing.detect_performance_exceptions", "marketing.create_content_idea", "notifications.create_notification"),
         schedule_time="10:30",
-        goal="Review the marketing snapshot, detect performance exceptions, and notify the team of anything off track.",
-        max_tool_chain_depth=8,
+        goal="Review the marketing snapshot and the active campaigns (performance and budget of up to three), detect exceptions, and notify the team of anything off track.",
+        max_tool_chain_depth=12,  # snapshot, list, performance and budget for up to three campaigns, exceptions, notification
     ),
     CrewMember(
         key="finance-watch",

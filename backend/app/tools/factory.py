@@ -110,6 +110,7 @@ from app.tools.builtin.marketing_attribution_tools import (
 from app.tools.builtin.marketing_campaign_tools import (
     CreateCampaign,
     GetBudgetStatus,
+    ListCampaigns,
     RecordSpend,
     SetCampaignStatus,
 )
@@ -564,6 +565,7 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(SetCampaignStatus(campaign_service))
     registry.register(RecordSpend(campaign_service))
     registry.register(GetBudgetStatus(campaign_service))
+    registry.register(ListCampaigns(campaign_service))
 
     registry.register(AttributeLead(attribution_service))
     registry.register(GetCampaignPerformance(attribution_service))

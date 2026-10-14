@@ -292,6 +292,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "marketing.set_campaign_status": ActionPolicy.AUTO,
     "marketing.record_spend": ActionPolicy.AUTO,
     "marketing.get_budget_status": ActionPolicy.AUTO,
+    "marketing.list_campaigns": ActionPolicy.AUTO,  # read-only
     "marketing.attribute_lead": ActionPolicy.AUTO,
     "marketing.get_campaign_performance": ActionPolicy.AUTO,
     "marketing.detect_performance_exceptions": ActionPolicy.AUTO,

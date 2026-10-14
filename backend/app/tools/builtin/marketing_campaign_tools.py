@@ -152,3 +152,28 @@ class GetBudgetStatus(Tool):
             remaining=str(status.remaining) if status.remaining is not None else None,
             utilization_pct=status.utilization_pct, alert=status.alert,
         )
+
+
+class ListCampaignsInput(BaseModel):
+    status: str | None = None  # e.g. ACTIVE, PAUSED, DRAFT; omit for all
+    limit: int = 25
+
+
+class ListCampaignsOutput(BaseModel):
+    campaigns: list[dict[str, Any]]
+    total: int
+
+
+class ListCampaigns(Tool):
+    name = "marketing.list_campaigns"
+    description = "List this business's marketing campaigns (id, name, channel, status, budget), newest first, optionally only those in one status. Read-only."
+    input_schema = ListCampaignsInput
+    output_schema = ListCampaignsOutput
+    required_permission = Permission.READ_MARKETING
+
+    def __init__(self, campaign_service: CampaignService) -> None:
+        self._campaign_service = campaign_service
+
+    async def execute(self, input: ListCampaignsInput, context: ExecutionContext) -> ListCampaignsOutput:
+        rows, total = await self._campaign_service.list_campaigns(context.tenant_id, status=input.status, limit=input.limit)
+        return ListCampaignsOutput(campaigns=[_campaign_to_dict(c) for c in rows], total=total)
