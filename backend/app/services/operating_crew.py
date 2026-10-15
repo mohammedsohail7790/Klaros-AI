@@ -155,7 +155,7 @@ GENERIC_CREW: tuple[CrewMember, ...] = (
         "(the first three listed), detect performance exceptions, and notify the team of anything off track. With no campaigns there is nothing to review: say so. You cannot publish anything or change a campaign.",
         tools=("insights.get_marketing_snapshot", "marketing.list_campaigns", "marketing.get_campaign_performance", "marketing.get_budget_status", "marketing.detect_performance_exceptions", "notifications.create_notification"),
         schedule_time="10:30",
-        goal="Part 1: review the campaigns (skip if there are none). Part 2, always: keep up to two new content drafts waiting for approval. Finish only after part 2.",
+        goal="Review the marketing snapshot and the active campaigns (performance and budget of up to three), detect exceptions, and notify the team of anything off track.",
         max_tool_chain_depth=12,  # snapshot, list, three campaigns x2, exceptions, notification
     ),
     CrewMember(
