@@ -50,7 +50,7 @@ export const AREAS: NavArea[] = [
   {
     key: "operations", label: "Operations", icon: Wrench,
     tabs: [
-      { href: "/operations", label: "Overview" }, { href: "/jobs", label: "Jobs" }, { href: "/operations/workers", label: "Workers" }, { href: "/exceptions", label: "Exceptions" },
+      { href: "/operations", label: "Overview" }, { href: "/jobs", label: "Jobs" }, { href: "/operations/workers", label: "Workers" }, { href: "/exceptions", label: "Exceptions" }, { href: "/replies", label: "Replies" },
       { href: "/medical-tourism/tasks", label: "Tasks", module: MT }, { href: "/medical-tourism/provider-referrals", label: "Referrals", module: MT },
     ],
   },

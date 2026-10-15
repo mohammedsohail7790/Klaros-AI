@@ -124,6 +124,7 @@ from app.models.builder import BuilderFile, BuilderMessage, BuilderProject, Buil
 from app.models.tenant_settings import TenantSetting  # noqa: F401
 from app.models.site_hosting import TenantDomain, UploadedSite, UploadedSiteFile  # noqa: F401
 from app.models.mt_revenue import ProviderTerms  # noqa: F401
+from app.models.inbound_email import EmailReplyRoute, InboundEmail  # noqa: F401
 from app.models.business_journey import BusinessJourney
 
 __all__ = [

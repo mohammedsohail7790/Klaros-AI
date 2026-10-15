@@ -109,6 +109,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_BACKEND: str = "memory"
     RATE_LIMIT_PUBLIC_LEAD_PER_MINUTE: int = 10
+    RATE_LIMIT_INBOUND_EMAIL_PER_MINUTE: int = 120  # the email provider's callbacks for replies, per source address
     RATE_LIMIT_PUBLIC_QUOTE_PER_MINUTE: int = 30
     RATE_LIMIT_PUBLIC_CONTRACT_PER_MINUTE: int = 30
     RATE_LIMIT_PUBLIC_INVITE_PER_MINUTE: int = 20
@@ -269,6 +270,10 @@ class Settings(BaseSettings):
     BUILDER_RUN_STALE_AFTER_SECONDS: int = 120
     BUILDER_PREVIEW_TOKEN_TTL_SECONDS: int = 3600
     # Custom domains: when set, a domain a business adds is registered with the frontend host (Vercel) automatically. Without them the owner is told to add it there by hand.
+    # Replies to the emails a business sends: the subdomain whose mail is handed to Klaros by the email provider (for example reply.example.com), and the shared secret in the webhook address.
+    # Both unset: replies are off and outgoing mail is unchanged.
+    INBOUND_REPLY_DOMAIN: str | None = None
+    INBOUND_EMAIL_WEBHOOK_SECRET: str | None = None
     VERCEL_API_TOKEN: str | None = None
     VERCEL_PROJECT_ID: str | None = None
     VERCEL_TEAM_ID: str | None = None

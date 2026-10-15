@@ -44,6 +44,7 @@ from app.api.v1 import (
     medical_tourism,
     operating_crew,
     tenant_modules,
+    inbound_email,
     site_hosting,
     tenant_settings,
     setup_plan,
@@ -111,6 +112,7 @@ api_router.include_router(operating_crew.router)
 api_router.include_router(tenant_modules.router)
 api_router.include_router(tenant_settings.router)
 api_router.include_router(site_hosting.router)
+api_router.include_router(inbound_email.router)
 api_router.include_router(site_hosting.public_router)
 api_router.include_router(setup_plan.router)
 api_router.include_router(quickbooks_oauth.router)

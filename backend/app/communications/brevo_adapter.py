@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.communications.base import CommunicationProvider, MessageTemplate
 from app.communications.brevo_client import send_via_brevo
 from app.communications.sender_name import sender_name_for
+from app.services.inbound_email_service import reply_to_for
 from app.db.session import set_tenant_context
 from app.models.communication import CommunicationLog
 
@@ -27,7 +28,8 @@ class BrevoEmailAdapter(CommunicationProvider):
     async def send_email(self, tenant_id: uuid.UUID, *, to: str, subject: str, body: str, template: MessageTemplate) -> bool:
         status, external_id = "SENT", None
         try:
-            external_id = await send_via_brevo(to=to, subject=subject, body=body, from_name=await sender_name_for(self._session_factory, tenant_id))
+            name = await sender_name_for(self._session_factory, tenant_id)
+            external_id = await send_via_brevo(to=to, subject=subject, body=body, from_name=name, reply_to=await reply_to_for(self._session_factory, tenant_id, to), reply_to_name=name)
             logger.info("brevo_email_sent", template=template.value, message_id=external_id)
         except Exception as exc:  # noqa: BLE001 - any API or network failure is a failed send, never a delivered one
             status = "FAILED_BREVO"

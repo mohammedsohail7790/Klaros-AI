@@ -6169,3 +6169,8 @@ export function updateClinicContact(token: string, providerId: string, contact: 
   return request<{ provider: { id: string; name: string; contact_email: string | null; contact_phone: string | null; city: string | null; address: string | null } }>(
     `${MTR}/providers/${providerId}/contact`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify(contact) });
 }
+
+export interface InboxReply { id: string; entity_type: "lead" | "provider"; entity_id: string; about: string | null; from_address: string; from_name: string | null; subject: string | null; body_text: string | null; body_stored: boolean; sender_matches: boolean; attachment_count: number; received_at: string }
+export function getInboxReplies(token: string) {
+  return request<{ replies: InboxReply[] }>("/api/v1/inbox/replies", { headers: authHeaders(token) });
+}
