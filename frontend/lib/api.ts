@@ -1877,6 +1877,10 @@ export interface MarketingSummary {
   campaign_count: number;
   marketing_spend: string;
   leads: number;
+  total_leads: number;
+  qualified_total: number;
+  leads_by_source: Record<string, number>;
+  unattributed_leads: number;
   qualified_leads: number;
   appointments_booked: number;
   jobs_won: number;
@@ -6137,7 +6141,7 @@ export function removeHostedDomain(token: string, id: string) {
 
 export interface ClinicTerms {
   set: boolean; commission_basis: "PERCENTAGE" | "FLAT" | null; commission_percentage: string | null; flat_amount: string | null; currency: string | null; qualifying_outcome: string | null;
-  listing_fee_amount: string | null; listing_fee_currency: string | null; listing_fee_interval: "MONTHLY" | "NONE" | null; agreement_reference: string | null;
+  agreement_reference: string | null;
 }
 export function getClinicTerms(token: string, providerId: string) {
   return request<{ terms: ClinicTerms }>(`${MTR}/providers/${providerId}/terms`, { headers: authHeaders(token) });

@@ -12,7 +12,7 @@ vi.mock("@/lib/api", () => ({
 import { ClinicTerms } from "@/components/mt/ClinicTerms";
 
 const provider = { id: "P1", name: "Anatolia Dental Clinic" } as never;
-const empty = { set: false, commission_basis: null, commission_percentage: null, flat_amount: null, currency: null, qualifying_outcome: null, listing_fee_amount: null, listing_fee_currency: null, listing_fee_interval: null, agreement_reference: null };
+const empty = { set: false, commission_basis: null, commission_percentage: null, flat_amount: null, currency: null, qualifying_outcome: null, agreement_reference: null };
 const onSaved = vi.fn();
 
 describe("Clinic terms", () => {
@@ -21,7 +21,7 @@ describe("Clinic terms", () => {
   it("saves nothing as 'none agreed' without inventing a commission", async () => {
     render(<ClinicTerms token="t" provider={provider} onClose={vi.fn()} onSaved={onSaved} />);
     fireEvent.click(await screen.findByRole("button", { name: "Save terms" }));
-    await waitFor(() => expect(save).toHaveBeenCalledWith("t", "P1", expect.objectContaining({ commission_basis: null, commission_percentage: null, flat_amount: null, currency: null, listing_fee_amount: null })));
+    await waitFor(() => expect(save).toHaveBeenCalledWith("t", "P1", expect.objectContaining({ commission_basis: null, commission_percentage: null, flat_amount: null, currency: null })));
     expect(onSaved).toHaveBeenCalled();
   });
 
@@ -32,13 +32,6 @@ describe("Clinic terms", () => {
     fireEvent.change(screen.getByLabelText("Agreement reference"), { target: { value: "Folder A" } });
     fireEvent.click(screen.getByRole("button", { name: "Save terms" }));
     await waitFor(() => expect(save).toHaveBeenCalledWith("t", "P1", expect.objectContaining({ commission_basis: "PERCENTAGE", commission_percentage: "15", flat_amount: null, currency: "USD", agreement_reference: "Folder A" })));
-  });
-
-  it("adds a monthly listing fee in the chosen currency", async () => {
-    render(<ClinicTerms token="t" provider={provider} onClose={vi.fn()} onSaved={onSaved} />);
-    fireEvent.change(await screen.findByLabelText("Monthly listing fee"), { target: { value: "99" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save terms" }));
-    await waitFor(() => expect(save).toHaveBeenCalledWith("t", "P1", expect.objectContaining({ listing_fee_amount: "99", listing_fee_currency: "USD", listing_fee_interval: "MONTHLY" })));
   });
 
   it("shows what the server refused and keeps the dialog open", async () => {

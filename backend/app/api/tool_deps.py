@@ -42,6 +42,7 @@ from app.api.deps import CurrentUser
 from app.db.session import async_session_maker
 from app.events.bus import EventBus
 from app.events.crm_handlers import register_crm_handlers
+from app.events.mt_task_handlers import register_mt_task_handlers
 from app.events.factory import get_event_bus
 from app.events.finance_handlers import register_finance_handlers
 from app.events.handlers import register_default_handlers
@@ -68,6 +69,7 @@ def get_wired_event_bus() -> EventBus:
     bus = get_event_bus()
     register_default_handlers(bus)
     register_crm_handlers(bus, async_session_maker)
+    register_mt_task_handlers(bus, async_session_maker)
     register_operations_handlers(bus, async_session_maker)
     register_finance_handlers(bus, async_session_maker)
     register_marketing_handlers(bus, async_session_maker)

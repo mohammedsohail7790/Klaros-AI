@@ -26,10 +26,10 @@ async def test_terms_are_validated_and_read_back(client, halla) -> None:  # noqa
     assert (await client.get(f"{BASE}/providers/{p['id']}/terms", headers=_h(token))).json()["terms"]["set"] is False
     for bad in ({"commission_basis": "PERCENTAGE", "currency": "usd"}, {"commission_basis": "PERCENTAGE", "commission_percentage": "150", "currency": "usd"},
                 {"commission_basis": "FLAT", "flat_amount": "-5", "currency": "usd"}, {"commission_basis": "FLAT", "flat_amount": "100"}, {"commission_basis": "WEIRD"},
-                {"listing_fee_amount": "50"}, {"commission_basis": "PERCENTAGE", "commission_percentage": "abc", "currency": "usd"}):
+                {"commission_basis": "PERCENTAGE", "commission_percentage": "abc", "currency": "usd"}):
         assert (await _terms(client, token, p["id"], bad)).status_code == 422, bad
-    ok = (await _terms(client, token, p["id"], TERMS | {"listing_fee_amount": "99", "listing_fee_currency": "usd", "listing_fee_interval": "monthly"})).json()["terms"]
-    assert ok["currency"] == "USD" and ok["commission_percentage"] == "15.00" and ok["listing_fee_interval"] == "MONTHLY" and ok["set"] is True
+    ok = (await _terms(client, token, p["id"], TERMS)).json()["terms"]
+    assert ok["currency"] == "USD" and ok["commission_percentage"] == "15.00" and ok["set"] is True
     assert (await client.get(f"{BASE}/providers/{p['id']}/terms", headers=_h(token))).json()["terms"]["agreement_reference"] == "Signed 2026-10-01, folder A"
 
 

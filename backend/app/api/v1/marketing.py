@@ -17,7 +17,8 @@ from app.marketing_ads.base import (
     NotConnectedMetaAdsAdapter,
     NotConnectedYouTubeAdsAdapter,
 )
-from app.models.marketing import Campaign
+from app.models.crm import Lead
+from app.models.marketing import Campaign, CampaignLead
 from app.models.operations import ExceptionStatus, OperationsException
 from app.services.attribution_service import AttributionService
 
@@ -42,6 +43,12 @@ async def marketing_summary(current_user: CurrentUser = Depends(get_current_user
     async with async_session_maker() as session:
         await set_tenant_context(session, tenant_id)
         campaigns = (await session.execute(select(Campaign).where(Campaign.tenant_id == tenant_id))).scalars().all()
+
+        # Every enquiry the business has, whatever brought it: a lead from the website or a call is a lead even when no campaign claimed it.
+        by_source = {src: n for src, n in (await session.execute(select(Lead.source, func.count(Lead.id)).where(Lead.tenant_id == tenant_id).group_by(Lead.source))).all()}
+        total_leads = sum(by_source.values())
+        qualified_total = (await session.execute(select(func.count(Lead.id)).where(Lead.tenant_id == tenant_id, Lead.qualification_status == "QUALIFIED"))).scalar_one()
+        campaign_claimed = (await session.execute(select(func.count(func.distinct(CampaignLead.lead_id))).where(CampaignLead.tenant_id == tenant_id))).scalar_one()
 
         open_exceptions = (
             await session.execute(
@@ -95,6 +102,10 @@ async def marketing_summary(current_user: CurrentUser = Depends(get_current_user
         "campaign_count": len(campaigns),
         "marketing_spend": str(spend),
         "leads": leads,
+        "total_leads": total_leads,
+        "qualified_total": qualified_total,
+        "leads_by_source": by_source,
+        "unattributed_leads": max(total_leads - campaign_claimed, 0),
         "qualified_leads": qualified,
         "appointments_booked": booked,
         "jobs_won": jobs_won,

@@ -62,8 +62,9 @@ export default function MarketingPage() {
             )}
             <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
               <StatCard label="Marketing spend" value={`$${summary.marketing_spend}`} tone="accent" />
-              <StatCard label="Leads" value={summary.leads} />
-              <StatCard label="Qualified leads" value={summary.qualified_leads} />
+              <StatCard label="All enquiries" value={summary.total_leads} note={summary.total_leads > 0 ? `${summary.qualified_total} qualified` : null} />
+              <StatCard label="From campaigns" value={summary.leads} note={summary.unattributed_leads > 0 ? `${summary.unattributed_leads} not from a campaign` : null} />
+              <StatCard label="Qualified from campaigns" value={summary.qualified_leads} />
               <StatCard label="Appointments booked" value={summary.appointments_booked} />
               <StatCard label="Jobs won" value={summary.jobs_won} tone="success" />
               <StatCard label="Revenue attributed" value={`$${summary.revenue}`} tone="accent" />
@@ -84,6 +85,17 @@ export default function MarketingPage() {
               />
               <StatCard label="Campaigns" value={summary.campaign_count} />
             </div>
+
+            {summary.total_leads > 0 && (
+              <div className="mb-8 klaros-card p-5">
+                <div className="mb-3 text-sm font-medium text-muted">Where your enquiries come from</div>
+                <ul className="flex flex-wrap gap-x-8 gap-y-2 text-[15px] text-foreground">
+                  {Object.entries(summary.leads_by_source).sort((a, b) => b[1] - a[1]).map(([source, n]) => (
+                    <li key={source}><span className="font-medium">{n}</span> {source.toLowerCase().replace(/_/g, " ")}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {summary.leads > 0 && (
               <div className="mb-8 klaros-card p-5">

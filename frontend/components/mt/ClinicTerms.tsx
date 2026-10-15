@@ -14,7 +14,6 @@ export function ClinicTerms({ token, provider, onClose, onSaved }: { token: stri
   const [percentage, setPercentage] = useState("");
   const [flat, setFlat] = useState("");
   const [currency, setCurrency] = useState("USD");
-  const [fee, setFee] = useState("");
   const [reference, setReference] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -26,7 +25,6 @@ export function ClinicTerms({ token, provider, onClose, onSaved }: { token: stri
         setPercentage(terms.commission_percentage ?? "");
         setFlat(terms.flat_amount ?? "");
         setCurrency(terms.currency ?? "USD");
-        setFee(terms.listing_fee_amount ?? "");
         setReference(terms.agreement_reference ?? "");
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Unable to load this clinic's terms."))
@@ -41,10 +39,7 @@ export function ClinicTerms({ token, provider, onClose, onSaved }: { token: stri
         commission_basis: basis || null,
         commission_percentage: basis === "PERCENTAGE" ? percentage : null,
         flat_amount: basis === "FLAT" ? flat : null,
-        currency: basis || fee ? currency : null,
-        listing_fee_amount: fee || null,
-        listing_fee_currency: fee ? currency : null,
-        listing_fee_interval: fee ? "MONTHLY" : null,
+        currency: basis ? currency : null,
         agreement_reference: reference || null,
       });
       onSaved();
@@ -72,7 +67,6 @@ export function ClinicTerms({ token, provider, onClose, onSaved }: { token: stri
           {basis === "PERCENTAGE" && <label className="block">Percentage<input aria-label="Commission percentage" inputMode="decimal" className={field} value={percentage} onChange={(e) => setPercentage(e.target.value)} placeholder="e.g. 15" /></label>}
           {basis === "FLAT" && <label className="block">Flat fee<input aria-label="Flat fee" inputMode="decimal" className={field} value={flat} onChange={(e) => setFlat(e.target.value)} placeholder="e.g. 400" /></label>}
           <label className="block">Currency<input aria-label="Currency" maxLength={3} className={field} value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} /></label>
-          <label className="block">Monthly listing fee (optional)<input aria-label="Monthly listing fee" inputMode="decimal" className={field} value={fee} onChange={(e) => setFee(e.target.value)} placeholder="Leave empty if there is none" /></label>
           <label className="block">Where the signed agreement is kept<input aria-label="Agreement reference" className={field} value={reference} onChange={(e) => setReference(e.target.value)} placeholder="A reference, not the agreement itself" /></label>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="text-muted hover:underline">Cancel</button>

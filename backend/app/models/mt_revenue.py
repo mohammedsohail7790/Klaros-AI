@@ -19,8 +19,5 @@ class ProviderTerms(TenantScopedMixin, Base):
     flat_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     qualifying_outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    listing_fee_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
-    listing_fee_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
-    listing_fee_interval: Mapped[str | None] = mapped_column(String(10), nullable=True)  # MONTHLY | NONE
     agreement_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)  # where the signed agreement is kept (a reference, not its text)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)

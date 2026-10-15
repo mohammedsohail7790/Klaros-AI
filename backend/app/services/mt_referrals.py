@@ -404,6 +404,15 @@ async def send_referral(session_factory, tenant_id: uuid.UUID, referral_id: uuid
         await session.refresh(referral)
         newly_sent = dup is None
     if newly_sent:
+        try:
+            from app.services import mt_handoff
+
+            async with session_factory() as session:
+                await set_tenant_context(session, tenant_id)
+                await mt_handoff.close_open_case_tasks(session, tenant_id, referral.lead_id, ("new_enquiry", "provider_options"), "A clinic referral was sent")
+                await session.commit()
+        except Exception:  # noqa: BLE001 - housekeeping must never break sending
+            pass
         from app.services import mt_revenue  # local: mt_revenue imports this module
 
         await mt_revenue.on_referral_sent(session_factory, tenant_id, referral_id, actor_id)  # the PENDING commission from the clinic's terms; never raises

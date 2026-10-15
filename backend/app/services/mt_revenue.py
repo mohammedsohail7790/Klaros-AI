@@ -1,6 +1,6 @@
 """Turns a clinic's agreed terms into money movements without anyone retyping them.
 
-  terms        what a clinic has agreed to pay (commission as a percentage or a flat fee, an optional monthly listing fee). A clinic with no terms gets nothing created, and says so.
+  terms        what a clinic has agreed to pay (commission as a percentage or a flat fee). A clinic with no terms gets nothing created, and says so.
   on_referral_sent       creates the PENDING commission from those terms. Potential only: it is never revenue.
   on_commission_confirmed   when a person has confirmed the clinic reported the agreed outcome (with evidence), raises a DRAFT invoice to the clinic. A person still approves and sends it.
 
@@ -25,18 +25,16 @@ from app.models.mt_revenue import ProviderTerms
 from app.services.mt_referrals import ReferralError, _audit
 
 logger = structlog.get_logger(__name__)
-INTERVALS = {"MONTHLY", "NONE"}
 BASES = {ReferralCommissionBasis.PERCENTAGE.value, ReferralCommissionBasis.FLAT.value}
 
 
 def terms_to_dict(t: ProviderTerms | None) -> dict[str, Any]:
     if t is None:
         return {"set": False, "commission_basis": None, "commission_percentage": None, "flat_amount": None, "currency": None, "qualifying_outcome": None,
-                "listing_fee_amount": None, "listing_fee_currency": None, "listing_fee_interval": None, "agreement_reference": None}
+                "agreement_reference": None}
     d = lambda v: str(v) if v is not None else None  # noqa: E731
     return {"set": True, "commission_basis": t.commission_basis, "commission_percentage": d(t.commission_percentage), "flat_amount": d(t.flat_amount), "currency": t.currency,
-            "qualifying_outcome": t.qualifying_outcome, "listing_fee_amount": d(t.listing_fee_amount), "listing_fee_currency": t.listing_fee_currency,
-            "listing_fee_interval": t.listing_fee_interval, "agreement_reference": t.agreement_reference}
+            "qualifying_outcome": t.qualifying_outcome, "agreement_reference": t.agreement_reference}
 
 
 def _dec(body: dict, key: str, *, lo: Decimal = Decimal("0"), hi: Decimal | None = None) -> Decimal | None:
@@ -83,13 +81,6 @@ async def set_terms(session_factory, tenant_id: uuid.UUID, provider_id: uuid.UUI
     outcome = (str(body.get("qualifying_outcome") or "").upper()) or None
     if outcome is not None and outcome not in {o.value for o in ReferralOutcome}:
         raise ReferralError("unknown_outcome", status=422)
-    fee = _dec(body, "listing_fee_amount")
-    fee_cur = _currency(body, "listing_fee_currency")
-    interval = (str(body.get("listing_fee_interval") or "").upper()) or None
-    if interval is not None and interval not in INTERVALS:
-        raise ReferralError("invalid_interval", "A listing fee is monthly, or none.", status=422)
-    if fee is not None and (fee_cur is None or interval in (None, "NONE")):
-        raise ReferralError("listing_fee_incomplete", "A listing fee needs a currency and the monthly interval.", status=422)
     ref = (str(body.get("agreement_reference") or "").strip()[:255]) or None
     async with session_factory() as session:
         await set_tenant_context(session, tenant_id)
@@ -102,7 +93,6 @@ async def set_terms(session_factory, tenant_id: uuid.UUID, provider_id: uuid.UUI
             session.add(row)
         row.commission_basis, row.commission_percentage, row.flat_amount, row.currency = basis, pct if basis == "PERCENTAGE" else None, flat if basis == "FLAT" else None, currency
         row.qualifying_outcome, row.agreement_reference, row.updated_by = outcome, ref, actor_id
-        row.listing_fee_amount, row.listing_fee_currency, row.listing_fee_interval = fee, fee_cur, interval
         await session.flush()
         _audit(session, tenant_id, actor_id, "mt.terms.updated", "medical_tourism_provider_terms", row.id, {"provider_id": str(provider_id), "basis": basis, "currency": currency})
         await session.commit()
