@@ -46,13 +46,14 @@ class ReferralWorkOutput(BaseModel):
     awaiting_outcome: list[dict]
     ready_for_verification: list[dict]
     clinics_to_invite: list[dict] = []
+    clinics_without_commission_terms: list[dict] = []  # clinics already sent referrals but with no agreed commission: nothing will be earned from them
 
 
 class ListReferralWork(Tool):
     name = "medical_tourism.list_referral_work"
     description = (
         "List what needs action in the referral pipeline: approved referrals not yet sent, sent referrals the clinic has not answered for 3+ days, accepted referrals with no "
-        "outcome for 14+ days, clinics with verified evidence that a person has not yet marked verified, and clinics with a contact email that have not yet been invited to send their credentials. "
+        "outcome for 14+ days, clinics that have been sent referrals but have no agreed commission terms, clinics with verified evidence that a person has not yet marked verified, and clinics with a contact email that have not yet been invited to send their credentials. "
         "Ids and clinic names only. Read-only."
     )
     input_schema = EmptyInput
@@ -92,7 +93,13 @@ class ListReferralWork(Tool):
                 for p in (await session.execute(select(Provider).where(Provider.tenant_id == tid, Provider.verification_status.in_(["UNVERIFIED", "UNDER_REVIEW"])))).scalars()
                 if (p.contact_email or "").strip() and p.id not in with_evidence and p.id not in invited
             ]
-        return ReferralWorkOutput(approved_not_sent=approved, awaiting_clinic_response=waiting, awaiting_outcome=outcome, ready_for_verification=ready, clinics_to_invite=to_invite)
+            from app.models.mt_revenue import ProviderTerms
+
+            sent_to = {r.provider_id for r in (await session.execute(select(ProviderReferral).where(ProviderReferral.tenant_id == tid, ProviderReferral.sent_at.is_not(None)))).scalars()}
+            with_terms = {t.provider_id for t in (await session.execute(select(ProviderTerms).where(ProviderTerms.tenant_id == tid))).scalars() if t.commission_basis}
+            no_terms = [{"provider_id": str(pid), "clinic": names.get(pid)} for pid in sorted(sent_to - with_terms, key=str)]
+        return ReferralWorkOutput(approved_not_sent=approved, awaiting_clinic_response=waiting, awaiting_outcome=outcome, ready_for_verification=ready, clinics_to_invite=to_invite,
+                                  clinics_without_commission_terms=no_terms)
 
 
 class SendReferralInput(BaseModel):

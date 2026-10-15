@@ -225,7 +225,8 @@ MEDICAL_TOURISM_CREW: tuple[CrewMember, ...] = (
         name="Clinic Follow-up",
         purpose="Every morning chases clinics that have not answered a referral and flags referrals that need a person.",
         instructions=_COMMON_RULES + " Each run: list the referral work. For each referral awaiting a clinic response (at most five) send the clinic a reminder. Then send ONE notification to the team "
-        "naming anything else that needs a person: approved referrals that were not sent, accepted referrals with no outcome after two weeks. Never put a patient's details in a notification.",
+        "naming anything else that needs a person: approved referrals that were not sent, accepted referrals with no outcome after two weeks, and clinics that have been sent referrals but have no "
+        "agreed commission terms (nothing will be earned from them until the terms are recorded). Never put a patient's details in a notification.",
         tools=("medical_tourism.list_referral_work", "medical_tourism.remind_clinic", "notifications.create_notification"),
         schedule_time="09:15",
         goal="List the referral work, remind clinics that have not answered, and notify the team of anything that needs a person.",

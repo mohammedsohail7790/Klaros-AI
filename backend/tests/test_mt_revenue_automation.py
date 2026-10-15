@@ -183,3 +183,23 @@ async def test_the_agreements_overview_lists_every_clinic_with_or_without_terms(
     assert by["Alpha Clinic"]["referrals_sent"] == 1 and by["Alpha Clinic"]["terms"]["agreement_reference"] == "Folder 7" and by["Beta Clinic"]["terms"]["set"] is False
     other, _ = await _gated(client, "Agree Other Co", "agreeother@example.com")
     assert (await client.get(f"{BASE}/agreements", headers=_h(other))).json()["clinics"] == []
+
+
+async def test_the_crew_is_told_which_clinics_have_referrals_but_no_commission_terms(client, halla) -> None:  # noqa: F811
+    import uuid
+
+    from app.api.tool_deps import get_tool_registry
+    from app.models.actor import ActorType
+    from app.models.rbac import Role
+    from app.tools.base import ExecutionContext
+    from tests.test_halla_integration import _tenant_id
+
+    token, _ = await _gated(client, "Crew Terms Co", "crewterms@example.com")
+    tid = await _tenant_id(client, token)
+    a = await _provider(client, token, name="Has Terms")
+    b = await _provider(client, token, name="No Terms")
+    await _terms(client, token, a["id"], {"commission_basis": "FLAT", "flat_amount": "100", "currency": "usd"})
+    for pid in (a["id"], b["id"]):
+        await _send(client, token, await _approved(client, token, await _patient(client, token), pid))
+    out = await get_tool_registry().execute("medical_tourism.list_referral_work", {}, ExecutionContext(tenant_id=tid, actor_type=ActorType.AI, actor_id=uuid.uuid4(), role=Role.MANAGER))
+    assert [c["clinic"] for c in out.clinics_without_commission_terms] == ["No Terms"]
