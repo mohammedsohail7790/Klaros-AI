@@ -161,3 +161,63 @@ async def test_a_clinic_reply_is_listed_flagged_when_from_another_address_and_ne
     assert len(listed) == 1 and listed[0]["about"] == "Reply Clinic" and listed[0]["sender_matches"] is False and "the 3rd" in listed[0]["body_text"] and listed[0]["entity_type"] == "provider"
     other = await _register(client, "Clinic Reply Other Co", "clinicreplyother@example.com")
     assert (await client.get("/api/v1/inbox/replies", headers=_h(other))).json()["replies"] == []
+
+
+# ---- connecting the provider from the server ----------------------------------------------------------------------------------------------------------------
+
+class _BrevoHooks:
+    def __init__(self):
+        self.requests: list[httpx.Request] = []
+        self.existing: list[dict] = []
+        self.create_status = 201
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        self.requests.append(request)
+        if request.method == "GET":
+            return httpx.Response(200, json={"webhooks": self.existing})
+        if self.create_status >= 300:
+            return httpx.Response(self.create_status, json={"message": "Inbound parsing is not enabled for this account"})
+        return httpx.Response(201, json={"id": 77})
+
+
+@pytest.fixture
+def hooks(monkeypatch, replies_on):
+    from app.communications import brevo_client
+
+    s = get_settings()
+    for k, v in {"BREVO_API_KEY": "key-for-test", "BREVO_FROM_EMAIL": "hello@klaros.example", "SMTP_FROM_EMAIL": None, "SMTP_HOST": None, "SENDGRID_API_KEY": None, "SENDGRID_FROM_EMAIL": None}.items():
+        monkeypatch.setattr(s, k, v)
+    fake = _BrevoHooks()
+    monkeypatch.setattr(brevo_client, "_client", lambda: httpx.AsyncClient(transport=httpx.MockTransport(fake.handler)))
+    return fake
+
+
+async def test_the_owner_can_connect_replies_and_repeating_it_reuses_the_registration(client, hooks) -> None:
+    token = await _register(client, "Connect Co", "connectco@example.com")
+    r = (await client.post("/api/v1/inbox/connect-replies", headers=_h(token))).json()
+    assert r["connected"] is True and r["webhook_id"] == 77 and r["domain"] == DOMAIN
+    sent = [json.loads(q.content) for q in hooks.requests if q.method == "POST"][0]
+    assert sent["type"] == "inbound" and sent["events"] == ["inboundEmailProcessed"] and sent["domain"] == DOMAIN and sent["url"].endswith(f"/api/v1/webhooks/inbound-email/{SECRET}")
+    assert all("key-for-test" not in json.dumps(r) for _ in [0])  # the key is never in the answer
+    hooks.existing = [{"id": 77, "url": sent["url"], "domain": DOMAIN}]
+    again = (await client.post("/api/v1/inbox/connect-replies", headers=_h(token))).json()
+    assert again["connected"] is True and again["detail"] == "Already connected." and len([q for q in hooks.requests if q.method == "POST"]) == 1
+
+
+async def test_a_provider_refusal_is_reported_plainly_without_any_key(client, hooks) -> None:
+    token = await _register(client, "Refused Connect Co", "refusedconnect@example.com")
+    hooks.create_status = 403
+    r = (await client.post("/api/v1/inbox/connect-replies", headers=_h(token))).json()
+    assert r["connected"] is False and "403" in r["detail"] and "not enabled" in r["detail"] and "key-for-test" not in json.dumps(r)
+
+
+async def test_connecting_needs_the_settings_and_only_the_owner_may_do_it(client, monkeypatch) -> None:
+    token = await _register(client, "Needs Settings Co", "needssettings@example.com")
+    r = (await client.post("/api/v1/inbox/connect-replies", headers=_h(token))).json()
+    assert r["connected"] is False and "INBOUND_REPLY_DOMAIN" in r["detail"]
+    from app.models.rbac import Role
+    from tests.test_approval_flow import _create_second_user
+
+    staff = await _create_second_user(async_session_maker, await _tenant_id(client, token), role=Role.STAFF)
+    got = await client.post("/api/v1/inbox/connect-replies", headers={"Authorization": f"Bearer {staff}"})
+    assert got.status_code == 403

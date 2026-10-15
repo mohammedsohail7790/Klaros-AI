@@ -28,3 +28,23 @@ async def send_via_brevo(*, to: str, subject: str, body: str, from_name: str | N
         return response.json().get("messageId")
     except ValueError:
         return None
+
+
+_WEBHOOKS_URL = "https://api.brevo.com/v3/webhooks"
+
+
+async def list_inbound_webhooks() -> list[dict]:
+    """The inbound-email webhooks already registered on this Brevo account (id, url, domain)."""
+    async with _client() as client:
+        response = await client.get(_WEBHOOKS_URL, params={"type": "inbound"}, headers={"api-key": str(get_settings().BREVO_API_KEY), "accept": "application/json"})
+        response.raise_for_status()
+    return list(response.json().get("webhooks") or [])
+
+
+async def create_inbound_webhook(*, url: str, domain: str) -> dict:
+    """Ask Brevo to POST every reply received at `domain` to `url`. Returns Brevo's answer (its webhook id)."""
+    async with _client() as client:
+        response = await client.post(_WEBHOOKS_URL, headers={"api-key": str(get_settings().BREVO_API_KEY), "accept": "application/json", "content-type": "application/json"},
+                                     json={"type": "inbound", "events": ["inboundEmailProcessed"], "url": url, "domain": domain, "description": "Klaros replies"})
+        response.raise_for_status()
+    return response.json()

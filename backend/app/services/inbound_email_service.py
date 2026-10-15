@@ -221,3 +221,34 @@ async def list_replies(session_factory, tenant_id: uuid.UUID, limit: int = 50) -
     return [{"id": str(r.id), "entity_type": r.entity_type, "entity_id": str(r.entity_id), "about": names.get(r.entity_id), "from_address": r.from_address, "from_name": r.from_name,
              "subject": r.subject, "body_text": r.body_text, "body_stored": r.body_stored, "sender_matches": r.sender_matches, "attachment_count": r.attachment_count,
              "received_at": r.received_at.isoformat()} for r in rows]
+
+
+async def connect_replies(base_url: str) -> dict[str, Any]:
+    """Register the reply webhook with the email provider, from the server (the provider key never leaves it). Safe to repeat: an existing registration for the same address is reused.
+    Returns {"connected": bool, "detail": str, ...} and never includes any key."""
+    import httpx
+
+    from app.communications import brevo_client
+    from app.communications.email_config import brevo_configured
+
+    settings = get_settings()
+    domain, secret = reply_domain(), settings.INBOUND_EMAIL_WEBHOOK_SECRET
+    if domain is None or not secret:
+        return {"connected": False, "detail": "Set INBOUND_REPLY_DOMAIN and INBOUND_EMAIL_WEBHOOK_SECRET first."}
+    if not brevo_configured():
+        return {"connected": False, "detail": "Brevo email is not configured on this deployment."}
+    url = f"{base_url.rstrip('/')}/api/v1/webhooks/inbound-email/{secret}"
+    try:
+        for hook in await brevo_client.list_inbound_webhooks():
+            if hook.get("url") == url and str(hook.get("domain", "")).lower() == domain:
+                return {"connected": True, "detail": "Already connected.", "webhook_id": hook.get("id"), "domain": domain}
+        created = await brevo_client.create_inbound_webhook(url=url, domain=domain)
+    except httpx.HTTPStatusError as exc:
+        try:
+            reason = str((exc.response.json() or {}).get("message") or "")[:200]
+        except ValueError:
+            reason = ""
+        return {"connected": False, "detail": f"Brevo refused ({exc.response.status_code}): {reason or 'no reason given'}", "status": exc.response.status_code}
+    except Exception as exc:  # noqa: BLE001 - never leak anything from a failed call
+        return {"connected": False, "detail": f"Could not reach Brevo ({type(exc).__name__})."}
+    return {"connected": True, "detail": "Connected.", "webhook_id": created.get("id"), "domain": domain}

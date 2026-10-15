@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.api.deps import CurrentUser, get_current_user
+from app.models.rbac import Role
 from app.core.config import get_settings
 from app.core.rate_limit import rate_limit
 from app.db.session import async_session_maker
@@ -32,6 +33,17 @@ async def inbound_email_webhook(secret: str, request: Request) -> dict[str, Any]
     except ValueError:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Not JSON") from None
     return await inbound_email_service.handle_payload(async_session_maker, payload)
+
+
+@router.post("/inbox/connect-replies")
+async def connect_replies(request: Request, current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Owner only: tell the email provider to send replies to Klaros. The provider key stays on the server."""
+    if current_user.role != Role.OWNER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the owner can connect email replies.")
+    base = str(request.base_url).rstrip("/")
+    if base.startswith("http://") and "localhost" not in base and "127.0.0.1" not in base and "testserver" not in base:
+        base = "https://" + base[len("http://"):]  # behind the host's proxy the scheme can look like http; the provider must call https
+    return await inbound_email_service.connect_replies(base)
 
 
 @router.get("/inbox/replies")
