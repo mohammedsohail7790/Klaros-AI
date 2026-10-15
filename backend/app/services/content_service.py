@@ -99,6 +99,12 @@ class ContentService:
         self._ai_provider = ai_provider
         self._memory = CompanyMemoryService(session_factory)
 
+    async def list_content(self, tenant_id: uuid.UUID, *, limit: int = 50) -> list[MarketingContent]:
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            q = select(MarketingContent).where(MarketingContent.tenant_id == tenant_id).order_by(MarketingContent.created_at.desc()).limit(max(1, min(limit, 100)))
+            return list((await session.execute(q)).scalars())
+
     async def create_idea(self, tenant_id: uuid.UUID, *, title: str, summary: str | None, created_by: uuid.UUID | None) -> MarketingContent:
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)

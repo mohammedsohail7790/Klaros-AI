@@ -29,6 +29,28 @@ def _variant_to_dict(v: ContentVariant) -> dict[str, Any]:
     return {"id": str(v.id), "content_id": str(v.content_id), "channel": v.channel, "body_text": v.body_text, "status": v.status}
 
 
+class ListContentInput(BaseModel):
+    limit: int = 50
+
+
+class ListContentOutput(BaseModel):
+    content: list[dict[str, Any]]
+
+
+class ListContent(Tool):
+    name = "marketing.list_content"
+    description = "List this business's marketing content items (id, title, status), newest first, so nothing is created twice. Read-only."
+    input_schema = ListContentInput
+    output_schema = ListContentOutput
+    required_permission = Permission.READ_MARKETING
+
+    def __init__(self, content_service: ContentService) -> None:
+        self._content_service = content_service
+
+    async def execute(self, input: ListContentInput, context: ExecutionContext) -> ListContentOutput:
+        return ListContentOutput(content=[_content_to_dict(c) for c in await self._content_service.list_content(context.tenant_id, limit=input.limit)])
+
+
 class CreateContentIdeaInput(BaseModel):
     title: str
     summary: str | None = None

@@ -108,10 +108,12 @@ GENERIC_CREW: tuple[CrewMember, ...] = (
         key="growth-scout",
         name="Growth Scout",
         purpose="Every morning finds qualified leads that have stalled and keeps follow-up sequences moving.",
-        instructions=_COMMON_RULES + " Each run: find qualified leads that were never booked and stale leads, enrol suitable ones in follow-up, and run the follow-up activities that are due.",
-        tools=("marketing.identify_unbooked_qualified_leads", "marketing.find_stale_lead_candidates", "marketing.enroll_lead_in_nurture", "marketing.execute_due_nurture_activities"),
+        instructions=_COMMON_RULES + " Each run: first list the campaigns. Follow-up works through campaigns, so if there are none, do not call any other tool: finish by saying there is no campaign to run follow-up for. "
+        "If there are campaigns, find the stale leads, find the qualified leads that were never booked for the first campaign listed (pass its campaign_id), enrol suitable ones in follow-up (at most five), and run the follow-up activities that are due.",
+        tools=("marketing.list_campaigns", "marketing.identify_unbooked_qualified_leads", "marketing.find_stale_lead_candidates", "marketing.enroll_lead_in_nurture", "marketing.execute_due_nurture_activities"),
         schedule_time="09:00",
-        goal="Find qualified leads that were never booked and stale leads, enrol suitable ones in follow-up, and run today's due follow-up activities.",
+        goal="List the campaigns; if there are none, say so and stop. Otherwise find stalled leads, enrol suitable ones in follow-up, and run today's due follow-up activities.",
+        max_tool_chain_depth=10,
     ),
     CrewMember(
         key="retention-keeper",
@@ -147,13 +149,17 @@ GENERIC_CREW: tuple[CrewMember, ...] = (
     CrewMember(
         key="marketing-manager",
         name="Marketing Manager",
-        purpose="Every morning reviews campaign results and budget and records what needs attention.",
+        purpose="Every morning reviews campaign results and budget, and keeps a steady supply of content drafts ready for your approval.",
         instructions=_COMMON_RULES + " Each run: review the marketing snapshot (active campaigns, spend in the last 30 days, new leads), list the active campaigns, check the performance and budget of at most three of them "
-        "(the first three listed), detect performance exceptions, and notify the team of anything off track. You may record a content idea for something that is working. You cannot publish anything or change a campaign.",
-        tools=("insights.get_marketing_snapshot", "marketing.list_campaigns", "marketing.get_campaign_performance", "marketing.get_budget_status", "marketing.detect_performance_exceptions", "marketing.create_content_idea", "notifications.create_notification"),
+        "(the first three listed), detect performance exceptions, and notify the team of anything off track. Then keep content flowing: list the existing content; if fewer than three items are still waiting "
+        "(status IDEA, DRAFT or PENDING_APPROVAL), search the knowledge base for what this business does and how it works and create up to two NEW content ideas that do not repeat an existing title. For each idea add one Blog variant "
+        "with a short draft (under 120 words) and request approval. Write only educational, process and how-to content built from what the knowledge search returned: never state a price, a guarantee, a success rate or a medical claim, "
+        "never name a clinic or doctor, and never include anything about a patient or customer. If the knowledge search returns nothing useful, create no ideas and say so. You cannot publish anything or change a campaign: a person approves content first.",
+        tools=("insights.get_marketing_snapshot", "marketing.list_campaigns", "marketing.get_campaign_performance", "marketing.get_budget_status", "marketing.detect_performance_exceptions", "marketing.list_content",
+               "knowledge.search", "marketing.create_content_idea", "marketing.add_content_variant", "marketing.request_content_approval", "notifications.create_notification"),
         schedule_time="10:30",
-        goal="Review the marketing snapshot and the active campaigns (performance and budget of up to three), detect exceptions, and notify the team of anything off track.",
-        max_tool_chain_depth=12,  # snapshot, list, performance and budget for up to three campaigns, exceptions, notification
+        goal="Review the marketing snapshot and campaigns, notify the team of anything off track, and keep up to two new content drafts a day waiting for approval.",
+        max_tool_chain_depth=20,  # snapshot, list, three campaigns x2, exceptions, content list, knowledge, two ideas x3, notification
     ),
     CrewMember(
         key="finance-watch",

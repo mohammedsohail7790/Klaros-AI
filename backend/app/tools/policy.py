@@ -299,6 +299,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "marketing.get_campaign_performance": ActionPolicy.AUTO,
     "marketing.detect_performance_exceptions": ActionPolicy.AUTO,
     "marketing.create_content_idea": ActionPolicy.AUTO,
+    "marketing.list_content": ActionPolicy.AUTO,  # read-only
     "marketing.generate_content_draft_from_job": ActionPolicy.AUTO,
     "marketing.create_content_from_review": ActionPolicy.APPROVAL_REQUIRED,  # real customer testimonial data — owner approval gates content generation itself, on top of the existing separate publish approval
     "marketing.add_content_variant": ActionPolicy.AUTO,
