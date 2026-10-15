@@ -7,7 +7,7 @@ acknowledged at most once. APPROVAL_REQUIRED by default because it reaches a rea
 
 import uuid
 
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 from sqlalchemy import func, select
 
 from app.db.session import async_session_maker, set_tenant_context
@@ -22,7 +22,7 @@ SENT_ACTION = "crm.enquiry_acknowledged"  # written only when an e-mail was real
 
 
 class AcknowledgeEnquiryInput(BaseModel):
-    lead_id: uuid.UUID
+    lead_id: uuid.UUID = Field(validation_alias=AliasChoices("lead_id", "enquiry_id", "id"))  # a model often calls it the enquiry id
 
 
 class AcknowledgeEnquiryOutput(BaseModel):

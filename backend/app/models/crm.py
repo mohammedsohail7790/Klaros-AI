@@ -3,7 +3,7 @@ from enum import StrEnum
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Numeric, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TenantScopedMixin
@@ -126,6 +126,17 @@ class CustomerNote(TenantScopedMixin, Base):
     __tablename__ = "customer_notes"
 
     customer_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
+    author_type: Mapped[str] = mapped_column(String(20), nullable=False)  # ActorType
+    author_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class LeadNote(TenantScopedMixin, Base):
+    """A freeform note on an enquiry (a lead), written by a person or an AI crew member. Customers have their own notes (`CustomerNote`)."""
+
+    __tablename__ = "lead_notes"
+
+    lead_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("leads.id"), nullable=False, index=True)
     author_type: Mapped[str] = mapped_column(String(20), nullable=False)  # ActorType
     author_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     body: Mapped[str] = mapped_column(Text, nullable=False)

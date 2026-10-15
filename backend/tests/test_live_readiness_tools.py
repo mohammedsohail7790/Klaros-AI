@@ -182,3 +182,18 @@ async def test_a_refused_attempt_does_not_use_up_the_acknowledgement(client, hal
     monkeypatch.setattr("app.communications.factory.get_communication_provider", lambda session_factory: _Guarded())
     assert (await reg.execute("crm.acknowledge_enquiry", {"lead_id": lead}, _ctx(tid), skip_approval_gate=True)).sent is True  # once e-mail works, the enquiry still gets its acknowledgement
     assert len(sent) == 1
+
+
+async def test_the_acknowledgement_tool_understands_the_id_under_the_name_a_model_uses(client, halla, email_on, monkeypatch) -> None:  # noqa: F811
+    sent: list[str] = []
+
+    class _Guarded:
+        async def deliver_email(self, tenant_id, *, to, subject, body, template, lead_id=None, **kw):
+            sent.append(to)
+            return SendResult(SendStatus.SENT)
+
+    monkeypatch.setattr("app.communications.factory.get_communication_provider", lambda session_factory: _Guarded())
+    token, tid = await _gated(client, "Alias Ack Co", "aliasack@example.com")
+    lead = await _patient(client, token)
+    out = await get_tool_registry().execute("crm.acknowledge_enquiry", {"enquiry_id": lead}, _ctx(tid), skip_approval_gate=True)  # the live run's mistake: enquiry_id instead of lead_id
+    assert out.sent is True and len(sent) == 1

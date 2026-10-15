@@ -92,6 +92,19 @@ async def search_leads(
     return output.model_dump(mode="json")
 
 
+@router.get("/{lead_id}/notes")
+async def list_lead_notes(
+    lead_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> dict[str, Any]:
+    try:
+        output = await registry.execute("crm.list_lead_notes", {"lead_id": str(lead_id)}, execution_context(current_user))
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
 @router.get("/{lead_id}")
 async def get_lead(
     lead_id: uuid.UUID,

@@ -280,6 +280,18 @@ export function logout(accessToken: string) {
 
 // --- CRM: leads ---
 
+export interface LeadNote {
+  id: string;
+  author_type: string;
+  author_id: string | null;
+  body: string;
+  created_at: string;
+}
+
+export function listLeadNotes(token: string, leadId: string) {
+  return request<{ notes: LeadNote[] }>(`/api/v1/leads/${leadId}/notes`, { headers: authHeaders(token) });
+}
+
 export interface Lead {
   id: string;
   customer_id: string | null;

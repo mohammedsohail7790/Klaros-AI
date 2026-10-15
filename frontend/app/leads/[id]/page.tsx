@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { LeadOperationsPanel } from "@/components/business/LeadOperationsPanel";
+import { LeadNotes } from "@/components/business/LeadNotes";
 import { LeadConsentPanel } from "@/components/business/LeadConsentPanel";
 import { GenericNextAction, LeadAiInteraction } from "@/components/business/LeadAiInteraction";
 import { leadStatusLabel, sourceLabel, titleCase, when } from "@/lib/opsLabels";
@@ -241,6 +242,9 @@ export default function LeadDetailPage() {
 
               {/* CONSENT (Medical Tourism pilot organisations only) */}
               <LeadConsentPanel token={token} leadId={id} onChanged={load} />
+
+              {/* NOTES from people and the AI crew */}
+              <LeadNotes token={token} leadId={id} refreshKey={lead.status} />
 
               {/* NEXT ACTION + TIMELINE for leads without industry details */}
               {ops === null && interaction && (

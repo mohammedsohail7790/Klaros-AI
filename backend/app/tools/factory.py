@@ -602,9 +602,12 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(EnrollLeadInNurture(nurture_service))
     registry.register(ExecuteDueNurtureActivities(nurture_service))
 
+    from app.tools.builtin.lead_note_tools import AddLeadNote, ListLeadNotes
     from app.tools.builtin.lead_ack_tools import AcknowledgeEnquiry
 
     registry.register(AcknowledgeEnquiry())
+    registry.register(AddLeadNote())
+    registry.register(ListLeadNotes())
 
     from app.api.tool_deps_business_builder import get_halla_integration_service
     from app.tools.builtin.workforce_tools import CallLead

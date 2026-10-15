@@ -9,7 +9,7 @@ from app.models.business_blueprint import BusinessBlueprint, BlueprintSection, B
 from app.models.recommendation import Recommendation, RecommendationRun
 from app.models.agent import Agent, AgentExecution, AgentExecutionStep, AgentToolPermission, AgentVersion
 from app.models.mcp_server import McpClientCredential, McpToolExposure
-from app.models.crm import Appointment, Customer, CustomerNote, Lead
+from app.models.crm import Appointment, Customer, CustomerNote, Lead, LeadNote  # noqa: F401
 from app.models.event import DeadLetterEvent, Event, EventProcessingRecord
 from app.models.finance import (
     CashForecast,

@@ -110,6 +110,8 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "crm.search_customers": ActionPolicy.AUTO,
     "crm.get_customer_timeline": ActionPolicy.AUTO,
     "crm.create_note": ActionPolicy.AUTO,
+    "crm.add_lead_note": ActionPolicy.AUTO,  # internal note on an enquiry, consent-checked
+    "crm.list_lead_notes": ActionPolicy.AUTO,  # read-only
     "crm.generate_customer_summary": ActionPolicy.AUTO,
     "crm.check_availability": ActionPolicy.AUTO,
     "crm.create_appointment": ActionPolicy.AUTO,
