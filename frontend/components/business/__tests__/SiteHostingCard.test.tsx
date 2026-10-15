@@ -19,7 +19,7 @@ vi.mock("@/lib/api", () => ({
 }));
 import { SiteHostingCard } from "@/components/business/SiteHostingCard";
 
-const pending = { id: "d1", hostname: "www.example.com", status: "PENDING", verified_at: null, txt_name: "_klaros-verify.www.example.com", txt_value: "klaros-abc", dns_target: { a_record: "76.76.21.21", cname: "cname.vercel-dns.com" } };
+const pending = { id: "d1", hostname: "www.example.com", status: "PENDING", verified_at: null, txt_name: "_klaros-verify.www.example.com", txt_value: "klaros-abc", dns_target: { a_record: "76.76.21.21", cname: "cname.vercel-dns.com" }, edge_status: "WAITING_FOR_DNS", edge_detail: null, automated: true };
 const draft = { id: "u1", version: 1, status: "DRAFT", source_name: "site.zip", file_count: 4, total_bytes: 2048, created_at: null, published_at: null };
 
 describe("SiteHostingCard", () => {
@@ -33,7 +33,7 @@ describe("SiteHostingCard", () => {
     expect(await screen.findByText(/_klaros-verify\.www\.example\.com/)).toBeInTheDocument();
     expect(screen.getByText(/klaros-abc/)).toBeInTheDocument();
     expect(screen.getByText(/https:\/\/api\.example\.test\/api\/v1\/public\/leads\/tenant-1/)).toBeInTheDocument();
-    expect(screen.getByText("Not verified yet")).toBeInTheDocument();
+    expect(screen.getByText("Waiting for your DNS records")).toBeInTheDocument();
   });
 
   it("publishes a draft", async () => {
@@ -46,9 +46,25 @@ describe("SiteHostingCard", () => {
   it("says plainly when the DNS record is not visible yet, and never claims it is verified", async () => {
     verify.mockResolvedValue({ verified: false, domain: pending });
     render(<SiteHostingCard token="t" />);
-    fireEvent.click(await screen.findByRole("button", { name: "Verify" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Check now" }));
     expect(await screen.findByText(/could not see the DNS record yet/)).toBeInTheDocument();
     expect(screen.queryByText(/www\.example\.com is verified/)).not.toBeInTheDocument();
+  });
+
+  it("tells the owner nothing else is needed when setup is automatic, and what to do by hand when it is not", async () => {
+    const { unmount } = render(<SiteHostingCard token="t" />);
+    expect(await screen.findByText(/it goes live by itself/)).toBeInTheDocument();
+    expect(screen.queryByText(/add this domain to your Vercel project/)).not.toBeInTheDocument();
+    unmount();
+    get.mockResolvedValue({ tenant_id: "tenant-1", uploads: [], domains: [{ ...pending, edge_status: "NOT_AUTOMATED", automated: false }] });
+    render(<SiteHostingCard token="t" />);
+    expect(await screen.findByText(/add this domain to your Vercel project/)).toBeInTheDocument();
+  });
+
+  it("shows a setup problem and says it will be retried", async () => {
+    get.mockResolvedValue({ tenant_id: "tenant-1", uploads: [], domains: [{ ...pending, edge_status: "ERROR", edge_detail: "The host refused the domain (400)." }] });
+    render(<SiteHostingCard token="t" />);
+    expect(await screen.findByText(/refused the domain \(400\)\. Klaros will keep trying/)).toBeInTheDocument();
   });
 
   it("adds a domain", async () => {

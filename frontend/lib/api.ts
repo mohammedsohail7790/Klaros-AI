@@ -6106,6 +6106,7 @@ export interface HostedUpload { id: string; version: number; status: "DRAFT" | "
 export interface HostedDomain {
   id: string; hostname: string; status: "PENDING" | "VERIFIED"; verified_at: string | null;
   txt_name: string; txt_value: string; dns_target: { a_record: string; cname: string };
+  edge_status: "NOT_AUTOMATED" | "REGISTERING" | "WAITING_FOR_DNS" | "LIVE" | "ERROR"; edge_detail: string | null; automated: boolean;
 }
 export interface SiteHostingOverview { tenant_id: string; uploads: HostedUpload[]; domains: HostedDomain[] }
 

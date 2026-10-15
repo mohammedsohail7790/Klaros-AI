@@ -46,3 +46,6 @@ class TenantDomain(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     verification_token: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=DOMAIN_PENDING)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Whether the frontend host has the domain and is serving it: NOT_AUTOMATED (no host credentials configured), REGISTERING, WAITING_FOR_DNS, LIVE or ERROR.
+    edge_status: Mapped[str] = mapped_column(String(20), nullable=False, default="NOT_AUTOMATED")
+    edge_detail: Mapped[str | None] = mapped_column(String(500), nullable=True)

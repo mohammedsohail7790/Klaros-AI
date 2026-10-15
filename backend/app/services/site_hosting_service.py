@@ -24,6 +24,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.session import set_tenant_context
+from app.services.vercel_domains import VercelDomains
 from app.models.site_hosting import (
     DOMAIN_PENDING, DOMAIN_VERIFIED, UPLOAD_ARCHIVED, UPLOAD_DRAFT, UPLOAD_PUBLISHED, TenantDomain, UploadedSite, UploadedSiteFile,
 )
@@ -155,13 +156,15 @@ def domain_summary(d: TenantDomain) -> dict:
     return {
         "id": str(d.id), "hostname": d.hostname, "status": d.status, "verified_at": d.verified_at.isoformat() if d.verified_at else None,
         "txt_name": f"{VERIFY_PREFIX}.{d.hostname}", "txt_value": d.verification_token, "dns_target": DNS_TARGET,
+        "edge_status": d.edge_status, "edge_detail": d.edge_detail, "automated": d.edge_status != "NOT_AUTOMATED",
     }
 
 
 class SiteHostingService:
-    def __init__(self, session_factory: async_sessionmaker, dns_lookup: DnsTxtLookup = doh_txt_lookup) -> None:
+    def __init__(self, session_factory: async_sessionmaker, dns_lookup: DnsTxtLookup = doh_txt_lookup, edge: VercelDomains | None = None) -> None:
         self._sf = session_factory
         self._dns = dns_lookup
+        self._edge = edge or VercelDomains()
 
     # ---- uploaded sites -------------------------------------------------------------------------------------------------------------------------------
 
@@ -234,11 +237,16 @@ class SiteHostingService:
                 if existing.tenant_id == tenant_id:
                     return existing
                 raise DomainError("That domain is already connected to another business.")
-            domain = TenantDomain(tenant_id=tenant_id, hostname=host, verification_token="klaros-" + secrets.token_hex(12), status=DOMAIN_PENDING)
+            domain = TenantDomain(tenant_id=tenant_id, hostname=host, verification_token="klaros-" + secrets.token_hex(12), status=DOMAIN_PENDING,
+                                  edge_status="REGISTERING" if self._edge.configured() else "NOT_AUTOMATED")
             session.add(domain)
             await session.commit()
             await session.refresh(domain)
-            return domain
+        if self._edge.configured():
+            await self._sync_edge(domain.id)
+            async with self._sf() as session:
+                domain = (await session.execute(select(TenantDomain).where(TenantDomain.id == domain.id))).scalar_one()
+        return domain
 
     async def list_domains(self, tenant_id: uuid.UUID) -> list[TenantDomain]:
         async with self._sf() as session:
@@ -269,9 +277,12 @@ class SiteHostingService:
             domain = (await session.execute(select(TenantDomain).where(TenantDomain.id == domain_id, TenantDomain.tenant_id == tenant_id))).scalar_one_or_none()
             if domain is None:
                 return False
+            host = domain.hostname
             await session.delete(domain)
             await session.commit()
-            return True
+        if self._edge.configured():
+            await self._edge.remove(host)
+        return True
 
     async def tenant_for_host(self, hostname: str) -> uuid.UUID | None:
         """The tenant that owns a VERIFIED domain. A pending domain answers nothing."""
@@ -281,3 +292,54 @@ class SiteHostingService:
             return None
         async with self._sf() as session:
             return (await session.execute(select(TenantDomain.tenant_id).where(TenantDomain.hostname == host, TenantDomain.status == DOMAIN_VERIFIED))).scalar_one_or_none()
+
+    # ---- automatic upkeep -----------------------------------------------------------------------------------------------------------------------------
+
+    async def _sync_edge(self, domain_id: uuid.UUID) -> None:
+        """Make the frontend host know the domain, then record whether it is serving. Safe to repeat."""
+        async with self._sf() as session:
+            domain = (await session.execute(select(TenantDomain).where(TenantDomain.id == domain_id))).scalar_one_or_none()
+            if domain is None or not self._edge.configured():
+                return
+            state = await self._edge.state(domain.hostname)
+            if not state.registered and state.error is None:
+                state = await self._edge.add(domain.hostname)
+            if state.error:
+                domain.edge_status, domain.edge_detail = "ERROR", state.error
+            elif state.live:
+                domain.edge_status, domain.edge_detail = "LIVE", None
+            else:
+                domain.edge_status, domain.edge_detail = "WAITING_FOR_DNS", "Waiting for the DNS records to point at Klaros and for the certificate to be issued."
+            await session.commit()
+
+    async def sweep(self) -> dict[str, int]:
+        """One pass of upkeep for every domain: verify ownership from DNS, register with the host, and refresh whether it is live. Idempotent; a failure on one domain never stops the others."""
+        async with self._sf() as session:
+            ids = [(d.id, d.tenant_id, d.status, d.edge_status) for d in (await session.execute(select(TenantDomain))).scalars()]
+        verified = refreshed = 0
+        for domain_id, tenant_id, status, edge_status in ids:
+            try:
+                if status == DOMAIN_PENDING:
+                    _, ok = await self.verify_domain(tenant_id, domain_id)
+                    verified += int(ok)
+                if self._edge.configured() and edge_status != "LIVE":
+                    await self._sync_edge(domain_id)
+                    refreshed += 1
+            except Exception as exc:  # noqa: BLE001 - one domain's trouble must not stop the pass
+                logger.warning("domain_sweep_failed", domain_id=str(domain_id), error=type(exc).__name__)
+        return {"checked": len(ids), "verified": verified, "refreshed": refreshed}
+
+
+async def run_domain_sweeper(service: SiteHostingService, stop: "asyncio.Event", every_seconds: float = 60.0) -> None:
+    """Background loop: keeps every domain moving toward live without anyone pressing a button."""
+    import asyncio
+
+    while not stop.is_set():
+        try:
+            await service.sweep()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("domain_sweeper_failed", error=type(exc).__name__)
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=every_seconds)
+        except asyncio.TimeoutError:
+            pass

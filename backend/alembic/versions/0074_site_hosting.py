@@ -60,6 +60,8 @@ def upgrade() -> None:
         sa.Column("verification_token", sa.String(64), nullable=False),
         sa.Column("status", sa.String(20), nullable=False),
         sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("edge_status", sa.String(20), nullable=False, server_default="NOT_AUTOMATED"),
+        sa.Column("edge_detail", sa.String(500), nullable=True),
     )
     op.create_index("ix_tenant_domains_tenant_id", "tenant_domains", ["tenant_id"])
 

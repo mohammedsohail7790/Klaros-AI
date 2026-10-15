@@ -196,3 +196,160 @@ async def test_a_site_on_its_own_domain_can_send_an_enquiry_but_other_endpoints_
     private = await client.options("/api/v1/leads", headers={**origin, "Access-Control-Request-Method": "POST"})
     assert "access-control-allow-origin" not in private.headers
     assert "access-control-allow-origin" not in (await client.get("/api/v1/site-hosting", headers=origin)).headers
+
+
+# ---- automatic upkeep ------------------------------------------------------------------------------------------------------------------------------------
+
+class FakeEdge:
+    """Stands in for the frontend host's domain API."""
+
+    def __init__(self, configured=True, live=False, error=None):
+        self._configured, self.live, self.error = configured, live, error
+        self.added: list[str] = []
+        self.removed: list[str] = []
+        self.registered: set[str] = set()
+
+    def configured(self):
+        return self._configured
+
+    async def add(self, host):
+        from app.services.vercel_domains import EdgeState
+
+        self.added.append(host)
+        if self.error:
+            return EdgeState(registered=False, error=self.error)
+        self.registered.add(host)
+        return EdgeState(registered=True)
+
+    async def state(self, host):
+        from app.services.vercel_domains import EdgeState
+
+        return EdgeState(registered=host in self.registered, live=self.live and host in self.registered)
+
+    async def remove(self, host):
+        self.removed.append(host)
+        self.registered.discard(host)
+
+
+def _swap_edge(monkeypatch, edge):
+    monkeypatch.setattr(api._service, "_edge", edge)
+
+
+async def test_adding_a_domain_registers_it_with_the_host_without_the_owner_touching_it(client, monkeypatch) -> None:
+    edge = FakeEdge()
+    _swap_edge(monkeypatch, edge)
+    token = await _register(client, "Auto Dom Co", "autodom@example.com")
+    dom = (await client.post("/api/v1/site-hosting/domains", json={"hostname": "auto-test.com"}, headers=_h(token))).json()
+    assert edge.added == ["auto-test.com"] and dom["automated"] is True and dom["edge_status"] == "WAITING_FOR_DNS"
+
+
+async def test_without_host_credentials_the_domain_says_it_is_manual(client, monkeypatch) -> None:
+    _swap_edge(monkeypatch, FakeEdge(configured=False))
+    token = await _register(client, "Manual Dom Co", "manualdom@example.com")
+    dom = (await client.post("/api/v1/site-hosting/domains", json={"hostname": "manual-test.com"}, headers=_h(token))).json()
+    assert dom["automated"] is False and dom["edge_status"] == "NOT_AUTOMATED"
+
+
+async def test_a_host_refusal_is_shown_and_retried_not_hidden(client, monkeypatch) -> None:
+    edge = FakeEdge(error="The host refused the domain (400).")
+    _swap_edge(monkeypatch, edge)
+    token = await _register(client, "Refused Co", "refused@example.com")
+    dom = (await client.post("/api/v1/site-hosting/domains", json={"hostname": "refused-test.com"}, headers=_h(token))).json()
+    assert dom["edge_status"] == "ERROR" and "refused" in dom["edge_detail"]
+    edge.error = None
+    await api._service.sweep()
+    assert (await client.get("/api/v1/site-hosting", headers=_h(token))).json()["domains"][0]["edge_status"] == "WAITING_FOR_DNS"
+
+
+async def test_the_sweep_verifies_ownership_and_marks_the_domain_live_on_its_own(client, monkeypatch) -> None:
+    edge = FakeEdge()
+    _swap_edge(monkeypatch, edge)
+    token = await _register(client, "Sweep Co", "sweepco@example.com")
+    dom = (await client.post("/api/v1/site-hosting/domains", json={"hostname": "sweep-test.com"}, headers=_h(token))).json()
+
+    async def nothing(name):
+        return []
+
+    monkeypatch.setattr(api._service, "_dns", nothing)
+    await api._service.sweep()
+    assert (await client.get("/api/v1/site-hosting", headers=_h(token))).json()["domains"][0]["status"] == "PENDING"
+
+    async def record(name):
+        return [dom["txt_value"]]
+
+    monkeypatch.setattr(api._service, "_dns", record)
+    edge.live = True
+    result = await api._service.sweep()
+    shown = (await client.get("/api/v1/site-hosting", headers=_h(token))).json()["domains"][0]
+    assert result["verified"] >= 1 and shown["status"] == "VERIFIED" and shown["edge_status"] == "LIVE" and shown["edge_detail"] is None
+
+
+async def test_removing_a_domain_removes_it_from_the_host_and_one_bad_domain_does_not_stop_the_sweep(client, monkeypatch) -> None:
+    edge = FakeEdge()
+    _swap_edge(monkeypatch, edge)
+    token = await _register(client, "Rm Dom Co", "rmdom@example.com")
+    dom = (await client.post("/api/v1/site-hosting/domains", json={"hostname": "rm-test.com"}, headers=_h(token))).json()
+    await client.delete(f"/api/v1/site-hosting/domains/{dom['id']}", headers=_h(token))
+    assert edge.removed == ["rm-test.com"]
+
+    async def boom(name):
+        raise RuntimeError("resolver down")
+
+    monkeypatch.setattr(api._service, "_dns", boom)
+    assert isinstance(await api._service.sweep(), dict)
+
+
+class _Resp:
+    def __init__(self, status, body=None):
+        self.status_code, self._body = status, body or {}
+        self.headers = {"content-type": "application/json"}
+
+    def json(self):
+        return self._body
+
+
+async def test_the_vercel_client_adds_reads_and_never_raises(monkeypatch) -> None:
+    from app.core.config import get_settings
+    from app.services.vercel_domains import VercelDomains
+
+    s = get_settings()
+    monkeypatch.setattr(s, "VERCEL_API_TOKEN", "tok")
+    monkeypatch.setattr(s, "VERCEL_PROJECT_ID", "prj")
+    v = VercelDomains()
+    assert v.configured()
+    calls = []
+
+    async def ok(method, path, **kw):
+        calls.append((method, path))
+        if method == "POST":
+            return _Resp(200, {"name": "x.com"})
+        if "/v6/domains/" in path:
+            return _Resp(200, {"misconfigured": False})
+        return _Resp(200, {"verified": True})
+
+    monkeypatch.setattr(v, "_call", ok)
+    assert (await v.add("x.com")).registered
+    live = await v.state("x.com")
+    assert live.registered and live.live and ("POST", "/v10/projects/prj/domains") in calls
+
+    async def misconfigured(method, path, **kw):
+        return _Resp(200, {"misconfigured": True, "verified": True})
+
+    monkeypatch.setattr(v, "_call", misconfigured)
+    assert (await v.state("x.com")).live is False
+
+    async def taken(method, path, **kw):
+        return _Resp(409, {"error": {"code": "domain_already_in_use"}}) if method == "POST" else _Resp(404)
+
+    monkeypatch.setattr(v, "_call", taken)
+    refused = await v.add("x.com")
+    assert refused.registered is False and "another" in refused.error
+
+    async def down(method, path, **kw):
+        raise TimeoutError
+
+    monkeypatch.setattr(v, "_call", down)
+    assert (await v.add("x.com")).error and (await v.state("x.com")).error
+    await v.remove("x.com")  # does not raise
+    monkeypatch.setattr(s, "VERCEL_API_TOKEN", None)
+    assert not VercelDomains().configured()

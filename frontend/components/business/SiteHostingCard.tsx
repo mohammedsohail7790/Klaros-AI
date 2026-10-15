@@ -16,6 +16,13 @@ function toBase64(buf: ArrayBuffer): string {
   return btoa(binary);
 }
 
+function statusLine(d: HostedDomain, hasUpload: boolean): string {
+  if (d.status === "PENDING") return "Waiting for your DNS records";
+  if (d.edge_status === "LIVE" || d.edge_status === "NOT_AUTOMATED") return hasUpload ? "Verified · serving your uploaded site" : "Verified · serving your Klaros site";
+  if (d.edge_status === "ERROR") return "Verified · setup needs attention";
+  return "Verified · switching on the secure connection";
+}
+
 const kb = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 export function SiteHostingCard({ token }: { token: string | null }) {
@@ -37,6 +44,14 @@ export function SiteHostingCard({ token }: { token: string | null }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // A domain moves toward live on its own (Klaros checks DNS and registers it in the background), so keep the card current while any domain is still on its way.
+  const settling = !!data?.domains.some((d) => d.status === "PENDING" || (d.automated && d.edge_status !== "LIVE" && d.edge_status !== "ERROR"));
+  useEffect(() => {
+    if (!settling) return;
+    const timer = setInterval(load, 20000);
+    return () => clearInterval(timer);
+  }, [settling, load]);
 
   async function run(action: () => Promise<unknown>, done?: string) {
     if (!token || busy) return;
@@ -125,18 +140,20 @@ export function SiteHostingCard({ token }: { token: string | null }) {
         <div key={d.id} className="mt-4 rounded-2xl bg-surface px-4 py-4 text-[14px] leading-snug text-foreground">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <strong>{d.hostname}</strong>
-            <span className={d.status === "VERIFIED" ? "font-medium text-success" : "text-muted"}>{d.status === "VERIFIED" ? (live ? "Verified · serving your uploaded site" : "Verified · serving your Klaros site") : "Not verified yet"}</span>
+            <span className={d.status === "VERIFIED" && d.edge_status !== "ERROR" ? "font-medium text-success" : "text-muted"}>{statusLine(d, !!live)}</span>
           </div>
+          {d.edge_status === "ERROR" && d.edge_detail && <p className="mt-2 text-danger">{d.edge_detail} Klaros will keep trying.</p>}
           {d.status === "PENDING" && (
             <div className="mt-3 text-muted">
-              <p>1. At your domain provider, add a <strong>TXT</strong> record:</p>
+              <p>{d.automated ? "Klaros has set the domain up on its side and checks every minute. You only need to add the DNS records at your domain provider:" : "Add the DNS records at your domain provider (and add this domain to your Vercel project, because automatic setup is not switched on):"}</p>
+              <p className="mt-2">1. At your domain provider, add a <strong>TXT</strong> record:</p>
               <p className="mt-1 break-all font-mono text-[13px] text-foreground">Name: {d.txt_name}<br />Value: {d.txt_value}</p>
               <p className="mt-3">2. Point the domain at Klaros: an <strong>A</strong> record to <span className="font-mono text-foreground">{d.dns_target.a_record}</span> (or, for a www name, a <strong>CNAME</strong> to <span className="font-mono text-foreground">{d.dns_target.cname}</span>).</p>
-              <p className="mt-3">3. Then verify. DNS changes can take a few minutes.</p>
+              <p className="mt-3">That is all: it goes live by itself within minutes of the records appearing. You do not need to come back and press anything.</p>
             </div>
           )}
           <div className="mt-3 flex gap-4">
-            {d.status === "PENDING" && <button type="button" disabled={busy} onClick={() => verify(d)} className="text-accent hover:underline disabled:opacity-50">Verify</button>}
+            {d.status === "PENDING" && <button type="button" disabled={busy} onClick={() => verify(d)} className="text-accent hover:underline disabled:opacity-50">Check now</button>}
             <button type="button" disabled={busy} onClick={() => run(() => removeHostedDomain(token!, d.id), "Domain removed.")} className="text-muted hover:underline disabled:opacity-50">Remove</button>
           </div>
         </div>

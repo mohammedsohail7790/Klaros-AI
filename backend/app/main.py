@@ -121,9 +121,22 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     except Exception:  # noqa: BLE001 - a sweep problem must never stop the API starting
         logger.warning("builder_recovery_sweep_failed")
 
+    sweeper_task: asyncio.Task | None = None
+    sweeper_stop = asyncio.Event()
+    try:
+        from app.api.v1.site_hosting import get_site_hosting_service
+        from app.services.site_hosting_service import run_domain_sweeper
+
+        sweeper_task = asyncio.create_task(run_domain_sweeper(get_site_hosting_service(), sweeper_stop))
+    except Exception:  # noqa: BLE001 - domain upkeep must never stop the API starting
+        logger.warning("domain_sweeper_not_started")
+
     try:
         yield
     finally:
+        sweeper_stop.set()
+        if sweeper_task is not None:
+            await sweeper_task
         if worker_task is not None:
             shutdown_event.set()
             await worker_task

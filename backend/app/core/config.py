@@ -268,6 +268,10 @@ class Settings(BaseSettings):
     BUILDER_VERSIONS_KEPT: int = 30
     BUILDER_RUN_STALE_AFTER_SECONDS: int = 120
     BUILDER_PREVIEW_TOKEN_TTL_SECONDS: int = 3600
+    # Custom domains: when set, a domain a business adds is registered with the frontend host (Vercel) automatically. Without them the owner is told to add it there by hand.
+    VERCEL_API_TOKEN: str | None = None
+    VERCEL_PROJECT_ID: str | None = None
+    VERCEL_TEAM_ID: str | None = None
     BUILDER_PUBLIC_BASE_URL: str | None = None  # where published projects are served from (defaults to the API host)
 
     ANTHROPIC_API_KEY: str | None = None
