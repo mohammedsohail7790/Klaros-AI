@@ -52,6 +52,7 @@ class CrewMember:
     schedule_time: str | None = None  # HH:MM tenant-local, daily
     goal: str = ""
     max_tool_chain_depth: int = 6
+    schedule_action: tuple[str, dict[str, Any]] | None = None  # a daily tool call run exactly as given, with no model deciding anything
 
 
 GENERIC_CREW: tuple[CrewMember, ...] = (
@@ -149,17 +150,24 @@ GENERIC_CREW: tuple[CrewMember, ...] = (
     CrewMember(
         key="marketing-manager",
         name="Marketing Manager",
-        purpose="Every morning reviews campaign results and budget, and keeps a steady supply of content drafts ready for your approval.",
-        instructions=_COMMON_RULES + " Every run has two parts and you must do both; having no campaigns never ends the run. "
-        "PART 1, campaigns: review the marketing snapshot, list the active campaigns and, only if there are any, check the performance and budget of at most three of them (the first three listed), detect performance exceptions, "
-        "and notify the team of anything off track. With no campaigns there is nothing to review: go straight to part 2. "
-        "PART 2, content (required on every run): call the draft_content tool once. It turns the business's own approved topics into drafts waiting for a person's approval, and it checks for itself what already exists. "
-        "Report in your final answer which drafts it created, or its note if it created none. You cannot publish anything or change a campaign: a person approves content first.",
-        tools=("insights.get_marketing_snapshot", "marketing.list_campaigns", "marketing.get_campaign_performance", "marketing.get_budget_status", "marketing.detect_performance_exceptions",
-               "marketing.draft_content", "notifications.create_notification"),
+        purpose="Every morning reviews campaign results and budget and records what needs attention.",
+        instructions=_COMMON_RULES + " Each run: review the marketing snapshot (active campaigns, spend in the last 30 days, new leads), list the active campaigns, check the performance and budget of at most three of them "
+        "(the first three listed), detect performance exceptions, and notify the team of anything off track. With no campaigns there is nothing to review: say so. You cannot publish anything or change a campaign.",
+        tools=("insights.get_marketing_snapshot", "marketing.list_campaigns", "marketing.get_campaign_performance", "marketing.get_budget_status", "marketing.detect_performance_exceptions", "notifications.create_notification"),
         schedule_time="10:30",
         goal="Part 1: review the campaigns (skip if there are none). Part 2, always: keep up to two new content drafts waiting for approval. Finish only after part 2.",
-        max_tool_chain_depth=12,  # snapshot, list, three campaigns x2, exceptions, drafts, notification
+        max_tool_chain_depth=12,  # snapshot, list, three campaigns x2, exceptions, notification
+    ),
+    CrewMember(
+        key="content-drafter",
+        name="Content Drafter",
+        purpose="Every morning turns your approved content topics into blog drafts and sends them to you for approval. It never publishes.",
+        instructions=_COMMON_RULES + " Call the draft_content tool once and report which drafts it created, or its note if it created none. You cannot publish anything: a person approves content first.",
+        tools=("marketing.draft_content",),
+        schedule_time="10:35",
+        goal="Create up to two new blog drafts from the business's approved content topics and send them for approval.",
+        schedule_action=("marketing.draft_content", {"max_items": 2}),
+        max_tool_chain_depth=2,
     ),
     CrewMember(
         key="finance-watch",
@@ -283,6 +291,8 @@ def _triggers(m: CrewMember) -> dict[str, Any]:
         t["event"] = {"enabled": True, "event_type": m.event_type, "conditions": dict(m.event_conditions), "goal": m.goal}
     if m.schedule_time:
         t["schedule"] = {"enabled": True, "frequency": "DAILY", "time": m.schedule_time, "goal": m.goal}
+        if m.schedule_action:
+            t["schedule"]["action"] = {"tool_name": m.schedule_action[0], "tool_input": dict(m.schedule_action[1])}
     return t
 
 

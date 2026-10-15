@@ -64,4 +64,4 @@ def get_agent_recovery_service(
 def get_agent_trigger_service(
     tool_registry: ToolRegistry = Depends(get_tool_registry),
 ) -> AgentTriggerService:
-    return AgentTriggerService(async_session_maker, get_agent_reasoning_service(tool_registry))
+    return AgentTriggerService(async_session_maker, get_agent_reasoning_service(tool_registry), AgentExecutionService(async_session_maker, tool_registry))

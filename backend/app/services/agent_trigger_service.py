@@ -82,9 +82,10 @@ logger = structlog.get_logger(__name__)
 
 
 class AgentTriggerService:
-    def __init__(self, session_factory: async_sessionmaker, reasoning_service: AgentReasoningService) -> None:
+    def __init__(self, session_factory: async_sessionmaker, reasoning_service: AgentReasoningService, execution_service=None) -> None:
         self._session_factory = session_factory
         self._reasoning = reasoning_service
+        self._execution = execution_service  # runs a scheduled `action` (one named tool) directly; without it such a schedule falls back to its goal
 
     async def check_and_dispatch_scheduled(
         self, tenant_id: uuid.UUID | None = None, *, now_utc: datetime | None = None,
@@ -152,11 +153,18 @@ class AgentTriggerService:
             idempotency_key = f"schedule:{agent.id}:{due.occurrence_date.isoformat()}"
             goal = schedule.get("goal") or version.instructions_snapshot
 
+            action = schedule.get("action")
             try:
-                execution = await self._reasoning.start(
-                    agent.tenant_id, agent.id, goal=goal, triggered_by=None,
-                    trigger_source=AgentTriggerSource.SCHEDULED, idempotency_key=idempotency_key,
-                )
+                if isinstance(action, dict) and action.get("tool_name") and self._execution is not None:
+                    execution = await self._execution.run_action(
+                        agent.tenant_id, agent.id, tool_name=action["tool_name"], tool_input=dict(action.get("tool_input") or {}), triggered_by=None,
+                        trigger_source=AgentTriggerSource.SCHEDULED, idempotency_key=idempotency_key,
+                    )
+                else:
+                    execution = await self._reasoning.start(
+                        agent.tenant_id, agent.id, goal=goal, triggered_by=None,
+                        trigger_source=AgentTriggerSource.SCHEDULED, idempotency_key=idempotency_key,
+                    )
             except DuplicateExecutionRequestError:
                 await self._audit_skip(agent, "agent.trigger.scheduled.deduplicated", reason=idempotency_key)
                 continue

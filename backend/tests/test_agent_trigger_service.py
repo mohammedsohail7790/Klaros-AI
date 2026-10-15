@@ -45,7 +45,7 @@ def _trigger_service(tool_registry, responses=()):
 
     exec_service = AgentExecutionService(async_session_maker, tool_registry)
     rs = AgentReasoningService(async_session_maker, tool_registry, exec_service, ai_provider=FakeAIProvider(list(responses)))
-    return AgentTriggerService(async_session_maker, rs)
+    return AgentTriggerService(async_session_maker, rs, exec_service)
 
 
 async def _org(tenant_id, *, timezone_name="UTC"):
@@ -56,7 +56,7 @@ async def _org(tenant_id, *, timezone_name="UTC"):
         await session.commit()
 
 
-async def _agent_with_schedule(tool_registry, tenant_id, *, schedule: dict, status=AgentStatus.ACTIVE):
+async def _agent_with_schedule(tool_registry, tenant_id, *, schedule: dict, status=AgentStatus.ACTIVE, grants=()):
     from app.db.session import async_session_maker
 
     agent_service = AgentService(async_session_maker)
@@ -64,6 +64,8 @@ async def _agent_with_schedule(tool_registry, tenant_id, *, schedule: dict, stat
         tenant_id, name="ScheduledAgent", purpose="x", autonomy_tier=AgentAutonomyTier.EXECUTE_AUTONOMOUS,
         acting_role=Role.MANAGER, created_by=None,
     )
+    for tool in grants:  # a version snapshots the tools granted when it is created, so grants come first
+        await agent_service.grant_tool_permission(tenant_id, agent.id, tool_name=tool, tool_registry=tool_registry, constraint_config=None, created_by=None)
     version = await agent_service.create_version(
         tenant_id, agent.id, instructions="x", triggers={"schedule": schedule}, created_by=None,
     )
@@ -284,3 +286,69 @@ async def test_valid_schedule_and_event_triggers_accepted(tool_registry):
         created_by=None,
     )
     assert version.triggers["schedule"]["frequency"] == "DAILY"
+
+
+# --------------------------------------------------- a scheduled action runs one named tool, no model involved
+
+async def test_a_scheduled_action_runs_its_tool_directly_and_never_asks_the_model(tool_registry):
+    from app.db.session import async_session_maker
+    from app.models.agent import AgentExecution
+    from app.services.knowledge_service import KnowledgeService
+    from app.services.mt_content_topics import TOPICS_PATH, build_topics
+
+    tenant_id = uuid.uuid4()
+    await _org(tenant_id)
+    await _agent_with_schedule(
+        tool_registry, tenant_id, grants=("marketing.draft_content",),
+        schedule={"enabled": True, "frequency": "DAILY", "time": "09:00", "goal": "draft content", "action": {"tool_name": "marketing.draft_content", "tool_input": {"max_items": 2}}},
+    )
+    await KnowledgeService(async_session_maker).set_file(tenant_id, TOPICS_PATH, build_topics("ScheduleCo", "referral", ["Dental"]), actor_id=None)
+    # a model that would answer something else entirely proves it is never consulted
+    svc = _trigger_service(tool_registry, responses=[{"action": "COMPLETE", "final_response": "the model answered", "reasoning_summary": "r", "arguments": {}}])
+    now = datetime(2026, 1, 5, 9, 30, tzinfo=timezone.utc)
+    (execution_id,) = await svc.check_and_dispatch_scheduled(tenant_id, now_utc=now)
+    async with async_session_maker() as session:
+        from app.db.session import set_tenant_context
+
+        await set_tenant_context(session, tenant_id)
+        execution = await session.get(AgentExecution, execution_id)
+    assert execution.tool_name == "marketing.draft_content" and execution.status == "COMPLETED" and execution.trigger_source == "SCHEDULED", execution.error_message
+    from app.api.tool_deps import execution_context  # noqa: F401
+    from app.models.actor import ActorType
+    from app.tools.base import ExecutionContext
+
+    listed = await tool_registry.execute("marketing.list_content", {}, ExecutionContext(tenant_id=tenant_id, actor_type=ActorType.AI, actor_id=uuid.uuid4(), role=Role.MANAGER))
+    assert len(listed.content) == 2 and all(c["status"] == "PENDING_APPROVAL" for c in listed.content)
+    assert await svc.check_and_dispatch_scheduled(tenant_id, now_utc=now) == []  # the same day never runs twice
+
+
+async def test_a_scheduled_action_without_the_tool_granted_does_nothing(tool_registry):
+    from app.db.session import async_session_maker
+    from app.models.agent import AgentExecution
+
+    tenant_id = uuid.uuid4()
+    await _org(tenant_id)
+    await _agent_with_schedule(
+        tool_registry, tenant_id,
+        schedule={"enabled": True, "frequency": "DAILY", "time": "09:00", "goal": "draft content", "action": {"tool_name": "marketing.draft_content", "tool_input": {}}},
+    )
+    svc = _trigger_service(tool_registry)
+    ids = await svc.check_and_dispatch_scheduled(tenant_id, now_utc=datetime(2026, 1, 5, 9, 30, tzinfo=timezone.utc))
+    async with async_session_maker() as session:
+        from app.db.session import set_tenant_context
+
+        await set_tenant_context(session, tenant_id)
+        rows = [await session.get(AgentExecution, i) for i in ids]
+    assert all(r.status != "COMPLETED" for r in rows)  # no grant, no run: the agent's own permissions still apply
+
+
+async def test_a_malformed_scheduled_action_is_rejected_at_version_creation(tool_registry):
+    from app.db.session import async_session_maker
+
+    tenant_id = uuid.uuid4()
+    agent_service = AgentService(async_session_maker)
+    agent = await agent_service.create_agent(tenant_id, name="BadAction", purpose="x", autonomy_tier=AgentAutonomyTier.OBSERVE, acting_role=Role.MANAGER, created_by=None)
+    for bad in ({"tool_name": ""}, {"tool_input": {}}, {"tool_name": "x", "tool_input": "no"}, "marketing.draft_content"):
+        with pytest.raises(InvalidTriggerConfigError):
+            await agent_service.create_version(tenant_id, agent.id, instructions="x",
+                                               triggers={"schedule": {"enabled": True, "frequency": "DAILY", "time": "09:00", "goal": "g", "action": bad}}, created_by=None)

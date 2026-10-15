@@ -23,16 +23,16 @@ def _member(key):
     return next(m for m in oc.GENERIC_CREW if m.key == key)
 
 
-async def test_every_tool_the_marketing_manager_uses_exists_and_content_is_never_published_by_it() -> None:
-    manager = _member("marketing-manager")
+async def test_the_marketing_manager_reports_and_the_content_drafter_runs_one_tool_directly() -> None:
     registry = get_tool_registry()
-    for tool in manager.tools:
+    manager, drafter = _member("marketing-manager"), _member("content-drafter")
+    for tool in (*manager.tools, *drafter.tools):
         registry.get(tool)
-    assert "marketing.publish_content_variant" not in manager.tools and "marketing.approve_content" not in manager.tools
-    assert DEFAULT_TOOL_POLICIES["marketing.list_content"] == ActionPolicy.AUTO
-    assert "marketing.draft_content" in manager.tools
-    for rule in ("a person approves content first", "having no campaigns never ends the run", "required on every run", "call the draft_content tool once"):
-        assert rule in manager.instructions
+    assert "marketing.publish_content_variant" not in manager.tools + drafter.tools and "marketing.approve_content" not in manager.tools + drafter.tools
+    assert DEFAULT_TOOL_POLICIES["marketing.list_content"] == ActionPolicy.AUTO and DEFAULT_TOOL_POLICIES["marketing.draft_content"] == ActionPolicy.AUTO
+    schedule = oc._triggers(drafter)["schedule"]
+    assert schedule["action"] == {"tool_name": "marketing.draft_content", "tool_input": {"max_items": 2}} and schedule["time"] == "10:35"
+    assert "action" not in oc._triggers(manager)["schedule"]
 
 
 async def test_the_manager_lists_existing_content_and_a_draft_goes_to_approval_not_to_publication(client) -> None:

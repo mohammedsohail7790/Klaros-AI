@@ -63,6 +63,13 @@ def _validate_triggers(triggers: dict) -> None:
                 raise InvalidTriggerConfigError(str(exc)) from exc
             if not schedule.get("goal"):
                 raise InvalidTriggerConfigError("triggers.schedule.goal is required when enabled")
+            action = schedule.get("action")
+            if action is not None:
+                # A scheduled tool call with no model deciding anything: one named tool, run exactly as given, under the agent's own tool grants and the tool's own policy.
+                if not isinstance(action, dict) or not isinstance(action.get("tool_name"), str) or not action["tool_name"].strip():
+                    raise InvalidTriggerConfigError("triggers.schedule.action must name a tool_name")
+                if action.get("tool_input") is not None and not isinstance(action["tool_input"], dict):
+                    raise InvalidTriggerConfigError("triggers.schedule.action.tool_input must be an object")
 
     event = triggers.get("event")
     if event is not None:
