@@ -7,6 +7,7 @@ import structlog
 from app.services.consent_gate import ConsentRequiredError
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.public_cors import PublicCORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.v1.router import api_router
@@ -154,6 +155,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(PublicCORSMiddleware, allowed_origins=settings.CORS_ORIGINS)  # outermost: answers any origin on /api/v1/public/* only
 
 
 @app.middleware("http")

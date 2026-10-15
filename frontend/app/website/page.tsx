@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SiteView } from "@/components/website/SiteView";
+import { SiteHostingCard } from "@/components/business/SiteHostingCard";
 import { BRAND_LOOKS, FONT_OPTIONS, contrastRatio } from "@/lib/brandLooks";
 import {
   ApiError,
@@ -177,6 +178,7 @@ export default function WebsitePage() {
             </div>
           </div>
         )}
+        <SiteHostingCard token={token} />
       </div>
     </AppShell>
   );

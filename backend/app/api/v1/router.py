@@ -44,6 +44,7 @@ from app.api.v1 import (
     medical_tourism,
     operating_crew,
     tenant_modules,
+    site_hosting,
     tenant_settings,
     setup_plan,
     mt_referrals,
@@ -109,6 +110,8 @@ api_router.include_router(agents.router)
 api_router.include_router(operating_crew.router)
 api_router.include_router(tenant_modules.router)
 api_router.include_router(tenant_settings.router)
+api_router.include_router(site_hosting.router)
+api_router.include_router(site_hosting.public_router)
 api_router.include_router(setup_plan.router)
 api_router.include_router(quickbooks_oauth.router)
 api_router.include_router(google_calendar_oauth.router)

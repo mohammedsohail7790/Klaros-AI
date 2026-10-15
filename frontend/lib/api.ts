@@ -6099,3 +6099,35 @@ export function updateOperatingCrewSettings(token: string, body: { auto_provisio
 export function provisionOperatingCrew(token: string) {
   return request<OperatingCrewProvision>("/api/v1/operating-crew/provision", { method: "POST", headers: authHeaders(token) });
 }
+
+// --- Own site upload and custom domains ---
+
+export interface HostedUpload { id: string; version: number; status: "DRAFT" | "PUBLISHED" | "ARCHIVED"; source_name: string; file_count: number; total_bytes: number; created_at: string | null; published_at: string | null }
+export interface HostedDomain {
+  id: string; hostname: string; status: "PENDING" | "VERIFIED"; verified_at: string | null;
+  txt_name: string; txt_value: string; dns_target: { a_record: string; cname: string };
+}
+export interface SiteHostingOverview { tenant_id: string; uploads: HostedUpload[]; domains: HostedDomain[] }
+
+export const apiBaseUrl = API_URL;
+export function getSiteHosting(token: string) {
+  return request<SiteHostingOverview>("/api/v1/site-hosting", { headers: authHeaders(token) });
+}
+export function uploadHostedSite(token: string, filename: string, contentBase64: string) {
+  return request<HostedUpload>("/api/v1/site-hosting/uploads", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ filename, content_base64: contentBase64 }) });
+}
+export function publishHostedSite(token: string, id: string) {
+  return request<HostedUpload>(`/api/v1/site-hosting/uploads/${id}/publish`, { method: "POST", headers: authHeaders(token) });
+}
+export function unpublishHostedSite(token: string) {
+  return request<{ unpublished: number }>("/api/v1/site-hosting/unpublish", { method: "POST", headers: authHeaders(token) });
+}
+export function addHostedDomain(token: string, hostname: string) {
+  return request<HostedDomain>("/api/v1/site-hosting/domains", { method: "POST", headers: authHeaders(token), body: JSON.stringify({ hostname }) });
+}
+export function verifyHostedDomain(token: string, id: string) {
+  return request<{ verified: boolean; domain: HostedDomain }>(`/api/v1/site-hosting/domains/${id}/verify`, { method: "POST", headers: authHeaders(token) });
+}
+export function removeHostedDomain(token: string, id: string) {
+  return request<void>(`/api/v1/site-hosting/domains/${id}`, { method: "DELETE", headers: authHeaders(token) });
+}
