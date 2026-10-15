@@ -97,7 +97,29 @@ async def set_terms(session_factory, tenant_id: uuid.UUID, provider_id: uuid.UUI
         _audit(session, tenant_id, actor_id, "mt.terms.updated", "medical_tourism_provider_terms", row.id, {"provider_id": str(provider_id), "basis": basis, "currency": currency})
         await session.commit()
         await session.refresh(row)
-        return row
+    if row.commission_basis is not None:
+        await backfill_commissions(session_factory, tenant_id, provider_id, actor_id)
+    return row
+
+
+async def backfill_commissions(session_factory, tenant_id: uuid.UUID, provider_id: uuid.UUID, actor_id: uuid.UUID | None) -> int:
+    """Terms agreed AFTER referrals were already sent: create the missing PENDING commission for each of them. One per referral, never doubled, never for a cancelled referral."""
+    from app.models.medical_tourism_referral import ReferralStatus
+
+    created = 0
+    try:
+        async with session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            have = {c.provider_referral_id for c in (await session.execute(select(ReferralCommission).where(ReferralCommission.tenant_id == tenant_id, ReferralCommission.provider_id == provider_id))).scalars()}
+            ids = [r.id for r in (await session.execute(select(ProviderReferral).where(ProviderReferral.tenant_id == tenant_id, ProviderReferral.provider_id == provider_id,
+                                                                                       ProviderReferral.sent_at.is_not(None), ProviderReferral.status != ReferralStatus.CANCELLED))).scalars()
+                   if r.id not in have]
+        for rid in ids:
+            if await on_referral_sent(session_factory, tenant_id, rid, actor_id) is not None:
+                created += 1
+    except Exception as exc:  # noqa: BLE001 - saving terms must never fail because of this
+        logger.warning("mt_commission_backfill_failed", error=type(exc).__name__)
+    return created
 
 
 async def on_referral_sent(session_factory, tenant_id: uuid.UUID, referral_id: uuid.UUID, actor_id: uuid.UUID | None) -> ReferralCommission | None:
@@ -195,8 +217,12 @@ async def on_outcome_recorded(session_factory, tenant_id: uuid.UUID, referral_id
             await set_tenant_context(session, tenant_id)
             c = (await session.execute(select(ReferralCommission).where(ReferralCommission.tenant_id == tenant_id, ReferralCommission.provider_referral_id == referral_id))).scalar_one_or_none()
             ref = (await session.execute(select(ProviderReferral).where(ProviderReferral.id == referral_id, ProviderReferral.tenant_id == tenant_id))).scalar_one_or_none()
+            if c is None and ref is not None:
+                created = await on_referral_sent(session_factory, tenant_id, referral_id, actor_id)  # the clinic's terms may have been agreed after the referral went out
+                if created is not None:
+                    c = (await session.execute(select(ReferralCommission).where(ReferralCommission.id == created.id))).scalar_one_or_none()
             if c is None or ref is None:
-                result["note"] = "No commission is set up for this referral: add the clinic's terms."
+                result["note"] = "No commission is set up for this referral: add the clinic's terms on the Clinic agreements page."
                 return result
             result["commission_id"] = str(c.id)
             if treatment_amount is not None:

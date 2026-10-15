@@ -203,3 +203,30 @@ async def test_the_crew_is_told_which_clinics_have_referrals_but_no_commission_t
         await _send(client, token, await _approved(client, token, await _patient(client, token), pid))
     out = await get_tool_registry().execute("medical_tourism.list_referral_work", {}, ExecutionContext(tenant_id=tid, actor_type=ActorType.AI, actor_id=uuid.uuid4(), role=Role.MANAGER))
     assert [c["clinic"] for c in out.clinics_without_commission_terms] == ["No Terms"]
+
+
+async def test_terms_agreed_after_referrals_went_out_create_their_commissions(client, halla) -> None:  # noqa: F811
+    token, _ = await _gated(client, "Late Terms Co", "lateterms@example.com")
+    p = await _provider(client, token)
+    refs = []
+    for _ in range(2):
+        r = await _approved(client, token, await _patient(client, token), p["id"])
+        await _send(client, token, r)
+        refs.append(r)
+    assert await _commissions(client, token) == []  # no terms yet, so nothing is invented
+    await _terms(client, token, p["id"], {"commission_basis": "FLAT", "flat_amount": "250", "currency": "usd"})
+    assert sorted(c["status"] for c in await _commissions(client, token)) == ["PENDING", "PENDING"]
+    await _terms(client, token, p["id"], {"commission_basis": "FLAT", "flat_amount": "999", "currency": "usd"})  # editing terms never doubles or rewrites existing commissions
+    cs = await _commissions(client, token)
+    assert len(cs) == 2 and {c["computed_amount"] for c in cs} == {"250.00"}
+
+
+async def test_an_outcome_recorded_before_any_terms_still_finds_the_commission_once_terms_exist(client, halla) -> None:  # noqa: F811
+    token, _ = await _gated(client, "Late Outcome Co", "lateoutcome@example.com")
+    p = await _provider(client, token)
+    ref = await _accepted(client, token, p["id"])
+    first = (await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "TREATMENT_COMPLETED", "evidence": "clinic email"}, headers=_h(token))).json()
+    assert first["commission"]["commission_id"] is None and "Clinic agreements" in first["commission"]["note"]
+    await _terms(client, token, p["id"], {"commission_basis": "FLAT", "flat_amount": "300", "currency": "usd"})
+    again = (await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "TREATMENT_COMPLETED", "evidence": "clinic email"}, headers=_h(token))).json()
+    assert again["commission"]["status"] == "CONFIRMED" and again["commission"]["invoice_id"]
