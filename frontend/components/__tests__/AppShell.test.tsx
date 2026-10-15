@@ -26,18 +26,19 @@ describe("AppShell navigation", () => {
     renderAt("/business/home");
     const primary = screen.getByRole("navigation", { name: "Primary" });
     expect(within(primary).getAllByRole("link").map((a) => a.textContent)).toEqual([
-      "Home", "People", "Work", "Money", "Growth", "AI team", "Website", "Business", "Settings",
+      "Home", "CRM", "Sales", "Marketing", "Finance", "Operations", "AI team", "Website", "Business", "Settings",
     ]);
-    expect(within(primary).getByRole("link", { name: "Money" })).toHaveAttribute("href", "/quotes");
+    expect(within(primary).getByRole("link", { name: "Sales" })).toHaveAttribute("href", "/quotes");
+    expect(within(primary).getByRole("link", { name: "Finance" })).toHaveAttribute("href", "/finance/invoices");
   });
 
   it("shows the tabs of the current area, with exactly one active", () => {
     renderAt("/finance/ar");
-    const tabs = screen.getByRole("navigation", { name: "Money sections" });
-    expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Quotes", "Contracts", "Invoices", "Receivables", "Cash", "Profitability", "Vendors"]);
+    const tabs = screen.getByRole("navigation", { name: "Finance sections" });
+    expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Invoices", "Receivables", "Cash", "Profitability", "Vendors"]);
     expect(within(tabs).getByRole("link", { name: "Receivables" })).toHaveAttribute("aria-current", "page");
     const active = within(screen.getByRole("navigation", { name: "Primary" })).getAllByRole("link").filter((a) => a.getAttribute("aria-current") === "page");
-    expect(active.map((a) => a.textContent)).toEqual(["Money"]);
+    expect(active.map((a) => a.textContent)).toEqual(["Finance"]);
   });
 
   it("files a page under the area of its most specific tab", () => {
@@ -83,22 +84,22 @@ describe("AppShell navigation", () => {
       getModules.mockResolvedValue({ modules: ["medical_tourism"] });
       signedIn("/medical-tourism/pipeline");
       await waitFor(() => expect(primary().getByRole("link", { name: /^Clinics/ })).toBeInTheDocument());
-      expect(primary().getAllByRole("link").map((a) => a.textContent)).toEqual(["Home", "People", "Work3", "Money", "Growth", "Clinics", "AI team", "Website", "Business", "Settings"]);
-      const tabs = screen.getByRole("navigation", { name: "People sections" });
+      expect(primary().getAllByRole("link").map((a) => a.textContent)).toEqual(["Home", "CRM", "Sales", "Marketing", "Finance", "Operations3", "Clinics", "AI team", "Website", "Business", "Settings"]);
+      const tabs = screen.getByRole("navigation", { name: "CRM sections" });
       expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Leads", "Customers", "Calendar", "Patients", "Consultations"]);
       expect(within(tabs).getByRole("link", { name: "Patients" })).toHaveAttribute("aria-current", "page");
       reset();
     });
 
-    it("keeps a patient's case under Patients and puts tasks and referrals under Work", async () => {
+    it("keeps a patient's case under Patients and puts tasks and referrals under Operations", async () => {
       getModules.mockResolvedValue({ modules: ["medical_tourism"] });
       const view = signedIn("/medical-tourism/patients/abc");
-      await waitFor(() => expect(screen.getByRole("navigation", { name: "People sections" })).toBeInTheDocument());
-      expect(within(screen.getByRole("navigation", { name: "People sections" })).getByRole("link", { name: "Patients" })).toHaveAttribute("aria-current", "page");
+      await waitFor(() => expect(screen.getByRole("navigation", { name: "CRM sections" })).toBeInTheDocument());
+      expect(within(screen.getByRole("navigation", { name: "CRM sections" })).getByRole("link", { name: "Patients" })).toHaveAttribute("aria-current", "page");
       view.unmount();
       signedIn("/medical-tourism/tasks");
-      await waitFor(() => expect(screen.getByRole("navigation", { name: "Work sections" })).toBeInTheDocument());
-      const work = within(screen.getByRole("navigation", { name: "Work sections" }));
+      await waitFor(() => expect(screen.getByRole("navigation", { name: "Operations sections" })).toBeInTheDocument());
+      const work = within(screen.getByRole("navigation", { name: "Operations sections" }));
       expect(work.getByRole("link", { name: /^Tasks/ })).toHaveAttribute("aria-current", "page");
       expect(work.getByRole("link", { name: "Referrals" })).toHaveAttribute("href", "/medical-tourism/provider-referrals");
       reset();
@@ -108,8 +109,8 @@ describe("AppShell navigation", () => {
       getModules.mockResolvedValue({ modules: [] });
       signedIn("/leads");
       await waitFor(() => expect(getModules).toHaveBeenCalled());
-      expect(primary().getAllByRole("link").map((a) => a.textContent)).toEqual(["Home", "People", "Work", "Money", "Growth", "AI team", "Website", "Business", "Settings"]);
-      const tabs = within(screen.getByRole("navigation", { name: "People sections" }));
+      expect(primary().getAllByRole("link").map((a) => a.textContent)).toEqual(["Home", "CRM", "Sales", "Marketing", "Finance", "Operations", "AI team", "Website", "Business", "Settings"]);
+      const tabs = within(screen.getByRole("navigation", { name: "CRM sections" }));
       expect(tabs.getAllByRole("link").map((a) => a.textContent)).toEqual(["Leads", "Customers", "Calendar"]);
       expect(screen.queryByRole("link", { name: "Patients" })).not.toBeInTheDocument();
       reset();
@@ -119,8 +120,8 @@ describe("AppShell navigation", () => {
       getModules.mockRejectedValue(new Error("network"));
       signedIn("/leads");
       await waitFor(() => expect(getModules).toHaveBeenCalled());
-      expect(primary().getByRole("link", { name: "People" })).toBeInTheDocument();
-      expect(primary().getByRole("link", { name: "Money" })).toBeInTheDocument();
+      expect(primary().getByRole("link", { name: "CRM" })).toBeInTheDocument();
+      expect(primary().getByRole("link", { name: "Finance" })).toBeInTheDocument();
       reset();
     });
 

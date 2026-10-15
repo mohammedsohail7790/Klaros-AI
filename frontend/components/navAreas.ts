@@ -1,5 +1,5 @@
 import {
-  Home, Users, Wrench, DollarSign, Megaphone, Bot, Globe, Hammer, Building2, Settings2,
+  Home, Users, Wrench, DollarSign, Megaphone, Bot, Globe, Hammer, Building2, Settings2, FileText,
 } from "lucide-react";
 
 /** `module` names a business module (vertical extension) that must be enabled for the tenant to see this tab. No `module` means every tenant sees it. */
@@ -10,41 +10,45 @@ const MT = "medical_tourism";
 
 /**
  * The product's navigation, the same for every business: a handful of areas, each with tabs. Every page keeps its own URL; an area only groups them.
- * What differs per tenant is its configuration: a module adds its own tabs to the areas where they belong (Medical Tourism adds Patients to People,
- * Tasks to Work, Commissions to Money, and the Clinics area), and an area with no visible tab is not shown.
+ * What differs per tenant is its configuration: a module adds its own tabs to the areas where they belong (Medical Tourism adds Patients to CRM,
+ * Tasks to Operations, Commissions to Finance, and the Clinics area), and an area with no visible tab is not shown.
  * A page belongs to the area of its most specific tab href (so /retention/reviews is under "Customer care" in Growth).
  * Developer-only pages such as /events are deliberately not listed: they stay reachable by URL.
  */
 export const AREAS: NavArea[] = [
   { key: "home", label: "Home", icon: Home, tabs: [{ href: "/business/home", label: "Home" }, { href: "/medical-tourism/overview", label: "Today", module: MT }] },
   {
-    key: "people", label: "People", icon: Users,
+    key: "crm", label: "CRM", icon: Users,
     tabs: [
       { href: "/leads", label: "Leads" }, { href: "/customers", label: "Customers" }, { href: "/calendar", label: "Calendar" },
       { href: "/medical-tourism/pipeline", label: "Patients", module: MT }, { href: "/medical-tourism/consultations", label: "Consultations", module: MT },
     ],
   },
   {
-    key: "work", label: "Work", icon: Wrench,
-    tabs: [
-      { href: "/operations", label: "Overview" }, { href: "/jobs", label: "Jobs" }, { href: "/operations/workers", label: "Workers" }, { href: "/exceptions", label: "Exceptions" },
-      { href: "/medical-tourism/tasks", label: "Tasks", module: MT }, { href: "/medical-tourism/provider-referrals", label: "Referrals", module: MT },
-    ],
+    key: "sales", label: "Sales", icon: FileText,
+    tabs: [{ href: "/quotes", label: "Quotes" }, { href: "/contracts", label: "Contracts" }],
   },
   {
-    key: "money", label: "Money", icon: DollarSign,
-    tabs: [
-      { href: "/quotes", label: "Quotes" }, { href: "/contracts", label: "Contracts" }, { href: "/finance/invoices", label: "Invoices" },
-      { href: "/finance/ar", label: "Receivables" }, { href: "/finance/cash", label: "Cash" }, { href: "/finance/profitability", label: "Profitability" }, { href: "/vendors", label: "Vendors" },
-      { href: "/medical-tourism/referrals", label: "Commissions", module: MT }, { href: "/medical-tourism/revenue", label: "Revenue", module: MT },
-    ],
-  },
-  {
-    key: "growth", label: "Growth", icon: Megaphone,
+    key: "marketing", label: "Marketing", icon: Megaphone,
     tabs: [
       { href: "/marketing", label: "Overview" }, { href: "/marketing/campaigns", label: "Campaigns" }, { href: "/marketing/content", label: "Content" },
       { href: "/marketing/seo", label: "SEO" }, { href: "/marketing/outbound", label: "Outbound" }, { href: "/marketing/nurture", label: "Nurture" },
       { href: "/marketing/reactivation", label: "Reactivation" }, { href: "/retention", label: "Customer care" },
+    ],
+  },
+  {
+    key: "finance", label: "Finance", icon: DollarSign,
+    tabs: [
+      { href: "/finance/invoices", label: "Invoices" }, { href: "/finance/ar", label: "Receivables" }, { href: "/finance/cash", label: "Cash" },
+      { href: "/finance/profitability", label: "Profitability" }, { href: "/vendors", label: "Vendors" },
+      { href: "/medical-tourism/referrals", label: "Commissions", module: MT }, { href: "/medical-tourism/revenue", label: "Revenue", module: MT },
+    ],
+  },
+  {
+    key: "operations", label: "Operations", icon: Wrench,
+    tabs: [
+      { href: "/operations", label: "Overview" }, { href: "/jobs", label: "Jobs" }, { href: "/operations/workers", label: "Workers" }, { href: "/exceptions", label: "Exceptions" },
+      { href: "/medical-tourism/tasks", label: "Tasks", module: MT }, { href: "/medical-tourism/provider-referrals", label: "Referrals", module: MT },
     ],
   },
   {

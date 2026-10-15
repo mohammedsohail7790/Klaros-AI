@@ -220,7 +220,7 @@ export default function AppShell({
                   key={area.key}
                   item={{ href: area.tabs[0].href, label: area.label, icon: area.icon }}
                   active={area.key === activeArea?.key}
-                  badge={hasMedicalTourism && area.key === "work" ? openTasks : undefined}
+                  badge={hasMedicalTourism && area.key === "operations" ? openTasks : undefined}
                 />
               ))}
             </div>
