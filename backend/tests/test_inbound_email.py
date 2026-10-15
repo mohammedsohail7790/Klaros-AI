@@ -170,10 +170,13 @@ class _BrevoHooks:
         self.requests: list[httpx.Request] = []
         self.existing: list[dict] = []
         self.create_status = 201
+        self.list_status = 200
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
         if request.method == "GET":
+            if self.list_status >= 300:
+                return httpx.Response(self.list_status, json={"message": "Webhook record does not exist"})
             return httpx.Response(200, json={"webhooks": self.existing})
         if self.create_status >= 300:
             return httpx.Response(self.create_status, json={"message": "Inbound parsing is not enabled for this account"})
@@ -202,6 +205,15 @@ async def test_the_owner_can_connect_replies_and_repeating_it_reuses_the_registr
     hooks.existing = [{"id": 77, "url": sent["url"], "domain": DOMAIN}]
     again = (await client.post("/api/v1/inbox/connect-replies", headers=_h(token))).json()
     assert again["connected"] is True and again["detail"] == "Already connected." and len([q for q in hooks.requests if q.method == "POST"]) == 1
+
+
+async def test_an_error_from_the_listing_check_does_not_stop_the_connection_and_a_creation_refusal_names_its_step(client, hooks) -> None:
+    token = await _register(client, "Listing Err Co", "listingerr@example.com")
+    hooks.list_status = 400  # the provider answers an error, not an empty list, when nothing is registered yet
+    assert (await client.post("/api/v1/inbox/connect-replies", headers=_h(token))).json()["connected"] is True
+    hooks.create_status = 403
+    r = (await client.post("/api/v1/inbox/connect-replies", headers=_h(token))).json()
+    assert r["connected"] is False and r["step"] == "creating the registration" and "creating the registration" in r["detail"]
 
 
 async def test_a_provider_refusal_is_reported_plainly_without_any_key(client, hooks) -> None:

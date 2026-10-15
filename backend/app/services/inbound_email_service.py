@@ -238,17 +238,23 @@ async def connect_replies(base_url: str) -> dict[str, Any]:
     if not brevo_configured():
         return {"connected": False, "detail": "Brevo email is not configured on this deployment."}
     url = f"{base_url.rstrip('/')}/api/v1/webhooks/inbound-email/{secret}"
+    step = "checking existing registrations"
     try:
-        for hook in await brevo_client.list_inbound_webhooks():
+        try:
+            existing = await brevo_client.list_inbound_webhooks()
+        except httpx.HTTPStatusError:
+            existing = []  # Brevo may answer an error rather than an empty list when none exist yet; creating is the real test
+        for hook in existing:
             if hook.get("url") == url and str(hook.get("domain", "")).lower() == domain:
                 return {"connected": True, "detail": "Already connected.", "webhook_id": hook.get("id"), "domain": domain}
+        step = "creating the registration"
         created = await brevo_client.create_inbound_webhook(url=url, domain=domain)
     except httpx.HTTPStatusError as exc:
         try:
             reason = str((exc.response.json() or {}).get("message") or "")[:200]
         except ValueError:
             reason = ""
-        return {"connected": False, "detail": f"Brevo refused ({exc.response.status_code}): {reason or 'no reason given'}", "status": exc.response.status_code}
+        return {"connected": False, "detail": f"Brevo refused while {step} ({exc.response.status_code}): {reason or 'no reason given'}", "status": exc.response.status_code, "step": step}
     except Exception as exc:  # noqa: BLE001 - never leak anything from a failed call
-        return {"connected": False, "detail": f"Could not reach Brevo ({type(exc).__name__})."}
+        return {"connected": False, "detail": f"Could not reach Brevo while {step} ({type(exc).__name__}).", "step": step}
     return {"connected": True, "detail": "Connected.", "webhook_id": created.get("id"), "domain": domain}
