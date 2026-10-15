@@ -105,6 +105,28 @@ class ContentService:
             q = select(MarketingContent).where(MarketingContent.tenant_id == tenant_id).order_by(MarketingContent.created_at.desc()).limit(max(1, min(limit, 100)))
             return list((await session.execute(q)).scalars())
 
+    async def draft_from_topics(self, tenant_id: uuid.UUID, topics: list[tuple[str, str]], *, max_items: int, requested_by: uuid.UUID | None) -> dict:
+        """Turn the business's own topic sections into DRAFTS waiting for a person's approval. Never repeats a title, never creates more than `max_items`, and stops when
+        enough drafts are already waiting. Nothing is ever published here."""
+        waiting_states = {ContentStatus.IDEA, ContentStatus.DRAFT, ContentStatus.PENDING_APPROVAL}
+        existing = await self.list_content(tenant_id, limit=100)
+        have = {c.title.strip().lower() for c in existing}
+        waiting = sum(1 for c in existing if c.status in waiting_states)
+        room = max(0, min(max_items, 3 - waiting))
+        created: list[dict] = []
+        for title, body in topics:
+            if len(created) >= room:
+                break
+            if title.strip().lower() in have:
+                continue
+            content = await self.create_idea(tenant_id, title=title, summary=body.split(". ")[0][:500], created_by=requested_by)
+            await self.add_variant(tenant_id, content.id, channel="Blog", body_text=" ".join(body.split()[:140]))
+            content = await self.request_approval(tenant_id, content.id, requested_by)
+            have.add(title.strip().lower())
+            created.append({"id": str(content.id), "title": content.title, "status": content.status})
+        unused = sum(1 for t, _ in topics if t.strip().lower() not in have)
+        return {"created": created, "waiting_before": waiting, "topics_left": unused}
+
     async def create_idea(self, tenant_id: uuid.UUID, *, title: str, summary: str | None, created_by: uuid.UUID | None) -> MarketingContent:
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)

@@ -156,3 +156,20 @@ async def test_setup_never_overwrites_a_blueprint_the_owner_already_has(client, 
     await client.post(f"{BASE}/medical-tourism", json=FORM, headers=_h(token))
     sections = {s.section_key: s.data for s in await svc.list_sections(_uuid.UUID(tid), bp.id)}
     assert sections[BlueprintSectionKey.IDENTITY.value] == {"business_name": "Owner Chosen Name"}
+
+
+async def test_setup_gives_the_marketing_crew_topics_from_the_owners_own_answers_and_never_overwrites_edits(client, halla) -> None:  # noqa: F811
+    from app.db.session import async_session_maker
+    from app.services.knowledge_service import KnowledgeService
+    from app.services.mt_content_topics import TOPICS_PATH, parse_topics
+    from tests.test_halla_integration import _tenant_id
+
+    token = await _reg(client, "Topics Setup Co", "topicssetup@example.com")
+    tid = await _tenant_id(client, token)
+    assert (await client.post(f"{BASE}/medical-tourism", json=FORM, headers=_h(token))).status_code == 200
+    knowledge = KnowledgeService(async_session_maker)
+    titles = [t for t, _ in parse_topics(await knowledge.get_content(tid, TOPICS_PATH) or "")]
+    assert "How Atlas Care Connect works" in titles and "Questions to ask before choosing Dental implants abroad" in titles and "Questions to ask before choosing Hair transplant abroad" in titles
+    await knowledge.set_file(tid, TOPICS_PATH, "## My own topic\n\nWritten by the owner.\n", actor_id=None)
+    assert (await client.post(f"{BASE}/medical-tourism", json=FORM, headers=_h(token))).status_code == 200  # setup run again
+    assert parse_topics(await knowledge.get_content(tid, TOPICS_PATH) or "") == [("My own topic", "Written by the owner.")]

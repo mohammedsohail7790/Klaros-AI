@@ -51,6 +51,42 @@ class ListContent(Tool):
         return ListContentOutput(content=[_content_to_dict(c) for c in await self._content_service.list_content(context.tenant_id, limit=input.limit)])
 
 
+class DraftContentInput(BaseModel):
+    max_items: int = 2
+
+
+class DraftContentOutput(BaseModel):
+    created: list[dict[str, Any]]
+    waiting_before: int
+    topics_left: int
+    note: str | None = None
+
+
+class DraftContent(Tool):
+    name = "marketing.draft_content"
+    description = (
+        "Turn the business's own content topics (the knowledge file marketing/content-topics.md) into blog drafts and send them for approval: up to max_items new ones, never repeating a title, "
+        "and none if enough drafts are already waiting. Creates drafts only; nothing is published."
+    )
+    input_schema = DraftContentInput
+    output_schema = DraftContentOutput
+    required_permission = Permission.MANAGE_MARKETING_CONTENT
+
+    def __init__(self, content_service: ContentService, knowledge_service) -> None:
+        self._content_service = content_service
+        self._knowledge = knowledge_service
+
+    async def execute(self, input: DraftContentInput, context: ExecutionContext) -> DraftContentOutput:
+        from app.services.mt_content_topics import TOPICS_PATH, parse_topics
+
+        topics = parse_topics(await self._knowledge.get_content(context.tenant_id, TOPICS_PATH) or "")
+        if not topics:
+            return DraftContentOutput(created=[], waiting_before=0, topics_left=0, note="There are no content topics yet: add sections to marketing/content-topics.md in the knowledge base.")
+        r = await self._content_service.draft_from_topics(context.tenant_id, topics, max_items=max(1, min(input.max_items, 3)), requested_by=context.actor_id)
+        note = None if r["created"] else ("Enough drafts are already waiting for approval." if r["waiting_before"] >= 3 else "Every topic already has a draft.")
+        return DraftContentOutput(created=r["created"], waiting_before=r["waiting_before"], topics_left=r["topics_left"], note=note)
+
+
 class CreateContentIdeaInput(BaseModel):
     title: str
     summary: str | None = None

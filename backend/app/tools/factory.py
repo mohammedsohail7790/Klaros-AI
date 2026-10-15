@@ -119,6 +119,7 @@ from app.tools.builtin.marketing_content_tools import (
     ApproveContent,
     CreateContentFromReview,
     CreateContentIdea,
+    DraftContent,
     ListContent,
     GenerateDraftFromJob,
     PublishContentVariant,
@@ -574,6 +575,7 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
 
     registry.register(CreateContentIdea(content_service))
     registry.register(ListContent(content_service))
+    registry.register(DraftContent(content_service, KnowledgeService(session_factory)))
     registry.register(GenerateDraftFromJob(content_service))
     registry.register(CreateContentFromReview(content_service))
     registry.register(AddContentVariant(content_service))

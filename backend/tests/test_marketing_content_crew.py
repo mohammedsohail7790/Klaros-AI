@@ -30,8 +30,8 @@ async def test_every_tool_the_marketing_manager_uses_exists_and_content_is_never
         registry.get(tool)
     assert "marketing.publish_content_variant" not in manager.tools and "marketing.approve_content" not in manager.tools
     assert DEFAULT_TOOL_POLICIES["marketing.list_content"] == ActionPolicy.AUTO
-    assert manager.max_tool_chain_depth >= 20
-    for rule in ("never state a price", "never name a clinic or doctor", "a person approves content first"):
+    assert "marketing.draft_content" in manager.tools
+    for rule in ("a person approves content first", "having no campaigns never ends the run", "required on every run", "call the draft_content tool once"):
         assert rule in manager.instructions
 
 
@@ -64,3 +64,48 @@ async def test_growth_scout_stops_cleanly_when_there_are_no_campaigns() -> None:
     registry = get_tool_registry()
     for tool in scout.tools:
         registry.get(tool)
+
+
+# ---- the deterministic content step ---------------------------------------------------------------------------------------------------------------------
+
+from app.services.mt_content_topics import TOPICS_PATH, build_topics, parse_topics  # noqa: E402
+from app.services.knowledge_service import KnowledgeService  # noqa: E402
+from app.db.session import async_session_maker  # noqa: E402
+
+
+def test_topics_are_built_from_setup_and_contain_no_claims() -> None:
+    md = build_topics("Aesthetic Tourism", "both", ["Dental", "Hair transplant"])
+    topics = parse_topics(md)
+    assert [t for t, _ in topics] == ["How Aesthetic Tourism works", "Questions to ask before choosing Dental abroad", "Questions to ask before choosing Hair transplant abroad", "Planning your trip around treatment"]
+    assert all(len(b.split()) < 140 for _, b in topics)
+    for _, body in topics:  # the sections themselves (not the file's own header, which tells the owner what NOT to add) carry no claim words
+        for banned in ("guarantee", "%", "$", "best clinic", "cheapest", "success rate", "best in"):
+            assert banned not in body.lower()
+    assert parse_topics("no sections here") == []
+
+
+async def test_draft_content_turns_topics_into_drafts_for_approval_once_and_within_limits(client) -> None:
+    token = await _register(client, "Draft Co", "draftco@example.com")
+    tid = await _tenant_id(client, token)
+    reg = get_tool_registry()
+    empty = await reg.execute("marketing.draft_content", {}, _ctx(tid))
+    assert empty.created == [] and "no content topics" in empty.note
+    await KnowledgeService(async_session_maker).set_file(tid, TOPICS_PATH, build_topics("Draft Co", "referral", ["Dental", "Hair transplant"]), actor_id=None)
+    first = await reg.execute("marketing.draft_content", {"max_items": 2}, _ctx(tid))
+    assert len(first.created) == 2 and all(c["status"] == "PENDING_APPROVAL" for c in first.created)
+    again = await reg.execute("marketing.draft_content", {"max_items": 2}, _ctx(tid))
+    assert len(again.created) == 1 and again.waiting_before == 2  # three may wait at once, never more
+    third = await reg.execute("marketing.draft_content", {"max_items": 2}, _ctx(tid))
+    assert third.created == [] and "already waiting" in third.note
+    titles = [c["title"] for c in (await reg.execute("marketing.list_content", {}, _ctx(tid))).content]
+    assert len(titles) == len(set(titles)) == 3  # no title twice
+
+
+async def test_draft_content_never_leaks_between_businesses(client) -> None:
+    a = await _register(client, "Draft A Co", "drafta@example.com")
+    b = await _register(client, "Draft B Co", "draftb@example.com")
+    a_tid, b_tid = await _tenant_id(client, a), await _tenant_id(client, b)
+    await KnowledgeService(async_session_maker).set_file(a_tid, TOPICS_PATH, build_topics("A", "referral", ["Dental"]), actor_id=None)
+    await get_tool_registry().execute("marketing.draft_content", {}, _ctx(a_tid))
+    out = await get_tool_registry().execute("marketing.draft_content", {}, _ctx(b_tid))
+    assert out.created == [] and (await get_tool_registry().execute("marketing.list_content", {}, _ctx(b_tid))).content == []

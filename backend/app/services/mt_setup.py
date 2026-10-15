@@ -151,7 +151,21 @@ async def apply_setup(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID,
                              input_summary={"procedures": len(data["procedures"]), "markets": data["patient_markets"], "destinations": data["destinations"], "model": data["business_model"]}, result="success"))
         await session.commit()
     await _seed_blueprint(session_factory, tenant_id, user_id, data, extras)
+    await _seed_content_topics(session_factory, tenant_id, user_id, data)
     return await get_setup(session_factory, tenant_id)
+
+
+async def _seed_content_topics(session_factory, tenant_id: uuid.UUID, user_id: uuid.UUID, data: dict[str, Any]) -> None:
+    """Give the marketing crew real material: topics built from the owner's own setup answers. Written once; an owner's later edits are never overwritten, and a failure here never fails setup."""
+    try:
+        from app.services.knowledge_service import KnowledgeService
+        from app.services.mt_content_topics import TOPICS_PATH, build_topics
+
+        knowledge = KnowledgeService(session_factory)
+        if await knowledge.get_file(tenant_id, TOPICS_PATH) is None:
+            await knowledge.set_file(tenant_id, TOPICS_PATH, build_topics(data["business_name"], data["business_model"], list(data["procedures"])), actor_id=user_id)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _join(names: list[str]) -> str:
