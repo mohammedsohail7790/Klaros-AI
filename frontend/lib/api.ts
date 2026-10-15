@@ -6155,3 +6155,11 @@ export interface ClinicAgreementRow { provider_id: string; name: string; country
 export function getClinicAgreements(token: string) {
   return request<{ clinics: ClinicAgreementRow[]; with_terms: number; without_terms: number }>(`${MTR}/agreements`, { headers: authHeaders(token) });
 }
+
+export function getBusinessName(token: string) {
+  return request<{ name: string }>("/api/v1/organization/name", { headers: authHeaders(token) });
+}
+export interface RenameResult { name: string; unchanged?: boolean; organization: boolean; medical_tourism_profile: boolean; blueprint: boolean; content_topics: boolean }
+export function renameBusiness(token: string, name: string) {
+  return request<RenameResult>("/api/v1/organization/name", { method: "PUT", headers: authHeaders(token), body: JSON.stringify({ name }) });
+}

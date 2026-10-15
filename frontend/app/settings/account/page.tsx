@@ -11,6 +11,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { BusinessNameCard } from "@/components/BusinessNameCard";
 
 const ROLE_LABEL: Record<string, string> = { OWNER: "Owner", ADMIN: "Admin", MANAGER: "Manager", STAFF: "Staff", TECHNICIAN: "Technician" };
 
@@ -70,6 +71,8 @@ export default function AccountPage() {
             </dl>
           )}
         </section>
+
+        <BusinessNameCard token={token} role={user?.role} />
 
         <section aria-label="Change password" className="klaros-card p-5 sm:p-6">
           <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Change password</h2>

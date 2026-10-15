@@ -13,6 +13,8 @@ vi.mock("@/lib/api", () => ({
     }
   },
   changePassword: (...a: unknown[]) => change(...a),
+  getBusinessName: () => Promise.resolve({ name: "Sam's Business" }),
+  renameBusiness: vi.fn(),
 }));
 import Page from "@/app/settings/account/page";
 import { ApiError } from "@/lib/api";
