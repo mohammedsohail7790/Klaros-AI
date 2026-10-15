@@ -99,7 +99,16 @@ async def transition(session_factory, tenant_id: uuid.UUID, commission_id: uuid.
         _audit(session, tenant_id, actor_id, f"mt.commission.{new_status.lower()}", "medical_tourism_referral_commission", c.id, {"note": (note or "")[:200]})
         await session.commit()
         await session.refresh(c)
-        return c
+    if new_status == S.CONFIRMED:
+        from app.api.tool_deps import get_wired_event_bus
+        from app.services import mt_revenue
+        from app.services.invoice_service import InvoiceService
+
+        await mt_revenue.on_commission_confirmed(session_factory, tenant_id, commission_id, actor_id, InvoiceService(session_factory, get_wired_event_bus()))  # a DRAFT invoice; never raises
+        async with session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            c = (await session.execute(select(ReferralCommission).where(ReferralCommission.id == commission_id, ReferralCommission.tenant_id == tenant_id))).scalar_one()
+    return c
 
 
 async def revenue_summary(session_factory, tenant_id: uuid.UUID) -> dict[str, Any]:
@@ -123,7 +132,7 @@ def commission_to_dict(c: ReferralCommission) -> dict[str, Any]:
         "provider_id": str(c.provider_id) if c.provider_id else None, "basis": c.basis, "commission_percentage": str(c.commission_percentage) if c.commission_percentage is not None else None,
         "flat_amount": str(c.flat_amount) if c.flat_amount is not None else None, "computed_amount": str(c.computed_amount) if c.computed_amount is not None else None,
         "currency": c.currency, "status": c.status, "qualifying_outcome": c.qualifying_outcome,
-        "invoiced_at": c.invoiced_at.isoformat() if c.invoiced_at else None, "paid_at": c.paid_at.isoformat() if c.paid_at else None, "status_note": c.status_note,
+        "invoice_id": str(c.invoice_id) if c.invoice_id else None, "invoiced_at": c.invoiced_at.isoformat() if c.invoiced_at else None, "paid_at": c.paid_at.isoformat() if c.paid_at else None, "status_note": c.status_note,
     }
 
 

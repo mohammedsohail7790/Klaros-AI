@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { ClinicVerification } from "@/components/mt/ClinicVerification";
+import { ClinicTerms } from "@/components/mt/ClinicTerms";
 import { Hero, Page, StatusSummary } from "@/components/ui/layout";
 
 const STATUS_TABS = ["ALL", "ACTIVE", "INACTIVE"];
@@ -36,6 +37,7 @@ export default function MedicalTourismProvidersPage() {
   const [findCountries, setFindCountries] = useState("TR, TH, KR, IN");
   const [found, setFound] = useState<ClinicSourcingResult | null>(null);
   const [verifying, setVerifying] = useState<MedicalTourismProvider | null>(null);
+  const [pricing, setPricing] = useState<MedicalTourismProvider | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -173,6 +175,9 @@ export default function MedicalTourismProvidersPage() {
                       <button onClick={() => setVerifying(p)} className="text-[14px] text-accent hover:underline">
                         Change
                       </button>
+                      <button onClick={() => setPricing(p)} className="text-[14px] text-accent hover:underline">
+                        Terms
+                      </button>
                     </div>
                     <p className={`text-[13px] ${note.ok ? "text-success" : "text-muted-foreground"}`}>{note.text}</p>
                   </div>
@@ -186,6 +191,8 @@ export default function MedicalTourismProvidersPage() {
       {verifying && token && (
         <ClinicVerification token={token} provider={verifying} onClose={() => setVerifying(null)} onSaved={() => { setVerifying(null); load(); }} />
       )}
+
+      {pricing && token && <ClinicTerms token={token} provider={pricing} onClose={() => setPricing(null)} onSaved={() => setPricing(null)} />}
 
       {showCreate && token && (
         <CreateProviderModal token={token} onClose={() => setShowCreate(false)} onCreated={load} />

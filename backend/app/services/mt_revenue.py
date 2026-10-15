@@ -1,0 +1,194 @@
+"""Turns a clinic's agreed terms into money movements without anyone retyping them.
+
+  terms        what a clinic has agreed to pay (commission as a percentage or a flat fee, an optional monthly listing fee). A clinic with no terms gets nothing created, and says so.
+  on_referral_sent       creates the PENDING commission from those terms. Potential only: it is never revenue.
+  on_commission_confirmed   when a person has confirmed the clinic reported the agreed outcome (with evidence), raises a DRAFT invoice to the clinic. A person still approves and sends it.
+
+Every hook is best effort: it never raises into the action that triggered it (sending a referral, confirming a commission), and a repeat is a no-op.
+"""
+
+from __future__ import annotations
+
+import uuid
+from decimal import Decimal, InvalidOperation
+from typing import Any
+
+import structlog
+from sqlalchemy import select
+
+from app.db.session import set_tenant_context
+from app.models.crm import Customer, CustomerStatus
+from app.models.finance import Invoice
+from app.models.medical_tourism import Procedure, Provider, ProviderProcedure, ReferralCommission, ReferralCommissionBasis
+from app.models.medical_tourism_referral import ProviderReferral, ReferralOutcome
+from app.models.mt_revenue import ProviderTerms
+from app.services.mt_referrals import ReferralError, _audit
+
+logger = structlog.get_logger(__name__)
+INTERVALS = {"MONTHLY", "NONE"}
+BASES = {ReferralCommissionBasis.PERCENTAGE.value, ReferralCommissionBasis.FLAT.value}
+
+
+def terms_to_dict(t: ProviderTerms | None) -> dict[str, Any]:
+    if t is None:
+        return {"set": False, "commission_basis": None, "commission_percentage": None, "flat_amount": None, "currency": None, "qualifying_outcome": None,
+                "listing_fee_amount": None, "listing_fee_currency": None, "listing_fee_interval": None, "agreement_reference": None}
+    d = lambda v: str(v) if v is not None else None  # noqa: E731
+    return {"set": True, "commission_basis": t.commission_basis, "commission_percentage": d(t.commission_percentage), "flat_amount": d(t.flat_amount), "currency": t.currency,
+            "qualifying_outcome": t.qualifying_outcome, "listing_fee_amount": d(t.listing_fee_amount), "listing_fee_currency": t.listing_fee_currency,
+            "listing_fee_interval": t.listing_fee_interval, "agreement_reference": t.agreement_reference}
+
+
+def _dec(body: dict, key: str, *, lo: Decimal = Decimal("0"), hi: Decimal | None = None) -> Decimal | None:
+    raw = body.get(key)
+    if raw in (None, ""):
+        return None
+    try:
+        v = Decimal(str(raw))
+    except InvalidOperation:
+        raise ReferralError("invalid_amount", f"{key.replace('_', ' ').capitalize()} must be a number.", status=422) from None
+    if v < lo or (hi is not None and v > hi) or not v.is_finite():
+        raise ReferralError("invalid_amount", f"{key.replace('_', ' ').capitalize()} is out of range.", status=422)
+    return v
+
+
+def _currency(body: dict, key: str) -> str | None:
+    raw = body.get(key)
+    if raw in (None, ""):
+        return None
+    if not isinstance(raw, str) or len(raw.strip()) != 3 or not raw.strip().isalpha():
+        raise ReferralError("currency_required", "Use a 3-letter currency code such as USD.", status=422)
+    return raw.strip().upper()
+
+
+async def get_terms(session_factory, tenant_id: uuid.UUID, provider_id: uuid.UUID) -> ProviderTerms | None:
+    async with session_factory() as session:
+        await set_tenant_context(session, tenant_id)
+        return (await session.execute(select(ProviderTerms).where(ProviderTerms.tenant_id == tenant_id, ProviderTerms.provider_id == provider_id))).scalar_one_or_none()
+
+
+async def set_terms(session_factory, tenant_id: uuid.UUID, provider_id: uuid.UUID, actor_id: uuid.UUID, body: dict) -> ProviderTerms:
+    basis = (str(body.get("commission_basis") or "").upper()) or None
+    if basis is not None and basis not in BASES:
+        raise ReferralError("invalid_basis", "Commission is a percentage or a flat fee.", status=422)
+    pct = _dec(body, "commission_percentage", hi=Decimal("100"))
+    flat = _dec(body, "flat_amount")
+    currency = _currency(body, "currency")
+    if basis == "PERCENTAGE" and pct is None:
+        raise ReferralError("commission_percentage_required", "Enter the commission percentage.", status=422)
+    if basis == "FLAT" and flat is None:
+        raise ReferralError("flat_amount_required", "Enter the flat fee.", status=422)
+    if basis is not None and currency is None:
+        raise ReferralError("currency_required", "Choose the currency the commission is paid in.", status=422)
+    outcome = (str(body.get("qualifying_outcome") or "").upper()) or None
+    if outcome is not None and outcome not in {o.value for o in ReferralOutcome}:
+        raise ReferralError("unknown_outcome", status=422)
+    fee = _dec(body, "listing_fee_amount")
+    fee_cur = _currency(body, "listing_fee_currency")
+    interval = (str(body.get("listing_fee_interval") or "").upper()) or None
+    if interval is not None and interval not in INTERVALS:
+        raise ReferralError("invalid_interval", "A listing fee is monthly, or none.", status=422)
+    if fee is not None and (fee_cur is None or interval in (None, "NONE")):
+        raise ReferralError("listing_fee_incomplete", "A listing fee needs a currency and the monthly interval.", status=422)
+    ref = (str(body.get("agreement_reference") or "").strip()[:255]) or None
+    async with session_factory() as session:
+        await set_tenant_context(session, tenant_id)
+        provider = (await session.execute(select(Provider).where(Provider.id == provider_id, Provider.tenant_id == tenant_id))).scalar_one_or_none()
+        if provider is None:
+            raise ReferralError("not_found", status=404)
+        row = (await session.execute(select(ProviderTerms).where(ProviderTerms.tenant_id == tenant_id, ProviderTerms.provider_id == provider_id))).scalar_one_or_none()
+        if row is None:
+            row = ProviderTerms(tenant_id=tenant_id, provider_id=provider_id)
+            session.add(row)
+        row.commission_basis, row.commission_percentage, row.flat_amount, row.currency = basis, pct if basis == "PERCENTAGE" else None, flat if basis == "FLAT" else None, currency
+        row.qualifying_outcome, row.agreement_reference, row.updated_by = outcome, ref, actor_id
+        row.listing_fee_amount, row.listing_fee_currency, row.listing_fee_interval = fee, fee_cur, interval
+        await session.flush()
+        _audit(session, tenant_id, actor_id, "mt.terms.updated", "medical_tourism_provider_terms", row.id, {"provider_id": str(provider_id), "basis": basis, "currency": currency})
+        await session.commit()
+        await session.refresh(row)
+        return row
+
+
+async def on_referral_sent(session_factory, tenant_id: uuid.UUID, referral_id: uuid.UUID, actor_id: uuid.UUID | None) -> ReferralCommission | None:
+    """The PENDING commission for a referral that has just been sent, from the clinic's terms. None when there is nothing to create (no terms, or one already exists)."""
+    from app.services import mt_commission
+
+    try:
+        async with session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            ref = (await session.execute(select(ProviderReferral).where(ProviderReferral.id == referral_id, ProviderReferral.tenant_id == tenant_id))).scalar_one_or_none()
+            if ref is None:
+                return None
+            terms = (await session.execute(select(ProviderTerms).where(ProviderTerms.tenant_id == tenant_id, ProviderTerms.provider_id == ref.provider_id))).scalar_one_or_none()
+            if terms is None or terms.commission_basis is None or terms.currency is None:
+                _audit(session, tenant_id, actor_id, "mt.commission.no_terms", "medical_tourism_provider_referral", ref.id, {"provider_id": str(ref.provider_id)}, result="skipped")
+                await session.commit()
+                return None
+            price = None
+            if ref.procedure_id is not None:
+                pp = (await session.execute(select(ProviderProcedure).where(ProviderProcedure.tenant_id == tenant_id, ProviderProcedure.provider_id == ref.provider_id,
+                                                                            ProviderProcedure.procedure_id == ref.procedure_id))).scalars().first()
+                if pp is not None and pp.estimated_price is not None and (pp.currency or "").upper() == terms.currency:
+                    price = pp.estimated_price
+            basis, pct, flat, cur, outcome = terms.commission_basis, terms.commission_percentage, terms.flat_amount, terms.currency, terms.qualifying_outcome
+        try:
+            return await mt_commission.create_for_referral(session_factory, tenant_id, referral_id, actor_id or uuid.UUID(int=0), currency=cur, basis=basis, commission_percentage=pct,
+                                                           flat_amount=flat, reference_amount=price, qualifying_outcome=outcome or ReferralOutcome.TREATMENT_COMPLETED)
+        except ReferralError as exc:
+            if exc.code != "commission_exists":
+                logger.warning("mt_auto_commission_refused", code=exc.code)
+            return None
+    except Exception as exc:  # noqa: BLE001 - never break sending a referral
+        logger.warning("mt_auto_commission_failed", error=type(exc).__name__)
+        return None
+
+
+async def _billing_customer(session, tenant_id: uuid.UUID, provider: Provider) -> Customer:
+    existing = (await session.execute(select(Customer).where(Customer.tenant_id == tenant_id, Customer.external_provider == "mt_provider", Customer.external_id == str(provider.id)))).scalar_one_or_none()
+    if existing is not None:
+        return existing
+    c = Customer(tenant_id=tenant_id, name=provider.name, company_name=provider.name, email=provider.contact_email, phone=provider.contact_phone, city=provider.city,
+                 notes="Billing account for a partner clinic (commissions and fees).", status=CustomerStatus.ACTIVE, external_provider="mt_provider", external_id=str(provider.id))
+    session.add(c)
+    await session.flush()
+    return c
+
+
+async def on_commission_confirmed(session_factory, tenant_id: uuid.UUID, commission_id: uuid.UUID, actor_id: uuid.UUID | None, invoice_service) -> uuid.UUID | None:
+    """A DRAFT invoice to the clinic for an earned commission. Returns the invoice id; None when it cannot or need not be raised (no amount known yet, already invoiced)."""
+    from app.services.invoice_service import LineItemInput
+
+    try:
+        async with session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            c = (await session.execute(select(ReferralCommission).where(ReferralCommission.id == commission_id, ReferralCommission.tenant_id == tenant_id))).scalar_one_or_none()
+            if c is None or c.invoice_id is not None or c.provider_id is None:
+                return None
+            if c.computed_amount is None or c.computed_amount <= 0:
+                _audit(session, tenant_id, actor_id, "mt.commission.invoice_needs_amount", "medical_tourism_referral_commission", c.id, {}, result="skipped")
+                await session.commit()
+                return None
+            provider = await session.get(Provider, c.provider_id)
+            customer = await _billing_customer(session, tenant_id, provider)
+            procedure = None
+            if c.provider_referral_id is not None:
+                ref = await session.get(ProviderReferral, c.provider_referral_id)
+                if ref is not None and ref.procedure_id is not None:
+                    procedure = await session.get(Procedure, ref.procedure_id)
+            customer_id, amount, currency = customer.id, c.computed_amount, c.currency
+            label = f"Referral commission{' - ' + procedure.name if procedure else ''} (ref {str(c.provider_referral_id or c.id)[:8]})"
+            await session.commit()
+        invoice = await invoice_service.create_manual_draft(tenant_id, customer_id=customer_id, job_id=None, items=[LineItemInput(description=label, quantity=Decimal("1"), unit_price=amount)])
+        async with session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            inv = (await session.execute(select(Invoice).where(Invoice.id == invoice.id, Invoice.tenant_id == tenant_id))).scalar_one()
+            inv.currency = currency
+            c = (await session.execute(select(ReferralCommission).where(ReferralCommission.id == commission_id, ReferralCommission.tenant_id == tenant_id))).scalar_one()
+            c.invoice_id = inv.id
+            _audit(session, tenant_id, actor_id, "mt.commission.invoice_drafted", "medical_tourism_referral_commission", c.id, {"invoice_id": str(inv.id), "currency": currency})
+            await session.commit()
+            return inv.id
+    except Exception as exc:  # noqa: BLE001 - never break confirming a commission
+        logger.warning("mt_auto_invoice_failed", error=type(exc).__name__)
+        return None

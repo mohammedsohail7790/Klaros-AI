@@ -296,6 +296,7 @@ class ReferralCommission(TenantScopedMixin, Base):
     invoiced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    invoice_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)  # the draft invoice raised to the clinic for this commission
     provider_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("medical_tourism_providers.id"), nullable=True, index=True
     )

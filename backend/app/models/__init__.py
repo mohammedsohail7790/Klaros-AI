@@ -123,6 +123,7 @@ from app.models.website import Website, WebsitePage, WebsiteSection, WebsiteVers
 from app.models.builder import BuilderFile, BuilderMessage, BuilderProject, BuilderRun, BuilderVersion  # noqa: F401
 from app.models.tenant_settings import TenantSetting  # noqa: F401
 from app.models.site_hosting import TenantDomain, UploadedSite, UploadedSiteFile  # noqa: F401
+from app.models.mt_revenue import ProviderTerms  # noqa: F401
 from app.models.business_journey import BusinessJourney
 
 __all__ = [

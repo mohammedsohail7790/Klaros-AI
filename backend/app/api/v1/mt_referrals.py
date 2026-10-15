@@ -18,7 +18,7 @@ from app.db.session import async_session_maker, set_tenant_context
 from app.models.medical_tourism import Provider
 from app.models.medical_tourism_referral import ProviderReferral, ReferralApproval, ReferralDelivery
 from app.models.rbac import Permission, role_has_permission
-from app.services import mt_clinic_sourcing, mt_commission, mt_handoff, mt_pipeline, mt_referrals
+from app.services import mt_clinic_sourcing, mt_commission, mt_handoff, mt_pipeline, mt_referrals, mt_revenue
 from app.services.mt_referrals import ReferralError
 
 router = APIRouter(prefix="/medical-tourism", tags=["medical-tourism-referrals"])
@@ -226,6 +226,23 @@ async def post_commission(referral_id: uuid.UUID, body: dict, u: CurrentUser = D
     except ReferralError as exc:
         raise _err(exc) from exc
     return {"commission": mt_commission.commission_to_dict(c)}
+
+
+@router.get("/providers/{provider_id}/terms")
+async def get_provider_terms(provider_id: uuid.UUID, u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """What this clinic has agreed to pay. Money terms are for managers."""
+    _manage(u)
+    return {"terms": mt_revenue.terms_to_dict(await mt_revenue.get_terms(async_session_maker, u.tenant_id, provider_id))}
+
+
+@router.put("/providers/{provider_id}/terms")
+async def put_provider_terms(provider_id: uuid.UUID, body: dict, u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    _manage(u)
+    try:
+        row = await mt_revenue.set_terms(async_session_maker, u.tenant_id, provider_id, u.id, body)
+    except ReferralError as exc:
+        raise _err(exc) from exc
+    return {"terms": mt_revenue.terms_to_dict(row)}
 
 
 @router.get("/commissions")

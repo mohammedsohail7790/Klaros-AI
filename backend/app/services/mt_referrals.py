@@ -402,7 +402,12 @@ async def send_referral(session_factory, tenant_id: uuid.UUID, referral_id: uuid
             referral = (await session.execute(select(ProviderReferral).where(ProviderReferral.id == referral_id, ProviderReferral.tenant_id == tenant_id))).scalar_one()
             return referral, False
         await session.refresh(referral)
-        return referral, dup is None
+        newly_sent = dup is None
+    if newly_sent:
+        from app.services import mt_revenue  # local: mt_revenue imports this module
+
+        await mt_revenue.on_referral_sent(session_factory, tenant_id, referral_id, actor_id)  # the PENDING commission from the clinic's terms; never raises
+    return referral, newly_sent
 
 
 async def record_clinic_response(session_factory, tenant_id: uuid.UUID, referral_id: uuid.UUID, actor_id: uuid.UUID, *, accepted: bool) -> ProviderReferral:

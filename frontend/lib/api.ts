@@ -6132,3 +6132,16 @@ export function verifyHostedDomain(token: string, id: string) {
 export function removeHostedDomain(token: string, id: string) {
   return request<void>(`/api/v1/site-hosting/domains/${id}`, { method: "DELETE", headers: authHeaders(token) });
 }
+
+// --- Clinic commercial terms ---
+
+export interface ClinicTerms {
+  set: boolean; commission_basis: "PERCENTAGE" | "FLAT" | null; commission_percentage: string | null; flat_amount: string | null; currency: string | null; qualifying_outcome: string | null;
+  listing_fee_amount: string | null; listing_fee_currency: string | null; listing_fee_interval: "MONTHLY" | "NONE" | null; agreement_reference: string | null;
+}
+export function getClinicTerms(token: string, providerId: string) {
+  return request<{ terms: ClinicTerms }>(`${MTR}/providers/${providerId}/terms`, { headers: authHeaders(token) });
+}
+export function saveClinicTerms(token: string, providerId: string, terms: Partial<Record<keyof ClinicTerms, string | null>>) {
+  return request<{ terms: ClinicTerms }>(`${MTR}/providers/${providerId}/terms`, { method: "PUT", headers: authHeaders(token), body: JSON.stringify(terms) });
+}
