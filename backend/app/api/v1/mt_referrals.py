@@ -203,10 +203,17 @@ async def post_clinic_response(referral_id: uuid.UUID, body: dict, u: CurrentUse
 async def post_outcome(referral_id: uuid.UUID, body: dict, u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
     _coord(u)
     try:
+        amount = None
+        if body.get("treatment_amount") not in (None, ""):
+            try:
+                amount = Decimal(str(body["treatment_amount"]))
+            except Exception:  # noqa: BLE001
+                raise HTTPException(status_code=422, detail={"error": "invalid_amount", "message": "The treatment price must be a number."}) from None
         r = await mt_referrals.record_outcome(async_session_maker, u.tenant_id, referral_id, u.id, outcome=str(body.get("outcome", "")), evidence=str(body.get("evidence", "")))
+        followup = await mt_revenue.on_outcome_recorded(async_session_maker, u.tenant_id, referral_id, u.id, amount, str(body.get("currency") or "") or None)
     except ReferralError as exc:
         raise _err(exc) from exc
-    return {"referral": mt_referrals.referral_to_dict(r)}
+    return {"referral": mt_referrals.referral_to_dict(r), "commission": followup}
 
 
 # --- commission and revenue -------------------------------------------------
@@ -243,6 +250,13 @@ async def put_provider_terms(provider_id: uuid.UUID, body: dict, u: CurrentUser 
     except ReferralError as exc:
         raise _err(exc) from exc
     return {"terms": mt_revenue.terms_to_dict(row)}
+
+
+@router.get("/agreements")
+async def get_agreements(u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Each clinic with the commission it has agreed to pay: the commission side of Sales."""
+    _manage(u)
+    return await mt_revenue.agreements_overview(async_session_maker, u.tenant_id)
 
 
 @router.get("/commissions")

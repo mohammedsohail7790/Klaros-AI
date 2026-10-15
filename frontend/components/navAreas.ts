@@ -2,8 +2,8 @@ import {
   Home, Users, Wrench, DollarSign, Megaphone, Bot, Globe, Hammer, Building2, Settings2, FileText,
 } from "lucide-react";
 
-/** `module` names a business module (vertical extension) that must be enabled for the tenant to see this tab. No `module` means every tenant sees it. */
-export type AreaTab = { href: string; label: string; module?: string };
+/** `module` names a business module (vertical extension) that must be enabled for the tenant to see this tab; `hideWithModule` hides a generic tab a module replaces (a commission-only business has no patient quotes). No `module` means every tenant sees it. */
+export type AreaTab = { href: string; label: string; module?: string; hideWithModule?: string };
 export type NavArea = { key: string; label: string; icon: any; tabs: AreaTab[] };
 
 const MT = "medical_tourism";
@@ -26,7 +26,10 @@ export const AREAS: NavArea[] = [
   },
   {
     key: "sales", label: "Sales", icon: FileText,
-    tabs: [{ href: "/quotes", label: "Quotes" }, { href: "/contracts", label: "Contracts" }],
+    tabs: [
+      { href: "/medical-tourism/agreements", label: "Clinic agreements", module: MT },
+      { href: "/quotes", label: "Quotes", hideWithModule: MT }, { href: "/contracts", label: "Contracts", hideWithModule: MT },
+    ],
   },
   {
     key: "marketing", label: "Marketing", icon: Megaphone,
@@ -80,7 +83,7 @@ export const AREAS: NavArea[] = [
 /** The areas this tenant sees: each area keeps only the tabs whose module (if any) is enabled, and an area left with no tab is dropped. */
 export function visibleAreas(modules: string[]): NavArea[] {
   const on = new Set(modules);
-  return AREAS.map((a) => ({ ...a, tabs: a.tabs.filter((t) => !t.module || on.has(t.module)) })).filter((a) => a.tabs.length > 0);
+  return AREAS.map((a) => ({ ...a, tabs: a.tabs.filter((t) => (!t.module || on.has(t.module)) && !(t.hideWithModule && on.has(t.hideWithModule))) })).filter((a) => a.tabs.length > 0);
 }
 
 /** The area and tab a path belongs to: the most specific tab href that the path equals or sits under. */

@@ -5755,8 +5755,9 @@ export function recordClinicResponse(token: string, id: string, accepted: boolea
   return post<{ referral: ProviderReferral }>(token, `${MTR}/referrals/${id}/clinic-response`, { accepted });
 }
 
-export function recordReferralOutcome(token: string, id: string, body: { outcome: string; evidence: string }) {
-  return post<{ referral: ProviderReferral }>(token, `${MTR}/referrals/${id}/outcome`, body);
+export interface OutcomeCommissionResult { commission_id: string | null; status: string | null; invoice_id: string | null; note: string | null }
+export function recordReferralOutcome(token: string, id: string, body: { outcome: string; evidence: string; treatment_amount?: string; currency?: string }) {
+  return post<{ referral: ProviderReferral; commission?: OutcomeCommissionResult }>(token, `${MTR}/referrals/${id}/outcome`, body);
 }
 
 export interface HandoffTask {
@@ -6148,4 +6149,9 @@ export function getClinicTerms(token: string, providerId: string) {
 }
 export function saveClinicTerms(token: string, providerId: string, terms: Partial<Record<keyof ClinicTerms, string | null>>) {
   return request<{ terms: ClinicTerms }>(`${MTR}/providers/${providerId}/terms`, { method: "PUT", headers: authHeaders(token), body: JSON.stringify(terms) });
+}
+
+export interface ClinicAgreementRow { provider_id: string; name: string; country: string; verification_status: string; referrals_sent: number; terms: ClinicTerms }
+export function getClinicAgreements(token: string) {
+  return request<{ clinics: ClinicAgreementRow[]; with_terms: number; without_terms: number }>(`${MTR}/agreements`, { headers: authHeaders(token) });
 }

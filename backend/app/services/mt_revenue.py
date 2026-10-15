@@ -182,3 +182,62 @@ async def on_commission_confirmed(session_factory, tenant_id: uuid.UUID, commiss
     except Exception as exc:  # noqa: BLE001 - never break confirming a commission
         logger.warning("mt_auto_invoice_failed", error=type(exc).__name__)
         return None
+
+
+async def on_outcome_recorded(session_factory, tenant_id: uuid.UUID, referral_id: uuid.UUID, actor_id: uuid.UUID, treatment_amount: Decimal | None, currency: str | None) -> dict[str, Any]:
+    """A person has recorded the clinic's reported outcome (with evidence). If the commission is a percentage and the treatment price is given, work out the amount; when the outcome is the one
+    the agreement names and the amount is known, confirm the commission, which drafts the invoice to the clinic. Never raises; returns what happened so the caller can show it."""
+    from app.services import mt_commission
+
+    result: dict[str, Any] = {"commission_id": None, "status": None, "invoice_id": None, "note": None}
+    try:
+        async with session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            c = (await session.execute(select(ReferralCommission).where(ReferralCommission.tenant_id == tenant_id, ReferralCommission.provider_referral_id == referral_id))).scalar_one_or_none()
+            ref = (await session.execute(select(ProviderReferral).where(ProviderReferral.id == referral_id, ProviderReferral.tenant_id == tenant_id))).scalar_one_or_none()
+            if c is None or ref is None:
+                result["note"] = "No commission is set up for this referral: add the clinic's terms."
+                return result
+            result["commission_id"] = str(c.id)
+            if treatment_amount is not None:
+                if c.basis != ReferralCommissionBasis.PERCENTAGE or c.commission_percentage is None:
+                    result["note"] = "This clinic's commission is a flat fee, so the treatment price is not needed."
+                elif currency and currency.upper() != c.currency:
+                    raise ReferralError("currency_mismatch", f"The commission is in {c.currency}: give the treatment price in {c.currency}.", status=422)
+                elif treatment_amount <= 0:
+                    raise ReferralError("invalid_amount", "The treatment price must be more than 0.", status=422)
+                elif c.status == "PENDING":
+                    c.computed_amount = (treatment_amount * c.commission_percentage / Decimal("100")).quantize(Decimal("0.01"))
+                    _audit(session, tenant_id, actor_id, "mt.commission.amount_set", "medical_tourism_referral_commission", c.id, {"currency": c.currency})
+            await session.commit()
+            ready = c.status == "PENDING" and c.computed_amount is not None and ref.outcome == (c.qualifying_outcome or ReferralOutcome.TREATMENT_COMPLETED)
+            commission_id = c.id
+            if c.status == "PENDING" and c.computed_amount is None and c.basis == ReferralCommissionBasis.PERCENTAGE:
+                result["note"] = "Enter the treatment price to work out the commission and draft the invoice."
+        if ready:
+            done = await mt_commission.transition(session_factory, tenant_id, commission_id, "CONFIRMED", actor_id, "Confirmed automatically: the clinic's outcome is recorded with evidence.")
+            result["status"], result["invoice_id"] = done.status, str(done.invoice_id) if done.invoice_id else None
+        return result
+    except ReferralError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - never break recording an outcome
+        logger.warning("mt_outcome_followup_failed", error=type(exc).__name__)
+        return result
+
+
+async def agreements_overview(session_factory, tenant_id: uuid.UUID) -> dict[str, Any]:
+    """Every clinic with what it has agreed to pay and how much work has gone to it: the commission side of Sales. A clinic with no terms is listed as such, never hidden."""
+    from sqlalchemy import func
+
+    async with session_factory() as session:
+        await set_tenant_context(session, tenant_id)
+        providers = (await session.execute(select(Provider).where(Provider.tenant_id == tenant_id).order_by(Provider.name))).scalars().all()
+        terms = {t.provider_id: t for t in (await session.execute(select(ProviderTerms).where(ProviderTerms.tenant_id == tenant_id))).scalars()}
+        sent = dict((await session.execute(select(ProviderReferral.provider_id, func.count(ProviderReferral.id)).where(ProviderReferral.tenant_id == tenant_id,
+                    ProviderReferral.sent_at.is_not(None)).group_by(ProviderReferral.provider_id))).all())
+    rows = []
+    for p in providers:
+        t = terms.get(p.id)
+        rows.append({"provider_id": str(p.id), "name": p.name, "country": p.country, "verification_status": p.verification_status, "referrals_sent": int(sent.get(p.id, 0)), "terms": terms_to_dict(t)})
+    with_terms = sum(1 for r in rows if r["terms"]["set"] and r["terms"]["commission_basis"])
+    return {"clinics": rows, "with_terms": with_terms, "without_terms": len(rows) - with_terms}

@@ -105,6 +105,22 @@ describe("AppShell navigation", () => {
       reset();
     });
 
+    it("replaces patient quotes and contracts with clinic agreements for a commission-only business, and keeps them for everyone else", async () => {
+      getModules.mockResolvedValue({ modules: ["medical_tourism"] });
+      const view = signedIn("/medical-tourism/agreements");
+      await waitFor(() => expect(primary().getByRole("link", { name: /^Clinics/ })).toBeInTheDocument());
+      expect(screen.queryByRole("link", { name: "Quotes" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Contracts" })).not.toBeInTheDocument();
+      expect(primary().getByRole("link", { name: "Sales" })).toHaveAttribute("href", "/medical-tourism/agreements");
+      view.unmount();
+      reset();
+      getModules.mockResolvedValue({ modules: [] });
+      signedIn("/quotes");
+      await waitFor(() => expect(screen.getByRole("navigation", { name: "Sales sections" })).toBeInTheDocument());
+      expect(within(screen.getByRole("navigation", { name: "Sales sections" })).getAllByRole("link").map((a) => a.textContent)).toEqual(["Quotes", "Contracts"]);
+      reset();
+    });
+
     it("shows a business with no module the core areas only, with no Medical Tourism pages", async () => {
       getModules.mockResolvedValue({ modules: [] });
       signedIn("/leads");

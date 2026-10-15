@@ -111,3 +111,75 @@ async def test_another_business_cannot_read_or_set_a_clinics_terms(client, halla
     await _terms(client, token, p["id"], TERMS)
     assert (await _terms(client, other, p["id"], TERMS)).status_code == 404
     assert (await client.get(f"{BASE}/providers/{p['id']}/terms", headers=_h(other))).json()["terms"]["set"] is False
+
+
+# ---- recording the outcome finishes the loop --------------------------------------------------------------------------------------------------------------
+
+async def _accepted(client, token, provider_id):
+    ref = await _approved(client, token, await _patient(client, token), provider_id)
+    await _send(client, token, ref)
+    await client.post(f"{BASE}/referrals/{ref}/clinic-response", json={"accepted": True}, headers=_h(token))
+    return ref
+
+
+async def test_an_outcome_with_the_treatment_price_confirms_a_percentage_commission_and_drafts_the_invoice(client, halla) -> None:  # noqa: F811
+    token, _ = await _gated(client, "Outcome Pct Co", "outcomepct@example.com")
+    p = await _provider(client, token, name="Pct Clinic")
+    await _terms(client, token, p["id"], {"commission_basis": "PERCENTAGE", "commission_percentage": "15", "currency": "usd"})
+    ref = await _accepted(client, token, p["id"])
+    r = (await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "TREATMENT_COMPLETED", "evidence": "clinic email", "treatment_amount": "4000", "currency": "usd"}, headers=_h(token))).json()
+    assert r["commission"]["status"] == "CONFIRMED" and r["commission"]["invoice_id"]
+    (c,) = await _commissions(client, token)
+    assert (c["status"], c["computed_amount"]) == ("CONFIRMED", "600.00")  # 15% of 4000
+    inv = (await client.get(f"/api/v1/invoices/{r['commission']['invoice_id']}", headers=_h(token))).json()
+    assert (inv.get("invoice", inv))["status"] == "DRAFT"
+
+
+async def test_a_flat_commission_is_confirmed_by_the_evidenced_outcome_alone(client, halla) -> None:  # noqa: F811
+    token, _ = await _gated(client, "Outcome Flat Co", "outcomeflat@example.com")
+    p = await _provider(client, token)
+    await _terms(client, token, p["id"], {"commission_basis": "FLAT", "flat_amount": "350", "currency": "usd"})
+    ref = await _accepted(client, token, p["id"])
+    r = (await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "TREATMENT_COMPLETED", "evidence": "clinic portal"}, headers=_h(token))).json()
+    assert r["commission"]["status"] == "CONFIRMED" and r["commission"]["invoice_id"]
+
+
+async def test_a_percentage_commission_without_the_price_waits_and_says_what_is_needed(client, halla) -> None:  # noqa: F811
+    token, _ = await _gated(client, "Outcome Wait Co", "outcomewait@example.com")
+    p = await _provider(client, token)
+    await _terms(client, token, p["id"], {"commission_basis": "PERCENTAGE", "commission_percentage": "10", "currency": "usd"})
+    ref = await _accepted(client, token, p["id"])
+    r = (await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "TREATMENT_COMPLETED", "evidence": "clinic email"}, headers=_h(token))).json()
+    assert r["commission"]["status"] is None and "treatment price" in r["commission"]["note"]
+    assert (await _commissions(client, token))[0]["status"] == "PENDING"
+    later = (await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "TREATMENT_COMPLETED", "evidence": "clinic email", "treatment_amount": "2500"}, headers=_h(token))).json()
+    assert later["commission"]["status"] == "CONFIRMED" and (await _commissions(client, token))[0]["computed_amount"] == "250.00"
+
+
+async def test_the_wrong_currency_or_a_non_qualifying_outcome_never_confirms(client, halla) -> None:  # noqa: F811
+    token, _ = await _gated(client, "Outcome Guard Co", "outcomeguard@example.com")
+    p = await _provider(client, token)
+    await _terms(client, token, p["id"], {"commission_basis": "PERCENTAGE", "commission_percentage": "10", "currency": "usd"})
+    ref = await _accepted(client, token, p["id"])
+    bad = await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "TREATMENT_COMPLETED", "evidence": "x", "treatment_amount": "1000", "currency": "eur"}, headers=_h(token))
+    assert bad.status_code == 422 and bad.json()["detail"]["error"] == "currency_mismatch"
+    neg = await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "TREATMENT_COMPLETED", "evidence": "x", "treatment_amount": "-5"}, headers=_h(token))
+    assert neg.status_code == 422
+    r = await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "NO_TREATMENT", "evidence": "x", "treatment_amount": "1000"}, headers=_h(token))
+    assert r.status_code == 200 and r.json()["commission"]["status"] is None  # the agreement names treatment completed: anything else earns nothing
+    assert (await _commissions(client, token))[0]["status"] == "PENDING"
+
+
+async def test_the_agreements_overview_lists_every_clinic_with_or_without_terms(client, halla) -> None:  # noqa: F811
+    token, _ = await _gated(client, "Agree Co", "agreeco@example.com")
+    a = await _provider(client, token, name="Alpha Clinic")
+    await _provider(client, token, name="Beta Clinic")
+    await _terms(client, token, a["id"], {"commission_basis": "FLAT", "flat_amount": "300", "currency": "usd", "agreement_reference": "Folder 7"})
+    ref = await _approved(client, token, await _patient(client, token), a["id"])
+    await _send(client, token, ref)
+    out = (await client.get(f"{BASE}/agreements", headers=_h(token))).json()
+    by = {c["name"]: c for c in out["clinics"]}
+    assert (out["with_terms"], out["without_terms"]) == (1, 1)
+    assert by["Alpha Clinic"]["referrals_sent"] == 1 and by["Alpha Clinic"]["terms"]["agreement_reference"] == "Folder 7" and by["Beta Clinic"]["terms"]["set"] is False
+    other, _ = await _gated(client, "Agree Other Co", "agreeother@example.com")
+    assert (await client.get(f"{BASE}/agreements", headers=_h(other))).json()["clinics"] == []

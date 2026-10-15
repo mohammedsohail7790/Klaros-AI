@@ -72,6 +72,8 @@ export function ReferralDetail({ token, id, providerName, onClose, onChanged }: 
   const [channel, setChannel] = useState("phone");
   const [outcome, setOutcome] = useState("TREATMENT_COMPLETED");
   const [evidence, setEvidence] = useState("");
+  const [price, setPrice] = useState("");
+  const [priceCurrency, setPriceCurrency] = useState("USD");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -86,13 +88,22 @@ export function ReferralDetail({ token, id, providerName, onClose, onChanged }: 
     load();
   }, [load]);
 
+  async function saveOutcome(updated: boolean) {
+    await run(async () => {
+      const r = await recordReferralOutcome(token, id, { outcome, evidence: evidence.trim(), ...(price.trim() ? { treatment_amount: price.trim(), currency: priceCurrency } : {}) });
+      const c = r.commission;
+      setPrice("");
+      return c?.invoice_id ? "Outcome recorded. The commission is confirmed and a draft invoice to the clinic is ready in Finance." : c?.note ? `Outcome recorded. ${c.note}` : null;
+    }, updated ? "Outcome updated." : "Outcome recorded.");
+  }
+
   async function run(fn: () => Promise<unknown>, done: string) {
     setBusy(true);
     setError(null);
     setMessage(null);
     try {
-      await fn();
-      setMessage(done);
+      const detail = await fn();
+      setMessage(typeof detail === "string" ? detail : done);
       onChanged?.(); // the page behind (stage, next step) is now out of date
     } catch (err) {
       setError(err instanceof ApiError ? (err.code && gateReason(err.code)) || err.message : "That did not work.");
@@ -176,7 +187,13 @@ export function ReferralDetail({ token, id, providerName, onClose, onChanged }: 
                   {Object.entries(OUTCOME_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
                 <input aria-label="Where the clinic reported it" value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Where it was reported (reference)" className="rounded-xl border border-border-strong bg-surface px-2 py-1.5" />
               </div>
-              <div className="mt-3"><Button size="sm" disabled={busy || !evidence.trim()} onClick={() => run(() => recordReferralOutcome(token, id, { outcome, evidence: evidence.trim() }), r.status === "OUTCOME_REPORTED" ? "Outcome updated." : "Outcome recorded.")}>{r.status === "OUTCOME_REPORTED" ? "Update outcome" : "Record outcome"}</Button></div>
+              {outcome === "TREATMENT_COMPLETED" && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input aria-label="Treatment price" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Treatment price (for a percentage commission)" className="min-w-[16rem] rounded-xl border border-border-strong bg-surface px-2 py-1.5" />
+                  <input aria-label="Price currency" maxLength={3} value={priceCurrency} onChange={(e) => setPriceCurrency(e.target.value.toUpperCase())} className="w-20 rounded-xl border border-border-strong bg-surface px-2 py-1.5" />
+                </div>
+              )}
+              <div className="mt-3"><Button size="sm" disabled={busy || !evidence.trim()} onClick={() => saveOutcome(r.status === "OUTCOME_REPORTED")}>{r.status === "OUTCOME_REPORTED" ? "Update outcome" : "Record outcome"}</Button></div>
             </section>
           )}
 

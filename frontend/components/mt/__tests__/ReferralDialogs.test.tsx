@@ -36,6 +36,26 @@ describe("Referral outcome", () => {
     await waitFor(() => expect(outcome).toHaveBeenCalledWith("t", "R1", { outcome: "TREATMENT_COMPLETED", evidence: "Clinic email" }));
   });
 
+  it("sends the treatment price with a completed treatment and tells the owner the invoice is ready", async () => {
+    getRef.mockResolvedValue(detail("ACCEPTED"));
+    outcome.mockResolvedValue({ commission: { commission_id: "C1", status: "CONFIRMED", invoice_id: "I1", note: null } });
+    render(<ReferralDetail token="t" id="R1" providerName={{ P1: "Anatolia" }} onClose={vi.fn()} />);
+    fireEvent.change(await screen.findByLabelText("Where the clinic reported it"), { target: { value: "Clinic email" } });
+    fireEvent.change(screen.getByLabelText("Treatment price"), { target: { value: "4000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Record outcome" }));
+    await waitFor(() => expect(outcome).toHaveBeenCalledWith("t", "R1", { outcome: "TREATMENT_COMPLETED", evidence: "Clinic email", treatment_amount: "4000", currency: "USD" }));
+    expect(await screen.findByText(/draft invoice to the clinic is ready in Finance/)).toBeInTheDocument();
+  });
+
+  it("says what is still needed when a percentage commission has no price yet", async () => {
+    getRef.mockResolvedValue(detail("ACCEPTED"));
+    outcome.mockResolvedValue({ commission: { commission_id: "C1", status: null, invoice_id: null, note: "Enter the treatment price to work out the commission and draft the invoice." } });
+    render(<ReferralDetail token="t" id="R1" providerName={{ P1: "Anatolia" }} onClose={vi.fn()} />);
+    fireEvent.change(await screen.findByLabelText("Where the clinic reported it"), { target: { value: "Clinic email" } });
+    fireEvent.click(screen.getByRole("button", { name: "Record outcome" }));
+    expect(await screen.findByText(/Enter the treatment price/)).toBeInTheDocument();
+  });
+
   it("lets the owner update an outcome later, because a consultation usually comes before the treatment", async () => {
     getRef.mockResolvedValue(detail("OUTCOME_REPORTED", "CONSULTATION_ATTENDED"));
     outcome.mockResolvedValue({});
