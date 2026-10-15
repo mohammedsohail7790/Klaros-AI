@@ -20,7 +20,7 @@ from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.medical_tourism_referral import HandoffTask, TaskStatus
 
-KINDS = ("halla_handoff", "escalation", "provider_options", "referral_followup", "new_enquiry")
+KINDS = ("halla_handoff", "escalation", "provider_options", "referral_followup", "new_enquiry", "consultation_needed")
 
 
 class TaskError(Exception):

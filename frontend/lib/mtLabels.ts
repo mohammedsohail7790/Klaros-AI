@@ -52,6 +52,7 @@ export const SHAREABLE_FIELDS = Object.keys(FIELD_LABEL);
 export const TASK_KIND_LABEL: Record<string, string> = {
   escalation: "Needs a person",
   new_enquiry: "Review the new enquiry and match a clinic",
+  consultation_needed: "Arrange the patient's consultation with the clinic",
   provider_options: "Prepare provider options",
   halla_handoff: "Handed over by the AI receptionist",
   referral_followup: "Referral follow-up",
@@ -59,6 +60,7 @@ export const TASK_KIND_LABEL: Record<string, string> = {
 
 export const TASK_REASON_LABEL: Record<string, string> = {
   new_enquiry: "A new enquiry arrived through your website. Check it, then line up clinic options.",
+  clinic_accepted: "The clinic accepted this patient. Agree a consultation time with the clinic and the patient.",
   consent_withdrawn_after_send: "The patient withdrew consent after their details were sent: ask the clinic to remove them.",
   halla_escalated: "The AI receptionist asked for a person.",
   emergency: "Possible emergency raised on a call.",

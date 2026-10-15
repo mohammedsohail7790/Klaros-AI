@@ -47,3 +47,32 @@ async def test_an_enquiry_for_a_business_without_the_module_creates_no_medical_t
     await _lead(client, token, phone="+971500000081")
     await event_bus.process_pending(EventType.LEAD_CREATED)
     assert await _tasks(tid) == []
+
+
+async def test_a_clinic_accepting_a_referral_creates_a_consultation_task_that_closes_with_the_outcome(client, event_bus, halla) -> None:  # noqa: F811
+    from tests.test_mt_referrals import _approved, _provider, _send
+
+    token, tid = await _gated(client, "Consult Task Co", "consulttask@example.com")
+    provider = await _provider(client, token)
+    lead = await _patient(client, token)
+    ref = await _approved(client, token, lead, provider["id"])
+    await _send(client, token, ref)
+    assert not [t for t in await _tasks(tid) if t.kind == "consultation_needed"]  # nothing until the clinic accepts
+    await client.post(f"{BASE}/referrals/{ref}/clinic-response", json={"accepted": True}, headers=_h(token))
+    await client.post(f"{BASE}/referrals/{ref}/clinic-response", json={"accepted": True}, headers=_h(token))  # recording it twice never doubles the task
+    (task,) = [t for t in await _tasks(tid) if t.kind == "consultation_needed"]
+    assert task.status == "OPEN" and str(task.lead_id) == lead
+    await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "CONSULTATION_ATTENDED", "evidence": "clinic email"}, headers=_h(token))
+    (task,) = [t for t in await _tasks(tid) if t.kind == "consultation_needed"]
+    assert task.status == "DONE"
+
+
+async def test_a_clinic_declining_creates_no_consultation_task(client, event_bus, halla) -> None:  # noqa: F811
+    from tests.test_mt_referrals import _approved, _provider, _send
+
+    token, tid = await _gated(client, "Declined Task Co", "declinedtask@example.com")
+    provider = await _provider(client, token)
+    ref = await _approved(client, token, await _patient(client, token), provider["id"])
+    await _send(client, token, ref)
+    await client.post(f"{BASE}/referrals/{ref}/clinic-response", json={"accepted": False}, headers=_h(token))
+    assert not [t for t in await _tasks(tid) if t.kind == "consultation_needed"]

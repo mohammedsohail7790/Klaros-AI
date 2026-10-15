@@ -431,6 +431,10 @@ async def record_clinic_response(session_factory, tenant_id: uuid.UUID, referral
         referral.status = ReferralStatus.ACCEPTED if accepted else ReferralStatus.DECLINED
         referral.clinic_response_at, referral.clinic_response_by = datetime.now(timezone.utc), actor_id
         _audit(session, tenant_id, actor_id, "mt.referral.clinic_response", "medical_tourism_provider_referral", referral.id, {"accepted": accepted})
+        if accepted:
+            from app.services import mt_handoff
+
+            await mt_handoff.ensure_task(session, tenant_id, referral.lead_id, kind="consultation_needed", reason_code="clinic_accepted", dedupe_key=str(referral.id))
         await session.commit()
         await session.refresh(referral)
         return referral
@@ -452,6 +456,9 @@ async def record_outcome(session_factory, tenant_id: uuid.UUID, referral_id: uui
         referral.status, referral.outcome, referral.outcome_evidence = ReferralStatus.OUTCOME_REPORTED, outcome, evidence.strip()[:255]
         referral.outcome_reported_at = datetime.now(timezone.utc)
         _audit(session, tenant_id, actor_id, "mt.referral.outcome_reported", "medical_tourism_provider_referral", referral.id, {"outcome": outcome})
+        from app.services import mt_handoff
+
+        await mt_handoff.close_open_case_tasks(session, tenant_id, referral.lead_id, ("consultation_needed",), "The clinic reported an outcome")
         await session.commit()
         await session.refresh(referral)
         return referral
