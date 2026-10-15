@@ -77,3 +77,26 @@ async def test_the_crew_members_that_record_assessments_use_the_lead_note_tool()
             assert "crm.create_note" not in m.tools, f"{m.key} writes to a customer note that a new enquiry does not have"
     keys_with_notes = {m.key for crew in oc.PLAYBOOKS.values() for m in crew if "crm.add_lead_note" in m.tools}
     assert {"lead-responder", "booking-coordinator", "clinic-matcher", "safety-triage"} <= keys_with_notes
+
+
+async def test_the_lead_tools_the_crew_uses_accept_the_id_under_the_names_a_model_picks(client) -> None:
+    token = await _register(client, "Alias Tools Co", "aliastools@example.com")
+    tid = await _tenant_id(client, token)
+    lead = await _lead(client, token, phone="+971500000043")
+    reg = get_tool_registry()
+    for payload in ({"lead_id": lead}, {"id": lead}, {"enquiry_id": lead}):  # the live run called crm.get_lead with `id`
+        assert (await reg.execute("crm.get_lead", payload, _ctx(tid))).lead["id"] == lead
+    assert (await reg.execute("crm.qualify_lead", {"id": lead}, _ctx(tid))) is not None
+
+
+async def test_an_event_started_agent_is_told_which_argument_name_the_entity_id_goes_in() -> None:
+    from types import SimpleNamespace
+
+    from app.events.agent_trigger_handlers import _build_goal
+
+    lead = SimpleNamespace(event_type="lead.created", entity_type="lead", entity_id="abc-123")
+    goal = _build_goal("Do the thing.", lead)  # type: ignore[arg-type]
+    assert "entity_id=abc-123" in goal and "`lead_id`" in goal
+    referral = SimpleNamespace(event_type="mt.referral.approved", entity_type="provider_referral", entity_id="r-1")
+    assert "`referral_id`" in _build_goal("Send it.", referral)  # type: ignore[arg-type]
+    assert "Pass entity_id" not in _build_goal("x", SimpleNamespace(event_type="x", entity_type="something_else", entity_id="1"))  # type: ignore[arg-type]

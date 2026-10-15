@@ -6,7 +6,7 @@ audit enforcement.
 import uuid
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -182,7 +182,7 @@ class BulkImportLeads(Tool):
 
 
 class GetLeadInput(BaseModel):
-    lead_id: uuid.UUID
+    lead_id: uuid.UUID = Field(validation_alias=AliasChoices("lead_id", "enquiry_id", "id"))  # a model often calls it the enquiry id, or just id
 
 
 class GetLead(Tool):
@@ -205,7 +205,7 @@ class GetLead(Tool):
 
 
 class UpdateLeadInput(BaseModel):
-    lead_id: uuid.UUID
+    lead_id: uuid.UUID = Field(validation_alias=AliasChoices("lead_id", "enquiry_id", "id"))  # a model often calls it the enquiry id, or just id
     status: str | None = None
     assigned_user_id: uuid.UUID | None = None
     description: str | None = None
@@ -309,7 +309,7 @@ class SearchLeads(Tool):
 
 
 class QualifyLeadInput(BaseModel):
-    lead_id: uuid.UUID
+    lead_id: uuid.UUID = Field(validation_alias=AliasChoices("lead_id", "enquiry_id", "id"))  # a model often calls it the enquiry id, or just id
 
 
 class QualifyLeadOutput(BaseModel):

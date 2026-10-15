@@ -90,12 +90,25 @@ def _matches(conditions: dict, payload: dict) -> bool:
     return True
 
 
+# What a tool calls the id of each kind of entity. Models guess otherwise (`id`, `enquiry_id`); a fixed hint, never a payload value, keeps an event-started agent from failing on a wrong argument name.
+_ARGUMENT_HINTS: dict[str, str] = {
+    "lead": " Pass entity_id as `lead_id` to any tool that needs it.",
+    "customer": " Pass entity_id as `customer_id` to any tool that needs it.",
+    "appointment": " Pass entity_id as `appointment_id` to any tool that needs it.",
+    "job": " Pass entity_id as `job_id` to any tool that needs it.",
+    "quote": " Pass entity_id as `quote_id` to any tool that needs it.",
+    "invoice": " Pass entity_id as `invoice_id` to any tool that needs it.",
+    "contract": " Pass entity_id as `contract_id` to any tool that needs it.",
+    "provider_referral": " Pass entity_id as `referral_id` to any tool that needs it.",
+}
+
+
 def _build_goal(base_goal: str, event: Event) -> str:
     """Never interpolates raw event.payload values — only fixed, bounded
     metadata fields. See module docstring's "Event payload is untrusted"."""
     note = (
         f"\n\n(Triggering event: type={event.event_type}, entity_type={event.entity_type}, "
-        f"entity_id={event.entity_id}.)"
+        f"entity_id={event.entity_id}.{_ARGUMENT_HINTS.get(str(event.entity_type), '')})"
     )
     return (base_goal or "")[: _MAX_GOAL_CHARS - len(note)] + note
 
