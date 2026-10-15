@@ -19,6 +19,10 @@ vertical-name branching in either. 0049's own data migration applies this
 same dict's values as an UPDATE against the row 0041 already inserted —
 this file remains the single source of truth for both migrations plus the
 test suite. `dropshipping` is untouched (out of this phase's HARD SCOPE).
+
+Dropshipping store, branch 1 (alembic/versions/0080_dropshipping_store.py): `dropshipping`'s table family now ships (app/models/dropshipping.py), so its
+row is promoted here the same way to ACTIVE 1.0.0 with real capability keys; 0080 applies these values, and tests/test_dropshipping_schema.py pins them.
+`medical_tourism` is unchanged.
 """
 
 import uuid
@@ -58,12 +62,19 @@ SEED_VERTICALS: list[dict] = [
         "key": "dropshipping",
         "name": "Dropshipping",
         "description": (
-            "Supplier/product/order/fulfillment domain. Table family ships in a later "
-            "phase; this row exists so the registry mechanism can be exercised now."
+            "Supplier, product, order and fulfilment domain: a catalog, orders paid through the "
+            "core invoice and payment path, supplier orders placed by hand, and tracking."
         ),
-        "version": "0.0.0-registry-only",
-        "status": VerticalExtensionStatus.BETA,
-        "capabilities": [],
+        "version": "1.0.0",
+        "status": VerticalExtensionStatus.ACTIVE,
+        "capabilities": [
+            "dropshipping.product_catalog",
+            "dropshipping.supplier_connection",
+            "dropshipping.inventory",
+            "dropshipping.pricing",
+            "dropshipping.order_management",
+            "dropshipping.fulfilment",
+        ],
         "configuration_schema": None,
         "extra_metadata": None,
     },

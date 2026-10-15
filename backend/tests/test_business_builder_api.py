@@ -220,8 +220,19 @@ async def test_enable_module_is_explicit_idempotent_and_honest_about_empty_modul
     r1 = await client.post("/api/v1/business-builder/modules/medical_tourism/enable", headers=h)
     r2 = await client.post("/api/v1/business-builder/modules/medical_tourism/enable", headers=h)
     assert r1.status_code == 200 and r2.status_code == 200
-    # A registry-only module has nothing to enable — refused, not faked.
-    r3 = await client.post("/api/v1/business-builder/modules/dropshipping/enable", headers=h)
+    # Dropshipping's table family now ships (migration 0076), so it can be enabled, explicitly and idempotently, like medical tourism.
+    d1 = await client.post("/api/v1/business-builder/modules/dropshipping/enable", headers=h)
+    d2 = await client.post("/api/v1/business-builder/modules/dropshipping/enable", headers=h)
+    assert d1.status_code == 200 and d2.status_code == 200
+    assert d1.json() == {"key": "dropshipping", "name": "Dropshipping", "enabled": True}
+    # A registry-only module (no capabilities yet) has nothing to enable — refused, not faked.
+    from app.db.session import async_session_maker
+    from app.models.vertical_extension import VerticalExtension
+
+    async with async_session_maker() as session:
+        session.add(VerticalExtension(key="registry_only_demo", name="Registry Only Demo", version="0.0.0-registry-only", status="BETA", capabilities=[]))
+        await session.commit()
+    r3 = await client.post("/api/v1/business-builder/modules/registry_only_demo/enable", headers=h)
     assert r3.status_code == 409
     assert (await client.post("/api/v1/business-builder/modules/nope/enable", headers=h)).status_code == 404
 
