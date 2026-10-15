@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { ClinicVerification } from "@/components/mt/ClinicVerification";
 import { ClinicTerms } from "@/components/mt/ClinicTerms";
+import { ClinicContact } from "@/components/mt/ClinicContact";
 import { Hero, Page, StatusSummary } from "@/components/ui/layout";
 
 const STATUS_TABS = ["ALL", "ACTIVE", "INACTIVE"];
@@ -38,6 +39,7 @@ export default function MedicalTourismProvidersPage() {
   const [found, setFound] = useState<ClinicSourcingResult | null>(null);
   const [verifying, setVerifying] = useState<MedicalTourismProvider | null>(null);
   const [pricing, setPricing] = useState<MedicalTourismProvider | null>(null);
+  const [contacting, setContacting] = useState<MedicalTourismProvider | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -178,6 +180,9 @@ export default function MedicalTourismProvidersPage() {
                       <button onClick={() => setPricing(p)} className="text-[14px] text-accent hover:underline">
                         Terms
                       </button>
+                      <button onClick={() => setContacting(p)} className="text-[14px] text-accent hover:underline">
+                        Contact
+                      </button>
                     </div>
                     <p className={`text-[13px] ${note.ok ? "text-success" : "text-muted-foreground"}`}>{note.text}</p>
                   </div>
@@ -191,6 +196,8 @@ export default function MedicalTourismProvidersPage() {
       {verifying && token && (
         <ClinicVerification token={token} provider={verifying} onClose={() => setVerifying(null)} onSaved={() => { setVerifying(null); load(); }} />
       )}
+
+      {contacting && token && <ClinicContact token={token} provider={contacting} onClose={() => setContacting(null)} onSaved={() => { setContacting(null); load(); }} />}
 
       {pricing && token && <ClinicTerms token={token} provider={pricing} onClose={() => setPricing(null)} onSaved={() => setPricing(null)} />}
 

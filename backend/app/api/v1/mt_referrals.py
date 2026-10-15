@@ -6,6 +6,7 @@ caller's permission, translate errors to HTTP and shape the answer. The browser 
 
 from __future__ import annotations
 
+import re
 import uuid
 from decimal import Decimal
 from typing import Any
@@ -233,6 +234,44 @@ async def post_commission(referral_id: uuid.UUID, body: dict, u: CurrentUser = D
     except ReferralError as exc:
         raise _err(exc) from exc
     return {"commission": mt_commission.commission_to_dict(c)}
+
+
+_EMAIL = re.compile(r"^[^@\s<>,;]+@[^@\s<>,;]+\.[^@\s<>,;]+$")
+
+
+@router.patch("/providers/{provider_id}/contact")
+async def patch_provider_contact(provider_id: uuid.UUID, body: dict, u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Where a clinic can be reached: its email, phone, city and address, and nothing else (verification, status and the rest have their own controls). An empty value clears it."""
+    from app.models.actor import ActorType
+    from app.models.audit_log import AuditLog
+    from app.services.medical_tourism_service import MedicalTourismService, NotFoundError
+
+    _manage(u)
+    limits = {"contact_email": 255, "contact_phone": 50, "city": 120, "address": 255}
+    fields: dict[str, str] = {}
+    for key, cap in limits.items():
+        if key not in body:
+            continue
+        value = str(body[key] or "").strip()
+        if len(value) > cap or any(ord(c) < 32 for c in value):
+            raise HTTPException(status_code=422, detail={"error": f"invalid_{key}", "message": f"That {key.replace('_', ' ')} is not valid."})
+        if key == "contact_email":
+            value = value.lower()
+            if value and not _EMAIL.match(value):
+                raise HTTPException(status_code=422, detail={"error": "invalid_contact_email", "message": "Enter a single, valid email address."})
+        fields[key] = value
+    if not fields:
+        raise HTTPException(status_code=422, detail={"error": "nothing_to_change", "message": "Give at least one of: contact_email, contact_phone, city, address."})
+    try:
+        provider = await MedicalTourismService(async_session_maker).update_provider(u.tenant_id, provider_id, fields)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail={"error": "not_found"}) from None
+    async with async_session_maker() as session:
+        await set_tenant_context(session, u.tenant_id)
+        session.add(AuditLog(tenant_id=u.tenant_id, actor_type=ActorType.USER, actor_id=u.id, action="mt.provider.contact_updated", entity_type="medical_tourism_provider", entity_id=provider_id,
+                             input_summary={"fields": sorted(fields)}, result="success"))
+        await session.commit()
+    return {"provider": {"id": str(provider.id), "name": provider.name, "contact_email": provider.contact_email or None, "contact_phone": provider.contact_phone or None, "city": provider.city or None, "address": provider.address or None}}
 
 
 @router.get("/providers/{provider_id}/terms")

@@ -230,3 +230,27 @@ async def test_an_outcome_recorded_before_any_terms_still_finds_the_commission_o
     await _terms(client, token, p["id"], {"commission_basis": "FLAT", "flat_amount": "300", "currency": "usd"})
     again = (await client.post(f"{BASE}/referrals/{ref}/outcome", json={"outcome": "TREATMENT_COMPLETED", "evidence": "clinic email"}, headers=_h(token))).json()
     assert again["commission"]["status"] == "CONFIRMED" and again["commission"]["invoice_id"]
+
+
+# ---- a clinic's contact details ---------------------------------------------------------------------------------------------------------------------------
+
+async def test_a_clinics_contact_details_can_be_set_validated_and_cleared_and_nothing_else_changes(client, halla) -> None:  # noqa: F811
+    token, _ = await _gated(client, "Contact Co", "contactco@example.com")
+    p = await _provider(client, token, name="Contact Clinic")
+    url = f"{BASE}/providers/{p['id']}/contact"
+    for bad in ({"contact_email": "not an email"}, {"contact_email": "a@b.c, d@e.f"}, {"contact_email": "x" * 300 + "@a.bc"}, {"contact_phone": "1" * 60}, {"city": "Line\nbreak"}, {}, {"name": "Hacked", "status": "SUSPENDED"}):
+        assert (await client.patch(url, json=bad, headers=_h(token))).status_code == 422, bad
+    ok = (await client.patch(url, json={"contact_email": "  Intl.Desk@Clinic.Example  ", "contact_phone": "+90 212 000 0000", "city": "Istanbul"}, headers=_h(token))).json()["provider"]
+    assert ok["contact_email"] == "intl.desk@clinic.example" and ok["contact_phone"] == "+90 212 000 0000" and ok["city"] == "Istanbul" and ok["name"] == "Contact Clinic"
+    got = (await client.get(f"{BASE}/providers/{p['id']}", headers=_h(token))).json()["provider"]
+    assert got["contact_email"] == "intl.desk@clinic.example" and got["status"] == p["status"]  # only contact fields moved
+    cleared = (await client.patch(url, json={"contact_email": ""}, headers=_h(token))).json()["provider"]
+    assert cleared["contact_email"] is None and cleared["contact_phone"] == "+90 212 000 0000"
+
+
+async def test_another_business_cannot_change_a_clinics_contact_details(client, halla) -> None:  # noqa: F811
+    token, _ = await _gated(client, "Contact Own Co", "contactown@example.com")
+    other, _ = await _gated(client, "Contact Other Co", "contactother@example.com")
+    p = await _provider(client, token)
+    assert (await client.patch(f"{BASE}/providers/{p['id']}/contact", json={"contact_email": "x@y.zz"}, headers=_h(other))).status_code == 404
+    assert (await client.get(f"{BASE}/providers/{p['id']}", headers=_h(token))).json()["provider"]["contact_email"] in (None, "")

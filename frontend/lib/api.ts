@@ -6163,3 +6163,9 @@ export interface RenameResult { name: string; unchanged?: boolean; organization:
 export function renameBusiness(token: string, name: string) {
   return request<RenameResult>("/api/v1/organization/name", { method: "PUT", headers: authHeaders(token), body: JSON.stringify({ name }) });
 }
+
+export interface ClinicContact { contact_email?: string; contact_phone?: string; city?: string; address?: string }
+export function updateClinicContact(token: string, providerId: string, contact: ClinicContact) {
+  return request<{ provider: { id: string; name: string; contact_email: string | null; contact_phone: string | null; city: string | null; address: string | null } }>(
+    `${MTR}/providers/${providerId}/contact`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify(contact) });
+}
