@@ -101,3 +101,38 @@ async def test_account_emails_and_the_test_email_use_the_brevo_api(client, brevo
     assert ok.json() == {"sent": True, "to": "brevotestmail@example.com", "reason": None}
     steps = {s["key"]: s for s in (await client.get("/api/v1/setup-plan", headers=_h(token))).json()["steps"]}
     assert steps["email"]["state"] == "done"
+
+
+# ---- the recipient sees the BUSINESS's name, not the platform's ------------------------------------------------------------------------------------------
+
+def _sender_name(req: httpx.Request) -> str | None:
+    return json.loads(req.content)["sender"].get("name")
+
+
+async def test_an_email_a_business_sends_shows_that_businesss_name(client, brevo) -> None:
+    token = await _register(client, "MedLuxe Travel", "medluxe-name@example.com")
+    tid = await _tenant_id(client, token)
+    ok = await BrevoEmailAdapter(async_session_maker).send_email(tid, to="patient@example.com", subject="Hi", body="Body", template=list(MessageTemplate)[0])
+    assert ok and _sender_name(brevo.requests[-1]) == "MedLuxe Travel"
+    assert json.loads(brevo.requests[-1].content)["sender"]["email"] == "hello@klaros.example"  # the address is still the deployment's verified sender
+
+
+async def test_a_renamed_business_is_shown_under_its_new_name_and_header_characters_are_stripped(client, brevo) -> None:
+    token = await _register(client, "Old Name Co", "rename-sender@example.com")
+    tid = await _tenant_id(client, token)
+    assert (await client.put("/api/v1/organization/name", json={"name": "New Name Ltd"}, headers=_h(token))).status_code == 200
+    adapter, template = BrevoEmailAdapter(async_session_maker), list(MessageTemplate)[0]
+    await adapter.send_email(tid, to="a@example.com", subject="s", body="b", template=template)
+    assert _sender_name(brevo.requests[-1]) == "New Name Ltd"
+    from app.communications.sender_name import clean_display_name
+
+    assert clean_display_name('Evil" <x@y.z>\r\nBcc: a@b.c') == "Evil x@y.z Bcc: a@b.c" and clean_display_name("   ") == "Klaros AI" and clean_display_name(None) == "Klaros AI"
+    assert len(clean_display_name("x" * 200)) == 60
+
+
+async def test_an_unknown_business_falls_back_to_the_platform_name(brevo) -> None:
+    import uuid
+
+    from app.communications.sender_name import sender_name_for
+
+    assert await sender_name_for(async_session_maker, uuid.uuid4()) == "Klaros AI"

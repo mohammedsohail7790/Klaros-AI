@@ -7,6 +7,7 @@ import structlog
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.communications.base import CommunicationProvider, MessageTemplate
+from app.communications.sender_name import sender_name_for
 from app.communications.smtp_client import send_via_smtp
 from app.db.session import set_tenant_context
 from app.models.communication import CommunicationLog
@@ -26,7 +27,7 @@ class SmtpEmailAdapter(CommunicationProvider):
     async def send_email(self, tenant_id: uuid.UUID, *, to: str, subject: str, body: str, template: MessageTemplate) -> bool:
         status = "SENT"
         try:
-            await send_via_smtp(to=to, subject=subject, body=body, from_name="Klaros AI")
+            await send_via_smtp(to=to, subject=subject, body=body, from_name=await sender_name_for(self._session_factory, tenant_id))
             logger.info("smtp_email_sent", template=template.value)
         except Exception as exc:  # noqa: BLE001 - any SMTP or network failure is a failed send, never a delivered one
             status = "FAILED_SMTP"
