@@ -790,4 +790,23 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(RemindClinic())
     registry.register(InviteClinic())
 
+    # --- Dropshipping store (vertical extension), catalog tools: same registry, same governance as every other domain. ---
+    from app.services.dropshipping_catalog_service import DropshippingCatalogService
+    from app.tools.builtin.dropshipping_tools import (
+        CreateSupplier as DropshippingCreateSupplier,
+        ImportCatalog as DropshippingImportCatalog,
+        PublishProduct as DropshippingPublishProduct,
+        SearchProducts as DropshippingSearchProducts,
+        SetAvailability as DropshippingSetAvailability,
+        UpsertProduct as DropshippingUpsertProduct,
+    )
+
+    dropshipping_catalog_service = DropshippingCatalogService(session_factory)
+    registry.register(DropshippingSearchProducts(dropshipping_catalog_service))
+    registry.register(DropshippingCreateSupplier(dropshipping_catalog_service))
+    registry.register(DropshippingUpsertProduct(dropshipping_catalog_service))
+    registry.register(DropshippingSetAvailability(dropshipping_catalog_service))
+    registry.register(DropshippingPublishProduct(dropshipping_catalog_service))
+    registry.register(DropshippingImportCatalog(dropshipping_catalog_service))
+
     return registry

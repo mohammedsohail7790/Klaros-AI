@@ -425,6 +425,17 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "medical_tourism.send_referral": ActionPolicy.APPROVAL_REQUIRED,
     "medical_tourism.remind_clinic": ActionPolicy.APPROVAL_REQUIRED,
     "medical_tourism.invite_clinic": ActionPolicy.APPROVAL_REQUIRED,  # first contact with a clinic: a person approves it unless the tenant sets it to AUTO
+
+    # Dropshipping store (vertical extension), catalog tools. Reading and the internal catalog writes are AUTO, the same tier as medical_tourism.create_provider:
+    # they move no money, contact no one, and each has a database uniqueness rule behind it (SKU code, product slug, supplier name). Putting a product on sale and
+    # committing a whole catalog are APPROVAL_REQUIRED when an agent asks (the registry applies the policy to every actor, so the staff API calls the service
+    # directly for those two, behind MANAGE_DROPSHIPPING, and writes its own audit row).
+    "dropshipping.search_products": ActionPolicy.AUTO,
+    "dropshipping.create_supplier": ActionPolicy.AUTO,
+    "dropshipping.upsert_product": ActionPolicy.AUTO,  # never publishes: the product stays a DRAFT
+    "dropshipping.set_availability": ActionPolicy.AUTO,
+    "dropshipping.publish_product": ActionPolicy.APPROVAL_REQUIRED,
+    "dropshipping.import_catalog": ActionPolicy.APPROVAL_REQUIRED,
 }
 
 

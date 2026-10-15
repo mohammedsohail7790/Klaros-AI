@@ -44,6 +44,7 @@ from app.api.v1 import (
     marketing_seo,
     mcp,
     medical_tourism,
+    dropshipping,
     operating_crew,
     tenant_modules,
     inbound_email,
@@ -184,6 +185,7 @@ api_router.include_router(mcp.router)
 api_router.include_router(mcp_admin.router)
 api_router.include_router(medical_tourism.router)
 api_router.include_router(mt_referrals.router)
+api_router.include_router(dropshipping.router)
 api_router.include_router(business_setup.router)
 api_router.include_router(websites.router)
 api_router.include_router(builder.router)

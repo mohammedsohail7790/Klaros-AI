@@ -1,0 +1,13 @@
+sku_code,product_name,description,category,price,currency,supplier,supplier_sku,supplier_cost,weight_grams,availability,non_perishable,image_url
+FICT-1001,Zorblax Glowdesk Lamp,"FICTIONAL DEMO PRODUCT. Dimmable LED desk lamp with a wireless charging base.",Home Office,34.00,USD,FICTIONAL Demo Supplier,FDS-1001,20.40,620,UNKNOWN,yes,
+FICT-1002,Zorblax Quietkey Keyboard,"FICTIONAL DEMO PRODUCT. Compact wireless keyboard with silent switches.",Home Office,58.00,USD,FICTIONAL Demo Supplier,FDS-1002,34.80,740,UNKNOWN,yes,
+FICT-1003,Zorblax Nimbus Mouse,"FICTIONAL DEMO PRODUCT. Lightweight ergonomic wireless mouse.",Home Office,24.50,USD,FICTIONAL Demo Supplier,FDS-1003,14.70,72,UNKNOWN,yes,
+FICT-1004,Zorblax Stackhub 7-in-1,"FICTIONAL DEMO PRODUCT. USB-C hub for laptops.",Home Office,39.90,USD,FICTIONAL Demo Supplier,FDS-1004,23.94,110,UNKNOWN,yes,
+FICT-2001,Moonpebble Sleep Mask,"FICTIONAL DEMO PRODUCT. Contoured sleep mask with cooling insert.",Wellness,14.00,USD,FICTIONAL Demo Supplier,FDS-2001,8.40,60,UNKNOWN,yes,
+FICT-2002,Moonpebble Aroma Diffuser,"FICTIONAL DEMO PRODUCT. Ultrasonic aroma diffuser with timer.",Wellness,29.00,USD,FICTIONAL Demo Supplier,FDS-2002,17.40,480,UNKNOWN,yes,
+FICT-2003,Moonpebble Yoga Mat 6mm,"FICTIONAL DEMO PRODUCT. Non-slip yoga mat.",Wellness,32.00,USD,FICTIONAL Demo Supplier,FDS-2003,19.20,1100,UNKNOWN,yes,
+FICT-3001,Pixelpup Pet Water Fountain,"FICTIONAL DEMO PRODUCT. Quiet circulating water fountain for cats and small dogs.",Pets,27.50,USD,FICTIONAL Demo Supplier,FDS-3001,16.50,900,UNKNOWN,yes,
+FICT-3002,Pixelpup Snuffle Mat,"FICTIONAL DEMO PRODUCT. Foraging mat for slow feeding.",Pets,12.90,USD,FICTIONAL Demo Supplier,FDS-3002,7.74,250,UNKNOWN,yes,
+FICT-4001,Trailmint Insulated Bottle 750ml,"FICTIONAL DEMO PRODUCT. Stainless steel vacuum bottle.",Outdoor,21.00,USD,FICTIONAL Demo Supplier,FDS-4001,12.60,380,UNKNOWN,yes,
+FICT-4002,Trailmint Foldable Daypack 18L,"FICTIONAL DEMO PRODUCT. Packable lightweight backpack.",Outdoor,19.00,USD,FICTIONAL Demo Supplier,FDS-4002,11.40,190,UNKNOWN,yes,
+FICT-4003,Trailmint Pocket Camp Stove,"FICTIONAL DEMO PRODUCT. Compact gas stove. Fuel canister not included.",Outdoor,26.00,USD,FICTIONAL Demo Supplier,FDS-4003,15.60,85,UNKNOWN,yes,
