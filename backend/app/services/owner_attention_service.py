@@ -56,6 +56,9 @@ class AttentionCategory:
     PROVIDER_AUTH_FAILED = "provider_auth_failed"
     WEBHOOK_PROCESSING_FAILED = "webhook_processing_failed"
     AI_EXECUTION_FAILED = "ai_execution_failed"
+    MT_NO_VERIFIED_CLINIC = "mt_no_verified_clinic"
+    MT_TASKS_WAITING = "mt_tasks_waiting"
+    MT_REFERRAL_NO_TERMS = "mt_referral_no_terms"
 
 
 class Priority:
@@ -83,6 +86,8 @@ _ENTITY_LINKS = {
     "integration_connection": lambda entity_id: "/settings/integrations",
     "webhook_event": lambda entity_id: "/settings/integrations",
     "ai_invocation": lambda entity_id: "/ai-activity",
+    "mt_clinics": lambda entity_id: "/medical-tourism/agreements",
+    "mt_tasks": lambda entity_id: "/medical-tourism/tasks",
 }
 
 
@@ -455,5 +460,50 @@ class OwnerAttentionService:
                     link=_link_for("ai_invocation", latest.id), age_days=0,
                 ))
 
+        items.extend(await self._medical_tourism_items(tenant_id, now))
         items.sort(key=lambda i: i.score, reverse=True)
         return items[:limit]
+
+    async def _medical_tourism_items(self, tenant_id: uuid.UUID, now: datetime) -> list[AttentionItem]:
+        """What a Medical Tourism owner must act on that no automation can: nothing can be referred until a clinic is verified, patient tasks wait for a person, and a referral to a clinic with no
+        commission terms earns nothing. A business without the module has no clinics or tasks, so it gets nothing here."""
+        from sqlalchemy import func
+
+        from app.models.medical_tourism import Provider, ProviderStatus
+        from app.models.medical_tourism_referral import HandoffTask, ProviderReferral, TaskStatus
+        from app.models.mt_revenue import ProviderTerms
+
+        out: list[AttentionItem] = []
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            clinics = (await session.execute(select(func.count()).select_from(Provider).where(Provider.tenant_id == tenant_id, Provider.status == ProviderStatus.ACTIVE))).scalar_one()
+            verified = (await session.execute(select(func.count()).select_from(Provider).where(Provider.tenant_id == tenant_id, Provider.status == ProviderStatus.ACTIVE,
+                                                                                               Provider.verification_status == "VERIFIED"))).scalar_one()
+            if clinics and not verified:
+                out.append(AttentionItem(
+                    category=AttentionCategory.MT_NO_VERIFIED_CLINIC, priority=Priority.HIGH, score=70, title="No clinic is verified yet",
+                    reason=f"{clinics} clinics are listed, but only a verified clinic can be matched or referred to, so no patient can be referred until one is.",
+                    entity_type="mt_clinics", entity_id=str(tenant_id), link=_link_for("mt_clinics", tenant_id), age_days=None,
+                ))
+            open_tasks = (await session.execute(select(HandoffTask).where(HandoffTask.tenant_id == tenant_id, HandoffTask.status == TaskStatus.OPEN))).scalars().all()
+            if open_tasks:
+                oldest = min((t.created_at if t.created_at.tzinfo else t.created_at.replace(tzinfo=timezone.utc)) for t in open_tasks)
+                age_days = max((now - oldest).days, 0)
+                score = 45 + _age_bonus(age_days) + min(len(open_tasks), 10)
+                out.append(AttentionItem(
+                    category=AttentionCategory.MT_TASKS_WAITING, priority=_priority_for_score(score), score=score,
+                    title=f"{len(open_tasks)} patient task{'s' if len(open_tasks) != 1 else ''} waiting for a person",
+                    reason=f"The oldest has waited {age_days} day(s). Take one to own it.", entity_type="mt_tasks", entity_id=str(tenant_id), link=_link_for("mt_tasks", tenant_id), age_days=age_days,
+                ))
+            no_terms = (await session.execute(
+                select(Provider.name, func.count(ProviderReferral.id)).join(ProviderReferral, ProviderReferral.provider_id == Provider.id).where(
+                    Provider.tenant_id == tenant_id, ProviderReferral.tenant_id == tenant_id, ProviderReferral.sent_at.is_not(None),
+                    ~Provider.id.in_(select(ProviderTerms.provider_id).where(ProviderTerms.tenant_id == tenant_id, ProviderTerms.commission_basis.is_not(None)))).group_by(Provider.name)
+            )).all()
+            for name, n in no_terms:
+                out.append(AttentionItem(
+                    category=AttentionCategory.MT_REFERRAL_NO_TERMS, priority=Priority.HIGH, score=65, title=f"{name} has {n} referral{'s' if n != 1 else ''} but no commission terms",
+                    reason="A referral to a clinic with no agreed commission earns nothing. Enter the terms and the commission is created for these referrals.",
+                    entity_type="mt_clinics", entity_id=str(tenant_id), link=_link_for("mt_clinics", tenant_id), age_days=None,
+                ))
+        return out

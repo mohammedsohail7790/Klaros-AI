@@ -44,6 +44,17 @@ def _action_for_days_overdue(days_overdue: int) -> CollectionActionType:
     return chosen
 
 
+def reminder_body(customer_name: str | None, invoice: Invoice, action_type: CollectionActionType) -> str:
+    """A plain reminder in the invoice's own currency (never an assumed dollar sign), with the number, amount and due date, and what to do if it was already paid."""
+    first = action_type == CollectionActionType.FRIENDLY_REMINDER
+    opening = "A quick reminder that" if first else "Following our earlier reminder, we have not yet received payment for the invoice below. As a reminder,"
+    return (
+        f"Hello {customer_name or 'there'},\n\n{opening} invoice {invoice.invoice_number} for {invoice.currency} {invoice.amount_due:,.2f} was due on "
+        f"{invoice.due_date.isoformat()} and is still open.\n\nIf you have already paid it, thank you, and please reply with the payment date so we can match it. "
+        "If anything about the invoice is unclear, reply to this email and we will sort it out.\n"
+    )
+
+
 class CollectionService:
     def __init__(self, session_factory: async_sessionmaker, comms: CommunicationProvider | None = None) -> None:
         self._session_factory = session_factory
@@ -143,10 +154,7 @@ class CollectionService:
                         to=customer.email,
                         customer_id=customer.id,
                         subject=f"Payment reminder: Invoice {invoice.invoice_number}",
-                        body=(
-                            f"Invoice {invoice.invoice_number} for ${invoice.amount_due} is overdue "
-                            f"({action.action_type})."
-                        ),
+                        body=reminder_body(customer.name, invoice, action.action_type),
                         template=MessageTemplate.COLLECTION_REMINDER,
                     )
                     if result.blocked:

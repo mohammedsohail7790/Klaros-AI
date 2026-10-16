@@ -416,6 +416,9 @@ async def send_referral(session_factory, tenant_id: uuid.UUID, referral_id: uuid
         from app.services import mt_revenue  # local: mt_revenue imports this module
 
         await mt_revenue.on_referral_sent(session_factory, tenant_id, referral_id, actor_id)  # the PENDING commission from the clinic's terms; never raises
+        from app.services import mt_patient_updates
+
+        await mt_patient_updates.notify(session_factory, tenant_id, referral_id, "referral_sent", actor_id)  # the patient is told, once, if their contact consent allows; never raises
     return referral, newly_sent
 
 
@@ -437,7 +440,11 @@ async def record_clinic_response(session_factory, tenant_id: uuid.UUID, referral
             await mt_handoff.ensure_task(session, tenant_id, referral.lead_id, kind="consultation_needed", reason_code="clinic_accepted", dedupe_key=str(referral.id))
         await session.commit()
         await session.refresh(referral)
-        return referral
+    if accepted:
+        from app.services import mt_patient_updates
+
+        await mt_patient_updates.notify(session_factory, tenant_id, referral_id, "clinic_accepted", actor_id)
+    return referral
 
 
 async def record_outcome(session_factory, tenant_id: uuid.UUID, referral_id: uuid.UUID, actor_id: uuid.UUID, *, outcome: str, evidence: str) -> ProviderReferral:

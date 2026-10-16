@@ -194,6 +194,28 @@ GENERIC_CREW: tuple[CrewMember, ...] = (
 
 MEDICAL_TOURISM_CREW: tuple[CrewMember, ...] = (
     CrewMember(
+        key="overdue-detector",
+        name="Overdue Detector",
+        purpose="Every morning marks clinic invoices that are past their due date as overdue and opens the follow-up for each.",
+        instructions=_COMMON_RULES + " Call the detect_overdue_invoices tool once and report how many invoices became overdue.",
+        tools=("finance.detect_overdue_invoices",),
+        schedule_time="08:30",
+        goal="Mark invoices past their due date as overdue and open their follow-up.",
+        schedule_action=("finance.detect_overdue_invoices", {}),
+        max_tool_chain_depth=2,
+    ),
+    CrewMember(
+        key="collections-runner",
+        name="Collections Runner",
+        purpose="Every morning sends the next payment reminder on overdue clinic invoices. One reminder per stage, never repeated.",
+        instructions=_COMMON_RULES + " Call the execute_due_collection_actions tool once and report how many reminders went out. You cannot write off, refund or change an invoice.",
+        tools=("finance.execute_due_collection_actions",),
+        schedule_time="08:45",
+        goal="Send the next due payment reminder on overdue invoices.",
+        schedule_action=("finance.execute_due_collection_actions", {}),
+        max_tool_chain_depth=2,
+    ),
+    CrewMember(
         key="clinic-matcher",
         name="Clinic Matcher",
         purpose="For each qualified patient enquiry, finds verified clinics that offer the procedure and records the matches.",
