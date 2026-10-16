@@ -215,6 +215,11 @@ class OutboundService:
                     if result.blocked:
                         activity.status = ActivityStatus.BLOCKED_CONSENT
                         continue
+                    if not result.sent:
+                        # The provider could not deliver: record FAILED, never EXECUTED
+                        # (an undelivered message must not look sent).
+                        activity.status = ActivityStatus.FAILED
+                        continue
 
                 activity.status = ActivityStatus.EXECUTED
                 activity.executed_at = now
