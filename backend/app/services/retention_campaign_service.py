@@ -130,6 +130,11 @@ class RetentionCampaignService:
                     if result.blocked:
                         activity.status = RetentionActivityStatus.BLOCKED_CONSENT
                         continue
+                    if not result.sent:
+                        # The provider could not deliver: record FAILED, never EXECUTED
+                        # (an undelivered message must not look sent).
+                        activity.status = RetentionActivityStatus.FAILED
+                        continue
 
                 activity.status = RetentionActivityStatus.EXECUTED
                 activity.executed_at = now
