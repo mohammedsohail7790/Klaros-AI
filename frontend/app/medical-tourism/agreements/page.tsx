@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Handshake } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
-import { ApiError, ClinicAgreementRow, MedicalTourismProvider, OnboardingStage, getClinicAgreements } from "@/lib/api";
+import { ApiError, ClinicAgreementRow, ClinicScorecard, MedicalTourismProvider, OnboardingStage, getClinicAgreements } from "@/lib/api";
 import { ClinicCleanup } from "@/components/mt/ClinicCleanup";
 import { ClinicTerms } from "@/components/mt/ClinicTerms";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -27,6 +27,15 @@ const STAGE_LABEL: Record<OnboardingStage, string> = {
   needs_verification: "Needs verification",
   live: "Ready to refer",
 };
+
+function performance(c?: ClinicScorecard): string | null {
+  if (!c || c.sent === 0) return null;
+  const parts = [`${c.accepted} of ${c.sent} referral${c.sent === 1 ? "" : "s"} accepted`];
+  if (c.acceptance_rate !== null) parts.push(`${Math.round(c.acceptance_rate * 100)}% of answers were yes`);
+  if (c.avg_response_hours !== null) parts.push(`replies in about ${c.avg_response_hours} hour${c.avg_response_hours === 1 ? "" : "s"}`);
+  if (c.unanswered > 0) parts.push(`${c.unanswered} still waiting`);
+  return parts.join(" · ");
+}
 
 /** The commission side of Sales: which clinics have agreed to pay what. A clinic with no terms creates no commission, so it is listed plainly rather than hidden. */
 export default function ClinicAgreementsPage() {
@@ -82,6 +91,7 @@ export default function ClinicAgreementsPage() {
                   <div className="min-w-0">
                     <p className="text-[17px] font-semibold tracking-tight text-foreground">{r.name}</p>
                     <p className={`mt-0.5 text-[14px] ${r.terms.commission_basis ? "text-foreground" : "text-muted"}`}>{describe(r)}</p>
+                    {performance(r.scorecard) && <p className="mt-0.5 text-[13px] text-muted">{performance(r.scorecard)}</p>}
                     {r.stage && <p className="mt-0.5 text-[13px] text-muted"><span className="font-medium text-foreground">{STAGE_LABEL[r.stage]}.</span> {r.next_step}</p>}
                     <p className="mt-0.5 text-[13px] text-muted-foreground">
                       {r.terms.agreement_reference ? `Agreement: ${r.terms.agreement_reference} · ` : ""}{r.referrals_sent} referral{r.referrals_sent === 1 ? "" : "s"} sent

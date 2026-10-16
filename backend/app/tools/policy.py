@@ -339,6 +339,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "workforce.call_lead": ActionPolicy.APPROVAL_REQUIRED,
     # An acknowledgement e-mail reaches a real person (consent-guarded, once per lead); a business that wants instant replies sets it to AUTO in its own automation policy.
     "crm.acknowledge_enquiry": ActionPolicy.APPROVAL_REQUIRED,
+    "notifications.send_owner_digest": ActionPolicy.AUTO,  # reaches only the business's own owners, at most once a day
     "marketing.create_reactivation_campaign": ActionPolicy.AUTO,
     "marketing.identify_inactive_customers": ActionPolicy.AUTO,  # read-only candidate selection, no contact made
     "marketing.identify_unbooked_qualified_leads": ActionPolicy.AUTO,

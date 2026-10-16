@@ -610,6 +610,9 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     from app.tools.builtin.lead_ack_tools import AcknowledgeEnquiry
 
     registry.register(AcknowledgeEnquiry())
+    from app.tools.builtin.owner_digest_tools import SendOwnerDigest
+
+    registry.register(SendOwnerDigest())
     registry.register(AddLeadNote())
     registry.register(ListLeadNotes())
 

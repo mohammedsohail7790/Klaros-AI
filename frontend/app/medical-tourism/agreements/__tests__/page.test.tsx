@@ -44,6 +44,16 @@ describe("Clinic agreements", () => {
     expect(screen.queryByText(/Waiting for reply/)).not.toBeInTheDocument();
   });
 
+  it("shows how a clinic has performed once referrals were sent, and nothing before", async () => {
+    get.mockResolvedValue({ with_terms: 0, without_terms: 2, clinics: [
+      { ...row("Alpha", {}, 3), scorecard: { sent: 3, accepted: 2, declined: 0, unanswered: 1, treatments_completed: 1, acceptance_rate: 1, avg_response_hours: 5.5 } },
+      { ...row("Beta", {}), scorecard: { sent: 0, accepted: 0, declined: 0, unanswered: 0, treatments_completed: 0, acceptance_rate: null, avg_response_hours: null } },
+    ] });
+    render(<ClinicAgreementsPage />);
+    expect(await screen.findByText("2 of 3 referrals accepted · 100% of answers were yes · replies in about 5.5 hours · 1 still waiting")).toBeInTheDocument();
+    expect(screen.queryByText(/0 of 0/)).not.toBeInTheDocument();
+  });
+
   it("guides the owner when there are no clinics yet", async () => {
     get.mockResolvedValue({ with_terms: 0, without_terms: 0, clinics: [] });
     render(<ClinicAgreementsPage />);

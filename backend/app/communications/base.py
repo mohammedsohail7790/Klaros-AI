@@ -26,6 +26,7 @@ class MessageTemplate(StrEnum):
     REFERRAL_INVITATION = "referral_invitation"
     SERVICE_RECOVERY = "service_recovery"
     TEAM_INVITE = "team_invite"
+    OWNER_DIGEST = "owner_digest"  # a morning summary to the business's own owners; never to a patient
 
 
 class SendStatus(StrEnum):

@@ -32,6 +32,11 @@ def get_clinic_channel(session_factory: async_sessionmaker) -> CommunicationProv
     return _build_provider(session_factory)
 
 
+def get_internal_channel(session_factory: async_sessionmaker) -> CommunicationProvider:
+    """The raw provider, for messages addressed to the business's OWN team (an owner's morning digest). Never used for a patient or a clinic."""
+    return _build_provider(session_factory)
+
+
 def _build_provider(session_factory: async_sessionmaker) -> CommunicationProvider:
     settings = get_settings()
     internal_test = InternalTestCommunicationAdapter(session_factory)

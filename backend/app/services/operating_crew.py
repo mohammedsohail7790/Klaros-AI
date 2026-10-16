@@ -194,6 +194,17 @@ GENERIC_CREW: tuple[CrewMember, ...] = (
 
 MEDICAL_TOURISM_CREW: tuple[CrewMember, ...] = (
     CrewMember(
+        key="owner-digest",
+        name="Owner Digest",
+        purpose="Every morning emails the owners a short list of what needs them, so nothing waits unseen.",
+        instructions=_COMMON_RULES + " Call the send_owner_digest tool once and report whether it sent or why it did not. It reaches only the business's own owners.",
+        tools=("notifications.send_owner_digest",),
+        schedule_time="08:15",
+        goal="Email the owners today's list of what needs them.",
+        schedule_action=("notifications.send_owner_digest", {}),
+        max_tool_chain_depth=2,
+    ),
+    CrewMember(
         key="overdue-detector",
         name="Overdue Detector",
         purpose="Every morning marks clinic invoices that are past their due date as overdue and opens the follow-up for each.",

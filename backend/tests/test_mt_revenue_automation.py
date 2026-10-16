@@ -182,6 +182,7 @@ async def test_the_agreements_overview_lists_every_clinic_with_or_without_terms(
     assert (out["with_terms"], out["without_terms"]) == (1, 1)
     assert by["Alpha Clinic"]["referrals_sent"] == 1 and by["Alpha Clinic"]["terms"]["agreement_reference"] == "Folder 7" and by["Beta Clinic"]["terms"]["set"] is False
     assert by["Alpha Clinic"]["stage"] == "live" and by["Beta Clinic"]["stage"] == "needs_contact" and out["stages"]["live"] == 1 and out["stages"]["needs_contact"] == 1
+    assert by["Alpha Clinic"]["scorecard"]["sent"] == 1 and by["Alpha Clinic"]["scorecard"]["acceptance_rate"] is None and by["Beta Clinic"]["scorecard"]["sent"] == 0
     other, _ = await _gated(client, "Agree Other Co", "agreeother@example.com")
     assert (await client.get(f"{BASE}/agreements", headers=_h(other))).json()["clinics"] == []
 
@@ -282,3 +283,16 @@ async def test_a_suspended_clinic_is_not_listed_in_the_agreements(client, halla)
     back = await client.post(f"{BASE}/clinics/cleanup/restore", json={"provider_ids": [junk["id"], keep["id"]]}, headers=_h(token))
     assert back.status_code == 200 and back.json() == {"restored": 1}  # the active one is untouched
     assert len((await client.get(f"{BASE}/agreements", headers=_h(token))).json()["clinics"]) == 3
+
+
+def test_a_clinic_scorecard_measures_only_what_has_happened() -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from app.services.mt_revenue import scorecard
+
+    t0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    assert scorecard([]) == {"sent": 0, "accepted": 0, "declined": 0, "unanswered": 0, "treatments_completed": 0, "acceptance_rate": None, "avg_response_hours": None}
+    rows = [("ACCEPTED", t0, t0 + timedelta(hours=4), None), ("OUTCOME_REPORTED", t0, t0 + timedelta(hours=8), "TREATMENT_COMPLETED"), ("DECLINED", t0, t0 + timedelta(hours=6), None),
+            ("SENT", t0, None, None), ("DRAFT", None, None, None)]
+    card = scorecard(rows)
+    assert card == {"sent": 4, "accepted": 2, "declined": 1, "unanswered": 1, "treatments_completed": 1, "acceptance_rate": 0.67, "avg_response_hours": 6.0}

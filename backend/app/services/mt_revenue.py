@@ -263,6 +263,25 @@ _STAGE_STEP = {
 _STAGE_ORDER = tuple(_STAGE_STEP)
 
 
+def _aware(dt):
+    """SQLite returns naive datetimes; treat them as UTC so durations compare."""
+    from datetime import timezone
+
+    return dt if dt is None or dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def scorecard(rows: list[tuple[Any, ...]]) -> dict[str, Any]:
+    """How a clinic has performed on the referrals sent to it. `rows` are (status, sent_at, clinic_response_at, outcome). Rates are None until there is something to measure, never 0 by default."""
+    sent = [r for r in rows if r[1] is not None]
+    accepted = sum(1 for r in sent if r[0] in ("ACCEPTED", "OUTCOME_REPORTED"))
+    declined = sum(1 for r in sent if r[0] == "DECLINED")
+    answered = accepted + declined
+    hours = [(r[2] - r[1]).total_seconds() / 3600 for r in sent if r[2] is not None and r[1] is not None and r[2] >= r[1]]
+    completed = sum(1 for r in sent if r[3] == "TREATMENT_COMPLETED")
+    return {"sent": len(sent), "accepted": accepted, "declined": declined, "unanswered": len(sent) - answered, "treatments_completed": completed,
+            "acceptance_rate": round(accepted / answered, 2) if answered else None, "avg_response_hours": round(sum(hours) / len(hours), 1) if hours else None}
+
+
 def onboarding_stage(*, has_email: bool, invited: bool, replied: bool, has_terms: bool, has_agreement: bool, verified: bool) -> str:
     """Where a clinic is on the way to being usable: the first thing still missing. A clinic whose terms were agreed by phone skips the invitation steps."""
     if not has_terms:
@@ -294,6 +313,10 @@ async def agreements_overview(session_factory, tenant_id: uuid.UUID) -> dict[str
         terms = {t.provider_id: t for t in (await session.execute(select(ProviderTerms).where(ProviderTerms.tenant_id == tenant_id))).scalars()}
         sent = dict((await session.execute(select(ProviderReferral.provider_id, func.count(ProviderReferral.id)).where(ProviderReferral.tenant_id == tenant_id,
                     ProviderReferral.sent_at.is_not(None)).group_by(ProviderReferral.provider_id))).all())
+        by_provider: dict[uuid.UUID, list[tuple[Any, ...]]] = {}
+        for pid, status, sent_at, responded_at, outcome in (await session.execute(select(ProviderReferral.provider_id, ProviderReferral.status, ProviderReferral.sent_at,
+                                                                                       ProviderReferral.clinic_response_at, ProviderReferral.outcome).where(ProviderReferral.tenant_id == tenant_id))).all():
+            by_provider.setdefault(pid, []).append((status, _aware(sent_at), _aware(responded_at), outcome))
         invited = {i for (i,) in (await session.execute(select(AuditLog.entity_id).where(AuditLog.tenant_id == tenant_id, AuditLog.action == "mt.provider.invited").distinct())).all()}
         replied = {i for (i,) in (await session.execute(select(InboundEmail.entity_id).where(InboundEmail.tenant_id == tenant_id, InboundEmail.entity_type == "provider").distinct())).all()}
     rows = []
@@ -305,6 +328,6 @@ async def agreements_overview(session_factory, tenant_id: uuid.UUID) -> dict[str
                                  has_agreement=bool(td.get("agreement_reference")), verified=p.verification_status == "VERIFIED")
         stage_counts[stage] += 1
         rows.append({"provider_id": str(p.id), "name": p.name, "country": p.country, "verification_status": p.verification_status, "referrals_sent": int(sent.get(p.id, 0)), "terms": td,
-                     "stage": stage, "next_step": _STAGE_STEP[stage]})
+                     "stage": stage, "next_step": _STAGE_STEP[stage], "scorecard": scorecard(by_provider.get(p.id, []))})
     with_terms = sum(1 for r in rows if r["terms"]["set"] and r["terms"]["commission_basis"])
     return {"clinics": rows, "with_terms": with_terms, "without_terms": len(rows) - with_terms, "stages": stage_counts}

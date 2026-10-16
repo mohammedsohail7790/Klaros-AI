@@ -6151,8 +6151,9 @@ export function saveClinicTerms(token: string, providerId: string, terms: Partia
   return request<{ terms: ClinicTerms }>(`${MTR}/providers/${providerId}/terms`, { method: "PUT", headers: authHeaders(token), body: JSON.stringify(terms) });
 }
 
+export interface ClinicScorecard { sent: number; accepted: number; declined: number; unanswered: number; treatments_completed: number; acceptance_rate: number | null; avg_response_hours: number | null }
 export type OnboardingStage = "needs_contact" | "ready_to_invite" | "awaiting_reply" | "needs_terms" | "needs_agreement" | "needs_verification" | "live";
-export interface ClinicAgreementRow { provider_id: string; name: string; country: string; verification_status: string; referrals_sent: number; terms: ClinicTerms; stage?: OnboardingStage; next_step?: string }
+export interface ClinicAgreementRow { provider_id: string; name: string; country: string; verification_status: string; referrals_sent: number; terms: ClinicTerms; stage?: OnboardingStage; next_step?: string; scorecard?: ClinicScorecard }
 export function getClinicAgreements(token: string) {
   return request<{ clinics: ClinicAgreementRow[]; with_terms: number; without_terms: number; stages?: Record<OnboardingStage, number> }>(`${MTR}/agreements`, { headers: authHeaders(token) });
 }
