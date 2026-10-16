@@ -211,11 +211,31 @@ def _drop_row(db_path: Path) -> tuple:
         conn.close()
 
 
-def test_the_migration_chain_has_one_head_and_0080_is_it() -> None:
+def test_the_migration_chain_has_one_head_and_0081_is_it() -> None:
     result = subprocess.run([sys.executable, "-m", "alembic", "heads"], cwd=BACKEND_ROOT, capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, result.stderr
     heads = [line for line in result.stdout.splitlines() if "(head)" in line]
-    assert len(heads) == 1 and heads[0].startswith("0080_dropshipping_store"), result.stdout
+    assert len(heads) == 1 and heads[0].startswith("0081_dropshipping_order_notes"), result.stdout
+
+
+def _columns(db_path: Path, table: str) -> set[str]:
+    conn = sqlite3.connect(db_path)
+    try:
+        return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    finally:
+        conn.close()
+
+
+def test_0081_adds_the_order_columns_and_downgrade_removes_only_them(tmp_path) -> None:
+    db = tmp_path / "ds_0081.db"
+    assert _alembic(db, "upgrade", "head").returncode == 0
+    order_cols = {"payment_reference", "payment_source", "status_note", "cancelled_at", "delivered_at", "personal_data_erased_at"}
+    assert order_cols <= _columns(db, "dropshipping_orders") and "note" in _columns(db, "dropshipping_shipments")
+    down = _alembic(db, "downgrade", "0080_dropshipping_store")
+    assert down.returncode == 0, f"{down.stdout}\n{down.stderr}"
+    assert not (order_cols & _columns(db, "dropshipping_orders")) and "note" not in _columns(db, "dropshipping_shipments")
+    assert {"order_number", "public_token", "ship_to", "total"} <= _columns(db, "dropshipping_orders")  # the 0080 columns are untouched
+    assert _alembic(db, "upgrade", "head").returncode == 0  # repeatable after a rollback
 
 
 def test_upgrade_creates_the_tables_and_promotes_the_row_and_downgrade_restores_it(tmp_path) -> None:

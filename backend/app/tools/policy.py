@@ -436,6 +436,9 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "dropshipping.set_availability": ActionPolicy.AUTO,
     "dropshipping.publish_product": ActionPolicy.APPROVAL_REQUIRED,
     "dropshipping.import_catalog": ActionPolicy.APPROVAL_REQUIRED,
+    # Orders (branch 3): ONE read-only tool that returns no address, email or phone. Creating orders, payments, supplier orders and tracking are staff actions
+    # through the API, not agent tools.
+    "dropshipping.search_orders": ActionPolicy.AUTO,
 }
 
 

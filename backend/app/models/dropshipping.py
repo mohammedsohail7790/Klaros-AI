@@ -170,6 +170,13 @@ class Order(TenantScopedMixin, Base):
     idempotency_key: Mapped[str] = mapped_column(String(120), nullable=False)
     placed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Added by 0081 (branch 3): how it was paid (the reference makes recording a payment idempotent), and the lifecycle facts.
+    payment_reference: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    payment_source: Mapped[str | None] = mapped_column(String(12), nullable=True)  # STRIPE | MANUAL
+    status_note: Mapped[str | None] = mapped_column(Text, nullable=True)  # e.g. why it was cancelled, or that a refund is needed
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    personal_data_erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class OrderLine(TenantScopedMixin, Base):
@@ -211,3 +218,4 @@ class Shipment(TenantScopedMixin, Base):
     shipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     entered_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)  # added by 0081: what went wrong, for an EXCEPTION

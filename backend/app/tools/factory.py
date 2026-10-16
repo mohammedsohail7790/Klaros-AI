@@ -809,4 +809,9 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(DropshippingPublishProduct(dropshipping_catalog_service))
     registry.register(DropshippingImportCatalog(dropshipping_catalog_service))
 
+    from app.services.dropshipping_order_service import DropshippingOrderService
+    from app.tools.builtin.dropshipping_order_tools import SearchOrders as DropshippingSearchOrders
+
+    registry.register(DropshippingSearchOrders(DropshippingOrderService(session_factory)))
+
     return registry
