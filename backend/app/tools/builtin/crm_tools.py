@@ -249,6 +249,14 @@ class UpdateLead(Tool):
                     if not state.allows(consent_gate.STORE_MEDICAL):
                         raise consent_gate.ConsentRequiredError([consent_gate.STORE_MEDICAL])
                 lead.description = input.description
+            if input.status in (LeadStatus.LOST, LeadStatus.UNQUALIFIED):
+                # The enquiry is closed: its coordinator tasks (if the business has any) can no longer be acted on, so they stop showing as open work.
+                from app.models.medical_tourism_referral import TaskStatus
+                from app.services import mt_handoff
+
+                await mt_handoff.close_open_case_tasks(
+                    session, context.tenant_id, lead.id, mt_handoff.KINDS, f"The enquiry was marked {str(input.status).lower()}", final_status=TaskStatus.CANCELLED
+                )
             await session.commit()
             await session.refresh(lead)
             out = LeadOutput(lead=_lead_to_dict(lead))

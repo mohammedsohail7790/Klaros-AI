@@ -125,12 +125,14 @@ def task_to_dict(t: HandoffTask) -> dict[str, Any]:
     }
 
 
-async def close_open_case_tasks(session, tenant_id: uuid.UUID, lead_id: uuid.UUID, kinds: tuple[str, ...], reason: str) -> int:
-    """The work a task asked for has happened (for example the enquiry now has a clinic referral): close the matching OPEN or ACCEPTED tasks. Runs inside the caller's session."""
+async def close_open_case_tasks(session, tenant_id: uuid.UUID, lead_id: uuid.UUID, kinds: tuple[str, ...], reason: str, *, final_status: TaskStatus = TaskStatus.DONE) -> int:
+    """The work a task asked for has happened (for example the enquiry now has a clinic referral): close the matching OPEN or ACCEPTED tasks. Runs inside the caller's session.
+
+    `final_status` is CANCELLED when the work will never happen (the lead was marked lost or not a fit)."""
     tasks = (await session.execute(select(HandoffTask).where(HandoffTask.tenant_id == tenant_id, HandoffTask.lead_id == lead_id, HandoffTask.kind.in_(kinds),
                                                              HandoffTask.status.in_((TaskStatus.OPEN, TaskStatus.ACCEPTED))))).scalars().all()
     for t in tasks:
-        t.status, t.completed_at = TaskStatus.DONE, datetime.now(timezone.utc)
+        t.status, t.completed_at = final_status, datetime.now(timezone.utc)
         t.note = (t.note or reason)[:1000]
-        _audit(session, tenant_id, None, "mt.task.completed", t, {"auto": True, "reason": reason})
+        _audit(session, tenant_id, None, "mt.task.cancelled" if final_status == TaskStatus.CANCELLED else "mt.task.completed", t, {"auto": True, "reason": reason})
     return len(tasks)

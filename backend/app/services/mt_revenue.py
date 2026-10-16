@@ -251,19 +251,60 @@ async def on_outcome_recorded(session_factory, tenant_id: uuid.UUID, referral_id
         return result
 
 
+_STAGE_STEP = {
+    "needs_contact": "Add the clinic's own international-patients email.",
+    "ready_to_invite": "Send the introduction email (it needs your approval).",
+    "awaiting_reply": "Invitation sent. Waiting for the clinic's reply.",
+    "needs_terms": "Agree the commission and enter it.",
+    "needs_agreement": "Record where the signed agreement is kept.",
+    "needs_verification": "Check the licence or accreditation and mark the clinic verified.",
+    "live": "Ready: this clinic can be matched and referred to.",
+}
+_STAGE_ORDER = tuple(_STAGE_STEP)
+
+
+def onboarding_stage(*, has_email: bool, invited: bool, replied: bool, has_terms: bool, has_agreement: bool, verified: bool) -> str:
+    """Where a clinic is on the way to being usable: the first thing still missing. A clinic whose terms were agreed by phone skips the invitation steps."""
+    if not has_terms:
+        if not has_email:
+            return "needs_contact"
+        if not invited and not replied:
+            return "ready_to_invite"
+        if not replied:
+            return "awaiting_reply"
+        return "needs_terms"
+    if not has_agreement:
+        return "needs_agreement"
+    if not verified:
+        return "needs_verification"
+    return "live"
+
+
 async def agreements_overview(session_factory, tenant_id: uuid.UUID) -> dict[str, Any]:
-    """Every clinic with what it has agreed to pay and how much work has gone to it: the commission side of Sales. A clinic with no terms is listed as such, never hidden."""
+    """Every active clinic with what it has agreed to pay, how much work has gone to it and what the next onboarding step is: the commission side of Sales. A clinic with no terms is listed as such, never hidden."""
     from sqlalchemy import func
+
+    from app.models.audit_log import AuditLog
+    from app.models.inbound_email import InboundEmail
+    from app.models.medical_tourism import ProviderStatus
 
     async with session_factory() as session:
         await set_tenant_context(session, tenant_id)
-        providers = (await session.execute(select(Provider).where(Provider.tenant_id == tenant_id).order_by(Provider.name))).scalars().all()
+        providers = (await session.execute(select(Provider).where(Provider.tenant_id == tenant_id, Provider.status == ProviderStatus.ACTIVE).order_by(Provider.name))).scalars().all()
         terms = {t.provider_id: t for t in (await session.execute(select(ProviderTerms).where(ProviderTerms.tenant_id == tenant_id))).scalars()}
         sent = dict((await session.execute(select(ProviderReferral.provider_id, func.count(ProviderReferral.id)).where(ProviderReferral.tenant_id == tenant_id,
                     ProviderReferral.sent_at.is_not(None)).group_by(ProviderReferral.provider_id))).all())
+        invited = {i for (i,) in (await session.execute(select(AuditLog.entity_id).where(AuditLog.tenant_id == tenant_id, AuditLog.action == "mt.provider.invited").distinct())).all()}
+        replied = {i for (i,) in (await session.execute(select(InboundEmail.entity_id).where(InboundEmail.tenant_id == tenant_id, InboundEmail.entity_type == "provider").distinct())).all()}
     rows = []
+    stage_counts = {k: 0 for k in _STAGE_ORDER}
     for p in providers:
         t = terms.get(p.id)
-        rows.append({"provider_id": str(p.id), "name": p.name, "country": p.country, "verification_status": p.verification_status, "referrals_sent": int(sent.get(p.id, 0)), "terms": terms_to_dict(t)})
+        td = terms_to_dict(t)
+        stage = onboarding_stage(has_email=bool(p.contact_email), invited=p.id in invited, replied=p.id in replied, has_terms=bool(td["set"] and td["commission_basis"]),
+                                 has_agreement=bool(td.get("agreement_reference")), verified=p.verification_status == "VERIFIED")
+        stage_counts[stage] += 1
+        rows.append({"provider_id": str(p.id), "name": p.name, "country": p.country, "verification_status": p.verification_status, "referrals_sent": int(sent.get(p.id, 0)), "terms": td,
+                     "stage": stage, "next_step": _STAGE_STEP[stage]})
     with_terms = sum(1 for r in rows if r["terms"]["set"] and r["terms"]["commission_basis"])
-    return {"clinics": rows, "with_terms": with_terms, "without_terms": len(rows) - with_terms}
+    return {"clinics": rows, "with_terms": with_terms, "without_terms": len(rows) - with_terms, "stages": stage_counts}

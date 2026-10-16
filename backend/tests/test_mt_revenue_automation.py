@@ -181,6 +181,7 @@ async def test_the_agreements_overview_lists_every_clinic_with_or_without_terms(
     by = {c["name"]: c for c in out["clinics"]}
     assert (out["with_terms"], out["without_terms"]) == (1, 1)
     assert by["Alpha Clinic"]["referrals_sent"] == 1 and by["Alpha Clinic"]["terms"]["agreement_reference"] == "Folder 7" and by["Beta Clinic"]["terms"]["set"] is False
+    assert by["Alpha Clinic"]["stage"] == "live" and by["Beta Clinic"]["stage"] == "needs_contact" and out["stages"]["live"] == 1 and out["stages"]["needs_contact"] == 1
     other, _ = await _gated(client, "Agree Other Co", "agreeother@example.com")
     assert (await client.get(f"{BASE}/agreements", headers=_h(other))).json()["clinics"] == []
 
@@ -254,3 +255,30 @@ async def test_another_business_cannot_change_a_clinics_contact_details(client, 
     p = await _provider(client, token)
     assert (await client.patch(f"{BASE}/providers/{p['id']}/contact", json={"contact_email": "x@y.zz"}, headers=_h(other))).status_code == 404
     assert (await client.get(f"{BASE}/providers/{p['id']}", headers=_h(token))).json()["provider"]["contact_email"] in (None, "")
+
+
+def test_onboarding_stage_is_the_first_thing_still_missing() -> None:
+    from app.services.mt_revenue import onboarding_stage as st
+
+    base = dict(has_email=False, invited=False, replied=False, has_terms=False, has_agreement=False, verified=False)
+    assert st(**base) == "needs_contact"
+    assert st(**{**base, "has_email": True}) == "ready_to_invite"
+    assert st(**{**base, "has_email": True, "invited": True}) == "awaiting_reply"
+    assert st(**{**base, "has_email": True, "invited": True, "replied": True}) == "needs_terms"
+    assert st(**{**base, "has_terms": True}) == "needs_agreement"  # terms agreed by phone: no invitation needed
+    assert st(**{**base, "has_terms": True, "has_agreement": True}) == "needs_verification"
+    assert st(**{**base, "has_terms": True, "has_agreement": True, "verified": True}) == "live"
+
+
+async def test_a_suspended_clinic_is_not_listed_in_the_agreements(client, halla) -> None:  # noqa: F811
+    token, _ = await _gated(client, "Agree Hide Co", "agreehide@example.com")
+    keep = await _provider(client, token, name="Gamma Clinic")
+    gone = await _provider(client, token, name="Delta Clinic")
+    junk = await _provider(client, token, name="TEST Clinic (delete me)")
+    r = await client.post(f"{BASE}/clinics/cleanup/apply", json={"provider_ids": [junk["id"]]}, headers=_h(token))
+    assert r.status_code == 200, r.text
+    names = sorted(c["name"] for c in (await client.get(f"{BASE}/agreements", headers=_h(token))).json()["clinics"])
+    assert names == ["Delta Clinic", "Gamma Clinic"] and keep["name"] in names and gone["name"] in names
+    back = await client.post(f"{BASE}/clinics/cleanup/restore", json={"provider_ids": [junk["id"], keep["id"]]}, headers=_h(token))
+    assert back.status_code == 200 and back.json() == {"restored": 1}  # the active one is untouched
+    assert len((await client.get(f"{BASE}/agreements", headers=_h(token))).json()["clinics"]) == 3

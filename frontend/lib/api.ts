@@ -6151,9 +6151,10 @@ export function saveClinicTerms(token: string, providerId: string, terms: Partia
   return request<{ terms: ClinicTerms }>(`${MTR}/providers/${providerId}/terms`, { method: "PUT", headers: authHeaders(token), body: JSON.stringify(terms) });
 }
 
-export interface ClinicAgreementRow { provider_id: string; name: string; country: string; verification_status: string; referrals_sent: number; terms: ClinicTerms }
+export type OnboardingStage = "needs_contact" | "ready_to_invite" | "awaiting_reply" | "needs_terms" | "needs_agreement" | "needs_verification" | "live";
+export interface ClinicAgreementRow { provider_id: string; name: string; country: string; verification_status: string; referrals_sent: number; terms: ClinicTerms; stage?: OnboardingStage; next_step?: string }
 export function getClinicAgreements(token: string) {
-  return request<{ clinics: ClinicAgreementRow[]; with_terms: number; without_terms: number }>(`${MTR}/agreements`, { headers: authHeaders(token) });
+  return request<{ clinics: ClinicAgreementRow[]; with_terms: number; without_terms: number; stages?: Record<OnboardingStage, number> }>(`${MTR}/agreements`, { headers: authHeaders(token) });
 }
 
 export function getBusinessName(token: string) {
@@ -6168,6 +6169,15 @@ export interface ClinicContact { contact_email?: string; contact_phone?: string;
 export function updateClinicContact(token: string, providerId: string, contact: ClinicContact) {
   return request<{ provider: { id: string; name: string; contact_email: string | null; contact_phone: string | null; city: string | null; address: string | null } }>(
     `${MTR}/providers/${providerId}/contact`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify(contact) });
+}
+
+export interface CleanupClinic { id: string; name: string; country: string; city: string | null; verified: boolean; has_terms: boolean; has_email: boolean; live_referrals: number }
+export interface ClinicCleanupPreview { groups: { keep: CleanupClinic; redundant: CleanupClinic[] }[]; junk: CleanupClinic[]; suggested_ids: string[]; active_clinics: number }
+export function getClinicCleanup(token: string) {
+  return request<ClinicCleanupPreview>(`${MTR}/clinics/cleanup`, { headers: authHeaders(token) });
+}
+export function applyClinicCleanup(token: string, providerIds: string[]) {
+  return request<{ suspended: number }>(`${MTR}/clinics/cleanup/apply`, { method: "POST", headers: authHeaders(token), body: JSON.stringify({ provider_ids: providerIds }) });
 }
 
 export interface InboxReply { id: string; entity_type: "lead" | "provider"; entity_id: string; about: string | null; from_address: string; from_name: string | null; subject: string | null; body_text: string | null; body_stored: boolean; sender_matches: boolean; attachment_count: number; received_at: string }

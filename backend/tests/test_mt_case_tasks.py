@@ -76,3 +76,20 @@ async def test_a_clinic_declining_creates_no_consultation_task(client, event_bus
     await _send(client, token, ref)
     await client.post(f"{BASE}/referrals/{ref}/clinic-response", json={"accepted": False}, headers=_h(token))
     assert not [t for t in await _tasks(tid) if t.kind == "consultation_needed"]
+
+
+async def test_marking_an_enquiry_lost_cancels_its_open_tasks_but_not_other_leads(client, event_bus, halla) -> None:  # noqa: F811
+    token, tid = await _gated(client, "Lost Tasks Co", "losttasks@example.com")
+    register_mt_task_handlers(event_bus, async_session_maker)
+    await _enable_vertical(tid)
+    await event_bus.process_pending(EventType.LEAD_CREATED)
+    keep = await _patient(client, token)
+    drop = await _patient(client, token)
+    await event_bus.process_pending(EventType.LEAD_CREATED)
+    assert [t for t in await _tasks(tid) if str(t.lead_id) == drop and t.status == "OPEN"]
+    resp = await client.patch(f"/api/v1/leads/{drop}", json={"status": "LOST"}, headers=_h(token))
+    assert resp.status_code == 200, resp.text
+    dropped = [t for t in await _tasks(tid) if str(t.lead_id) == drop]
+    assert dropped and all(t.status == "CANCELLED" for t in dropped)
+    kept = [t for t in await _tasks(tid) if str(t.lead_id) == keep]
+    assert kept and all(t.status == "OPEN" for t in kept)

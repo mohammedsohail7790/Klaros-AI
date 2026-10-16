@@ -19,7 +19,7 @@ from app.db.session import async_session_maker, set_tenant_context
 from app.models.medical_tourism import Provider
 from app.models.medical_tourism_referral import ProviderReferral, ReferralApproval, ReferralDelivery
 from app.models.rbac import Permission, role_has_permission
-from app.services import mt_clinic_sourcing, mt_commission, mt_handoff, mt_pipeline, mt_referrals, mt_revenue
+from app.services import mt_clinic_cleanup, mt_clinic_sourcing, mt_commission, mt_handoff, mt_pipeline, mt_referrals, mt_revenue
 from app.services.mt_referrals import ReferralError
 
 router = APIRouter(prefix="/medical-tourism", tags=["medical-tourism-referrals"])
@@ -358,3 +358,40 @@ async def cancel_task(task_id: uuid.UUID, body: dict | None = None, u: CurrentUs
         return {"task": mt_handoff.task_to_dict(t)}
     except mt_handoff.TaskError as exc:
         raise _err(exc) from exc
+
+
+@router.get("/clinics/cleanup")
+async def clinic_cleanup_preview(u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Duplicate and junk clinic entries, with the one that would be kept. Nothing changes until `apply`."""
+    _manage(u)
+    async with async_session_maker() as session:
+        await set_tenant_context(session, u.tenant_id)
+        return await mt_clinic_cleanup.find(session, u.tenant_id)
+
+
+@router.post("/clinics/cleanup/apply")
+async def clinic_cleanup_apply(body: dict, u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Suspend (INACTIVE, reversible) the chosen redundant entries. Only entries the preview currently suggests, with no live referral, are accepted."""
+    _manage(u)
+    try:
+        ids = [uuid.UUID(str(i)) for i in (body.get("provider_ids") or [])]
+    except ValueError:
+        raise HTTPException(status_code=422, detail={"error": "invalid_provider_ids"}) from None
+    try:
+        return await mt_clinic_cleanup.apply(async_session_maker, u.tenant_id, u.id, ids)
+    except mt_clinic_cleanup.CleanupError as exc:
+        raise HTTPException(status_code=exc.status, detail={"error": exc.code}) from exc
+
+
+@router.post("/clinics/cleanup/restore")
+async def clinic_cleanup_restore(body: dict, u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Turn suspended clinic entries back on."""
+    _manage(u)
+    try:
+        ids = [uuid.UUID(str(i)) for i in (body.get("provider_ids") or [])]
+    except ValueError:
+        raise HTTPException(status_code=422, detail={"error": "invalid_provider_ids"}) from None
+    try:
+        return await mt_clinic_cleanup.restore(async_session_maker, u.tenant_id, u.id, ids)
+    except mt_clinic_cleanup.CleanupError as exc:
+        raise HTTPException(status_code=exc.status, detail={"error": exc.code}) from exc
