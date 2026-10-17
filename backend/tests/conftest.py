@@ -132,3 +132,15 @@ def _restore_tool_policies():
     yield
     DEFAULT_TOOL_POLICIES.clear()
     DEFAULT_TOOL_POLICIES.update(snapshot)
+
+
+@pytest.fixture
+def discard_foreign_loop_pool():
+    """For tests that start the app's lifespan with starlette's sync `TestClient`.
+
+    `TestClient` runs the lifespan (and anything it opens against the shared engine, e.g. the event worker) on its own portal loop. On real
+    PostgreSQL that leaves asyncpg connections in the module-level pool that are bound to a loop that is about to be closed; the next
+    session-loop test then checks one out and fails with "attached to a different loop" / "Event loop is closed". Discarding the pool WITHOUT
+    closing it (closing would need the dead loop) makes the next test open fresh connections. A no-op on SQLite."""
+    yield
+    engine.sync_engine.dispose(close=False)

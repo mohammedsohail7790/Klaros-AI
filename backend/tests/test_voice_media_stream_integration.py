@@ -17,9 +17,12 @@ and never crashes or hangs on it.
 
 import json
 
+import pytest
 from starlette.testclient import TestClient
 
 from app.main import app
+
+pytestmark = pytest.mark.usefixtures("discard_foreign_loop_pool")
 
 
 def test_media_stream_accepts_connection_and_handles_full_frame_sequence() -> None:
