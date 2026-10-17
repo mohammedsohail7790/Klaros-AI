@@ -1,5 +1,5 @@
 import {
-  Home, Users, Wrench, DollarSign, Megaphone, Bot, Globe, Hammer, Building2, Settings2, FileText,
+  Home, Users, Wrench, DollarSign, Megaphone, Bot, Globe, Hammer, Building2, Settings2, FileText, ShoppingBag,
 } from "lucide-react";
 
 /** `module` names a business module (vertical extension) that must be enabled for the tenant to see this tab; `hideWithModule` hides a generic tab a module replaces (a commission-only business has no patient quotes). No `module` means every tenant sees it. */
@@ -7,6 +7,7 @@ export type AreaTab = { href: string; label: string; module?: string; hideWithMo
 export type NavArea = { key: string; label: string; icon: any; tabs: AreaTab[] };
 
 const MT = "medical_tourism";
+const DS = "dropshipping";
 
 /**
  * The product's navigation, the same for every business: a handful of areas, each with tabs. Every page keeps its own URL; an area only groups them.
@@ -17,6 +18,13 @@ const MT = "medical_tourism";
  */
 export const AREAS: NavArea[] = [
   { key: "home", label: "Home", icon: Home, tabs: [{ href: "/business/home", label: "Home" }, { href: "/medical-tourism/overview", label: "Today", module: MT }] },
+  {
+    key: "store", label: "Store", icon: ShoppingBag,
+    tabs: [
+      { href: "/dropshipping", label: "Today", module: DS }, { href: "/dropshipping/orders", label: "Orders", module: DS }, { href: "/dropshipping/fulfilment", label: "Fulfilment", module: DS },
+      { href: "/dropshipping/catalog", label: "Catalog", module: DS }, { href: "/dropshipping/store", label: "Store settings", module: DS },
+    ],
+  },
   {
     key: "crm", label: "CRM", icon: Users,
     tabs: [
