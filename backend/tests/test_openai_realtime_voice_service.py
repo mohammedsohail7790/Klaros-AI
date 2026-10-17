@@ -26,7 +26,7 @@ from app.services.openai_realtime_voice_service import (
     build_voice_tool_schemas,
 )
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("discard_foreign_loop_pool")]
 
 
 @pytest.fixture(autouse=True)
