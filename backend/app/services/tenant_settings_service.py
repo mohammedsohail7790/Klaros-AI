@@ -22,10 +22,12 @@ from app.models.tenant_settings import TenantSetting
 
 logger = structlog.get_logger(__name__)
 
-CREW, AI_PROCESSING = "crew", "ai_processing"
+CREW, AI_PROCESSING, DROPSHIPPING_STORE = "crew", "ai_processing", "dropshipping_store"
 DEFAULTS: dict[str, dict[str, Any]] = {
     CREW: {"auto_provision": True, "disabled_members": []},
     AI_PROCESSING: {"external_providers": []},
+    # closed until the owner has set a shipping rule and acknowledged that sales tax is not collected (see dropshipping_store_service)
+    DROPSHIPPING_STORE: {"open": False, "shipping_flat_fee": None, "free_shipping_over": None, "sales_tax_acknowledged": False},
 }
 
 

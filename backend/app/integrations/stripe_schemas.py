@@ -40,6 +40,8 @@ class StripeMetadata(BaseModel):
     # in practice, never both set on a real object this app created.
     purpose: str | None = None
     quote_id: str | None = None
+    # Dropshipping storefront: stamped with purpose "dropshipping_order" (see app/services/dropshipping_checkout_service.py)
+    order_id: str | None = None
 
 
 class StripeLastPaymentError(BaseModel):
@@ -61,6 +63,7 @@ class StripePaymentIntentPayload(BaseModel):
     id: str
     amount: int | None = None
     amount_received: int | None = None
+    currency: str | None = None
     metadata: StripeMetadata = Field(default_factory=StripeMetadata)
     last_payment_error: StripeLastPaymentError | None = None
 

@@ -46,6 +46,7 @@ from app.api.v1 import (
     medical_tourism,
     dropshipping,
     dropshipping_orders,
+    dropshipping_store_settings,
     operating_crew,
     tenant_modules,
     inbound_email,
@@ -68,6 +69,7 @@ from app.api.v1 import (
     public_invites,
     public_leads,
     public_quotes,
+    public_store,
     builder,
     public_websites,
     quickbooks_oauth,
@@ -188,6 +190,8 @@ api_router.include_router(medical_tourism.router)
 api_router.include_router(mt_referrals.router)
 api_router.include_router(dropshipping.router)
 api_router.include_router(dropshipping_orders.router)
+api_router.include_router(dropshipping_store_settings.router)
+api_router.include_router(public_store.router)
 api_router.include_router(business_setup.router)
 api_router.include_router(websites.router)
 api_router.include_router(builder.router)

@@ -113,6 +113,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_PUBLIC_QUOTE_PER_MINUTE: int = 30
     RATE_LIMIT_PUBLIC_CONTRACT_PER_MINUTE: int = 30
     RATE_LIMIT_PUBLIC_INVITE_PER_MINUTE: int = 20
+    # The dropshipping storefront (one business): browsing, order-status lookups, and the much stricter checkout/pay-again routes.
+    RATE_LIMIT_PUBLIC_STORE_BROWSE_PER_MINUTE: int = 60
+    RATE_LIMIT_PUBLIC_STORE_STATUS_PER_MINUTE: int = 30
+    RATE_LIMIT_PUBLIC_STORE_CHECKOUT_PER_MINUTE: int = 10
     RATE_LIMIT_AUTH_PER_MINUTE: int = 10
     RATE_LIMIT_CONTACT_PER_MINUTE: int = 3
     RATE_LIMIT_WEBHOOK_PER_MINUTE: int = 120
@@ -137,6 +141,11 @@ class Settings(BaseSettings):
     # CORS_ORIGINS (which is about which origins may call the API, not
     # where to send a browser redirect).
     FRONTEND_BASE_URL: str = "http://localhost:3000"
+    # The ONE business tenant whose dropshipping storefront is served publicly under /api/v1/public/store. Unset = the public store does not exist (404).
+    # No other tenant can be served: the public routes take no tenant from the caller.
+    DROPSHIPPING_STORE_TENANT_ID: str | None = None
+    # Stops the checkout route from creating unlimited unpaid orders; checked per store.
+    DROPSHIPPING_MAX_UNPAID_ORDERS: int = 200
     # Where messages from the public contact form are emailed (they are always stored too). Unset = stored only.
     SUPPORT_INBOX_EMAIL: str | None = None
 

@@ -43,6 +43,7 @@ from app.models.event import EventType
 from app.models.integration import WebhookEvent, WebhookProcessingStatus
 from app.models.quote import Quote
 from app.services.customer_matching import normalize_phone
+from app.services.dropshipping_store_payment_service import handle_store_payment_succeeded
 from app.services.lead_service import CreateLeadInput, LeadService
 from app.services.voice_call_service import VoiceCallService
 from app.services.payment_service import AllocationInput, InvoiceNotFoundError, OverpaymentError, PaymentService
@@ -66,7 +67,7 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 # that doesn't belong to the claimed tenant) is a permanent, not
 # transient, failure — retrying won't fix a payload that can't change, so
 # those stay a 200 to avoid Stripe retrying forever for no benefit.
-_RETRYABLE_ERROR_PREFIXES = ("record_payment failed:", "mark_deposit_paid failed:")
+_RETRYABLE_ERROR_PREFIXES = ("record_payment failed:", "mark_deposit_paid failed:", "mark_paid failed:")
 
 
 @router.post("/stripe", status_code=status.HTTP_200_OK, response_model=None)
@@ -282,6 +283,12 @@ async def _handle_payment_intent_succeeded(
             quote_id_raw=obj.metadata.quote_id, bus=bus,
         )
 
+    if obj.metadata.purpose == "dropshipping_order":
+        return await handle_store_payment_succeeded(
+            tenant_id, customer_id=customer_id, amount=amount, currency=obj.currency, payment_intent_id=payment_intent_id,
+            order_id_raw=obj.metadata.order_id, bus=bus, connection_service=get_integration_connection_service(),
+        )
+
     invoice_id_raw = obj.metadata.invoice_id
     if not invoice_id_raw:
         return None, "missing required metadata (invoice_id) on PaymentIntent"
@@ -421,6 +428,10 @@ async def _handle_payment_intent_failed(
         tenant_id = uuid.UUID(tenant_id_raw)
     except ValueError as exc:
         return None, f"malformed tenant_id in PaymentIntent metadata: {exc}"
+
+    if obj.metadata.purpose == "dropshipping_order":
+        # A declined card on a storefront order changes nothing: the order stays PENDING_PAYMENT and the shopper can pay again from their order page.
+        return tenant_id, None
 
     last_error = obj.last_payment_error.message if obj.last_payment_error else "unknown reason"
 
