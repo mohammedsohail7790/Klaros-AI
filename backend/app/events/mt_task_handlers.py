@@ -40,6 +40,12 @@ def register_mt_task_handlers(bus: EventBus, session_factory: async_sessionmaker
         except ValueError:
             return None
 
+    async def _lead_is_open(session, tenant_id: uuid.UUID, lead_id: uuid.UUID) -> bool:
+        from app.models.crm import Lead
+
+        lead = await session.get(Lead, lead_id)
+        return lead is not None and lead.tenant_id == tenant_id and str(lead.status) not in mt_handoff.CLOSED_LEAD_STATUSES
+
     async def new_enquiry(event: Event) -> None:
         lead_id = await _lead_id(event)
         if lead_id is None:
@@ -48,6 +54,8 @@ def register_mt_task_handlers(bus: EventBus, session_factory: async_sessionmaker
             await set_tenant_context(session, event.tenant_id)
             if not await _is_medical_tourism(event.tenant_id):
                 return
+            if not await _lead_is_open(session, event.tenant_id, lead_id):
+                return  # the enquiry was closed before this (late) event arrived: no work to hand out
             await mt_handoff.ensure_task(session, event.tenant_id, lead_id, kind="new_enquiry", reason_code="new_enquiry", dedupe_key=str(lead_id))
             await session.commit()
 
@@ -58,6 +66,8 @@ def register_mt_task_handlers(bus: EventBus, session_factory: async_sessionmaker
         async with session_factory() as session:
             await set_tenant_context(session, event.tenant_id)
             if not await _is_medical_tourism(event.tenant_id):
+                return
+            if not await _lead_is_open(session, event.tenant_id, lead_id):
                 return
             await mt_handoff.ensure_task(session, event.tenant_id, lead_id, kind="provider_options", reason_code=None, dedupe_key=str(lead_id))
             await session.commit()

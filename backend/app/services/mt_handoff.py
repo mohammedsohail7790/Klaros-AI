@@ -101,9 +101,31 @@ async def cancel(session_factory, tenant_id: uuid.UUID, task_id: uuid.UUID, user
         return task
 
 
+CLOSED_LEAD_STATUSES = ("LOST", "UNQUALIFIED")
+
+
+async def close_tasks_of_closed_leads(session_factory, tenant_id: uuid.UUID) -> int:
+    """Cancel open tasks whose enquiry was closed (lost or not a fit). A task created after the lead was closed (an event arriving late) or before this rule existed would otherwise sit
+    in the team's list forever. Safe to run any time; returns how many it cancelled."""
+    from app.models.crm import Lead
+
+    async with session_factory() as session:
+        await set_tenant_context(session, tenant_id)
+        rows = (await session.execute(select(HandoffTask).join(Lead, Lead.id == HandoffTask.lead_id).where(
+            HandoffTask.tenant_id == tenant_id, Lead.tenant_id == tenant_id, HandoffTask.status.in_((TaskStatus.OPEN, TaskStatus.ACCEPTED)), Lead.status.in_(CLOSED_LEAD_STATUSES)))).scalars().all()
+        for t in rows:
+            t.status, t.completed_at = TaskStatus.CANCELLED, datetime.now(timezone.utc)
+            t.note = (t.note or "The enquiry was closed")[:1000]
+            _audit(session, tenant_id, None, "mt.task.cancelled", t, {"auto": True, "reason": "the enquiry was closed"})
+        if rows:
+            await session.commit()
+        return len(rows)
+
+
 async def list_tasks(session_factory, tenant_id: uuid.UUID, *, status: str | None = None, lead_id: uuid.UUID | None = None, limit: int = 50, offset: int = 0) -> tuple[list[HandoffTask], int]:
     from sqlalchemy import func
 
+    await close_tasks_of_closed_leads(session_factory, tenant_id)
     async with session_factory() as session:
         await set_tenant_context(session, tenant_id)
         q = select(HandoffTask).where(HandoffTask.tenant_id == tenant_id)

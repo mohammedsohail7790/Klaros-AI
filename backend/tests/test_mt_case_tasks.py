@@ -93,3 +93,34 @@ async def test_marking_an_enquiry_lost_cancels_its_open_tasks_but_not_other_lead
     assert dropped and all(t.status == "CANCELLED" for t in dropped)
     kept = [t for t in await _tasks(tid) if str(t.lead_id) == keep]
     assert kept and all(t.status == "OPEN" for t in kept)
+
+
+async def test_an_enquiry_closed_before_its_event_arrives_gets_no_task(client, event_bus, halla) -> None:  # noqa: F811
+    token, tid = await _gated(client, "Late Event Co", "lateevent@example.com")
+    register_mt_task_handlers(event_bus, async_session_maker)
+    await _enable_vertical(tid)
+    await event_bus.process_pending(EventType.LEAD_CREATED)
+    lead = await _patient(client, token)
+    assert (await client.patch(f"/api/v1/leads/{lead}", json={"status": "LOST"}, headers=_h(token))).status_code == 200   # closed before the worker saw the event
+    await event_bus.process_pending(EventType.LEAD_CREATED)
+    assert [t for t in await _tasks(tid) if str(t.lead_id) == lead] == []
+
+
+async def test_stale_tasks_of_closed_enquiries_clear_themselves_and_leave_the_live_board(client, event_bus, halla) -> None:  # noqa: F811
+    from app.models.crm import Lead
+
+    token, tid = await _gated(client, "Stale Co", "stale@example.com")
+    register_mt_task_handlers(event_bus, async_session_maker)
+    await _enable_vertical(tid)
+    await event_bus.process_pending(EventType.LEAD_CREATED)
+    gone, kept = await _patient(client, token), await _patient(client, token)
+    await event_bus.process_pending(EventType.LEAD_CREATED)
+    async with async_session_maker() as session:  # closed behind the rule's back, as old data was
+        await set_tenant_context(session, tid)
+        (await session.get(Lead, __import__("uuid").UUID(gone))).status = "LOST"
+        await session.commit()
+    assert [t for t in await _tasks(tid) if str(t.lead_id) == gone and t.status == "OPEN"]
+    board = (await client.get(f"{BASE}/pipeline", headers=_h(token))).json()
+    assert gone not in [r["lead_id"] for r in board["leads"]] and kept in [r["lead_id"] for r in board["leads"]]
+    assert all(t.status == "CANCELLED" for t in await _tasks(tid) if str(t.lead_id) == gone)
+    assert [t.status for t in await _tasks(tid) if str(t.lead_id) == kept] == ["OPEN"]
