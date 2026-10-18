@@ -54,13 +54,34 @@ def _current_alembic_head() -> str:
     return ScriptDirectory.from_config(config).get_current_head()
 
 
+_postgres_schema_built = False
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def _reset_database() -> AsyncGenerator[None, None]:
+    """Give every test an empty database.
+
+    SQLite (in-memory) is rebuilt from the models each time: that is cheap. On real PostgreSQL, dropping and recreating ~160 tables before each
+    of ~2,800 tests dominated the CI run (about 0.4 s per test locally, about 2 s on the runner), so there the schema is built ONCE per session
+    and each test only TRUNCATEs the data. Set KLAROS_TEST_FULL_RESET=1 to force the old drop/create on every test (e.g. when debugging a test
+    that changes the schema).
+    """
+    global _postgres_schema_built
     from sqlalchemy import text
 
+    truncate_only = (
+        engine.dialect.name == "postgresql"
+        and _postgres_schema_built
+        and os.environ.get("KLAROS_TEST_FULL_RESET") != "1"
+    )
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+        if truncate_only:
+            tables = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables)
+            await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
+        else:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+            _postgres_schema_built = engine.dialect.name == "postgresql"
         # This schema is built directly from the current models, not from
         # running real Alembic migrations — but that means it genuinely DOES
         # reflect the current code's expected head, so stamp `alembic_version`
