@@ -125,7 +125,7 @@ class GoogleAdsAdapter(MarketingProvider):
                 ConnectionStatus.NOT_CONNECTED,
                 "GOOGLE_ADS_DEVELOPER_TOKEN not configured",
             )
-        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "Client not implemented")
+        return IntegrationStatus(self.provider_name, ConnectionStatus.NOT_CONNECTED, "Klaros's Google Ads app is set up; each business connects its own account")
 
 
 class MetaAdsAdapter(MarketingProvider):
@@ -138,7 +138,7 @@ class MetaAdsAdapter(MarketingProvider):
             return IntegrationStatus(
                 self.provider_name, ConnectionStatus.NOT_CONNECTED, "META_ADS_APP_ID not configured"
             )
-        return IntegrationStatus(self.provider_name, ConnectionStatus.ERROR, "Client not implemented")
+        return IntegrationStatus(self.provider_name, ConnectionStatus.NOT_CONNECTED, "Klaros's Meta app is set up; each business connects its own account")
 
 
 class GmailAdapter(CommunicationProvider):

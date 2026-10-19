@@ -35,7 +35,7 @@ describe("AppShell navigation", () => {
   it("shows the tabs of the current area, with exactly one active", () => {
     renderAt("/finance/ar");
     const tabs = screen.getByRole("navigation", { name: "Finance sections" });
-    expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Invoices", "Receivables", "Cash", "Profitability", "Vendors"]);
+    expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Invoices", "Receivables", "Cash", "Bank", "Profitability", "Vendors"]);
     expect(within(tabs).getByRole("link", { name: "Receivables" })).toHaveAttribute("aria-current", "page");
     const active = within(screen.getByRole("navigation", { name: "Primary" })).getAllByRole("link").filter((a) => a.getAttribute("aria-current") === "page");
     expect(active.map((a) => a.textContent)).toEqual(["Finance"]);

@@ -39,6 +39,7 @@ class SendStatus(StrEnum):
 class SendResult:
     status: SendStatus
     reason: str | None = None  # a short machine code, never recipient data
+    external_id: str | None = None  # the provider's own message id when it gave one (WhatsApp wamid)
 
     @property
     def sent(self) -> bool:
@@ -77,3 +78,12 @@ class CommunicationProvider(ABC):
     ) -> SendResult:
         ok = await self.send_sms(tenant_id, to=to, body=body, template=template)
         return SendResult(SendStatus.SENT if ok else SendStatus.FAILED)
+
+    async def deliver_whatsapp(
+        self, tenant_id: uuid.UUID, *, to: str, body: str, template: MessageTemplate,
+        customer_id: uuid.UUID | None = None, lead_id: uuid.UUID | None = None,
+        template_name: str | None = None, template_language: str = "en_US", template_params: tuple[str, ...] = (),
+    ) -> SendResult:
+        """WhatsApp is a per-business channel (each business connects its own Meta number), so only the consent guard offers it; every other provider reports it honestly as unsupported.
+        `template_name` sends an approved WhatsApp template; without it `body` is a free-form text, which WhatsApp allows only within 24 hours of the person's last message."""
+        return SendResult(SendStatus.FAILED, "whatsapp_not_supported_by_provider")

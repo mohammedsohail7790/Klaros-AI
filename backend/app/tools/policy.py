@@ -267,6 +267,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "finance.record_job_cost": ActionPolicy.AUTO,
     "finance.sync_material_costs": ActionPolicy.AUTO,
     "finance.generate_cash_forecast": ActionPolicy.AUTO,
+    "finance.sync_bank_feed": ActionPolicy.AUTO,  # reads the bank, writes only the bank feed's own rows; never moves money or edits an invoice
     "finance.create_vendor": ActionPolicy.AUTO,
     "finance.list_vendors": ActionPolicy.AUTO,
     "finance.record_vendor_bill": ActionPolicy.AUTO,
@@ -316,6 +317,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "marketing.record_local_review": ActionPolicy.AUTO,
     "marketing.respond_to_review": ActionPolicy.APPROVAL_REQUIRED,  # public-visible
     "marketing.get_ads_provider_status": ActionPolicy.AUTO,
+    "marketing.sync_ad_spend": ActionPolicy.AUTO,  # reads the provider, writes only idempotent internal spend rows; changes nothing on the ad platform
     "marketing.create_outbound_list": ActionPolicy.AUTO,
     "marketing.add_outbound_contact": ActionPolicy.AUTO,
     "marketing.create_outbound_sequence": ActionPolicy.AUTO,
@@ -339,6 +341,8 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "workforce.call_lead": ActionPolicy.APPROVAL_REQUIRED,
     # An acknowledgement e-mail reaches a real person (consent-guarded, once per lead); a business that wants instant replies sets it to AUTO in its own automation policy.
     "crm.acknowledge_enquiry": ActionPolicy.APPROVAL_REQUIRED,
+    # A WhatsApp message reaches a real person (consent-guarded, 24 hour rule enforced, template outside it); a person approves each one unless the business sets AUTO in its own automation policy.
+    "communications.send_whatsapp": ActionPolicy.APPROVAL_REQUIRED,
     "notifications.send_owner_digest": ActionPolicy.AUTO,  # reaches only the business's own owners, at most once a day
     "marketing.create_reactivation_campaign": ActionPolicy.AUTO,
     "marketing.identify_inactive_customers": ActionPolicy.AUTO,  # read-only candidate selection, no contact made

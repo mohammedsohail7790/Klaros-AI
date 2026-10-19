@@ -6185,3 +6185,112 @@ export interface InboxReply { id: string; entity_type: "lead" | "provider"; enti
 export function getInboxReplies(token: string) {
   return request<{ replies: InboxReply[] }>("/api/v1/inbox/replies", { headers: authHeaders(token) });
 }
+
+// --- One-click connectors: one list for every outside service a business can connect (QuickBooks, ads, WhatsApp, bank feed, e-signature). ---
+
+export interface ConnectorField {
+  name: string;
+  label: string;
+  secret: boolean;
+  help: string;
+}
+
+export interface ConnectorRow {
+  key: string;
+  name: string;
+  category: string;
+  description: string;
+  mode: "oauth" | "link" | "credentials";
+  built_in: boolean;
+  platform_ready: boolean;
+  missing_platform_settings: string[];
+  redirect_uri: string | null;
+  start_path: string | null;
+  owner_steps: string[];
+  fields: ConnectorField[];
+  status: string;
+  last_error: string | null;
+  external_account_id: string | null;
+}
+
+export function listConnectors(token: string) {
+  return request<ConnectorRow[]>("/api/v1/integrations/connectors", { headers: authHeaders(token) });
+}
+
+export function startConnector(token: string, key: string, startPath?: string | null) {
+  if (startPath) {
+    return request<Record<string, string>>(`/api/v1${startPath}`, { headers: authHeaders(token) });
+  }
+  return request<Record<string, string>>(`/api/v1/integrations/connectors/${key}/start`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function completeConnector(token: string, key: string, params: Record<string, unknown>) {
+  return request<ConnectorRow>(`/api/v1/integrations/connectors/${key}/complete`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ params }),
+  });
+}
+
+// --- Bank feed (Plaid): connected accounts, imported transactions and their match to invoices. Money values are strings. ---
+
+export interface BankFeedAccounts {
+  connected: boolean;
+  connection_status: string;
+  connection_error: string | null;
+  last_sync_at: string | null;
+  last_sync_status: string | null;
+  last_sync_error: string | null;
+  accounts: { id: string; name: string; mask: string | null; type: string | null; subtype: string | null; current_balance: string | null; currency: string; last_synced_at: string | null }[];
+}
+
+export interface BankTransactionRow {
+  id: string;
+  posted_date: string;
+  amount: string;
+  currency: string;
+  description: string | null;
+  merchant: string | null;
+  pending: boolean;
+  direction: "IN" | "OUT";
+  match_status: "UNMATCHED" | "SUGGESTED" | "MATCHED" | "IGNORED";
+  matched_entity_id: string | null;
+  match_candidates: { invoice_id: string; invoice_number: string; score: number; reason: string }[] | null;
+}
+
+export function getBankFeedAccounts(token: string) {
+  return request<BankFeedAccounts>("/api/v1/bank-feed/accounts", { headers: authHeaders(token) });
+}
+
+export function listBankTransactions(token: string, status?: string) {
+  const q = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request<BankTransactionRow[]>(`/api/v1/bank-feed/transactions${q}`, { headers: authHeaders(token) });
+}
+
+export function syncBankFeed(token: string) {
+  return request<{ status: string; added: number; modified: number; removed: number; message: string | null }>("/api/v1/bank-feed/sync", {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+}
+
+export function matchBankTransaction(token: string, id: string, invoiceId: string) {
+  return request<BankTransactionRow>(`/api/v1/bank-feed/transactions/${id}/match`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ entity_type: "invoice", entity_id: invoiceId }),
+  });
+}
+
+export function ignoreBankTransaction(token: string, id: string) {
+  return request<BankTransactionRow>(`/api/v1/bank-feed/transactions/${id}/ignore`, { method: "POST", headers: authHeaders(token) });
+}
+
+export function getWhatsAppWebhookInfo(token: string) {
+  return request<{ callback_url: string; verify_token: string; signature_check: boolean; note?: string }>("/api/v1/integrations/whatsapp/webhook-info", {
+    headers: authHeaders(token),
+  });
+}

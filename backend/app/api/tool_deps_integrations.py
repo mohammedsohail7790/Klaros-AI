@@ -99,6 +99,11 @@ def get_integration_connection_service() -> IntegrationConnectionService:
     service.register_verifier("quickbooks", _quickbooks_verifier)
     service.register_verifier("google_calendar", _google_calendar_verifier)
     # The outer limit sits just above the verifier's own HTTP timeout, so a slow Halla yields the verifier's clear message.
+    from app.integrations.connectors import all_connectors
+
+    for connector in all_connectors().values():
+        if connector.verify is not None and connector.key not in service._verifiers:
+            service.register_verifier(connector.key, connector.verify)
     service.register_verifier("halla", halla_verifier, timeout=get_settings().HALLA_HEALTH_TIMEOUT_SECONDS + 2)
     return service
 

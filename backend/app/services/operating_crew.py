@@ -190,6 +190,28 @@ GENERIC_CREW: tuple[CrewMember, ...] = (
         goal="Generate the morning brief and notify the owner of the three things that matter most today.",
         max_tool_chain_depth=10,  # one brief, five snapshots and the notification
     ),
+    CrewMember(
+        key="ad-spend-sync",
+        name="Ad Spend Sync",
+        purpose="Every morning pulls the last week of daily campaign cost from the connected Google Ads and Meta Ads accounts, so marketing spend is real, not typed in.",
+        instructions=_COMMON_RULES + " Call the sync_ad_spend tool once and report the result. If no ad account is connected it says so; that is fine. It only reads from the ad platform.",
+        tools=("marketing.sync_ad_spend",),
+        schedule_time="06:30",
+        goal="Sync the last seven days of ad spend from the connected ad accounts.",
+        schedule_action=("marketing.sync_ad_spend", {"days": 7}),
+        max_tool_chain_depth=2,
+    ),
+    CrewMember(
+        key="bank-feed-sync",
+        name="Bank Feed Sync",
+        purpose="Every morning reads the new transactions from the connected bank (read only) and suggests which deposits pay which open invoices. It never records a payment.",
+        instructions=_COMMON_RULES + " Call the sync_bank_feed tool once and report the result. If no bank is connected it says so; that is fine. It only reads from the bank.",
+        tools=("finance.sync_bank_feed",),
+        schedule_time="07:30",
+        goal="Pull the latest bank transactions and suggest invoice matches for new deposits.",
+        schedule_action=("finance.sync_bank_feed", {}),
+        max_tool_chain_depth=2,
+    ),
 )
 
 MEDICAL_TOURISM_CREW: tuple[CrewMember, ...] = (

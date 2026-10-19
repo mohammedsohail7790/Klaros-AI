@@ -101,7 +101,7 @@ async def test_seed_data_matches_verified_reality(service: IntegrationCatalogSer
 async def test_list_filters_by_category(service: IntegrationCatalogService) -> None:
     await _seed_catalog(service)
     finance_entries = await service.list_catalog(category="finance")
-    assert {e.provider_key for e in finance_entries} == {"stripe", "quickbooks", "xero"}
+    assert {e.provider_key for e in finance_entries} == {"stripe", "quickbooks", "xero", "plaid"}
 
 
 # --- Status-derivation rule (KLAROS_FINAL_INTEGRATION_MODEL.md's hard

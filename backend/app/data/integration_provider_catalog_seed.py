@@ -71,9 +71,9 @@ SEED_PROVIDERS: list[dict] = [
         "provider_key": "google_ads",
         "display_name": "Google Ads",
         "category": "marketing",
-        "implementation_status": ProviderImplementationStatus.STUB,
+        "implementation_status": ProviderImplementationStatus.REAL,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": "Bring Google Ads spend and campaign results into Klaros. Not available yet.",
+        "description": "Bring Google Ads spend and campaign results into Klaros every day.",
         "capabilities": ['marketing', 'advertising', 'lead_generation'],
         "recommended_for_verticals": [],
         "health_check_strategy_ref": None,
@@ -82,9 +82,9 @@ SEED_PROVIDERS: list[dict] = [
         "provider_key": "meta_ads",
         "display_name": "Meta Ads",
         "category": "marketing",
-        "implementation_status": ProviderImplementationStatus.STUB,
+        "implementation_status": ProviderImplementationStatus.REAL,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": "Bring Facebook and Instagram ad spend and campaign results into Klaros. Not available yet.",
+        "description": "Bring Facebook and Instagram ad spend and campaign results into Klaros every day.",
         "capabilities": ['marketing', 'advertising', 'lead_generation'],
         "recommended_for_verticals": [],
         "health_check_strategy_ref": None,
@@ -155,6 +155,28 @@ SEED_PROVIDERS: list[dict] = [
         "recommended_for_verticals": ["home_services"],
         "health_check_strategy_ref": None,
     },
+    {
+        "provider_key": "whatsapp",
+        "display_name": "WhatsApp",
+        "category": "communication",
+        "implementation_status": ProviderImplementationStatus.REAL,
+        "auth_shape": ProviderAuthShape.API_KEY,
+        "description": "Message customers on WhatsApp and see their replies in Klaros. Only people who agreed to be contacted are messaged.",
+        "capabilities": ['communication', 'messaging'],
+        "recommended_for_verticals": [],
+        "health_check_strategy_ref": None,
+    },
+    {
+        "provider_key": "plaid",
+        "display_name": "Bank feed",
+        "category": "finance",
+        "implementation_status": ProviderImplementationStatus.REAL,
+        "auth_shape": ProviderAuthShape.OAUTH2,
+        "description": "Import bank deposits every day and match them to your invoices.",
+        "capabilities": ['accounting', 'bookkeeping'],
+        "recommended_for_verticals": [],
+        "health_check_strategy_ref": None,
+    },
 ]
 
 # Cross-checked exactly once here, against the reconciled plan text, so a
@@ -165,6 +187,6 @@ SEED_PROVIDERS: list[dict] = [
 # provider tagged for an industry is not offered to a business running a
 # different industry module (recommendation_service.provider_fits_business).
 # An untagged provider suits any business.
-EXPECTED_REAL = {"stripe", "quickbooks", "google_calendar"}
-EXPECTED_STUB = {"xero", "google_ads", "meta_ads", "google_business_profile", "servicetitan", "jobber"}
+EXPECTED_REAL = {"stripe", "quickbooks", "google_calendar", "google_ads", "meta_ads", "whatsapp", "plaid"}
+EXPECTED_STUB = {"xero", "google_business_profile", "servicetitan", "jobber"}
 EXPECTED_WEBHOOK_NORMALIZER = {"angi", "thumbtack", "nextdoor"}

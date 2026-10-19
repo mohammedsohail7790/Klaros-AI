@@ -41,7 +41,7 @@ async def test_empty_business_looks_empty_and_claims_nothing(client) -> None:
     assert stages["notify"]["state"] == "CONFIGURATION_REQUIRED"  # no workflow yet
     by_name = {i["name"]: i for i in o["integrations"]}
     assert by_name["Stripe"]["state"] == "AVAILABLE"  # real adapter, not connected
-    assert by_name["Google Ads"]["state"] == "PLANNED"  # stub adapter
+    assert by_name["Xero"]["state"] == "PLANNED"  # stub adapter
     assert by_name["Halla AI"]["state"] == "INTEGRATION_REQUIRED" and by_name["Halla AI"]["category"] == "AI Workforce"
     assert not any(i["state"] == "CONNECTED" for i in o["integrations"])
 
@@ -70,11 +70,11 @@ async def test_integration_state_is_derived_never_trusted(client) -> None:
     tid = uuid.UUID((await client.get("/api/v1/users/me", headers=_h(token))).json()["tenant_id"])
     async with async_session_maker() as s:
         # A STUB provider row claiming CONNECTED must still render as PLANNED; a REAL one renders CONNECTED.
-        s.add(IntegrationConnection(tenant_id=tid, provider="google_ads", status=ConnectionStatus.CONNECTED))
+        s.add(IntegrationConnection(tenant_id=tid, provider="xero", status=ConnectionStatus.CONNECTED))
         s.add(IntegrationConnection(tenant_id=tid, provider="stripe", status=ConnectionStatus.CONNECTED))
         await s.commit()
     by = {i["name"]: i for i in (await _ops(client, token))["integrations"]}
-    assert by["Google Ads"]["state"] == "PLANNED"
+    assert by["Xero"]["state"] == "PLANNED"
     assert by["Stripe"]["state"] == "CONNECTED"
     assert by["Halla AI"]["state"] == "INTEGRATION_REQUIRED"
 
@@ -146,7 +146,7 @@ async def test_requirements_launch_readiness_and_integration_center_agree(client
     await _journey_via_fallback(client, h, *_DROPSHIP)
     async with async_session_maker() as s:
         s.add(IntegrationConnection(tenant_id=tid, provider="stripe", status=ConnectionStatus.CONNECTED))
-        s.add(IntegrationConnection(tenant_id=tid, provider="google_ads", status=ConnectionStatus.CONNECTED))  # STUB: must stay PLANNED
+        s.add(IntegrationConnection(tenant_id=tid, provider="xero", status=ConnectionStatus.CONNECTED))  # STUB: must stay PLANNED
         await s.commit()
     await _lead(client, token, "Agreement Lead")
     overview = (await client.get("/api/v1/business-builder/overview", headers=h)).json()
@@ -158,5 +158,5 @@ async def test_requirements_launch_readiness_and_integration_center_agree(client
             seen += 1
             expected = center[p["provider_key"]]
             assert p["state"] == ("NOT_CONNECTED" if expected == "AVAILABLE" else expected), p
-    assert seen > 0 and center["stripe"] == "CONNECTED" and center["google_ads"] == "PLANNED"
+    assert seen > 0 and center["stripe"] == "CONNECTED" and center["xero"] == "PLANNED"
     assert overview["operations"]["lead_count"] == ops["leads"]["total"] == 1
