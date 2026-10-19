@@ -9,12 +9,14 @@ from app.api.v1 import (
     auth,
     automation,
     automations,
+    bank_feed,
     billing,
     business_blueprint,
     business_discovery,
     business_builder,
     consent_wordings,
     business_journey,
+    connectors,
     cash,
     company_memory,
     credit_notes,
@@ -86,6 +88,7 @@ from app.api.v1 import (
     voice_stream,
     webhooks,
     websites,
+    whatsapp_webhook,
     workers,
     writeoffs,
 )
@@ -116,6 +119,9 @@ api_router.include_router(inbound_email.router)
 api_router.include_router(site_hosting.public_router)
 api_router.include_router(setup_plan.router)
 api_router.include_router(quickbooks_oauth.router)
+api_router.include_router(connectors.router)
+api_router.include_router(bank_feed.router)
+api_router.include_router(whatsapp_webhook.router)
 api_router.include_router(google_calendar_oauth.router)
 api_router.include_router(google_calendar.router)
 api_router.include_router(leads.router)

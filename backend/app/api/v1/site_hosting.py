@@ -116,7 +116,9 @@ async def serve_host_file(hostname: str, path: str, service: SiteHostingService 
     return Response(
         content=content, media_type=content_type,
         headers={
-            "Cache-Control": "public, max-age=60",
+            # The visitor's browser re-checks after a minute. The host's edge network keeps a copy for a minute and may serve it for a day while it refreshes in the background, so the site
+            # still answers instantly when this server is asleep or slow; a newly published version reaches visitors within about a minute.
+            "Cache-Control": "public, max-age=60, s-maxage=60, stale-while-revalidate=86400",
             "X-Content-Type-Options": "nosniff",
             "Content-Security-Policy": "object-src 'none'; base-uri 'self'; frame-ancestors 'self'",
             "Referrer-Policy": "strict-origin-when-cross-origin",

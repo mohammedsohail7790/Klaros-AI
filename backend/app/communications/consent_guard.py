@@ -70,6 +70,21 @@ class ConsentGuardedProvider(CommunicationProvider):
         sent = await self._inner.send_sms(tenant_id, to=to, body=body, template=template)
         return SendResult(SendStatus.SENT if sent else SendStatus.FAILED)
 
+    async def deliver_whatsapp(
+        self, tenant_id: uuid.UUID, *, to: str, body: str, template: MessageTemplate,
+        customer_id: uuid.UUID | None = None, lead_id: uuid.UUID | None = None,
+        template_name: str | None = None, template_language: str = "en_US", template_params: tuple[str, ...] = (),
+    ) -> SendResult:
+        """The same consent decision as SMS, bound to the patient the message is about, BEFORE anything reaches WhatsApp. The sender itself (per-business Meta credentials) is not a platform provider."""
+        from app.communications.whatsapp_adapter import WhatsAppAdapter
+
+        ok, reason = await self._decide(tenant_id, template, phone=to, lead_id=lead_id, customer_id=customer_id)
+        if not ok:
+            return SendResult(_BLOCKED, reason)
+        return await WhatsAppAdapter(self._session_factory).send_whatsapp(
+            tenant_id, to=to, body=body, template=template, template_name=template_name, template_language=template_language, template_params=template_params,
+        )
+
     async def send_email(self, tenant_id: uuid.UUID, *, to: str, subject: str, body: str, template: MessageTemplate) -> bool:
         return (await self.deliver_email(tenant_id, to=to, subject=subject, body=body, template=template)).sent
 

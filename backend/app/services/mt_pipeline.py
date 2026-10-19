@@ -73,9 +73,12 @@ def derive_stage(f: Facts) -> str:
 
 async def build_pipeline(session_factory, tenant_id: uuid.UUID, *, limit: int = 100, offset: int = 0) -> dict[str, Any]:
     """Every lead of the tenant with its derived stage. A lead whose personal data is not consented is listed WITHOUT a name."""
+    from app.services import mt_handoff
+
+    await mt_handoff.close_tasks_of_closed_leads(session_factory, tenant_id)
     async with session_factory() as s:
         await set_tenant_context(s, tenant_id)
-        leads = list((await s.execute(select(Lead).where(Lead.tenant_id == tenant_id).order_by(Lead.created_at.desc()).limit(limit).offset(offset))).scalars())
+        leads = list((await s.execute(select(Lead).where(Lead.tenant_id == tenant_id, Lead.status.not_in(mt_handoff.CLOSED_LEAD_STATUSES)).order_by(Lead.created_at.desc()).limit(limit).offset(offset))).scalars())
         evidence = list((await s.execute(select(HallaConsentEvidence).where(HallaConsentEvidence.tenant_id == tenant_id))).scalars())
         referrals = list((await s.execute(select(ProviderReferral).where(ProviderReferral.tenant_id == tenant_id))).scalars())
         tasks = list((await s.execute(select(HandoffTask).where(HandoffTask.tenant_id == tenant_id, HandoffTask.status.in_((TaskStatus.OPEN, TaskStatus.ACCEPTED))))).scalars())

@@ -4,6 +4,7 @@ from app.calendar.internal_test_adapter import InternalTestCalendarAdapter
 from app.communications.factory import get_communication_provider
 from app.events.bus import EventBus
 from app.services.attachment_service import AttachmentService
+from app.services.bank_feed_service import BankFeedService
 from app.services.attribution_service import AttributionService
 from app.services.campaign_service import CampaignService
 from app.services.content_service import ContentService
@@ -540,6 +541,10 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
 
     registry.register(GenerateCashForecast(cash_forecast_service))
 
+    from app.tools.builtin.bank_feed_tools import SyncBankFeed
+
+    registry.register(SyncBankFeed(BankFeedService(session_factory, get_integration_connection_service())))
+
     registry.register(CreateVendor(vendor_service))
     registry.register(ListVendors(vendor_service))
     registry.register(RecordVendorBill(vendor_service))
@@ -594,6 +599,11 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
 
     registry.register(GetAdsProviderStatus())
 
+    from app.services.ad_spend_sync_service import AdSpendSyncService
+    from app.tools.builtin.marketing_ad_spend_tools import SyncAdSpend
+
+    registry.register(SyncAdSpend(AdSpendSyncService(session_factory, get_integration_connection_service())))
+
     registry.register(CreateOutboundList(outbound_service))
     registry.register(AddOutboundContact(outbound_service))
     registry.register(CreateOutboundSequence(outbound_service))
@@ -610,6 +620,9 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     from app.tools.builtin.lead_ack_tools import AcknowledgeEnquiry
 
     registry.register(AcknowledgeEnquiry())
+    from app.tools.builtin.whatsapp_tools import SendWhatsApp
+
+    registry.register(SendWhatsApp())
     from app.tools.builtin.owner_digest_tools import SendOwnerDigest
 
     registry.register(SendOwnerDigest())

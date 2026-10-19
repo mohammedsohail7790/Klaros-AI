@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { Badge } from "@/components/ui/Badge";
+import { ConnectorsCard } from "@/components/business/ConnectorsCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/useAuth";
 import {
@@ -106,8 +107,6 @@ function getActiveAIRow(aiRows: IntegrationStatusRow[]): IntegrationStatusRow | 
 // clients now (see their dedicated sections below).
 const PLANNED_OAUTH_PROVIDERS = [
   { provider: "gmail_oauth", name: "Gmail (OAuth)", category: "Communications" },
-  { provider: "google_ads_oauth", name: "Google Ads", category: "Marketing" },
-  { provider: "meta_ads_oauth", name: "Meta Ads", category: "Marketing" },
 ];
 
 export default function IntegrationsPage() {
@@ -389,6 +388,8 @@ function IntegrationsPageInner() {
             {error}
           </div>
         )}
+
+        <ConnectorsCard token={token} exclude={["quickbooks"]} />
 
         {!rows && !error && <Skeleton />}
 

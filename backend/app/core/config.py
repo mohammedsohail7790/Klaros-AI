@@ -196,6 +196,12 @@ class Settings(BaseSettings):
     GOOGLE_CALENDAR_MAX_RETRIES: int = 3
     META_ADS_APP_ID: str | None = None
     META_ADS_APP_SECRET: str | None = None
+    # Facebook Login for Business configuration id (carries the ads_read permission). Unset = classic login with a scope parameter.
+    META_ADS_LOGIN_CONFIG_ID: str | None = None
+    # Bank feed (Plaid). ENV is sandbox, development or production; Klaros's own Plaid account, one for every tenant.
+    PLAID_CLIENT_ID: str | None = None
+    PLAID_SECRET: str | None = None
+    PLAID_ENV: str = "sandbox"
     GOOGLE_BUSINESS_CLIENT_ID: str | None = None
     GOOGLE_BUSINESS_CLIENT_SECRET: str | None = None
     SERVICETITAN_CLIENT_ID: str | None = None

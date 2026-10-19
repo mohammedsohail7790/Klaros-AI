@@ -57,9 +57,13 @@ def register_finance_handlers(bus: EventBus, session_factory: async_sessionmaker
             customer = await session.get(Customer, invoice.customer_id)
         if not customer or not customer.email:
             return
+        from app.communications.email_config import email_configured
+
+        if email_configured():
+            return  # the invoice itself was e-mailed (app/invoice_delivery/email_adapter.py): a second "has been sent" message would be a duplicate
         await comms.deliver_email(
             event.tenant_id, to=customer.email, customer_id=customer.id, subject=f"Invoice {invoice.invoice_number}",
-            body=f"Invoice {invoice.invoice_number} for ${invoice.total} has been sent.",
+            body=f"Invoice {invoice.invoice_number} for {invoice.currency} {invoice.total} has been sent.",
             template=MessageTemplate.INVOICE_SENT,
         )
 

@@ -148,7 +148,17 @@ class CollectionService:
                     continue
                 customer = await session.get(Customer, invoice.customer_id)
 
-                if self._comms is not None and customer and customer.email:
+                if customer and customer.email and customer.external_provider == "mt_provider":
+                    # A partner clinic is a business, not a patient: its reminders use the clinic channel, not the patient consent guard. A failed send stays PENDING to be retried.
+                    from app.communications.factory import get_clinic_channel
+
+                    sent = await get_clinic_channel(self._session_factory).send_email(
+                        tenant_id, to=customer.email, subject=f"Payment reminder: Invoice {invoice.invoice_number}",
+                        body=reminder_body(customer.name, invoice, action.action_type), template=MessageTemplate.COLLECTION_REMINDER,
+                    )
+                    if not sent:
+                        continue
+                elif self._comms is not None and customer and customer.email:
                     result = await self._comms.deliver_email(
                         tenant_id,
                         to=customer.email,

@@ -42,7 +42,7 @@ export const AREAS: NavArea[] = [
   {
     key: "finance", label: "Finance", icon: DollarSign,
     tabs: [
-      { href: "/finance/invoices", label: "Invoices" }, { href: "/finance/ar", label: "Receivables" }, { href: "/finance/cash", label: "Cash" },
+      { href: "/finance/invoices", label: "Invoices" }, { href: "/finance/ar", label: "Receivables" }, { href: "/finance/cash", label: "Cash" }, { href: "/finance/bank", label: "Bank" },
       { href: "/finance/profitability", label: "Profitability" }, { href: "/vendors", label: "Vendors" },
       { href: "/medical-tourism/referrals", label: "Commissions", module: MT }, { href: "/medical-tourism/revenue", label: "Revenue", module: MT },
     ],
