@@ -163,8 +163,8 @@ async def test_catalog_read_over_http_returns_seeded_entries(client, tool_regist
     assert {e["provider_key"] for e in body} == EXPECTED_REAL | EXPECTED_STUB | EXPECTED_WEBHOOK_NORMALIZER
     stripe = next(e for e in body if e["provider_key"] == "stripe")
     assert stripe["tenant_status"] == "NOT_CONNECTED"  # REAL, but this tenant has no connection yet
-    xero = next(e for e in body if e["provider_key"] == "xero")
-    assert xero["tenant_status"] == "STUB"
+    jobber = next(e for e in body if e["provider_key"] == "jobber")
+    assert jobber["tenant_status"] == "STUB"
 
 
 async def test_catalog_write_requires_manage_integrations_catalog_permission(client) -> None:

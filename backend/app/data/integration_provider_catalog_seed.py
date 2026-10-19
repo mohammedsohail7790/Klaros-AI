@@ -60,9 +60,9 @@ SEED_PROVIDERS: list[dict] = [
         "provider_key": "xero",
         "display_name": "Xero",
         "category": "finance",
-        "implementation_status": ProviderImplementationStatus.STUB,
+        "implementation_status": ProviderImplementationStatus.REAL,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": "Keep invoices and payments in sync with Xero. Not available yet.",
+        "description": "Bring your Xero contacts into Klaros as customers. Read-only; nothing is changed in Xero.",
         "capabilities": ['accounting', 'invoicing', 'bookkeeping'],
         "recommended_for_verticals": [],
         "health_check_strategy_ref": None,
@@ -93,9 +93,9 @@ SEED_PROVIDERS: list[dict] = [
         "provider_key": "google_business_profile",
         "display_name": "Google Business Profile",
         "category": "marketing",
-        "implementation_status": ProviderImplementationStatus.STUB,
+        "implementation_status": ProviderImplementationStatus.REAL,
         "auth_shape": ProviderAuthShape.OAUTH2,
-        "description": "Manage your Google listing and reviews from Klaros. Not available yet.",
+        "description": "Bring your Google reviews and locations into Klaros every day. Read-only; Klaros never posts to Google.",
         "capabilities": ['local_listing', 'reviews', 'reputation_management'],
         "recommended_for_verticals": [],
         "health_check_strategy_ref": None,
@@ -187,6 +187,6 @@ SEED_PROVIDERS: list[dict] = [
 # provider tagged for an industry is not offered to a business running a
 # different industry module (recommendation_service.provider_fits_business).
 # An untagged provider suits any business.
-EXPECTED_REAL = {"stripe", "quickbooks", "google_calendar", "google_ads", "meta_ads", "whatsapp", "plaid"}
-EXPECTED_STUB = {"xero", "google_business_profile", "servicetitan", "jobber"}
+EXPECTED_REAL = {"stripe", "quickbooks", "google_calendar", "google_ads", "meta_ads", "whatsapp", "plaid", "xero", "google_business_profile"}
+EXPECTED_STUB = {"servicetitan", "jobber"}
 EXPECTED_WEBHOOK_NORMALIZER = {"angi", "thumbtack", "nextdoor"}

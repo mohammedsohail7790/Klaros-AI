@@ -202,6 +202,17 @@ GENERIC_CREW: tuple[CrewMember, ...] = (
         max_tool_chain_depth=2,
     ),
     CrewMember(
+        key="review-sync",
+        name="Review Sync",
+        purpose="Every morning reads the new Google reviews of the business's connected Business Profile into Klaros and flags new reviews of three stars or fewer. It never posts a reply.",
+        instructions=_COMMON_RULES + " Call the sync_google_reviews tool once and report the result. If Google Business Profile is not connected it says so; that is fine. It only reads from Google.",
+        tools=("reputation.sync_google_reviews",),
+        schedule_time="06:45",
+        goal="Sync the latest Google reviews and flag any new low-star review.",
+        schedule_action=("reputation.sync_google_reviews", {}),
+        max_tool_chain_depth=2,
+    ),
+    CrewMember(
         key="bank-feed-sync",
         name="Bank Feed Sync",
         purpose="Every morning reads the new transactions from the connected bank (read only) and suggests which deposits pay which open invoices. It never records a payment.",

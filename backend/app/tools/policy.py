@@ -226,6 +226,8 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     # existing QuickBooks data, same trust level as
     # crm.bulk_import_customers/finance.bulk_import_invoices.
     "finance.import_from_quickbooks": ActionPolicy.AUTO,
+    # Xero contact import: creates customer records in bulk from an outside system, so it needs approval (nothing is written to Xero).
+    "finance.import_xero_contacts": ActionPolicy.APPROVAL_REQUIRED,
     # Team management — gated by Permission.MANAGE_USERS (OWNER/ADMIN
     # only) at the RBAC layer, which is the real security boundary here;
     # AUTO matches every other deliberate-owner-action tool in this file.
@@ -318,6 +320,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "marketing.respond_to_review": ActionPolicy.APPROVAL_REQUIRED,  # public-visible
     "marketing.get_ads_provider_status": ActionPolicy.AUTO,
     "marketing.sync_ad_spend": ActionPolicy.AUTO,  # reads the provider, writes only idempotent internal spend rows; changes nothing on the ad platform
+    "reputation.sync_google_reviews": ActionPolicy.AUTO,  # reads Google, writes only idempotent internal listing/review rows; never posts a reply
     "marketing.create_outbound_list": ActionPolicy.AUTO,
     "marketing.add_outbound_contact": ActionPolicy.AUTO,
     "marketing.create_outbound_sequence": ActionPolicy.AUTO,

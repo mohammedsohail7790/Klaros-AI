@@ -512,6 +512,11 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
         )
     )
 
+    from app.services.xero_import_service import XeroImportService
+    from app.tools.builtin.xero_tools import ImportXeroContacts
+
+    registry.register(ImportXeroContacts(XeroImportService(session_factory, get_integration_connection_service())))
+
     from app.tools.builtin.team_tools import CreateInvite, ListInvites, ListMembers, RevokeInvite, UpdateMember
 
     registry.register(ListMembers(team_service))
@@ -603,6 +608,11 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     from app.tools.builtin.marketing_ad_spend_tools import SyncAdSpend
 
     registry.register(SyncAdSpend(AdSpendSyncService(session_factory, get_integration_connection_service())))
+
+    from app.services.google_business_sync_service import GoogleBusinessSyncService
+    from app.tools.builtin.reputation_tools import SyncGoogleReviews
+
+    registry.register(SyncGoogleReviews(GoogleBusinessSyncService(session_factory, get_integration_connection_service())))
 
     registry.register(CreateOutboundList(outbound_service))
     registry.register(AddOutboundContact(outbound_service))

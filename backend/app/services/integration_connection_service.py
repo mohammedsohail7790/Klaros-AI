@@ -14,6 +14,7 @@ layer's auth dependency and the DB's tenant_id column.
 from __future__ import annotations
 
 import asyncio
+import copy
 import time
 import uuid
 from collections.abc import Awaitable, Callable
@@ -174,6 +175,7 @@ class IntegrationConnectionService:
 
             verifier = self._verifiers.get(provider)
             credential_data = decrypt_credential(connection.encrypted_credential) if connection.encrypted_credential else {}
+            credential_snapshot = copy.deepcopy(credential_data)
 
             started = time.monotonic()
             if verifier is None:
@@ -208,6 +210,11 @@ class IntegrationConnectionService:
                 has_verifier=verifier is not None,
             )
 
+            # A verifier may rotate tokens (Xero issues a new single-use refresh token on every refresh) by updating the dict in place; persist that
+            # even when the check later failed, because the old refresh token is already spent.
+            if credential_data != credential_snapshot:
+                connection.encrypted_credential = encrypt_credential(credential_data)
+
             connection.status = ConnectionStatus.CONNECTED if ok else ConnectionStatus.ERROR
             connection.last_verified_at = datetime.now(timezone.utc)
             connection.last_error = None if ok else detail
@@ -238,6 +245,20 @@ class IntegrationConnectionService:
                 logger.error("integration_connection_notify_failed", provider=provider, error=str(exc))
 
         return connection
+
+    async def update_credential(self, tenant_id: uuid.UUID, provider: str, credential_data: dict) -> None:
+        """Re-encrypts and stores a credential WITHOUT touching status or running a verification: for rotated OAuth tokens that must never be lost."""
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            connection = (
+                await session.execute(
+                    select(IntegrationConnection).where(IntegrationConnection.tenant_id == tenant_id, IntegrationConnection.provider == provider)
+                )
+            ).scalar_one_or_none()
+            if connection is None:
+                raise ConnectionNotFoundError(f"No connection for provider {provider}")
+            connection.encrypted_credential = encrypt_credential(credential_data)
+            await session.commit()
 
     async def disconnect(self, tenant_id: uuid.UUID, provider: str) -> IntegrationConnection:
         async with self._session_factory() as session:

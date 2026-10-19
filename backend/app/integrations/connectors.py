@@ -30,6 +30,8 @@ _CONTRIBUTORS = (
     "app.integrations.connectors_meta",
     "app.integrations.connectors_plaid",
     "app.integrations.connectors_whatsapp",
+    "app.integrations.connectors_xero",
+    "app.integrations.connectors_google_business",
     "app.integrations.connectors_esign",
 )
 
