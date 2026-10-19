@@ -82,8 +82,23 @@ class DraftContent(Tool):
         topics = parse_topics(await self._knowledge.get_content(context.tenant_id, TOPICS_PATH) or "")
         if not topics:
             return DraftContentOutput(created=[], waiting_before=0, topics_left=0, note="There are no content topics yet: add sections to marketing/content-topics.md in the knowledge base.")
-        r = await self._content_service.draft_from_topics(context.tenant_id, topics, max_items=max(1, min(input.max_items, 3)), requested_by=context.actor_id)
+        max_items = max(1, min(input.max_items, 3))
+        r = await self._content_service.draft_from_topics(context.tenant_id, topics, max_items=max_items, requested_by=context.actor_id)
+        added = 0
+        if not r["created"] and r["waiting_before"] < 3 and r["topics_left"] == 0:
+            # Every topic has been drafted: add the next standard topics (never touching what the owner wrote) so marketing keeps going without anyone having to refill the list.
+            from app.services.mt_content_topics import append_topics, missing_topics
+
+            current = await self._knowledge.get_content(context.tenant_id, TOPICS_PATH) or ""
+            extra = missing_topics(current)
+            if extra:
+                updated = append_topics(current, extra)
+                await self._knowledge.set_file(context.tenant_id, TOPICS_PATH, updated, actor_id=None)
+                added = len(extra)
+                r = await self._content_service.draft_from_topics(context.tenant_id, parse_topics(updated), max_items=max_items, requested_by=context.actor_id)
         note = None if r["created"] else ("Enough drafts are already waiting for approval." if r["waiting_before"] >= 3 else "Every topic already has a draft.")
+        if added and r["created"]:
+            note = f"Every topic had a draft, so {added} new standard topics were added to the list."
         return DraftContentOutput(created=r["created"], waiting_before=r["waiting_before"], topics_left=r["topics_left"], note=note)
 
 

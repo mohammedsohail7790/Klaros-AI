@@ -109,3 +109,40 @@ async def test_draft_content_never_leaks_between_businesses(client) -> None:
     await get_tool_registry().execute("marketing.draft_content", {}, _ctx(a_tid))
     out = await get_tool_registry().execute("marketing.draft_content", {}, _ctx(b_tid))
     assert out.created == [] and (await get_tool_registry().execute("marketing.list_content", {}, _ctx(b_tid))).content == []
+
+
+def test_the_standard_topic_library_is_claims_free_short_unique_and_never_repeats_what_is_in_the_file() -> None:
+    from app.services.mt_content_topics import append_topics, library, missing_topics
+
+    lib = library(["Dental", "Hair transplant"])
+    titles = [t for t, _ in lib]
+    assert len(titles) == len(set(titles)) and "What to ask about follow-up care after Dental abroad" in titles and "How to compare two Hair transplant quotes" in titles
+    for title, body in lib:
+        assert len(body.split()) < 140 and title.strip() and "\n" not in title
+        for banned in ("guarantee", "%", "$", "best clinic", "cheapest", "success rate", "best in", "dr.", "prof."):
+            assert banned not in body.lower() and banned not in title.lower()
+    base = build_topics("Lib Co", "referral", ["Dental", "Hair transplant"])
+    first = missing_topics(base, limit=6)
+    assert len(first) == 6 and not ({t.lower() for t, _ in first} & {t.lower() for t, _ in parse_topics(base)})
+    grown = append_topics(base, first)
+    assert grown.startswith(base.rstrip()) and [t for t, _ in parse_topics(grown)][: len(parse_topics(base))] == [t for t, _ in parse_topics(base)]   # the owner's text is untouched
+    assert not ({t for t, _ in missing_topics(grown)} & {t for t, _ in first})  # nothing is added twice
+    assert len(missing_topics(append_topics(base, library(["Dental", "Hair transplant"])), limit=50)) == 0
+
+
+async def test_draft_content_refills_its_own_topic_list_when_every_topic_has_a_draft(client) -> None:
+    token = await _register(client, "Refill Co", "refillco@example.com")
+    tid = await _tenant_id(client, token)
+    reg = get_tool_registry()
+    knowledge = KnowledgeService(async_session_maker)
+    await knowledge.set_file(tid, TOPICS_PATH, "# Topics\n\n## Questions to ask before choosing Dental abroad\n\nAsk for a written quote.\n", actor_id=None)
+    first = await reg.execute("marketing.draft_content", {"max_items": 1}, _ctx(tid))
+    assert [c["title"] for c in first.created] == ["Questions to ask before choosing Dental abroad"]
+    second = await reg.execute("marketing.draft_content", {"max_items": 2}, _ctx(tid))   # the only topic is used: the standard ones are added and drafted
+    assert len(second.created) == 2 and "new standard topics were added" in second.note
+    grown = await knowledge.get_content(tid, TOPICS_PATH)
+    assert "How to read a medical travel quote" in grown and grown.startswith("# Topics") and "Ask for a written quote." in grown
+    third = await reg.execute("marketing.draft_content", {"max_items": 2}, _ctx(tid))     # three are now waiting for approval: nothing more, and nothing added
+    assert third.created == [] and "already waiting" in third.note
+    titles = [c["title"] for c in (await reg.execute("marketing.list_content", {}, _ctx(tid))).content]
+    assert len(titles) == len(set(titles)) == 3
