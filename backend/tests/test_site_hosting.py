@@ -353,3 +353,18 @@ async def test_the_vercel_client_adds_reads_and_never_raises(monkeypatch) -> Non
     await v.remove("x.com")  # does not raise
     monkeypatch.setattr(s, "VERCEL_API_TOKEN", None)
     assert not VercelDomains().configured()
+
+
+async def test_site_files_can_be_cached_at_the_edge_and_served_stale_while_the_server_wakes(client, monkeypatch) -> None:
+    from app.api.v1.site_hosting import serve_host_file
+    class _Service:
+        async def tenant_for_host(self, host):
+            return "t1"
+
+        async def published_file(self, tenant_id, path):
+            return b"<html></html>", "text/html"
+
+    response = await serve_host_file("www.ownsite-test.com", "", _Service())  # type: ignore[arg-type]
+    cc = response.headers["cache-control"]
+    assert "s-maxage=60" in cc and "stale-while-revalidate=86400" in cc and "max-age=60" in cc and cc.startswith("public")
+    assert response.headers["x-content-type-options"] == "nosniff" and "frame-ancestors 'self'" in response.headers["content-security-policy"]
