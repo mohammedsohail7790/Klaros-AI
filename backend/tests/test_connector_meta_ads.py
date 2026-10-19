@@ -73,7 +73,15 @@ async def test_start_builds_facebook_login_url() -> None:
     q = parse_qs(u.query)
     assert u.netloc == "www.facebook.com" and u.path == f"/{mc.GRAPH_VERSION}/dialog/oauth"
     assert q["client_id"] == ["app-id-1"] and q["redirect_uri"] == [CB] and q["state"] == ["st-1"]
-    assert q["scope"] == ["ads_read,business_management"] and "meta-app-secret" not in out["authorization_url"]
+    assert q["scope"] == ["ads_read"] and "config_id" not in q and "meta-app-secret" not in out["authorization_url"]
+
+
+async def test_start_uses_the_login_configuration_when_one_is_set(monkeypatch) -> None:
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "META_ADS_LOGIN_CONFIG_ID", "cfg-9")
+    q = parse_qs(urlparse((await get_connector("meta_ads").start(uuid.uuid4(), uuid.uuid4(), CB, "st-1"))["authorization_url"]).query)
+    assert q["config_id"] == ["cfg-9"] and q["override_default_response_type"] == ["true"] and "scope" not in q
 
 
 async def test_complete_exchanges_for_long_lived_token_and_picks_active_account(monkeypatch) -> None:
@@ -82,7 +90,7 @@ async def test_complete_exchanges_for_long_lived_token_and_picks_active_account(
     mock_http(monkeypatch, meta_handler(accounts=accounts, calls=calls))
     result = await get_connector("meta_ads").complete({"code": "the-code"}, CB, uuid.uuid4())
     assert result.credential["access_token"] == "LONG-token-secret" and result.credential["ad_account_id"] == "act_111"
-    assert result.external_account_id == "act_111" and result.scopes == "ads_read,business_management"
+    assert result.external_account_id == "act_111" and result.scopes == "ads_read"
     exp = datetime.fromisoformat(result.credential["expires_at"])
     assert timedelta(days=59) < exp - datetime.now(timezone.utc) < timedelta(days=61)
     from urllib.parse import parse_qsl

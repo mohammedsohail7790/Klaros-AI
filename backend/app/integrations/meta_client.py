@@ -29,7 +29,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)  # httpx logs full request 
 GRAPH_VERSION = os.environ.get("META_GRAPH_VERSION", "v23.0")
 GRAPH_BASE = f"https://graph.facebook.com/{GRAPH_VERSION}"
 DIALOG_URL = f"https://www.facebook.com/{GRAPH_VERSION}/dialog/oauth"
-SCOPES = ("ads_read", "business_management")
+SCOPES = ("ads_read",)  # /me/adaccounts and the insights reads need only ads_read; business_management would add review work for nothing
 TIMEOUT_SECONDS = 20.0
 MAX_RETRIES = 3
 REFRESH_WITHIN = timedelta(days=10)  # re-exchange the long-lived token when this close to expiry
@@ -74,8 +74,14 @@ class DailyCampaignCost:
     cost: Decimal
 
 
-def get_authorization_url(*, app_id: str, redirect_uri: str, state: str) -> str:
-    return f"{DIALOG_URL}?{urlencode({'client_id': app_id, 'redirect_uri': redirect_uri, 'state': state, 'scope': ','.join(SCOPES), 'response_type': 'code'})}"
+def get_authorization_url(*, app_id: str, redirect_uri: str, state: str, config_id: str | None = None) -> str:
+    """A Facebook Login for Business app takes its permissions from a login configuration (`config_id`) and ignores `scope`; a classic app takes `scope`."""
+    params = {"client_id": app_id, "redirect_uri": redirect_uri, "state": state, "response_type": "code"}
+    if config_id:
+        params.update({"config_id": config_id, "override_default_response_type": "true"})
+    else:
+        params["scope"] = ",".join(SCOPES)
+    return f"{DIALOG_URL}?{urlencode(params)}"
 
 
 def parse_expires_at(value: Any) -> datetime | None:

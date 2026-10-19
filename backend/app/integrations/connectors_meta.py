@@ -1,4 +1,4 @@
-"""Meta Ads one-click connector: Facebook Login (scopes ads_read, business_management) with Klaros's own Meta app. The code is exchanged for a short-lived token and
+"""Meta Ads one-click connector: Facebook Login (scope ads_read) with Klaros's own Meta app. The code is exchanged for a short-lived token and
 then a long-lived one (about 60 days); the credential records `expires_at` so verify reports an expired token honestly and the daily sync can extend it before it lapses."""
 
 from __future__ import annotations
@@ -15,10 +15,11 @@ PROVIDER = "meta_ads"
 
 
 async def _start(tenant_id: uuid.UUID, user_id: uuid.UUID, redirect_uri: str, state: str) -> dict[str, Any]:
-    app_id = get_settings().META_ADS_APP_ID
+    settings = get_settings()
+    app_id = settings.META_ADS_APP_ID
     if not app_id:
         raise ConnectorCompleteError("Meta Ads is not set up on this platform yet (META_ADS_APP_ID is missing).")
-    return {"authorization_url": mc.get_authorization_url(app_id=app_id, redirect_uri=redirect_uri, state=state)}
+    return {"authorization_url": mc.get_authorization_url(app_id=app_id, redirect_uri=redirect_uri, state=state, config_id=settings.META_ADS_LOGIN_CONFIG_ID)}
 
 
 async def _complete(params: dict[str, Any], redirect_uri: str, tenant_id: uuid.UUID) -> CompleteResult:
@@ -68,8 +69,9 @@ CONNECTORS = [
         owner_steps=(
             "At developers.facebook.com create a Business-type app and add the Facebook Login product.",
             "Add the redirect URI shown here under Valid OAuth Redirect URIs; add app domain and privacy policy URL in App settings.",
-            "Request Advanced access to ads_read and business_management through App Review (Business Verification may be required); until then only app roles (admins, developers, testers) can connect.",
-            "Set META_ADS_APP_ID and META_ADS_APP_SECRET in Render and switch the app to Live.",
+            "Request Advanced access to ads_read through App Review (Business Verification may be required); until then only app roles (admins, developers, testers) can connect.",
+            "In Facebook Login for Business > Configurations create a configuration (user access token, permission ads_read) and note its Configuration ID.",
+            "Set META_ADS_APP_ID, META_ADS_APP_SECRET and META_ADS_LOGIN_CONFIG_ID in Render and switch the app to Live.",
             "Back in Klaros press Connect and sign in with the Facebook user that has access to the business's ad account. The connection lasts about 60 days and Klaros extends it automatically.",
         ),
     )
