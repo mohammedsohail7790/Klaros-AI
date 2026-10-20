@@ -2,7 +2,8 @@
 
 Mirrors `QuoteDepositService`: the shopper is redirected to Stripe's own page and confirmation always comes from the webhook (`dropshipping_store_payment_service`),
 never from the redirect. The shopper can send items, contact details, the ship-to address and an idempotency key, and nothing else: prices come from the catalog, shipping
-from the owner's rule, and both redirect URLs are built here from FRONTEND_BASE_URL (never accepted from the client, so there is no open redirect).
+from the owner's rule, and both redirect URLs are built here from DROPSHIPPING_STORE_URL, or FRONTEND_BASE_URL when that is not set (never accepted from the client, so
+there is no open redirect).
 """
 
 from __future__ import annotations
@@ -29,6 +30,13 @@ from app.tools.builtin.stripe_tools import resolve_stripe_secret_key
 
 PURPOSE = "dropshipping_order"
 _KEY_PREFIX = "web-"  # keeps shopper keys apart from staff-entered orders in the one idempotency space
+
+
+def store_base_url() -> str:
+    """The address shoppers are sent back to: the store's own (DROPSHIPPING_STORE_URL) when it is a proper web address, otherwise the platform's FRONTEND_BASE_URL."""
+    settings = get_settings()
+    own = (settings.DROPSHIPPING_STORE_URL or "").strip().rstrip("/")
+    return own if own.lower().startswith(("https://", "http://")) else settings.FRONTEND_BASE_URL.rstrip("/")
 
 
 class StoreClosedError(Exception):
@@ -126,8 +134,7 @@ class DropshippingCheckoutService:
         result = {"order_number": order.order_number, "status_token": order.public_token, "status": order.status, "total": str(Decimal(order.total).quantize(Decimal("0.01"))), "checkout_url": None}
         if order.status != OrderStatus.PENDING_PAYMENT.value:
             return result  # a replayed checkout of an order that is already paid: nothing to pay
-        base = get_settings().FRONTEND_BASE_URL.rstrip("/")
-        status_url = f"{base}/store/orders/{order.public_token}"
+        status_url = f"{store_base_url()}/store/orders/{order.public_token}"
         total = Decimal(order.total).quantize(Decimal("0.01"))
         try:
             session_obj = await StripeClient(secret_key).create_checkout_session(

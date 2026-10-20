@@ -366,3 +366,28 @@ async def test_pay_again_gives_a_new_session_only_while_the_order_is_unpaid(clie
     oid = (await _order_row(out["order_number"])).id
     assert (await client.post(f"{BASE}/orders/{oid}/mark-paid", json={"payment_reference": "BANK-77"}, headers=_h(owner))).status_code == 200
     assert (await client.post(f"{STORE}/orders/{out['status_token']}/pay")).status_code == 409
+
+
+# --- where shoppers are sent back to after Stripe ---------------------------------------------------------------------------------------------------------------
+
+
+async def test_shoppers_return_to_the_stores_own_address_when_it_is_set(client, monkeypatch, stripe) -> None:
+    await _live_store(client, monkeypatch, "Own Address Co", "own-address@example.com")
+    monkeypatch.setattr(get_settings(), "DROPSHIPPING_STORE_URL", "https://www.cleanroom.test/")        # a trailing slash is tolerated
+    out = await _checkout(client)
+    row = await _order_row(out["order_number"])
+    sent = stripe.requests[0]["form"]
+    assert sent["success_url"] == f"https://www.cleanroom.test/store/orders/{row.public_token}?payment=success"
+    assert sent["cancel_url"] == f"https://www.cleanroom.test/store/orders/{row.public_token}?payment=cancelled"
+    assert FRONT not in sent["success_url"] + sent["cancel_url"]
+    again = await client.post(f"{STORE}/orders/{out['status_token']}/pay")                                  # paying again from the order page does the same
+    assert again.status_code == 200 and stripe.requests[-1]["form"]["success_url"].startswith("https://www.cleanroom.test/store/orders/")
+
+
+@pytest.mark.parametrize("value", [None, "", "   ", "cleanroom.com", "javascript:alert(1)", "ftp://cleanroom.test"], ids=["unset", "empty", "blank", "no-scheme", "javascript", "other-scheme"])
+async def test_an_unusable_store_address_falls_back_to_the_platform_address(client, monkeypatch, stripe, value) -> None:
+    await _live_store(client, monkeypatch, f"Fallback {abs(hash(str(value)))} Co", f"fallback-{abs(hash(str(value)))}@example.com")
+    monkeypatch.setattr(get_settings(), "DROPSHIPPING_STORE_URL", value)
+    out = await _checkout(client)
+    row = await _order_row(out["order_number"])
+    assert stripe.requests[0]["form"]["success_url"] == f"{FRONT}/store/orders/{row.public_token}?payment=success"      # the platform address, never the bad value

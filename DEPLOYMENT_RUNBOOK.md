@@ -119,6 +119,13 @@ and `INTEGRATIONS.md` for exactly what each connects): `STRIPE_SECRET_KEY`/`STRI
 `QUICKBOOKS_CLIENT_ID`/`_SECRET`/`_REDIRECT_URI`, `GOOGLE_CLIENT_ID`/`_SECRET`/`_REDIRECT_URI`,
 `TWILIO_*`, `SENDGRID_*`, `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`.
 
+DROPSHIPPING STOREFRONT (the one business served at `/store`; see the dropshipping store pull request): backend `DROPSHIPPING_STORE_TENANT_ID` (unset = the public store
+does not exist), `DROPSHIPPING_STORE_URL` (where shoppers return after Stripe, for example `https://www.cleanroom.com`; unset = `FRONTEND_BASE_URL`, which other features share
+and which must not be changed for the store), `DROPSHIPPING_MAX_UNPAID_ORDERS` (default 200), `RATE_LIMIT_PUBLIC_STORE_*_PER_MINUTE`; it also needs `STRIPE_SECRET_KEY` and
+`STRIPE_WEBHOOK_SECRET` (the platform-wide webhook secret: reuse the existing one, do not replace it). Frontend: `NEXT_PUBLIC_STORE_NAME`, `NEXT_PUBLIC_STORE_CONTACT_EMAIL`,
+`NEXT_PUBLIC_STORE_URL` (all have Clean Room defaults) and `STORE_HOSTS` (hosts whose home page is the shop; default `cleanroom.com,www.cleanroom.com`).
+The migrations `0080_dropshipping_store` and `0081_dropshipping_order_notes` only add tables and nullable columns; rollback is `alembic downgrade 0079_catalog_real_connectors`.
+
 OPTIONAL: `OBJECT_STORAGE_*` (blank = real local-disk storage adapter, not a mock),
 `TEMPORAL_HOST`/`_NAMESPACE`/`_TASK_QUEUE` (only needed if Temporal workflows are in use),
 per-provider `*_TIMEOUT_SECONDS`/`*_MAX_RETRIES`.
