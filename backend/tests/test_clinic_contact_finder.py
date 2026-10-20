@@ -165,3 +165,58 @@ async def test_dns_mx_exists_false_on_http_error_and_exceptions(monkeypatch):
 
     _patch_http(monkeypatch, boom)
     assert await ccf.dns_mx_exists("clinic.example") is False
+
+
+@pytest.mark.parametrize("bad", ["noreply+x@clinic.example", "careers+intl@clinic.example", "hr+1@clinic.example", "No-Reply@clinic.example", "NOREPLY@clinic.example"])
+def test_plus_addressing_and_case_do_not_bypass_the_blocked_list(bad):
+    assert not usable_address(bad)
+
+
+async def test_registry_shared_suffix_is_not_one_domain():
+    s = FakeSearch([_hit("info@other-clinic.or.jp", url="https://clinic-a.or.jp/")])
+    assert (await find_contact(_clinic(), s, _mx_ok)).email is None
+    s = FakeSearch([_hit("info@clinic-a.or.jp", url="https://clinic-a.or.jp/")])
+    assert (await find_contact(_clinic(), s, _mx_ok)).email == "info@clinic-a.or.jp"
+
+
+async def test_hosting_platform_addresses_are_refused():
+    s = FakeSearch([_hit("info@wixsite.com", url="https://clinic.wixsite.com/home")])
+    r = await find_contact(_clinic(), s, _mx_ok)
+    assert r.email is None and r.reason == "no_email_on_clinic_site"
+
+
+class RaisingSearch:
+    name = "boom"
+
+    async def search(self, query, max_results=5):
+        raise RuntimeError("rate limited")
+
+
+async def test_a_search_failure_returns_search_failed():
+    r = await find_contact(_clinic(), RaisingSearch(), _mx_ok)
+    assert (r.email, r.source, r.reason) == (None, None, "search_failed")
+
+
+async def test_null_mx_means_no_mail(monkeypatch):
+    _patch_http(monkeypatch, lambda req: httpx.Response(200, json={"Answer": [{"type": 15, "data": "0 ."}]}))
+    assert await ccf.dns_mx_exists("clinic.example") is False
+
+
+async def test_mx_checked_once_per_distinct_domain():
+    calls = []
+
+    async def mx(d):
+        calls.append(d)
+        return False
+
+    s = FakeSearch([_hit("info@clinic.example international@clinic.example")])
+    r = await find_contact(_clinic(), s, mx)
+    assert r.reason == "mx_failed" and calls == ["clinic.example"]
+
+
+async def test_clinic_name_must_match_whole_words():
+    s = FakeSearch([_hit("info@clinic.example", title="Acme Dental Clinics Group")])
+    assert (await find_contact(_clinic(), s, _mx_ok)).email is None
+    c = SimpleNamespace(name="Dent", city="Istanbul", country="TR", contact_email=None)
+    s = FakeSearch([_hit("info@clinic.example", title="Best dentist")])
+    assert (await find_contact(c, s, _mx_ok)).email is None

@@ -22,11 +22,13 @@ from app.services.mt_clinic_sourcing import COUNTRY_NAMES, _EMAIL, SearchProvide
 FREE_MAIL_DOMAINS = frozenset({"gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "live.com", "icloud.com", "proton.me", "protonmail.com", "aol.com"})
 BLOCKED_LOCAL_PARTS = frozenset({"noreply", "no-reply", "donotreply", "privacy", "careers", "jobs", "hr", "press", "media", "legal", "abuse", "webmaster"})
 LOCAL_PART_RANK = ("international", "intl", "patient", "appointment", "inquiry", "contact", "info")
-_SECOND_LEVEL = frozenset({"co", "com", "org", "net", "ac", "gov", "edu"})
+_SECOND_LEVEL = frozenset({"co", "com", "org", "net", "ac", "gov", "edu", "or", "ne", "go", "in", "med", "gen", "k12", "nhs"})
+PLATFORM_DOMAINS = frozenset({"wixsite.com", "wordpress.com", "blogspot.com", "squarespace.com", "weebly.com", "github.io", "netlify.app", "vercel.app", "business.site", "godaddysites.com", "webflow.io", "linktr.ee", "facebook.com", "instagram.com", "linkedin.com"})
 
 
 @dataclass(frozen=True)
 class ContactResult:
+    # reason: owner | site | not_configured | no_hits | no_email_on_clinic_site | mx_failed | search_failed
     email: str | None
     source_url: str | None
     source: Literal["owner", "site"] | None
@@ -37,7 +39,8 @@ def usable_address(email: str) -> bool:
     local, sep, domain = email.strip().lower().partition("@")
     if not sep or not local or not domain or "@" in domain:
         return False
-    return domain not in FREE_MAIL_DOMAINS and local not in BLOCKED_LOCAL_PARTS
+    base = local.split("+", 1)[0]
+    return domain not in FREE_MAIL_DOMAINS and base not in BLOCKED_LOCAL_PARTS and _registered_domain(domain) not in PLATFORM_DOMAINS
 
 
 def _registered_domain(host: str) -> str:
@@ -49,6 +52,11 @@ def _registered_domain(host: str) -> str:
 
 def _normalise(text: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", text.lower())).strip()
+
+
+def _has_name(name: str, text: str) -> bool:
+    n = _normalise(name)
+    return bool(n) and f" {n} " in f" {_normalise(text)} "
 
 
 def _rank(email: str) -> int:
@@ -66,7 +74,7 @@ async def dns_mx_exists(domain: str) -> bool:
         async with _http_client() as client:
             r = await client.get("https://cloudflare-dns.com/dns-query", params={"name": domain, "type": "MX"}, headers={"accept": "application/dns-json"})
             r.raise_for_status()
-            return any(a.get("type") == 15 for a in r.json().get("Answer", []))
+            return any(a.get("type") == 15 and str(a.get("data", "")).strip() != "0 ." for a in r.json().get("Answer", []))
     except Exception:
         return False
 
@@ -77,13 +85,15 @@ async def find_contact(provider: Provider, search: SearchProvider | None, mx_exi
     if search is None:
         return ContactResult(None, None, None, "not_configured")
     country = COUNTRY_NAMES.get(provider.country, provider.country)
-    hits = await search.search(f"{provider.name} {provider.city} {country} international patients contact email")
+    try:
+        hits = await search.search(f"{provider.name} {provider.city} {country} international patients contact email")
+    except Exception:
+        return ContactResult(None, None, None, "search_failed")
     if not hits:
         return ContactResult(None, None, None, "no_hits")
-    wanted = _normalise(provider.name)
     candidates: list[tuple[int, int, str, str]] = []
     for hit in hits:
-        if not wanted or wanted not in _normalise(f"{hit.title} {hit.content}"):
+        if not _has_name(provider.name, f"{hit.title} {hit.content}"):
             continue
         host = urlparse(hit.url).hostname or ""
         if not host:
@@ -95,11 +105,11 @@ async def find_contact(provider: Provider, search: SearchProvider | None, mx_exi
                 candidates.append((_rank(email), len(candidates), email, hit.url))
     if not candidates:
         return ContactResult(None, None, None, "no_email_on_clinic_site")
-    seen: set[str] = set()
+    checked: dict[str, bool] = {}
     for _, _, email, url in sorted(candidates):
-        if email in seen:
-            continue
-        seen.add(email)
-        if await mx_exists(email.split("@", 1)[1]):
+        domain = email.split("@", 1)[1]
+        if domain not in checked:
+            checked[domain] = await mx_exists(domain)
+        if checked[domain]:
             return ContactResult(email, url, "site", "site")
     return ContactResult(None, None, None, "mx_failed")
