@@ -8,7 +8,7 @@ import type { NextRequest } from "next/server";
  */
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const PLATFORM_HOSTS = [/^localhost(:\d+)?$/, /^127\.0\.0\.1(:\d+)?$/, /(^|\.)meetklaros\.com$/, /\.vercel\.app$/];
-// The store's own domain(s): the home page of these hosts is the shop (/store); every other path is served as it is, so /store/... works on them too.
+// The store's own domain(s): the home page of these hosts is the Clean Room welcome page (/store/welcome), with the shop at /store; every other path is served as it is, so /store/... works on them too.
 // Set STORE_HOSTS (comma separated) to change them; the domain itself must still be pointed at this app in DNS and the hosting settings.
 const STORE_HOSTS = (process.env.STORE_HOSTS ?? "yourcleanroom.com,www.yourcleanroom.com").split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
 const TTL_MS = 60_000;
@@ -32,7 +32,7 @@ async function resolveHost(host: string) {
 export async function proxy(request: NextRequest) {
   const host = (request.headers.get("host") ?? "").toLowerCase();
   if (!host || PLATFORM_HOSTS.some((re) => re.test(host))) return NextResponse.next();
-  if (STORE_HOSTS.includes(host.replace(/:\d+$/, ""))) return request.nextUrl.pathname === "/" ? NextResponse.rewrite(new URL("/store", request.url)) : NextResponse.next();
+  if (STORE_HOSTS.includes(host.replace(/:\d+$/, ""))) return request.nextUrl.pathname === "/" ? NextResponse.rewrite(new URL("/store/welcome", request.url)) : NextResponse.next();
   const site = await resolveHost(host.replace(/:\d+$/, ""));
   if (!site) return new NextResponse("Not found", { status: 404 });
   const { pathname } = request.nextUrl;
