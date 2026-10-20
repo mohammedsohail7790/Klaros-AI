@@ -10,7 +10,7 @@ const securityHeaders = [
 ];
 
 // Pages that only make sense signed in: never index them.
-const appPaths = ["/dashboard", "/business/:path*", "/medical-tourism/:path*", "/leads/:path*", "/customers/:path*", "/settings/:path*", "/setup", "/onboarding", "/login", "/register", "/forgot-password", "/reset-password", "/accept-invite"];
+const appPaths = ["/dashboard", "/business/:path*", "/medical-tourism/:path*", "/leads/:path*", "/customers/:path*", "/settings/:path*", "/setup", "/onboarding", "/login", "/register", "/forgot-password", "/reset-password", "/accept-invite", "/dropshipping/:path*", "/store/cart", "/store/checkout", "/store/orders/:path*"];
 
 const nextConfig = {
   reactStrictMode: true,

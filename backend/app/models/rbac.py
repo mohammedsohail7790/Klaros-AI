@@ -198,6 +198,13 @@ class Permission(StrEnum):
     MANAGE_MEDICAL_TOURISM = "MANAGE_MEDICAL_TOURISM"
     # Work a Medical Tourism case: referrals, the patient's recorded approval, handoff tasks, clinic responses. Provider verification and money stay with MANAGE.
     COORDINATE_MEDICAL_TOURISM = "COORDINATE_MEDICAL_TOURISM"
+    # Dropshipping store (vertical extension): the staff catalog API and its tools. Same read/manage split as every other domain; MANAGE covers suppliers,
+    # products, SKUs, availability, publishing and CSV import. Owner/admin get everything through `_ALL_PERMISSIONS`.
+    READ_DROPSHIPPING = "READ_DROPSHIPPING"
+    MANAGE_DROPSHIPPING = "MANAGE_DROPSHIPPING"
+    # Work orders without catalog or money control: place supplier orders, add tracking, mark delivered, cancel. Recording a payment and erasing an order's
+    # personal data stay with MANAGE. Same split as COORDINATE_MEDICAL_TOURISM.
+    COORDINATE_DROPSHIPPING = "COORDINATE_DROPSHIPPING"
     # Phase 11 (Website Builder, PHASE_11_WEBSITE_BUILDER_DESIGN.md §10 RBAC):
     # three permissions, not the usual two-way read/manage split — mirrors
     # how MANAGE_AGENTS/EXECUTE_AGENT are kept separate (Phase 4's own
@@ -320,6 +327,9 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.READ_MEDICAL_TOURISM,
         Permission.MANAGE_MEDICAL_TOURISM,
         Permission.COORDINATE_MEDICAL_TOURISM,
+        Permission.READ_DROPSHIPPING,
+        Permission.MANAGE_DROPSHIPPING,
+        Permission.COORDINATE_DROPSHIPPING,
         Permission.READ_WEBSITE,
         Permission.MANAGE_WEBSITE,
         Permission.PUBLISH_WEBSITE,
@@ -355,6 +365,8 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         # vertical configuration merely by having generic platform access.
         Permission.READ_MEDICAL_TOURISM,
         Permission.COORDINATE_MEDICAL_TOURISM,  # but may work referrals and handoff tasks assigned to them
+        Permission.READ_DROPSHIPPING,  # STAFF can see the catalog, not change it
+        Permission.COORDINATE_DROPSHIPPING,  # but may work orders: supplier orders, tracking, delivery
         # STAFF can view and edit a draft website, but publishing (making it
         # the tenant's live, customer-facing site) is a MANAGER-tier
         # decision, not granted here — the same "can edit, cannot release"
@@ -423,6 +435,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         Permission.READ_AGENTS,
         Permission.READ_AGENT_EXECUTIONS,
         Permission.READ_MEDICAL_TOURISM,
+        Permission.READ_DROPSHIPPING,
         Permission.READ_WEBSITE,
     },
 }

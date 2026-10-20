@@ -102,7 +102,7 @@ function formatErrorDetail(detail: unknown): string {
   return JSON.stringify(detail);
 }
 
-async function request<T>(path: string, init?: RequestInit, _isRetry = false): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit, _isRetry = false): Promise<T> {
   const isFormData = init?.body instanceof FormData;
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -166,7 +166,7 @@ async function request<T>(path: string, init?: RequestInit, _isRetry = false): P
   return JSON.parse(text) as T;
 }
 
-function authHeaders(token: string): HeadersInit {
+export function authHeaders(token: string): HeadersInit {
   return { Authorization: `Bearer ${token}` };
 }
 
