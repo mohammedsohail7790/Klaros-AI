@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Settings2 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { ProblemAlert } from "@/components/dropshipping/parts";
+import SupplierSync from "@/components/dropshipping/SupplierSync";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
@@ -108,6 +109,8 @@ export default function DropshippingStoreSettingsPage() {
               <p className="text-sm text-muted">The switch can only be turned on when a shipping rule is set, tax is acknowledged, Stripe is connected and a product is on sale. Closing it stops new orders at once.</p>
               {manage && (s.open ? <Button variant="secondary" disabled={busy} onClick={() => save({ open: false })}>Close the store</Button> : <Button disabled={busy} onClick={() => save({ open: true })}>Open the store</Button>)}
             </section>
+
+            {token && <SupplierSync token={token} manage={manage} />}
           </div>
         ) : null}
       </div>
