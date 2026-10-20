@@ -149,7 +149,7 @@ describe("store layout", () => {
     expect(foot).toHaveTextContent("Flat-rate shipping: $5.00");
     expect(screen.getAllByText("Flat-rate shipping: $5.00. Free on orders of $50.00 or more.")).toHaveLength(2);   // the bar above the header and the footer
     expect(screen.getByRole("link", { name: "Clean Room" })).toHaveAttribute("href", "/store");
-    expect(within(foot).getByRole("link", { name: "info@cleanroom.com" })).toHaveAttribute("href", "mailto:info@cleanroom.com");
+    expect(within(foot).getByRole("link", { name: "info@yourcleanroom.com" })).toHaveAttribute("href", "mailto:info@yourcleanroom.com");
     expect(document.querySelector(".cleanroom-theme")).not.toBeNull();
     // no invented policy: nothing about delivery times or returns
     expect(foot.textContent).not.toMatch(/return|refund|business days|guarantee|within \d/i);
@@ -166,7 +166,7 @@ describe("store layout", () => {
 describe("metadata", () => {
   it("names the store on its own pages without the platform's suffix", () => {
     expect(metadata.title).toEqual({ absolute: "Clean Room", template: "%s · Clean Room" });
-    expect(metadata.openGraph).toMatchObject({ siteName: "Clean Room", url: "https://www.cleanroom.com" });
+    expect(metadata.openGraph).toMatchObject({ siteName: "Clean Room", url: "https://www.yourcleanroom.com" });
   });
   it("titles a product page with the product's name", async () => {
     expect(await generateMetadata({ params: Promise.resolve({ slug: "green-tea" }) })).toMatchObject({ title: "Green Tea", description: "Loose leaf green tea." });

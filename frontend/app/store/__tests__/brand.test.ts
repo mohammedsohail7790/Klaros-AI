@@ -72,8 +72,8 @@ describe("Clean Room palette", () => {
 describe("the store's own domain", () => {
   const req = (url: string, host: string) => new NextRequest(url, { headers: { host } });
 
-  it("shows the shop at the home page of cleanroom.com and www.cleanroom.com", async () => {
-    for (const host of ["cleanroom.com", "www.cleanroom.com"]) {
+  it("shows the shop at the home page of yourcleanroom.com and www.yourcleanroom.com", async () => {
+    for (const host of ["yourcleanroom.com", "www.yourcleanroom.com"]) {
       const res = await proxy(req(`https://${host}/`, host));
       expect(res.headers.get("x-middleware-rewrite"), host).toBe(`https://${host}/store`);
     }
@@ -81,7 +81,7 @@ describe("the store's own domain", () => {
 
   it("serves every other path on that domain as it is, without asking the backend", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
-    const res = await proxy(req("https://www.cleanroom.com/store/cart", "www.cleanroom.com"));
+    const res = await proxy(req("https://www.yourcleanroom.com/store/cart", "www.yourcleanroom.com"));
     expect(res.headers.get("x-middleware-rewrite")).toBeNull();
     expect(res.headers.get("x-middleware-next")).toBe("1");
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -96,7 +96,7 @@ describe("the store's own domain", () => {
 
   it("does not treat a look-alike domain as the store", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 404 }));
-    const res = await proxy(req("https://cleanroom.com.evil.example/", "cleanroom.com.evil.example"));
+    const res = await proxy(req("https://yourcleanroom.com.evil.example/", "yourcleanroom.com.evil.example"));
     expect(res.status).toBe(404);
     vi.restoreAllMocks();
   });

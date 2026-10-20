@@ -144,7 +144,7 @@ class Settings(BaseSettings):
     # The ONE business tenant whose dropshipping storefront is served publicly under /api/v1/public/store. Unset = the public store does not exist (404).
     # No other tenant can be served: the public routes take no tenant from the caller.
     DROPSHIPPING_STORE_TENANT_ID: str | None = None
-    # Where the store sends a shopper back to after Stripe (the store's own address, for example https://www.cleanroom.com). Unset = FRONTEND_BASE_URL.
+    # Where the store sends a shopper back to after Stripe (the store's own address, for example https://www.yourcleanroom.com). Unset = FRONTEND_BASE_URL.
     # Kept separate because FRONTEND_BASE_URL is shared by every other feature of this backend (quote links, OAuth returns) and must not change for the store.
     DROPSHIPPING_STORE_URL: str | None = None
     # Stops the checkout route from creating unlimited unpaid orders; checked per store.

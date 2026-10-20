@@ -384,7 +384,7 @@ async def test_shoppers_return_to_the_stores_own_address_when_it_is_set(client, 
     assert again.status_code == 200 and stripe.requests[-1]["form"]["success_url"].startswith("https://www.cleanroom.test/store/orders/")
 
 
-@pytest.mark.parametrize("value", [None, "", "   ", "cleanroom.com", "javascript:alert(1)", "ftp://cleanroom.test"], ids=["unset", "empty", "blank", "no-scheme", "javascript", "other-scheme"])
+@pytest.mark.parametrize("value", [None, "", "   ", "yourcleanroom.com", "javascript:alert(1)", "ftp://cleanroom.test"], ids=["unset", "empty", "blank", "no-scheme", "javascript", "other-scheme"])
 async def test_an_unusable_store_address_falls_back_to_the_platform_address(client, monkeypatch, stripe, value) -> None:
     await _live_store(client, monkeypatch, f"Fallback {abs(hash(str(value)))} Co", f"fallback-{abs(hash(str(value)))}@example.com")
     monkeypatch.setattr(get_settings(), "DROPSHIPPING_STORE_URL", value)

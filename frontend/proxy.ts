@@ -10,7 +10,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const PLATFORM_HOSTS = [/^localhost(:\d+)?$/, /^127\.0\.0\.1(:\d+)?$/, /(^|\.)meetklaros\.com$/, /\.vercel\.app$/];
 // The store's own domain(s): the home page of these hosts is the shop (/store); every other path is served as it is, so /store/... works on them too.
 // Set STORE_HOSTS (comma separated) to change them; the domain itself must still be pointed at this app in DNS and the hosting settings.
-const STORE_HOSTS = (process.env.STORE_HOSTS ?? "cleanroom.com,www.cleanroom.com").split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
+const STORE_HOSTS = (process.env.STORE_HOSTS ?? "yourcleanroom.com,www.yourcleanroom.com").split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
 const TTL_MS = 60_000;
 const cache = new Map<string, { at: number; value: { tenant_id: string; kind: "upload" | "klaros" } | null }>();
 
