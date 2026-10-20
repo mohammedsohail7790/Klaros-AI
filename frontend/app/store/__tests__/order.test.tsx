@@ -58,7 +58,7 @@ describe("order page", () => {
       tracking: [{ carrier: "UPS", tracking_number: "1Z1", tracking_url: "https://ups.example/1Z1", status: "SHIPPED" }, { carrier: "Odd", tracking_number: "BAD1", tracking_url: "javascript:alert(1)", status: "SHIPPED" }],
     }));
     render(<OrderPage />);
-    await screen.findByText("Shipped");
+    await screen.findByTestId("status");
     expect(screen.queryByRole("button", { name: /Pay/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "1Z1" })).toHaveAttribute("href", "https://ups.example/1Z1");
     expect(screen.queryByRole("link", { name: "BAD1" })).not.toBeInTheDocument();

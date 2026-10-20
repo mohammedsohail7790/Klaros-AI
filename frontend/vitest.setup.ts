@@ -5,6 +5,8 @@ import { vi } from "vitest";
 vi.mock("next/font/google", () => {
   const family = () => () => ({ className: "", variable: "", style: {} });
   return {
+    Bricolage_Grotesque: family(),
+    Instrument_Sans: family(),
     Cairo: family(),
     DM_Sans: family(),
     Inter: family(),

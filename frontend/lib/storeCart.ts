@@ -59,15 +59,18 @@ export interface PricedLine extends CartLine {
   inStock: boolean;
   price: string | null;
   lineCents: number | null;
+  imageUrl: string | null;
+  category: string | null;
 }
 
 /** Joins the cart with what the store says now. `products` maps slug to the product, or null when the store no longer has it. */
 export function priceLines(lines: CartLine[], products: Map<string, StoreProduct | null>): PricedLine[] {
   return lines.map((l) => {
     const item = products.get(l.slug)?.items.find((i) => i.sku === l.sku);
-    if (!item) return { ...l, gone: true, inStock: false, price: null, lineCents: null };
+    if (!item) return { ...l, gone: true, inStock: false, price: null, lineCents: null, imageUrl: null, category: null };
     const cents = toCents(item.price);
-    return { ...l, name: products.get(l.slug)!.name, gone: false, inStock: item.in_stock, price: item.price, lineCents: Number.isNaN(cents) ? null : cents * l.quantity };
+    const product = products.get(l.slug)!;
+    return { ...l, name: product.name, gone: false, inStock: item.in_stock, price: item.price, lineCents: Number.isNaN(cents) ? null : cents * l.quantity, imageUrl: product.image_url, category: product.category };
   });
 }
 

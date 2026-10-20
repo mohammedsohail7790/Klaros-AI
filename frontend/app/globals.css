@@ -241,3 +241,46 @@ select:not([multiple]):not([size]):disabled {
 .klaros-page-in { animation: klaros-page-in 0.6s cubic-bezier(0.28, 0.11, 0.32, 1) both; }
 
 /* The published website's styles live in components/website/site.css (imported by SiteView). */
+
+/* Clean Room storefront (/store): Apple-style layout and type on the brand palette. The palette is used exactly: Cream #FBF9F5, Meadow Green #2D5A27, Apricot #E87A40
+   (actions, basket badge, deal tags), Charcoal #1A201C (text, the top bar), Sage Mist #E2E9E1 (tiles, fills, dividers). No other hue is introduced. The only extra
+   tones are Charcoal at 70% (secondary text, #5E615D on cream) and Charcoal at 16% (hairlines), which are the same colour at lower strength. Hover states dim the
+   button instead of using a new colour. Text on apricot is charcoal, never white (5.75:1 against 2.88:1). */
+.cleanroom-theme {
+  --color-background: 251 249 245;
+  --color-surface: 251 249 245;
+  --color-surface-muted: 226 233 225;
+  --color-border: 215 214 210;
+  --color-border-strong: 215 214 210;
+  --color-foreground: 26 32 28;
+  --color-muted: 94 97 93;
+  --color-muted-foreground: 94 97 93;
+  --color-accent: 232 122 64;
+  --color-accent-hover: 232 122 64;
+  --color-accent-foreground: 26 32 28;
+  --color-accent-soft: 226 233 225;
+  --color-accent-2: 45 90 39;
+  --color-success: 45 90 39;
+  --color-brand: 45 90 39;
+  background-color: rgb(var(--color-background));
+  color: rgb(var(--color-foreground));
+  /* The system face first, so Apple devices get San Francisco itself; Inter is the close match everywhere else. */
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", var(--font-cr-inter), "Helvetica Neue", Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.47;
+  letter-spacing: -0.022em;
+  -webkit-font-smoothing: antialiased;
+}
+.cleanroom-theme h1, .cleanroom-theme h2, .cleanroom-theme h3, .cleanroom-theme .cr-display { font-family: inherit; font-weight: 600; letter-spacing: -0.03em; line-height: 1.08; }
+.cleanroom-theme h1, .cleanroom-theme h2 { color: rgb(var(--color-foreground)); }
+.cleanroom-theme .cr-on-dark, .cleanroom-theme .cr-on-dark h1, .cleanroom-theme .cr-on-dark h2, .cleanroom-theme .cr-on-dark h3 { color: rgb(var(--color-background)); }
+.cleanroom-theme :where(a, button, input, select, [role="radio"]):focus-visible { outline: 4px solid rgb(var(--color-accent)); outline-offset: 2px; }
+.cleanroom-theme ::selection { background: rgb(var(--color-accent) / 0.3); }
+.cleanroom-theme .cr-press:hover:not(:disabled) { filter: brightness(0.93); }
+.cleanroom-theme .cr-press:active:not(:disabled) { filter: brightness(0.86); }
+.cleanroom-theme .cr-nav { background-color: rgb(var(--color-foreground) / 0.86); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
+@keyframes cr-bump { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
+.cleanroom-theme .cr-bump { animation: cr-bump 0.35s ease-out; }
+@keyframes cr-fade { from { opacity: 0; } to { opacity: 1; } }
+.cleanroom-theme .cr-fade { animation: cr-fade 0.3s ease-out; }
+@media (prefers-reduced-motion: reduce) { .cleanroom-theme .cr-bump, .cleanroom-theme .cr-fade { animation: none; } .cleanroom-theme .cr-press { transition: none; } }

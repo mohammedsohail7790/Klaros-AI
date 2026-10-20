@@ -3,7 +3,10 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/Button";
+import { Check, ExternalLink, Info, Package } from "lucide-react";
+import { buttonClass } from "@/components/store/styles";
+import { Button, Card, Skeleton } from "@/components/store/ui";
+import { cn } from "@/lib/cn";
 import { StoreApiError, StoreOrder, getStoreOrder, payStoreOrder } from "@/lib/storeApi";
 import { formatMoney } from "@/lib/storeCart";
 import { friendlyProblem } from "@/lib/storeOrders";
@@ -13,13 +16,39 @@ const POLL_INTERVAL_MS = 2500;
 
 export default function OrderPage() {
   return (
-    <Suspense fallback={<p className="py-12 text-center text-muted" role="status">Loading your order…</p>}>
+    <Suspense fallback={<div role="status" aria-label="Loading your order" className="mx-auto max-w-3xl space-y-4"><Skeleton className="h-12 w-72" /><Skeleton className="h-28" /><Skeleton className="h-48" /><span className="sr-only">Loading your order…</span></div>}>
       <OrderInner />
     </Suspense>
   );
 }
 
 const safeLink = (url: string | null) => (url && /^https:\/\//i.test(url) ? url : null);
+
+/** How far an order has got. Cancelled and refunded orders are not on this path: they are shown as a notice instead. */
+const STEPS = ["Order placed", "Payment received", "Being prepared", "Shipped", "Delivered"];
+const LEVEL: Record<string, number> = { PENDING_PAYMENT: 0, PAID: 1, SUPPLIER_ORDER_PLACED: 2, SHIPPED: 3, DELIVERED: 4 };
+
+function Progress({ status }: { status: string }) {
+  const level = LEVEL[status];
+  if (level === undefined) return null;
+  return (
+    <ol aria-label="Order progress" className="grid grid-cols-5 gap-1.5">
+      {STEPS.map((label, i) => {
+        const done = i <= level;
+        const current = i === level + 1 && level < 4;
+        return (
+          <li key={label} aria-current={current ? "step" : undefined} className="flex flex-col items-center gap-2 text-center">
+            <span className={cn("flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold", done ? "bg-[rgb(var(--color-brand))] text-[rgb(var(--color-background))]" : current ? "border-2 border-accent text-foreground"   : "bg-background text-muted")}>
+              {done ? <Check className="h-4 w-4" aria-hidden /> : i + 1}
+            </span>
+            <span className={cn("text-[13px] leading-tight", done || current ? "font-medium text-foreground" : "text-muted")}>{label}</span>
+            <span className="sr-only">{done ? "done" : current ? "next" : "to come"}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
 /**
  * The shopper's own order page, found by its private link. It never shows an address, email, phone or payment reference (the store does not send them).
@@ -83,50 +112,69 @@ function OrderInner() {
 
   if (error && !order) {
     return (
-      <div className="py-12 text-center" role="alert">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">{error.missing ? "We could not find this order" : "We could not load this order"}</h1>
+      <div className="mx-auto max-w-md py-16 text-center" role="alert">
+        <h1 className="text-[40px]">{error.missing ? "We could not find this order" : "We could not load this order"}</h1>
         <p className="mt-3 text-muted">{error.missing ? "Check that you used the full link from your confirmation." : error.message}</p>
-        <p className="mt-4"><Link href="/store" className="underline">Back to the store</Link></p>
+        <p className="mt-7"><Link href="/store" className={buttonClass("primary", "md")}>Back to the store</Link></p>
       </div>
     );
   }
-  if (!order) return <p className="py-12 text-center text-muted" role="status">Loading your order…</p>;
+  if (!order) return <div role="status" aria-label="Loading your order" className="mx-auto max-w-3xl space-y-4"><Skeleton className="h-12 w-72" /><Skeleton className="h-28" /><Skeleton className="h-48" /><span className="sr-only">Loading your order…</span></div>;
 
   const money = (a: string) => formatMoney(a, order.currency);
   const pending = order.status === "PENDING_PAYMENT";
+  const Notice = ({ children }: { children: React.ReactNode }) => <p role="status" className="flex items-start gap-2.5 rounded-xl bg-surface-muted p-4 text-sm"><Info className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--color-brand))]" aria-hidden />{children}</p>;
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-7">
       <header>
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">Order {order.order_number}</h1>
-        <p className="mt-1 text-lg text-foreground" data-testid="status">{order.status_label}</p>
+        <h1 className="text-[40px] sm:text-[56px]">Order {order.order_number}</h1>
+        <p className="mt-3 text-[24px] tracking-[-0.02em] text-foreground" data-testid="status">{order.status_label}</p>
       </header>
-      {confirming && pending && <p role="status" className="rounded-2xl bg-surface-muted p-4 text-sm">Confirming your payment with the bank. This usually takes a few seconds…</p>}
-      {!confirming && hint === "success" && pending && <p role="status" className="rounded-2xl bg-surface-muted p-4 text-sm">We have not received confirmation of your payment yet. This can take a minute: please refresh this page shortly. You will not be charged twice.</p>}
-      {hint === "cancelled" && pending && <p role="status" className="rounded-2xl bg-surface-muted p-4 text-sm">No payment was taken. You can pay when you are ready.</p>}
-      {payError.length > 0 && <div role="alert" className="rounded-2xl border border-danger/40 bg-red-50 p-4 text-sm text-red-800"><ul className="list-disc space-y-1 pl-5">{payError.map((p, i) => <li key={i}>{p}</li>)}</ul></div>}
-      {order.can_pay && <Button onClick={payNow} disabled={paying}>{paying ? "Please wait…" : `Pay ${money(order.total)} now`}</Button>}
 
-      <ul className="divide-y divide-border rounded-2xl border border-border bg-surface">
-        {order.items.map((i, n) => <li key={n} className="flex justify-between gap-4 p-4 text-[15px]"><span>{i.quantity} × {i.name}</span><span>{money(i.line_total)}</span></li>)}
-      </ul>
-      <dl className="ml-auto grid max-w-xs grid-cols-2 gap-y-1 text-sm">
-        <dt className="text-muted">Subtotal</dt><dd className="text-right">{money(order.subtotal)}</dd>
-        <dt className="text-muted">Shipping</dt><dd className="text-right">{money(order.shipping)}</dd>
-        <dt className="text-muted">Sales tax</dt><dd className="text-right">{money(order.tax)}</dd>
-        <dt className="font-medium">Total</dt><dd className="text-right font-medium">{money(order.total)}</dd>
-      </dl>
+      {confirming && pending && <Notice>Confirming your payment with the bank. This usually takes a few seconds…</Notice>}
+      {!confirming && hint === "success" && pending && <Notice>We have not received confirmation of your payment yet. This can take a minute: please refresh this page shortly. You will not be charged twice.</Notice>}
+      {hint === "cancelled" && pending && <Notice>No payment was taken. You can pay when you are ready.</Notice>}
+      {payError.length > 0 && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900"><ul className="list-disc space-y-1 pl-5">{payError.map((p, i) => <li key={i}>{p}</li>)}</ul></div>}
+
+      {order.can_pay && (
+        <div className="flex flex-wrap items-center justify-between gap-5 rounded-[28px] bg-surface-muted p-6 sm:p-8">
+          <div><p className="text-[21px] font-semibold tracking-[-0.02em] text-foreground">This order is waiting for payment.</p><p className="text-[15px] text-muted">You pay on Stripe&apos;s secure page.</p></div>
+          <Button size="lg" onClick={payNow} disabled={paying}>{paying ? "Please wait…" : `Pay ${money(order.total)} now`}</Button>
+        </div>
+      )}
+
+      <Card className="p-6 sm:p-8"><Progress status={order.status} />{LEVEL[order.status] === undefined && <p className="font-medium">{order.status_label}</p>}</Card>
+
+      <div className="grid gap-6 md:grid-cols-[1.4fr_1fr]">
+        <Card className="overflow-hidden">
+          <h2 className="px-6 pb-2 pt-6 text-[24px]">Items</h2>
+          <ul className="divide-y divide-[rgb(var(--color-border))] px-6 pb-3">
+            {order.items.map((i, n) => <li key={n} className="flex justify-between gap-4 py-3.5 text-[15px]"><span>{i.quantity} × {i.name}</span><span className="font-medium">{money(i.line_total)}</span></li>)}
+          </ul>
+        </Card>
+        <Card className="self-start p-6">
+          <h2 className="mb-4 text-[24px]">Totals</h2>
+          <dl className="space-y-2.5 text-[15px]">
+            <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd>{money(order.subtotal)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted">Shipping</dt><dd>{money(order.shipping)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted">Sales tax</dt><dd>{money(order.tax)}</dd></div>
+            <div className="flex justify-between border-t border-[rgb(var(--color-border))] pt-3 text-[19px] font-semibold"><dt>Total</dt><dd>{money(order.total)}</dd></div>
+          </dl>
+        </Card>
+      </div>
+
       {order.tracking.length > 0 && (
-        <section aria-label="Tracking">
-          <h2 className="mb-2 font-display text-xl font-semibold text-foreground">Tracking</h2>
-          <ul className="space-y-1 text-[15px]">
+        <Card className="p-6 sm:p-7" role="region" aria-label="Tracking">
+          <h2 className="mb-3 flex items-center gap-2 text-[24px]"><Package className="h-5 w-5 text-[rgb(var(--color-brand))]" aria-hidden /> Tracking</h2>
+          <ul className="space-y-2 text-[15px]">
             {order.tracking.map((t, n) => {
               const href = safeLink(t.tracking_url);
-              return <li key={n}>{t.carrier ?? "Carrier"}: {href ? <a className="underline" href={href} target="_blank" rel="noreferrer">{t.tracking_number}</a> : t.tracking_number}</li>;
+              return <li key={n}>{t.carrier ?? "Carrier"}: {href ? <a className="inline-flex items-center gap-1 font-medium underline underline-offset-4" href={href} target="_blank" rel="noreferrer">{t.tracking_number}<ExternalLink className="h-3.5 w-3.5" aria-hidden /></a> : t.tracking_number}</li>;
             })}
           </ul>
-        </section>
+        </Card>
       )}
-      <p className="text-sm text-muted">Keep this page&apos;s link to check on your order. <Link href="/store" className="underline">Continue shopping</Link></p>
+      <p className="text-sm text-muted">Keep this page&apos;s link to check on your order. <Link href="/store" className="underline underline-offset-4">Continue shopping</Link></p>
     </div>
   );
 }
