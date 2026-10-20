@@ -25,7 +25,7 @@ def email_is_configured() -> bool:
     return email_configured()
 
 
-async def send_system_email(*, to: str, subject: str, body: str) -> bool:
+async def send_system_email(*, to: str, subject: str, body: str, from_name: str = "Klaros AI") -> bool:
     """Returns True only when the provider accepted the message."""
     settings = get_settings()
     if not email_is_configured():
@@ -41,7 +41,7 @@ async def send_system_email(*, to: str, subject: str, body: str) -> bool:
         from app.communications.brevo_client import send_via_brevo
 
         try:
-            await send_via_brevo(to=to, subject=subject, body=body, from_name="Klaros AI")
+            await send_via_brevo(to=to, subject=subject, body=body, from_name=from_name)
         except Exception as exc:  # noqa: BLE001
             logger.warning("system_email_failed", subject=subject, error_type=type(exc).__name__)
             return False
@@ -50,14 +50,14 @@ async def send_system_email(*, to: str, subject: str, body: str) -> bool:
         from app.communications.smtp_client import send_via_smtp
 
         try:
-            await send_via_smtp(to=to, subject=subject, body=body, from_name="Klaros AI")
+            await send_via_smtp(to=to, subject=subject, body=body, from_name=from_name)
         except Exception as exc:  # noqa: BLE001
             logger.warning("system_email_failed", subject=subject, error_type=type(exc).__name__)
             return False
         return True
     payload = {
         "personalizations": [{"to": [{"email": to}]}],
-        "from": {"email": settings.SENDGRID_FROM_EMAIL, "name": "Klaros AI"},
+        "from": {"email": settings.SENDGRID_FROM_EMAIL, "name": from_name},
         "subject": subject,
         "content": [{"type": "text/plain", "value": body}],
     }

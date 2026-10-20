@@ -35,6 +35,7 @@ from app.models.dropshipping import (
 from app.services.customer_matching import find_matching_customer, normalize_email, normalize_phone
 from app.services.dropshipping_catalog_import import CURRENCY, CatalogValidationError, parse_money
 from app.services.dropshipping_catalog_service import CatalogConflictError, CatalogNotFoundError, _audit
+from app.services.dropshipping_order_emails import DELIVERED, PAID, SHIPPED, notify_order
 from app.services.dropshipping_order_rules import (
     ERASABLE,
     OrderTransitionError,
@@ -319,7 +320,9 @@ class DropshippingOrderService:
             for supplier_id in sorted({skus[ln.sku_id].supplier_id for ln in lines}, key=str):
                 session.add(SupplierOrder(tenant_id=tenant_id, order_id=order.id, supplier_id=supplier_id, status=SupplierOrderStatus.TO_PLACE.value))
             await session.commit()
-            return (await self._load(session, tenant_id, [order], include_personal=True))[0]
+            view = (await self._load(session, tenant_id, [order], include_personal=True))[0]
+            await notify_order(PAID, order, view)  # only on the payment that was actually recorded: a repeat returned above
+            return view
 
     # --- supplier orders -----------------------------------------------------------------------------------------------------------------------------
 
@@ -382,9 +385,13 @@ class DropshippingOrderService:
                                  status=ShipmentStatus.SHIPPED.value, shipped_at=_now(), entered_by=actor_id))
             _audit(session, tenant_id, actor_id, "dropshipping.shipment.added", "dropshipping_supplier_order", so.id, {"order_number": order.order_number, "carrier": carrier_s})
             await session.flush()
+            before = order.status
             await self._roll_up_shipped(session, tenant_id, order, actor_id)
             await session.commit()
-            return (await self._load(session, tenant_id, [order], include_personal=True))[0]
+            view = (await self._load(session, tenant_id, [order], include_personal=True))[0]
+            if before != OrderStatus.SHIPPED and order.status == OrderStatus.SHIPPED:
+                await notify_order(SHIPPED, order, view)  # once: when the last supplier order gets its tracking, not for a second parcel
+            return view
 
     async def mark_shipment(self, tenant_id: uuid.UUID, shipment_id: uuid.UUID, status: str, *, note: str | None = None, actor_id: uuid.UUID | None = None) -> dict:
         if status not in ("delivered", "exception"):
@@ -410,14 +417,19 @@ class DropshippingOrderService:
                 sh.note = note
             _audit(session, tenant_id, actor_id, f"dropshipping.shipment.{status}", "dropshipping_shipment", sh.id, {"order_number": order.order_number})
             await session.flush()
+            became_delivered = False
             if status == "delivered" and order.status == OrderStatus.SHIPPED:
                 sos = list((await session.execute(select(SupplierOrder).where(SupplierOrder.order_id == order.id))).scalars())
                 shipments = list((await session.execute(select(Shipment).where(Shipment.supplier_order_id.in_([s.id for s in sos])))).scalars())
                 if shipments and all(s.status == ShipmentStatus.DELIVERED for s in shipments) and all(any(s.supplier_order_id == so_.id for s in shipments) for so_ in sos):
                     self._move(session, tenant_id, order, OrderStatus.DELIVERED, actor_id, "dropshipping.order.delivered")
                     order.delivered_at = _now()
+                    became_delivered = True
             await session.commit()
-            return (await self._load(session, tenant_id, [order], include_personal=True))[0]
+            view = (await self._load(session, tenant_id, [order], include_personal=True))[0]
+            if became_delivered:
+                await notify_order(DELIVERED, order, view)
+            return view
 
     async def _roll_up_shipped(self, session, tenant_id: uuid.UUID, order: Order, actor_id: uuid.UUID | None) -> None:
         sos = list((await session.execute(select(SupplierOrder).where(SupplierOrder.order_id == order.id))).scalars())
