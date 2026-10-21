@@ -7,28 +7,48 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.session import async_session_maker
 from app.models.clinic_outreach import ClinicOutreach, ClinicOutreachCampaign, OutreachMode, OutreachStage, OutreachSuppression
+from app.models.marketing import Campaign, CampaignChannel, CampaignObjective, CampaignStatus
+from app.models.medical_tourism import Provider, ProviderStatus
 
 pytestmark = pytest.mark.asyncio
 
 
+# The outreach tables point at real campaigns and clinics (foreign keys, which real Postgres enforces): the rows they refer to must exist.
+async def _campaign(db, tenant) -> uuid.UUID:
+    row = Campaign(tenant_id=tenant, name="Clinic outreach", channel=CampaignChannel.OUTBOUND, objective=CampaignObjective.LEAD_GEN, status=CampaignStatus.DRAFT)
+    db.add(row)
+    await db.flush()
+    return row.id
+
+
+async def _clinic(db, tenant, name: str) -> uuid.UUID:
+    row = Provider(tenant_id=tenant, name=name, country="TR", city="Istanbul", status=ProviderStatus.ACTIVE, verification_status="UNVERIFIED")
+    db.add(row)
+    await db.flush()
+    return row.id
+
+
 async def test_a_clinic_can_appear_once_per_campaign() -> None:
-    tenant, campaign, provider = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    tenant = uuid.uuid4()
     async with async_session_maker() as db:
+        campaign, provider, other = await _campaign(db, tenant), await _clinic(db, tenant, "Clinic A"), await _clinic(db, tenant, "Clinic B")
+        await db.commit()
         db.add(ClinicOutreach(tenant_id=tenant, campaign_id=campaign, provider_id=provider))
         await db.commit()
         db.add(ClinicOutreach(tenant_id=tenant, campaign_id=campaign, provider_id=provider))
         with pytest.raises(IntegrityError):
             await db.commit()
         await db.rollback()
-        db.add(ClinicOutreach(tenant_id=tenant, campaign_id=campaign, provider_id=uuid.uuid4()))
+        db.add(ClinicOutreach(tenant_id=tenant, campaign_id=campaign, provider_id=other))
         await db.commit()  # a different clinic in the same campaign is fine
 
 
 async def test_stage_defaults_to_queued_and_mode_to_shadow() -> None:
     tenant = uuid.uuid4()
     async with async_session_maker() as db:
-        camp = ClinicOutreachCampaign(tenant_id=tenant, campaign_id=uuid.uuid4())
-        row = ClinicOutreach(tenant_id=tenant, campaign_id=camp.campaign_id, provider_id=uuid.uuid4())
+        campaign, provider = await _campaign(db, tenant), await _clinic(db, tenant, "Clinic A")
+        camp = ClinicOutreachCampaign(tenant_id=tenant, campaign_id=campaign)
+        row = ClinicOutreach(tenant_id=tenant, campaign_id=campaign, provider_id=provider)
         db.add_all([camp, row])
         await db.commit()
         await db.refresh(camp)
