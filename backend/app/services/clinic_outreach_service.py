@@ -374,16 +374,21 @@ class ClinicOutreachService:
         return [{"kind": r.kind, "value": r.value, "reason": r.reason} for r in rows]
 
     async def is_suppressed(self, tenant_id: uuid.UUID, email: str) -> bool:
+        async with self._sf() as session:
+            await set_tenant_context(session, tenant_id)
+            return await self.is_suppressed_in(session, tenant_id, email)
+
+    @staticmethod
+    async def is_suppressed_in(session, tenant_id: uuid.UUID, email: str) -> bool:
+        """The same check on a caller's open session (so it joins that caller's transaction instead of opening another)."""
         address = _norm(email)
         if not address:
             return False
         candidates = [address]
         if "@" in address:
             candidates.append(address.rsplit("@", 1)[1])
-        async with self._sf() as session:
-            await set_tenant_context(session, tenant_id)
-            hit = (await session.execute(select(OutreachSuppression.id).where(
-                OutreachSuppression.tenant_id == tenant_id, OutreachSuppression.value.in_(candidates)).limit(1))).first()
+        hit = (await session.execute(select(OutreachSuppression.id).where(
+            OutreachSuppression.tenant_id == tenant_id, OutreachSuppression.value.in_(candidates)).limit(1))).first()
         return hit is not None
 
     # --- helpers -----------------------------------------------------------------------------------------------------
