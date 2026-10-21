@@ -211,11 +211,11 @@ def _drop_row(db_path: Path) -> tuple:
         conn.close()
 
 
-def test_the_migration_chain_has_one_head_and_0081_is_it() -> None:
+def test_the_migration_chain_has_one_head_and_0082_merge_is_it() -> None:
     result = subprocess.run([sys.executable, "-m", "alembic", "heads"], cwd=BACKEND_ROOT, capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, result.stderr
     heads = [line for line in result.stdout.splitlines() if "(head)" in line]
-    assert len(heads) == 1 and heads[0].startswith("0081_dropshipping_order_notes"), result.stdout
+    assert len(heads) == 1 and heads[0].startswith("0082_merge_outreach_dropshipping"), result.stdout
 
 
 def _columns(db_path: Path, table: str) -> set[str]:
