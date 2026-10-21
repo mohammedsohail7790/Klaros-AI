@@ -8,7 +8,8 @@ from decimal import Decimal
 
 from app.models.clinic_outreach import OutreachMessageKind
 from app.services.outreach_blocks import (
-    BANNED_PHRASES,
+    banned_phrase_hits,
+    normalize_text,
     BODY_MAX,
     NUMBER_WORDS_PATTERN,
     SUBJECT_MAX,
@@ -66,8 +67,7 @@ def compose(kind: OutreachMessageKind, clinic: ClinicRef, sender: Sender, term_s
                 raise ValueError(f"unknown placeholder {{{name}}}")
             return values[name]
 
-        out = _PLACEHOLDER.sub(sub, text)
-        return out
+        return _PLACEHOLDER.sub(sub, text)
 
     return fill(blocks[subject_key]), fill(blocks[body_key])
 
@@ -77,20 +77,23 @@ _PHONE = re.compile(r"\+?\(?\d[\d\s().-]*\d")
 _DIGITS = re.compile(r"\d+(?:[.,]\d+)*")
 _CURRENCY_SYMBOL = re.compile(r"[$€£¥₹]\s*\d|\d\s*[$€£¥₹]")
 _CURRENCY_CODE = re.compile(r"\b[A-Za-z]{3}\s*\d|\d\s*[A-Za-z]{3}\b")
-_PERCENT = re.compile(r"%|\bper\s*cent\b|\bpercent(?:age)?\b", re.IGNORECASE)
+_PERCENT = re.compile(rf"%|per[\s-]*cent|(?:\d|\b(?:{NUMBER_WORDS_PATTERN}))\s*pc\b", re.IGNORECASE)
+_SPELLED_AMOUNT = re.compile(rf"\b(?:{NUMBER_WORDS_PATTERN})\s+(?:dollars?|euros?|pounds?|lira|usd|eur|gbp|try|bucks?|grand)\b", re.IGNORECASE)
+_OBFUSCATED_EMAIL = re.compile(r"[(\[]\s*at\s*[)\]](?:\W+\w+){0,3}?\W*(?:[(\[]\s*dot\s*[)\]]|\bdot\b)", re.IGNORECASE)
 _NUMBER_WORD_UNIT = re.compile(rf"\b(?:{NUMBER_WORDS_PATTERN})\b", re.IGNORECASE)
 _CURRENCY_CODES = frozenset(
     "USD EUR GBP TRY AED CAD AUD CHF JPY CNY INR SAR QAR KWD EGP MAD THB PLN CZK HUF RON BGN SEK NOK DKK ZAR MXN BRL KRW".split())
 
 
 def _mask(text: str, clinic: ClinicRef, sender: Sender) -> str:
-    names = sorted({clinic.name, sender.display_name, sender.signature, sender.company_name, sender.postal_address} - {""}, key=len, reverse=True)
+    fields = {clinic.name, sender.display_name, sender.signature, sender.company_name, sender.postal_address}
+    names = sorted((n for n in fields if len(n) >= 3), key=len, reverse=True)
     for name in names:
         text = text.replace(name, _MASK)
     return text
 
 
-def check(subject: str, body: str, *, clinic: ClinicRef, sender: Sender, allowed_figures: frozenset[str] = frozenset()) -> list[str]:
+def check(subject: str, body: str, *, clinic: ClinicRef, sender: Sender, opt_out_line: str, allowed_figures: frozenset[str] = frozenset()) -> list[str]:
     problems: list[str] = []
     if len(subject) > SUBJECT_MAX:
         problems.append(f"subject is {len(subject)} characters; the limit is {SUBJECT_MAX}")
@@ -100,18 +103,20 @@ def check(subject: str, body: str, *, clinic: ClinicRef, sender: Sender, allowed
     raw = f"{subject}\n{body}"
     for token in sorted({t.strip() for t in _PLACEHOLDER.findall(raw)}):
         problems.append(f"unresolved placeholder {{{token}}}")
-    lowered = raw.lower()
-    for phrase in BANNED_PHRASES:
-        if phrase in lowered:
-            problems.append(f"contains the claim '{phrase}', which we cannot make")
+    for phrase in banned_phrase_hits(raw):
+        problems.append(f"contains the claim '{phrase}', which we cannot make")
     if sender.postal_address not in body:
         problems.append("the postal address is missing")
     if sender.company_name not in body:
         problems.append("the business name is missing")
-    if not re.search(r"\bstop\b", body, re.IGNORECASE):
+    if not opt_out_line.strip() or opt_out_line not in body:
         problems.append("the opt-out line is missing")
 
-    text = _mask(raw, clinic, sender)
+    text = normalize_text(_mask(raw, clinic, sender))
+    if _SPELLED_AMOUNT.search(text):
+        problems.append("mentions a currency amount in words")
+    if _OBFUSCATED_EMAIL.search(text):
+        problems.append("contains an email address written out in words")
     if _PERCENT.search(text):
         problems.append("mentions a percentage")
     if _CURRENCY_SYMBOL.search(text) or any(m.group(0).split()[0].upper() in _CURRENCY_CODES or m.group(0).split()[-1].upper() in _CURRENCY_CODES

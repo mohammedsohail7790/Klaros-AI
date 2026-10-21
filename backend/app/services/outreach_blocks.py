@@ -7,6 +7,7 @@ from the campaign's term sheet.
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any
 
 DEFAULT_BLOCKS: dict[str, str] = {
@@ -32,7 +33,7 @@ COMPOSED_KINDS = ("intro", "followup_1", "followup_2")
 REQUIRED_IN_COMPOSED = ("business_name", "postal_address", "opt_out_line")
 
 _PLACEHOLDER = re.compile(r"\{([^{}]*)\}")
-_PERCENT_WORDS = re.compile(r"%|\bper\s*cent\b|\bpercent(age)?\b", re.IGNORECASE)
+_PERCENT_WORDS = re.compile(r"%|per[\s-]*cent", re.IGNORECASE)
 _NUMBER_WORDS = ("one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|"
                  "forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen")
 _WITHIN_PERIOD = re.compile(rf"\bwithin\s+(?:an?\s+)?(?:{_NUMBER_WORDS})(?:[\s-]+(?:{_NUMBER_WORDS}))*\s+(?:days?|weeks?|fortnights?|months?)\b"
@@ -42,8 +43,23 @@ _COUNT_WORDS = re.compile(rf"\b(?:{_NUMBER_WORDS})(?:[\s-]+(?:{_NUMBER_WORDS}))*
 NUMBER_WORDS_PATTERN = _NUMBER_WORDS
 
 
+def normalize_text(text: str) -> str:
+    """Canonical form for scanning: NFKC, invisible format characters (including the soft hyphen) dropped, whitespace collapsed, lower-cased."""
+    text = unicodedata.normalize("NFKC", text)
+    text = "".join(c for c in text if unicodedata.category(c) != "Cf")
+    return re.sub(r"\s+", " ", text).lower()
+
+
+def banned_phrase_hits(text: str) -> list[str]:
+    """Banned phrases present in `text`, also when hidden by spacing, hyphens, line breaks or invisible characters."""
+    norm = normalize_text(text)
+    squashed = re.sub(r"[\s-]+", "", norm)
+    return [p for p in BANNED_PHRASES if p in norm or re.sub(r"[\s-]+", "", p) in squashed]
+
+
 def period_mentions(text: str) -> list[str]:
     """Spelled-out day/week/month counts in `text` (for example "within five days", "ten days"), lower-cased, in order of appearance."""
+    text = normalize_text(text)
     spans = sorted([m.span() for m in _WITHIN_PERIOD.finditer(text)] + [m.span() for m in _COUNT_WORDS.finditer(text)])
     out: list[str] = []
     last_end = -1
@@ -83,26 +99,30 @@ def validate_blocks(blocks: dict[str, Any]) -> dict[str, list[str]]:
         leftover = _PLACEHOLDER.sub("", text)
         if "{" in leftover or "}" in leftover:
             add(name, "has a stray curly bracket")
-        if re.search(r"\d", text):
+        norm = normalize_text(text)
+        if re.search(r"\d", norm):
             add(name, "contains a digit; figures can only come from placeholders")
-        if _PERCENT_WORDS.search(text):
+        if _PERCENT_WORDS.search(norm):
             add(name, "mentions a percentage; figures can only come from placeholders")
         if _WITHIN_PERIOD.search(text):
             add(name, "states a number of days, weeks or months in words; figures can only come from placeholders")
-        lowered = text.lower()
-        for phrase in BANNED_PHRASES:
-            if phrase in lowered:
-                add(name, f"contains the claim '{phrase}', which we cannot make")
+        for phrase in banned_phrase_hits(text):
+            add(name, f"contains the claim '{phrase}', which we cannot make")
         limit = SUBJECT_MAX if name.startswith("subject_") else BODY_MAX
         if len(text) > limit:
             add(name, f"is {len(text)} characters; the limit is {limit}")
     for kind in COMPOSED_KINDS:
         text = blocks.get(kind)
         if isinstance(text, str):
+            for placeholder in ("commission", "payment_days"):
+                if "{" + placeholder + "}" in text:
+                    add(kind, f"cannot use {{{placeholder}}}; the first emails do not state a commission or payment terms")
             for placeholder in REQUIRED_IN_COMPOSED:
                 if "{" + placeholder + "}" not in text:
                     add(kind, f"must include {{{placeholder}}}")
     opt_out = blocks.get("opt_out_line")
     if isinstance(opt_out, str) and not opt_out.strip():
         add("opt_out_line", "cannot be blank")
+    elif isinstance(opt_out, str) and not re.search(r"reply|unsubscribe|remove", opt_out, re.IGNORECASE):
+        add("opt_out_line", "the opt-out line must tell the clinic how to stop hearing from us (for example: reply stop)")
     return problems
