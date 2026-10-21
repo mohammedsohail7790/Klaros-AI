@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/useAuth";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { useToast } from "@/components/ui/Toast";
+import { ClinicOutreachPanel } from "@/components/marketing/ClinicOutreachPanel";
 import {
   ApiError,
   Campaign,
@@ -14,6 +15,7 @@ import {
   CampaignPerformance,
   getCampaign,
   getCampaignBudgetStatus,
+  getOutreachCampaign,
   recordCampaignSpend,
   setCampaignStatus,
 } from "@/lib/api";
@@ -28,6 +30,26 @@ export default function CampaignDetailPage() {
   const [loading, setLoading] = useState(false);
   const [spendAmount, setSpendAmount] = useState("");
   const [busy, setBusy] = useState(false);
+  // null while checking; true when this id is a clinic outreach campaign (any failure, including the 404 for an ordinary campaign, means it is not).
+  const [isOutreach, setIsOutreach] = useState<boolean | null>(null);
+  const [outreachName, setOutreachName] = useState("");
+
+  useEffect(() => {
+    if (!token || !id) return;
+    let cancelled = false;
+    getOutreachCampaign(token, id)
+      .then((r) => {
+        if (cancelled) return;
+        setOutreachName(r.campaign.name);
+        setIsOutreach(true);
+      })
+      .catch(() => {
+        if (!cancelled) setIsOutreach(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, id]);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -82,7 +104,18 @@ export default function CampaignDetailPage() {
     }
   }
 
-  if (authLoading || loading) {
+  if (isOutreach) {
+    return (
+      <AppShell user={user}>
+        <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
+          <h1 className="mb-6 font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">{outreachName}</h1>
+          <ClinicOutreachPanel token={token} campaignId={id} />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (authLoading || loading || isOutreach === null) {
     return (
       <AppShell user={user}>
         <Skeleton />
