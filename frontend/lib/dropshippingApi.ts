@@ -40,6 +40,8 @@ export interface DsProduct {
 }
 export interface StoreSettings {
   open: boolean; shipping_flat_fee: string | null; free_shipping_over: string | null; sales_tax_acknowledged: boolean;
+  /** shipping priced by order weight; when present it replaces the flat fee */
+  shipping_tiers?: { max_lb: string | null; fee: string }[] | null;
   /** "STRIPE_TAX": Stripe works out the tax at checkout; "NONE" (the default): no tax is collected and the owner has acknowledged that */
   sales_tax_mode?: "NONE" | "STRIPE_TAX"; tax_code?: string;
   acknowledged_by?: string | null; acknowledged_at?: string | null;

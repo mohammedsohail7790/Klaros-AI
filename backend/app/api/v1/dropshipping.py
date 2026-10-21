@@ -94,6 +94,27 @@ async def lookup_order_for_customer(body: dict, current_user: CurrentUser = Depe
     return output.model_dump(mode="json")
 
 
+@router.get("/digest/preview")
+async def preview_digest(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """The owner digest as it would be written right now (nothing is sent). Contains no customer details."""
+    _require(current_user, Permission.READ_DROPSHIPPING)
+    from app.core.config import get_settings
+    from app.services import dropshipping_digest as digest
+
+    data = await digest.gather(async_session_maker, current_user.tenant_id)
+    subject, body = digest.compose(data, get_settings().FRONTEND_BASE_URL)
+    return {"subject": subject, "body": body, "quiet_day": digest.is_quiet(data), "recipients": len(data["owners"]), "already_sent_today": data["already_sent_today"]}
+
+
+@router.post("/digest/send")
+async def send_digest_now(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Send today's digest to the owners now. Still at most once a day, and still skipped on a quiet day or when no e-mail provider is set; the answer says why."""
+    _require(current_user, Permission.MANAGE_DROPSHIPPING)
+    from app.services import dropshipping_digest as digest
+
+    return await digest.send_store_digest(async_session_maker, current_user.tenant_id)
+
+
 @router.put("/suppliers/{supplier_id}/sync-settings")
 async def save_sync_settings(supplier_id: uuid.UUID, body: dict, current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
     """The daily stock and price sync of one supplier. body = {feed_url? (https), markup_percent? (0-500; none = prices are never touched), stock_buffer? (0), max_price_change_percent? (30),

@@ -8,8 +8,12 @@ export interface StoreInfo {
   open: true; currency: string; shipping: string; free_shipping_over: string | null; flat_shipping_fee: string | null; sales_tax_notice: string; ships_to: string;
   /** "STRIPE_TAX": tax is worked out by Stripe at checkout from the delivery address; "NONE": none is collected */
   sales_tax_mode?: "NONE" | "STRIPE_TAX";
+  /** present when shipping is priced by the weight of the order (it then replaces the flat fee) */
+  shipping_tiers?: ShippingTier[] | null;
 }
-export interface StoreItem { sku: string; price: string; currency: string; in_stock: boolean }
+export interface StoreItem { sku: string; price: string; currency: string; in_stock: boolean; weight_g?: number | null }
+/** One weight tier of the store's shipping: orders up to `max_lb` pounds (null = every heavier order) cost `fee` dollars. */
+export interface ShippingTier { max_lb: string | null; fee: string }
 export interface StoreProduct {
   name: string; slug: string; description: string | null; category: string | null; image_url: string | null; non_perishable: boolean; items: StoreItem[];
 }
