@@ -43,7 +43,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
   }
   return (
     <StoreProvider info={info}>
-      <div className={`cleanroom-theme ${inter.variable} flex min-h-screen flex-col bg-background`}>
+      <div className={`cleanroom-theme ${inter.variable} flex min-h-screen flex-col overflow-x-clip bg-background`}>
         <StoreHeader categories={categories} />
         <PromoStrip info={info} />
         <main className="mx-auto w-full max-w-[1080px] flex-1 px-4 py-10 sm:px-6 sm:py-14">{unreachable ? <StoreUnavailable /> : children}</main>
