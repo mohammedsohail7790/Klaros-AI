@@ -131,10 +131,28 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     except Exception:  # noqa: BLE001 - domain upkeep must never stop the API starting
         logger.warning("domain_sweeper_not_started")
 
+    digest_task: asyncio.Task | None = None
+    try:
+        from app.core.config import get_settings as _get_settings_d
+        from app.db.session import async_session_maker as _session_maker_d
+        from app.services.dropshipping_digest import run_store_digest_sweeper
+
+        def _store_tenant_d():
+            try:
+                return uuid.UUID(str(_get_settings_d().DROPSHIPPING_STORE_TENANT_ID))
+            except (ValueError, TypeError):
+                return None
+
+        digest_task = asyncio.create_task(run_store_digest_sweeper(_session_maker_d, _store_tenant_d, sweeper_stop))
+    except Exception:  # noqa: BLE001 - the store digest must never stop the API starting
+        logger.warning("store_digest_not_started")
+
     try:
         yield
     finally:
         sweeper_stop.set()
+        if digest_task is not None:
+            await digest_task
         if sweeper_task is not None:
             await sweeper_task
         if worker_task is not None:

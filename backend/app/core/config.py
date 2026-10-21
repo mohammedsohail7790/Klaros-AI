@@ -147,6 +147,8 @@ class Settings(BaseSettings):
     # Where the store sends a shopper back to after Stripe (the store's own address, for example https://www.yourcleanroom.com). Unset = FRONTEND_BASE_URL.
     # Kept separate because FRONTEND_BASE_URL is shared by every other feature of this backend (quote links, OAuth returns) and must not change for the store.
     DROPSHIPPING_STORE_URL: str | None = None
+    # The store's owners get one e-mail a day (orders, revenue, what is waiting, what is sold out) from this hour (UTC) on; 13 is 9 am in New York in summer.
+    DROPSHIPPING_DIGEST_HOUR_UTC: int = 13
     # Stops the checkout route from creating unlimited unpaid orders; checked per store.
     DROPSHIPPING_MAX_UNPAID_ORDERS: int = 200
     # Where messages from the public contact form are emailed (they are always stored too). Unset = stored only.
