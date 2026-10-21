@@ -34,7 +34,8 @@ def test_a_digit_in_any_block_is_rejected() -> None:
 
 @pytest.mark.parametrize("text", ["We pay 10% of fees.", "Fees are ten percent.", "Fees are ten per cent.", "Pay within five days.", "Pay within thirty days of treatment.",
                                   "Reply within two weeks.", "Reply within ninety days.", "Within one month we reply.", "Pay within a hundred days.", "Pay within hundred days.",
-                                  "A fee of USD 200 applies."])
+                                  "A fee of USD 200 applies.", "Reply within a week.", "Reply within a fortnight.", "Reply within a month.", "Reply within a dozen days.",
+                                  "Reply within two fortnights."])
 def test_a_percentage_or_amount_or_day_count_is_rejected(text) -> None:
     assert "faq_commission" in validate_blocks(_blocks(faq_commission=text))
 
@@ -171,3 +172,15 @@ async def test_blocks_are_tenant_isolated() -> None:
     got = await svc.get_blocks(b)
     assert got["version"] == 0 and got["blocks"] == DEFAULT_BLOCKS
     assert (await svc.get_blocks(a))["blocks"]["faq_what_we_do"] == "Tenant A wording."
+
+
+@pytest.mark.parametrize("placeholder", ["clinic_name", "business_name", "sender_name", "sender_title", "postal_address", "opt_out_line", "commission", "payment_days"])
+def test_opt_out_line_is_plain_text_and_rejects_every_placeholder(placeholder) -> None:
+    problems = validate_blocks(_blocks(opt_out_line='Reply "stop" {' + placeholder + "}."))
+    assert any("plain text" in p for p in problems["opt_out_line"])
+    assert validate_blocks(DEFAULT_BLOCKS) == {}
+
+
+@pytest.mark.parametrize("phrase", ["partners of ours", "we have partnered with others", "Partnered With a group"])
+def test_partner_variants_are_rejected(phrase) -> None:
+    assert "faq_what_we_do" in validate_blocks(_blocks(faq_what_we_do=phrase))

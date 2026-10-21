@@ -20,10 +20,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.session import set_tenant_context
 from app.models.tenant_settings import TenantSetting
+from app.services.outreach_blocks import DEFAULT_BLOCKS
 
 logger = structlog.get_logger(__name__)
-
-from app.services.outreach_blocks import DEFAULT_BLOCKS
 
 CREW, AI_PROCESSING, DROPSHIPPING_STORE, OUTREACH_BLOCKS = "crew", "ai_processing", "dropshipping_store", "outreach_blocks"
 DEFAULTS: dict[str, dict[str, Any]] = {

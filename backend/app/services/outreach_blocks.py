@@ -25,7 +25,7 @@ DEFAULT_BLOCKS: dict[str, str] = {
 
 ALLOWED_PLACEHOLDERS: frozenset[str] = frozenset(
     {"clinic_name", "business_name", "sender_name", "sender_title", "postal_address", "opt_out_line", "commission", "payment_days"})
-BANNED_PHRASES: tuple[str, ...] = ("partner of", "official partner", "endorsed", "guarantee", "guaranteed", "exclusive", "we send you patients", "patients per month")
+BANNED_PHRASES: tuple[str, ...] = ("partner of", "partners of", "partnered with", "official partner", "endorsed", "guarantee", "guaranteed", "exclusive", "we send you patients", "patients per month")
 
 SUBJECT_MAX, BODY_MAX = 120, 1500
 COMPOSED_KINDS = ("intro", "followup_1", "followup_2")
@@ -34,8 +34,9 @@ REQUIRED_IN_COMPOSED = ("business_name", "postal_address", "opt_out_line")
 _PLACEHOLDER = re.compile(r"\{([^{}]*)\}")
 _PERCENT_WORDS = re.compile(r"%|\bper\s*cent\b|\bpercent(age)?\b", re.IGNORECASE)
 _NUMBER_WORDS = ("one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|"
-                 "forty|fifty|sixty|seventy|eighty|ninety|hundred")
-_WITHIN_PERIOD = re.compile(rf"\bwithin\s+(?:an?\s+)?(?:{_NUMBER_WORDS})(?:[\s-]+(?:{_NUMBER_WORDS}))*\s+(?:days?|weeks?|months?)\b", re.IGNORECASE)
+                 "forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen")
+_WITHIN_PERIOD = re.compile(rf"\bwithin\s+(?:an?\s+)?(?:{_NUMBER_WORDS})(?:[\s-]+(?:{_NUMBER_WORDS}))*\s+(?:days?|weeks?|fortnights?|months?)\b"
+                            rf"|\bwithin\s+an?\s+(?:day|week|fortnight|month)\b", re.IGNORECASE)
 
 
 def validate_blocks(blocks: dict[str, Any]) -> dict[str, list[str]]:
@@ -61,6 +62,8 @@ def validate_blocks(blocks: dict[str, Any]) -> dict[str, list[str]]:
             continue
         for token in sorted({t.strip() for t in _PLACEHOLDER.findall(text)} - ALLOWED_PLACEHOLDERS):
             add(name, f"uses an unknown placeholder {{{token}}}; allowed: " + ", ".join("{" + p + "}" for p in sorted(ALLOWED_PLACEHOLDERS)))
+        if name == "opt_out_line" and _PLACEHOLDER.search(text):
+            add(name, "is plain text; it cannot use placeholders")
         leftover = _PLACEHOLDER.sub("", text)
         if "{" in leftover or "}" in leftover:
             add(name, "has a stray curly bracket")
