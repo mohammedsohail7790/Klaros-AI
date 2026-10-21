@@ -124,7 +124,14 @@ from app.models.builder import BuilderFile, BuilderMessage, BuilderProject, Buil
 from app.models.tenant_settings import TenantSetting  # noqa: F401
 from app.models.site_hosting import TenantDomain, UploadedSite, UploadedSiteFile  # noqa: F401
 from app.models.mt_revenue import ProviderTerms  # noqa: F401
-from app.models.clinic_outreach import ClinicOutreach, ClinicOutreachCampaign, OutreachSuppression  # noqa: F401
+from app.models.clinic_outreach import (  # noqa: F401
+    ClinicOutreach,
+    ClinicOutreachCampaign,
+    ClinicOutreachMessage,
+    OutreachMessageKind,
+    OutreachMessageStatus,
+    OutreachSuppression,
+)
 from app.models.inbound_email import EmailReplyRoute, InboundEmail  # noqa: F401
 from app.models.whatsapp import WhatsAppInboundMessage  # noqa: F401
 from app.models.bank_feed import BankAccount, BankFeedState, BankTransaction  # noqa: F401
