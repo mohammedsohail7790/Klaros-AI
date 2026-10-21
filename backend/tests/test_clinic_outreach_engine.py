@@ -477,7 +477,6 @@ async def test_failures_are_counted_as_consecutive_across_every_kind_of_success(
     tid = uuid.uuid4()
     cid, ids = await _campaign(tid, ("Boom Clinic",))
     oid = ids["Boom Clinic"]
-    real = clinic_outreach_engine.compose
     monkeypatch.setattr(clinic_outreach_engine, "compose", lambda kind, clinic, *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
     await ENGINE.run(tid, now=NOW)
     await ENGINE.run(tid, now=NOW)
@@ -495,8 +494,6 @@ async def test_a_followup_2_clinic_that_keeps_failing_is_parked(monkeypatch) -> 
     cid, ids = await _campaign(tid)
     oid = ids["Alpha Clinic"]
     await _set_stage(oid, OutreachStage.FOLLOWUP_2, NOW - timedelta(hours=1))
-    real = ClinicOutreachEngine._process
-
     async def failing(self, tenant_id, campaign_id, outreach_id, *a, **k):
         raise RuntimeError("boom")
 
@@ -506,7 +503,6 @@ async def test_a_followup_2_clinic_that_keeps_failing_is_parked(monkeypatch) -> 
     assert (await ENGINE.run(tid, now=NOW))["parked"] == 1
     row = await _clinic_row(oid)
     assert row.stage == OutreachStage.NEEDS_PERSON and row.handoff_reason == "the outreach engine could not process this clinic"
-    monkeypatch.setattr(ClinicOutreachEngine, "_process", real)
 
 
 async def _set_stage(outreach_id, stage, next_action_at):
@@ -605,3 +601,66 @@ async def test_a_duplicate_insert_is_reported_as_already_done_and_leaves_the_tra
         s.add(AuditLog(tenant_id=tid, actor_type="system", action="x", result="success"))  # the outer transaction still works
         await s.commit()
     assert len(await _messages(oid)) == 1
+
+
+# --- fix round 2 ------------------------------------------------------------------------------------------------------------------------
+
+
+async def test_a_follow_up_due_later_in_the_horizon_is_not_starved_by_ready_clinics() -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid, tuple(f"Intro{i:02d} Clinic" for i in range(12)) + ("Late Clinic",))
+    await _set_cfg(cid, limits={"daily_cap": 1, "ramp_start": 1})
+    await _set_stage(ids["Late Clinic"], OutreachStage.INTRO_SENT, NOW + timedelta(hours=2))
+    async with async_session_maker() as s:
+        o = await _clinic_row(ids["Late Clinic"])
+        s.add(ClinicOutreachMessage(tenant_id=tid, outreach_id=o.id, direction="OUT", kind="intro", status="QUEUED_SHADOW", subject="s", body="b",
+                                    blocks_version=0, scheduled_for=NOW - timedelta(days=4), schedule_day=(NOW - timedelta(days=4)).date()))
+        await s.commit()
+    await ENGINE.run(tid, now=NOW)  # the single slot of the day goes to the follow-up (due in 2 hours), not to an intro
+    assert (await _clinic_row(ids["Late Clinic"])).stage == OutreachStage.FOLLOWUP_1
+    assert [m.kind for m in await _messages(tid=tid) if _utc(m.scheduled_for) >= NOW] == ["followup_1"]
+
+
+async def test_unreadable_wording_makes_nothing(monkeypatch) -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid)
+    from app.services.clinic_outreach_service import ClinicOutreachService
+
+    async def broken(self, tenant_id):
+        raise RuntimeError("settings unavailable")
+
+    monkeypatch.setattr(ClinicOutreachService, "get_blocks", broken)
+    out = await ENGINE.run(tid, now=NOW)
+    assert out == {"campaigns": 1, "composed": 0, "blocked": 0, "skipped": 1, "parked": 0} and await _messages(tid=tid) == []
+
+
+async def test_a_full_day_neither_clears_nor_extends_a_failure_streak(monkeypatch) -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid, ("Boom Clinic", "Fine Clinic"))
+    boom = ids["Boom Clinic"]
+    real = clinic_outreach_engine.compose
+    broken = {"on": True}
+
+    def flaky(kind, clinic, *a, **k):
+        if clinic.name == "Boom Clinic" and broken["on"]:
+            raise RuntimeError("boom")
+        return real(kind, clinic, *a, **k)
+
+    async def pending() -> int:
+        async with async_session_maker() as s:
+            return await ClinicOutreachEngine._failures_since_success(s, tid, boom)
+
+    monkeypatch.setattr(clinic_outreach_engine, "compose", flaky)
+    await _set_stage(ids["Fine Clinic"], OutreachStage.NO_EMAIL, None)  # keep the second clinic out of the first two runs
+    for _ in range(2):
+        await ENGINE.run(tid, now=NOW)
+    assert await pending() == 2
+    await _set_cfg(cid, limits={"daily_cap": 1, "ramp_start": 1})
+    async with async_session_maker() as s:  # the day already holds a draft for another clinic: Boom's day is full
+        s.add(ClinicOutreachMessage(tenant_id=tid, outreach_id=ids["Fine Clinic"], direction="OUT", kind="intro", status="QUEUED_SHADOW", subject="s", body="b",
+                                    blocks_version=0, scheduled_for=NOW, schedule_day=NOW.date()))
+        await s.commit()
+    out = await ENGINE.run(tid, now=NOW)
+    assert out["skipped"] == 1 and await pending() == 2  # unchanged: not cleared, not extended
+    await _set_cfg(cid, limits={})
+    assert (await ENGINE.run(tid, now=NOW))["parked"] == 1  # the third real failure still parks it

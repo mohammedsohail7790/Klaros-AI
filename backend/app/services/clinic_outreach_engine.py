@@ -83,7 +83,7 @@ def _schedule_day(scheduled_for: datetime) -> date:
 
 @dataclass
 class _Outcome:
-    kind: str  # composed | blocked | parked | skipped | stop_state | done
+    kind: str  # composed | blocked | parked | skipped | day_full | stop_state | done
 
 
 class ClinicOutreachEngine:
@@ -152,9 +152,10 @@ class ClinicOutreachEngine:
                        ((ClinicOutreach.stage == OutreachStage.READY) & (ClinicOutreach.next_action_at.is_(None) | due))
                        | (ClinicOutreach.stage.in_([OutreachStage.INTRO_SENT.value, OutreachStage.FOLLOWUP_1.value]) & due)
                        | ((ClinicOutreach.stage == OutreachStage.FOLLOWUP_2) & (ClinicOutreach.next_action_at <= now)))
-                # due transitions (FOLLOWUP_2 -> NO_RESPONSE, no draft, never capped) first, then the longest-overdue clinics first (a never-touched
-                # READY clinic counts as due now), so an intro backlog cannot starve follow-ups
-                .order_by(case((ClinicOutreach.stage == OutreachStage.FOLLOWUP_2, 0), else_=1), func.coalesce(ClinicOutreach.next_action_at, now),
+                # due transitions (FOLLOWUP_2 -> NO_RESPONSE, no draft, never capped) first, then follow-ups, then intros, each longest-overdue first
+                # (a never-touched READY clinic counts as due now), so an intro backlog cannot starve a follow-up due later in the horizon
+                .order_by(case((ClinicOutreach.stage == OutreachStage.FOLLOWUP_2, 0),
+                          (ClinicOutreach.stage.in_([OutreachStage.INTRO_SENT.value, OutreachStage.FOLLOWUP_1.value]), 1), else_=2), func.coalesce(ClinicOutreach.next_action_at, now),
                           ClinicOutreach.id))).scalars())
 
         for index, outreach_id in enumerate(candidates):
@@ -168,8 +169,11 @@ class ClinicOutreachEngine:
             if outcome.kind == "stop_state":
                 counts["skipped"] += len(candidates) - index  # this clinic and every one after it
                 break
-            await self._clear_failures(tenant_id, campaign_id, outreach_id)  # any run that did not raise ends a streak of failures
-            if outcome.kind in counts:
+            if outcome.kind != "day_full":  # a clinic that was never really attempted (its day is full) neither clears nor extends a failure streak
+                await self._clear_failures(tenant_id, campaign_id, outreach_id)  # any other run that did not raise ends the streak
+            if outcome.kind == "day_full":
+                counts["skipped"] += 1
+            elif outcome.kind in counts:
                 counts[outcome.kind] += 1
 
         async with self._sf() as session:
@@ -265,10 +269,10 @@ class ClinicOutreachEngine:
             held = (await session.execute(select(func.count(ClinicOutreachMessage.id))
                                           .join(ClinicOutreach, ClinicOutreach.id == ClinicOutreachMessage.outreach_id)
                                           .where(ClinicOutreach.campaign_id == campaign_id, ClinicOutreachMessage.tenant_id == tenant_id,
-                                                 ClinicOutreachMessage.status != OutreachMessageStatus.BLOCKED,
+                                                 ClinicOutreachMessage.status != OutreachMessageStatus.BLOCKED, ClinicOutreachMessage.direction == "OUT",
                                                  ClinicOutreachMessage.schedule_day == day))).scalar_one()
             if held >= warmup_cap(config.limits, shadow_started_at, slot):
-                return _Outcome("skipped")  # that day is full: this clinic waits for a later run (untouched); others may fall on another day
+                return _Outcome("day_full")  # that day is full: this clinic waits for a later run (untouched); others may fall on another day
 
             ref = ClinicRef(name=provider.name)
             subject, body = compose(kind, ref, config.sender, config.term_sheet, blocks)
