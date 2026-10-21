@@ -6,6 +6,8 @@ const BASE = `${API_BASE}/api/v1/public/store`;
 
 export interface StoreInfo {
   open: true; currency: string; shipping: string; free_shipping_over: string | null; flat_shipping_fee: string | null; sales_tax_notice: string; ships_to: string;
+  /** "STRIPE_TAX": tax is worked out by Stripe at checkout from the delivery address; "NONE": none is collected */
+  sales_tax_mode?: "NONE" | "STRIPE_TAX";
 }
 export interface StoreItem { sku: string; price: string; currency: string; in_stock: boolean }
 export interface StoreProduct {
@@ -13,7 +15,9 @@ export interface StoreProduct {
 }
 export interface StoreOrder {
   order_number: string; status: string; status_label: string; currency: string; placed_at: string | null; subtotal: string; shipping: string; tax: string; total: string;
-  can_pay: boolean; items: { name: string; quantity: number; unit_price: string; line_total: string }[];
+  can_pay: boolean;
+  /** sales tax is worked out by Stripe when the order is paid, so none is shown yet */
+  tax_at_payment?: boolean; items: { name: string; quantity: number; unit_price: string; line_total: string }[];
   tracking: { carrier: string | null; tracking_number: string; tracking_url: string | null; status: string }[];
 }
 export interface CheckoutBody {
@@ -95,3 +99,14 @@ export async function getStoreProduct(slug: string, opts: { live?: boolean } = {
 export const createCheckout = (body: CheckoutBody) => call<CheckoutResult>("/checkout", { ...LIVE, method: "POST", body: JSON.stringify(body) });
 export const getStoreOrder = async (token: string) => (await call<{ order: StoreOrder }>(`/orders/${encodeURIComponent(token)}`, LIVE)).order;
 export const payStoreOrder = (token: string) => call<CheckoutResult>(`/orders/${encodeURIComponent(token)}/pay`, { ...LIVE, method: "POST" });
+
+/** The whole catalog (up to 500 products, 100 a request), for the shop page to filter and sort. Cached for a minute like every catalog read. */
+export async function listAllStoreProducts(): Promise<StoreProduct[]> {
+  const all: StoreProduct[] = [];
+  for (let offset = 0; offset < 500; offset += 100) {
+    const page = await listStoreProducts({ limit: 100, offset });
+    all.push(...page);
+    if (page.length < 100) break;
+  }
+  return all;
+}

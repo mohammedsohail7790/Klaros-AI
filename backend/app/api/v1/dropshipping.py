@@ -29,6 +29,7 @@ from app.services.dropshipping_catalog_service import (
     PublishBlockedError,
     supplier_to_dict,
 )
+from app.services.dropshipping_sync_service import DropshippingSyncService
 from app.tools.errors import ToolError
 from app.tools.registry import ToolRegistry
 
@@ -37,6 +38,10 @@ router = APIRouter(prefix="/dropshipping", tags=["dropshipping"])
 
 def _service() -> DropshippingCatalogService:
     return DropshippingCatalogService(async_session_maker)
+
+
+def _sync_service() -> DropshippingSyncService:
+    return DropshippingSyncService(async_session_maker)
 
 
 def _require(current_user: CurrentUser, permission: Permission) -> None:
@@ -87,6 +92,28 @@ async def lookup_order_for_customer(body: dict, current_user: CurrentUser = Depe
     except (ToolError, ValueError) as exc:
         raise_http_for_tool_error(exc)
     return output.model_dump(mode="json")
+
+
+@router.put("/suppliers/{supplier_id}/sync-settings")
+async def save_sync_settings(supplier_id: uuid.UUID, body: dict, current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """The daily stock and price sync of one supplier. body = {feed_url? (https), markup_percent? (0-500; none = prices are never touched), stock_buffer? (0), max_price_change_percent? (30),
+    sync_enabled? (needs a feed_url)}. Staff with MANAGE_DROPSHIPPING only."""
+    _require(current_user, Permission.MANAGE_DROPSHIPPING)
+    try:
+        return await _sync_service().save_settings(current_user.tenant_id, supplier_id, body, actor_id=current_user.id)
+    except (CatalogNotFoundError, CatalogValidationError) as exc:
+        raise _http_for(exc) from exc
+
+
+@router.post("/suppliers/{supplier_id}/sync")
+async def run_supplier_sync(supplier_id: uuid.UUID, body: dict | None = None, current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Run the sync now. body = {csv_text? (paste a feed instead of fetching the link), dry_run? (default true: a preview that changes nothing), force? (apply even the held stock changes and big price moves)}."""
+    _require(current_user, Permission.MANAGE_DROPSHIPPING)
+    body = body or {}
+    try:
+        return await _sync_service().run(current_user.tenant_id, supplier_id, csv_text=body.get("csv_text"), dry_run=body.get("dry_run", True) is not False, force=body.get("force") is True, actor_id=current_user.id)
+    except (CatalogNotFoundError, CatalogValidationError) as exc:
+        raise _http_for(exc) from exc
 
 
 # --- products --------------------------------------------------------------------------------------------------------------------------------------------

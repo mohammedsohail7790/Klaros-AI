@@ -28,6 +28,7 @@ from app.models.dropshipping import (
     SkuStatus,
     SupplierOrder,
 )
+from app.services import dropshipping_tax as tax
 from app.services.dropshipping_catalog_import import CURRENCY, CatalogValidationError, parse_money
 from app.services.dropshipping_catalog_service import CatalogNotFoundError, _audit
 from app.services.integration_connection_service import IntegrationConnectionService
@@ -35,6 +36,7 @@ from app.services.tenant_settings_service import DROPSHIPPING_STORE, TenantSetti
 from app.tools.builtin.stripe_tools import resolve_stripe_secret_key
 
 SALES_TAX_NOTICE = "Sales tax is not collected on these orders."
+SALES_TAX_NOTICE_STRIPE = "Sales tax is calculated at checkout from your delivery address."
 STATUS_LABELS = {
     OrderStatus.PENDING_PAYMENT.value: "Awaiting payment",
     OrderStatus.PAID.value: "Paid. We are preparing your order.",
@@ -90,8 +92,8 @@ class DropshippingStoreService:
             out.append("The store is switched off.")
         if s.get("shipping_flat_fee") is None:
             out.append("Set a shipping rule (a flat fee, which may be 0).")
-        if not s.get("sales_tax_acknowledged"):
-            out.append("Acknowledge that sales tax is not collected on orders.")
+        if (s.get("sales_tax_mode") or tax.MODE_NONE) == tax.MODE_NONE and not s.get("sales_tax_acknowledged"):
+            out.append("Acknowledge that sales tax is not collected on orders, or collect it with Stripe Tax.")
         if not await resolve_stripe_secret_key(self._connection_service, tenant_id):
             out.append("Stripe is not connected (no connection and no platform key).")
         async with self._session_factory() as session:
@@ -109,7 +111,7 @@ class DropshippingStoreService:
         return (bool(s.get("open")) and not await self.blockers(tenant_id, s)), s
 
     async def update_settings(self, tenant_id: uuid.UUID, changes: dict, *, actor_id: uuid.UUID | None) -> dict:
-        allowed = {"open", "shipping_flat_fee", "free_shipping_over", "sales_tax_acknowledged"}
+        allowed = {"open", "shipping_flat_fee", "free_shipping_over", "sales_tax_acknowledged", "sales_tax_mode", "tax_code"}
         unknown = sorted(set(changes) - allowed)
         problems = [f"unknown setting: {k}" for k in unknown]
         current = await self.get_settings(tenant_id)
@@ -120,6 +122,16 @@ class DropshippingStoreService:
                     problems.append(f"{key} must be true or false")
                 else:
                     new[key] = changes[key]
+        if "sales_tax_mode" in changes:
+            if changes["sales_tax_mode"] not in tax.MODES:
+                problems.append("sales_tax_mode must be NONE or STRIPE_TAX")
+            else:
+                new["sales_tax_mode"] = changes["sales_tax_mode"]
+        if "tax_code" in changes:
+            if not isinstance(changes["tax_code"], str) or not tax.TAX_CODE_RE.match(changes["tax_code"]):
+                problems.append("tax_code must look like txcd_40040000 (a Stripe product tax code)")
+            else:
+                new["tax_code"] = changes["tax_code"]
         for key in ("shipping_flat_fee", "free_shipping_over"):
             if key in changes:
                 if changes[key] is None:
@@ -133,6 +145,13 @@ class DropshippingStoreService:
             raise CatalogValidationError(problems)
         if new.get("free_shipping_over") is not None and new.get("shipping_flat_fee") is None:
             raise CatalogValidationError(["free_shipping_over needs a shipping_flat_fee"])
+        if new.get("sales_tax_mode") == tax.MODE_STRIPE_TAX and current.get("sales_tax_mode") != tax.MODE_STRIPE_TAX:
+            key = await resolve_stripe_secret_key(self._connection_service, tenant_id)
+            if not key:
+                raise CatalogValidationError(["Stripe is not connected, so Stripe Tax cannot be checked."])
+            not_ready = await tax.check_ready(key)
+            if not_ready:
+                raise CatalogValidationError(["Stripe Tax is not ready yet:", *not_ready])
         if new.get("open") and not current.get("open"):
             remaining = await self.blockers(tenant_id, new)
             if remaining:
@@ -158,8 +177,10 @@ class DropshippingStoreService:
 
     async def public_info(self, tenant_id: uuid.UUID) -> dict:
         s = await self.get_settings(tenant_id)
+        mode = s.get("sales_tax_mode") or tax.MODE_NONE
         return {"open": True, "currency": CURRENCY, "shipping": shipping_text(s), "free_shipping_over": s.get("free_shipping_over"),
-                "flat_shipping_fee": s.get("shipping_flat_fee"), "sales_tax_notice": SALES_TAX_NOTICE, "ships_to": "the continental United States"}
+                "flat_shipping_fee": s.get("shipping_flat_fee"), "sales_tax_mode": mode,
+                "sales_tax_notice": SALES_TAX_NOTICE_STRIPE if mode == tax.MODE_STRIPE_TAX else SALES_TAX_NOTICE, "ships_to": "the continental United States"}
 
     @staticmethod
     def _public_product(product: Product, skus: list[Sku]) -> dict:
@@ -198,6 +219,7 @@ class DropshippingStoreService:
         return [self._public_product(p, [k for k in skus if k.product_id == p.id]) for p in products if any(k.product_id == p.id for k in skus)]
 
     async def order_status(self, tenant_id: uuid.UUID, public_token: str) -> dict:
+        settings = await self.get_settings(tenant_id)
         """The shopper's own order page. Looked up by its unguessable token inside the store's tenant; never returns the address, email, phone, payment reference or supplier."""
         async with self._session_factory() as session:
             await set_tenant_context(session, tenant_id)
@@ -212,6 +234,7 @@ class DropshippingStoreService:
             "placed_at": order.placed_at.isoformat() if order.placed_at else None,
             "subtotal": str(_money(order.subtotal)), "shipping": str(_money(order.shipping)), "tax": str(_money(order.tax)), "total": str(_money(order.total)),
             "can_pay": order.status == OrderStatus.PENDING_PAYMENT.value,
+            "tax_at_payment": order.status == OrderStatus.PENDING_PAYMENT.value and (settings.get("sales_tax_mode") or tax.MODE_NONE) == tax.MODE_STRIPE_TAX and Decimal(order.tax) == 0,
             "items": [{"name": ln.name_snapshot, "quantity": ln.quantity, "unit_price": str(_money(ln.unit_price)), "line_total": str(_money(ln.line_total))} for ln in lines],
             "tracking": [{"carrier": sh.carrier, "tracking_number": sh.tracking_number, "tracking_url": sh.tracking_url, "status": sh.status} for sh in shipments],
         }

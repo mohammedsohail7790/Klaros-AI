@@ -15,6 +15,10 @@ interface Ctx {
   setQty: (sku: string, quantity: number) => void;
   remove: (sku: string) => void;
   clear: () => void;
+  /** the slide-out basket */
+  cartOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
 }
 const StoreContext = createContext<Ctx | null>(null);
 
@@ -22,6 +26,7 @@ const StoreContext = createContext<Ctx | null>(null);
 export function StoreProvider({ info, children }: { info: StoreInfo | null; children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [ready, setReady] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -48,8 +53,9 @@ export function StoreProvider({ info, children }: { info: StoreInfo | null; chil
       setQty: (sku, quantity) => save(setQuantity(lines, sku, quantity)),
       remove: (sku) => save(removeLine(lines, sku)),
       clear: () => save([]),
+      cartOpen, openCart: () => setCartOpen(true), closeCart: () => setCartOpen(false),
     }),
-    [info, lines, ready, save]
+    [info, lines, ready, save, cartOpen]
   );
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

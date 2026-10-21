@@ -211,11 +211,11 @@ def _drop_row(db_path: Path) -> tuple:
         conn.close()
 
 
-def test_the_migration_chain_has_one_head_and_0082_merge_is_it() -> None:
+def test_the_migration_chain_has_one_head_and_0083_is_it() -> None:
     result = subprocess.run([sys.executable, "-m", "alembic", "heads"], cwd=BACKEND_ROOT, capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, result.stderr
     heads = [line for line in result.stdout.splitlines() if "(head)" in line]
-    assert len(heads) == 1 and heads[0].startswith("0082_merge_outreach_dropshipping"), result.stdout
+    assert len(heads) == 1 and heads[0].startswith("0083_dropshipping_supplier_sync"), result.stdout
 
 
 def _columns(db_path: Path, table: str) -> set[str]:
@@ -257,3 +257,15 @@ def test_upgrade_creates_the_tables_and_promotes_the_row_and_downgrade_restores_
     again = _alembic(db, "upgrade", "head")  # the upgrade is repeatable after a rollback
     assert again.returncode == 0, f"{again.stdout}\n{again.stderr}"
     assert NEW_TABLES <= _tables(db)
+
+
+def test_0083_adds_the_supplier_sync_columns_and_downgrade_removes_only_them(tmp_path) -> None:
+    db = tmp_path / "ds_0083.db"
+    assert _alembic(db, "upgrade", "head").returncode == 0
+    sync_cols = {"feed_url", "markup_percent", "stock_buffer", "max_price_change_percent", "sync_enabled", "last_sync_at", "last_sync_summary"}
+    assert sync_cols <= _columns(db, "dropshipping_suppliers")
+    down = _alembic(db, "downgrade", "0082_merge_outreach_dropshipping")
+    assert down.returncode == 0, f"{down.stdout}\n{down.stderr}"
+    assert not (sync_cols & _columns(db, "dropshipping_suppliers")) and {"name", "integration_type", "status"} <= _columns(db, "dropshipping_suppliers")
+    assert "payment_reference" in _columns(db, "dropshipping_orders")  # 0081 and the merge are untouched
+    assert _alembic(db, "upgrade", "head").returncode == 0  # repeatable after a rollback

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Settings2 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { ProblemAlert } from "@/components/dropshipping/parts";
+import SupplierSync from "@/components/dropshipping/SupplierSync";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
@@ -12,7 +13,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StoreView, canManage, describeError, getStoreSettings, putStoreSettings } from "@/lib/dropshippingApi";
 import { useAuth } from "@/lib/useAuth";
 
-/** When the public store is open: the shipping rule, the sales-tax acknowledgement and the switch. The server refuses to open the store while anything is missing. */
+/** When the public store is open: the shipping rule, how sales tax is handled and the switch. The server refuses to open the store while anything is missing. */
 export default function DropshippingStoreSettingsPage() {
   const { token, user, loading: authLoading } = useAuth();
   const manage = canManage(user?.role);
@@ -60,6 +61,7 @@ export default function DropshippingStoreSettingsPage() {
   }
 
   const s = view?.settings;
+  const taxMode = s?.sales_tax_mode ?? "NONE";
   return (
     <AppShell user={user}>
       <div className="mx-auto w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
@@ -94,20 +96,39 @@ export default function DropshippingStoreSettingsPage() {
               )}
             </section>
 
-            <section aria-label="Sales tax" className="space-y-3">
+            <section aria-label="Sales tax" className="space-y-4">
               <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Sales tax</h2>
-              <p className="text-sm text-muted">Orders are recorded with no sales tax and the store tells shoppers that tax is not collected. Confirm that you have decided this is acceptable before opening the store.</p>
-              <label className="flex items-start gap-3 text-[15px]">
-                <input type="checkbox" className="mt-1" checked={s.sales_tax_acknowledged} disabled={!manage || busy} onChange={(e) => save({ sales_tax_acknowledged: e.target.checked })} />
-                <span>I understand sales tax is not collected on these orders.</span>
-              </label>
+              <fieldset className="space-y-3" disabled={!manage || busy}>
+                <legend className="sr-only">How sales tax is handled</legend>
+                <label className="flex items-start gap-3 text-[15px]">
+                  <input type="radio" name="tax-mode" className="mt-1" checked={taxMode === "STRIPE_TAX"} onChange={() => save({ sales_tax_mode: "STRIPE_TAX" })} />
+                  <span><strong>Collect sales tax with Stripe Tax.</strong> Stripe works out the tax from the shopper&apos;s delivery address and shows it at checkout.</span>
+                </label>
+                <label className="flex items-start gap-3 text-[15px]">
+                  <input type="radio" name="tax-mode" className="mt-1" checked={taxMode === "NONE"} onChange={() => save({ sales_tax_mode: "NONE" })} />
+                  <span><strong>Do not collect sales tax.</strong> The store tells shoppers that tax is not collected.</span>
+                </label>
+              </fieldset>
+              {taxMode === "STRIPE_TAX" ? (
+                <div className="space-y-2 text-sm text-muted">
+                  <p>Stripe only charges tax in places where your Stripe account has an active tax registration (Stripe Dashboard, Tax, Registrations). Choosing this option checks that Stripe Tax is active and that you have at least one registration.</p>
+                  <p>Products are taxed as groceries (Stripe tax code <code>{s.tax_code ?? "txcd_40040000"}</code>) and shipping as shipping. Candy, soft drinks and dietary supplements are taxed differently in many states and need their own tax codes: tell us before listing them.</p>
+                </div>
+              ) : (
+                <label className="flex items-start gap-3 text-[15px]">
+                  <input type="checkbox" className="mt-1" checked={s.sales_tax_acknowledged} disabled={!manage || busy} onChange={(e) => save({ sales_tax_acknowledged: e.target.checked })} />
+                  <span>I understand sales tax is not collected on these orders.</span>
+                </label>
+              )}
             </section>
 
             <section aria-label="Open the store" className="space-y-3">
               <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Open the store</h2>
-              <p className="text-sm text-muted">The switch can only be turned on when a shipping rule is set, tax is acknowledged, Stripe is connected and a product is on sale. Closing it stops new orders at once.</p>
+              <p className="text-sm text-muted">The switch can only be turned on when a shipping rule is set, sales tax is handled, Stripe is connected and a product is on sale. Closing it stops new orders at once.</p>
               {manage && (s.open ? <Button variant="secondary" disabled={busy} onClick={() => save({ open: false })}>Close the store</Button> : <Button disabled={busy} onClick={() => save({ open: true })}>Open the store</Button>)}
             </section>
+
+            {token && <SupplierSync token={token} manage={manage} />}
           </div>
         ) : null}
       </div>

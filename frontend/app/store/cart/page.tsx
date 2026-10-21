@@ -73,7 +73,8 @@ export default function CartPage() {
           <dl className="space-y-3 text-[17px]">
             <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd>{money(est.subtotalCents)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Shipping (estimate)</dt><dd>{money(est.shippingCents)}</dd></div>
-            <div className="flex justify-between border-t border-[rgb(var(--color-border))] pt-4 text-[21px] font-semibold tracking-[-0.02em]"><dt>Estimated total</dt><dd>{money(est.totalCents)}</dd></div>
+            {info.sales_tax_mode === "STRIPE_TAX" && <div className="flex justify-between"><dt className="text-muted">Sales tax</dt><dd>At checkout</dd></div>}
+            <div className="flex justify-between border-t border-[rgb(var(--color-border))] pt-4 text-[21px] font-semibold tracking-[-0.02em]"><dt>{info.sales_tax_mode === "STRIPE_TAX" ? "Estimated total before tax" : "Estimated total"}</dt><dd>{money(est.totalCents)}</dd></div>
           </dl>
           {est.blocked ? <Button size="lg" className="w-full" disabled>Checkout</Button> : <Link href="/store/checkout" className={buttonClass("primary", "lg", "w-full")}>Checkout</Link>}
           <p className="flex items-start gap-2 text-[13px] leading-relaxed text-muted"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /><span>{info.sales_tax_notice} The final total is confirmed when you check out.</span></p>

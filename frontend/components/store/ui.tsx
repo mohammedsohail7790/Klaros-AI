@@ -9,7 +9,7 @@ import { buttonClass } from "@/components/store/styles";
 /* The storefront's own small design system, drawn the way apple.com draws things: flat tiles instead of outlined cards, pills for actions, fields filled rather than
    boxed, and very little chrome. Colours come from the .cleanroom-theme tokens (see globals.css). */
 
-type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "light" | "ghost"; size?: "md" | "lg" | "sm" };
+type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "brand" | "light" | "ghost"; size?: "md" | "lg" | "sm" };
 
 export const Button = forwardRef<HTMLButtonElement, BtnProps>(({ variant = "primary", size = "md", className, ...p }, ref) => (
   <button ref={ref} className={buttonClass(variant, size, className)} {...p} />

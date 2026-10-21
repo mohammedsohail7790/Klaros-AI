@@ -99,6 +99,14 @@ class Supplier(TenantScopedMixin, Base):
     contact_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(12), nullable=False, default=SupplierStatus.ACTIVE, server_default="ACTIVE")
+    # Daily stock and price sync from the supplier's CSV feed (added by 0083). The feed never creates products: it updates stock, cost and, with a markup, price.
+    feed_url: Mapped[str | None] = mapped_column(String(500), nullable=True)  # https only
+    markup_percent: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)  # price = cost x (1 + markup/100); None = the sync never touches prices
+    stock_buffer: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")  # a quantity at or below this counts as sold out
+    max_price_change_percent: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False, default=Decimal("30"), server_default="30")  # a bigger move is held for review
+    sync_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_sync_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class Product(TenantScopedMixin, Base):

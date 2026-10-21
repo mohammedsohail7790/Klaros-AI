@@ -40,8 +40,11 @@ describe("basket page", () => {
   it("lets a quantity be cleared and retyped without losing the item", async () => {
     saveCart([teaLine(2)]);
     renderInStore(<CartPage />);
+    // Wait until the live price has arrived: the basket re-renders when it does, and typing into a box that is about to be re-drawn is what made this test flaky on slow machines.
+    expect(await screen.findByRole("listitem", { name: "Green Tea" }, { timeout: 5000 })).toHaveTextContent("$10.00 each");
     const qty = await screen.findByLabelText("Quantity of Green Tea");
     await userEvent.clear(qty);
+    expect(qty).toHaveValue(null);                                                 // really empty before we type (number boxes report null)
     expect(JSON.parse(localStorage.getItem(CART_KEY)!)).toHaveLength(1);           // an empty box changes nothing
     await userEvent.type(qty, "0");
     expect(JSON.parse(localStorage.getItem(CART_KEY)!)[0].quantity).toBe(2);       // 0 is out of range and ignored

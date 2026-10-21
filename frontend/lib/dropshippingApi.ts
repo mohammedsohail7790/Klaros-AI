@@ -40,6 +40,8 @@ export interface DsProduct {
 }
 export interface StoreSettings {
   open: boolean; shipping_flat_fee: string | null; free_shipping_over: string | null; sales_tax_acknowledged: boolean;
+  /** "STRIPE_TAX": Stripe works out the tax at checkout; "NONE" (the default): no tax is collected and the owner has acknowledged that */
+  sales_tax_mode?: "NONE" | "STRIPE_TAX"; tax_code?: string;
   acknowledged_by?: string | null; acknowledged_at?: string | null;
 }
 export interface StoreView { settings: StoreSettings; open_to_shoppers: boolean; blockers: string[] }
@@ -122,3 +124,19 @@ export const createSupplier = (token: string, name: string) =>
 export const getStoreSettings = (token: string) => request<StoreView>(`${BASE}/store-settings`, { headers: authHeaders(token) });
 export const putStoreSettings = (token: string, body: Partial<StoreSettings>) =>
   request<StoreView>(`${BASE}/store-settings`, { method: "PUT", headers: authHeaders(token), body: JSON.stringify(body) });
+
+// --- the daily stock and price sync of a supplier's feed ---
+export interface SyncSettings {
+  feed_url: string | null; markup_percent: string | null; stock_buffer: number; max_price_change_percent: string; sync_enabled: boolean;
+  last_sync_at: string | null; last_sync_summary: SyncSummary | null;
+}
+export interface SyncSummary {
+  applied?: boolean; error?: string; source?: string; dry_run?: boolean; matched?: number; unchanged?: number; not_in_feed?: number; unknown_in_feed?: number;
+  unknown_in_feed_sample?: string[]; to_available?: number; to_out_of_stock?: number; prices_changed?: number; costs_changed?: number;
+  held_prices?: { sku_code: string; from: string; to: string; change_percent: string }[]; held_price_count?: number; availability_held?: boolean; problems?: string[];
+}
+export type SyncableSupplier = DsSupplier & { sync?: SyncSettings };
+export const saveSyncSettings = (token: string, supplierId: string, body: { feed_url: string | null; markup_percent: string | null; stock_buffer: number; max_price_change_percent: string; sync_enabled: boolean }) =>
+  request<SyncableSupplier>(`${BASE}/suppliers/${supplierId}/sync-settings`, { method: "PUT", headers: authHeaders(token), body: JSON.stringify(body) });
+export const runSupplierSync = (token: string, supplierId: string, body: { csv_text?: string; dry_run: boolean; force?: boolean }) =>
+  request<SyncSummary>(`${BASE}/suppliers/${supplierId}/sync`, { method: "POST", headers: authHeaders(token), body: JSON.stringify(body) });
