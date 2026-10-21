@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ApiError,
   OutreachCampaignDetail,
+  OutreachFindContactsResult,
   findOutreachContacts,
   getOutreachCampaign,
   pauseOutreachCampaign,
@@ -16,6 +17,13 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, " ");
+
+function findNotice(r: OutreachFindContactsResult): string {
+  const base = r.search_configured
+    ? `Checked ${r.checked} clinics and found ${r.found} contacts.`
+    : `No web search is set up, so only addresses already on file were checked; add the rest by hand.${r.checked ? ` Checked ${r.checked}, found ${r.found}.` : ""}`;
+  return r.search_failed > 0 ? `${base} ${r.search_failed} searches failed; try again in a moment.` : base;
+}
 
 /**
  * A clinic outreach campaign at a glance: where it stands, how many clinics are at each stage, who needs a contact, and the controls.
@@ -78,7 +86,26 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
   if (!data) return error ? <p role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</p> : <p className="text-sm text-muted">Loading...</p>;
 
   const status = data.campaign.status;
-  const needsYou = data.clinics.filter((c) => c.stage === "NO_EMAIL");
+  const closed = status === "COMPLETED" || status === "ARCHIVED";
+  // Without a web search provider a clinic with no address stays QUEUED, so it needs a hand-typed address just like a NO_EMAIL one.
+  const needsYou = data.clinics.filter((c) => c.stage === "NO_EMAIL" || (c.stage === "QUEUED" && !c.contact_email));
+
+  const emailEditor = (c: (typeof data.clinics)[number], verb: string) => (
+    <div className="flex flex-wrap items-start gap-2">
+      <div>
+        <input
+          aria-label={`${verb} for ${c.name}`}
+          value={emails[c.provider_id] ?? ""}
+          onChange={(e) => setEmails((m) => ({ ...m, [c.provider_id]: e.target.value }))}
+          className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
+        />
+        {rowErrors[c.provider_id] && <p className="mt-1 text-xs text-danger">{rowErrors[c.provider_id]}</p>}
+      </div>
+      <Button size="sm" variant="secondary" disabled={busy || !(emails[c.provider_id] ?? "").trim()} onClick={() => saveEmail(c.provider_id)}>
+        {c.stage === "READY" ? "Update email" : "Save email"}
+      </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -94,22 +121,20 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
       <div className="flex flex-wrap gap-2">
         <Button
           variant="secondary"
-          disabled={busy}
+          disabled={busy || closed}
           onClick={() =>
-            run(findOutreachContacts, (r: { status: string; checked: number; found: number }) =>
-              setNotice(r.status === "not_configured" ? "Contact search isn't set up yet, so only clinics' own addresses can be used." : `Checked ${r.checked} clinics and found ${r.found} contacts.`)
-            )
+            run(findOutreachContacts, (r: OutreachFindContactsResult) => setNotice(findNotice(r)))
           }
         >
           Find contacts
         </Button>
-        <Button disabled={busy || status === "ACTIVE" || status === "COMPLETED"} onClick={() => run(startOutreachCampaign)}>
-          Start in shadow mode
+        <Button disabled={busy || status === "ACTIVE" || closed} onClick={() => run(startOutreachCampaign)}>
+          {status === "PAUSED" ? "Resume (shadow)" : "Start in shadow mode"}
         </Button>
         <Button variant="secondary" disabled={busy || status !== "ACTIVE"} onClick={() => run(pauseOutreachCampaign)}>
           Pause
         </Button>
-        <Button variant="danger" disabled={busy || status === "COMPLETED"} onClick={() => run(stopOutreachCampaign)}>
+        <Button variant="danger" disabled={busy || closed} onClick={() => run(stopOutreachCampaign)}>
           Stop
         </Button>
         <Button variant="ghost" disabled>
@@ -129,23 +154,12 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
       {needsYou.length > 0 && (
         <section>
           <h2 className="mb-2 font-medium">Needs you</h2>
-          <p className="mb-3 text-sm text-muted">We couldn&apos;t find an email for these clinics. Add one by hand, using the clinic&apos;s own domain.</p>
+          <p className="mb-3 text-sm text-muted">These clinics have no email yet. Add one by hand, using the clinic&apos;s own domain.</p>
           <ul className="space-y-3">
             {needsYou.map((c) => (
               <li key={c.provider_id} className="flex flex-wrap items-start gap-2">
                 <span className="w-48 pt-2 text-sm">{c.name}</span>
-                <div>
-                  <input
-                    aria-label={`Email for ${c.name}`}
-                    value={emails[c.provider_id] ?? ""}
-                    onChange={(e) => setEmails((m) => ({ ...m, [c.provider_id]: e.target.value }))}
-                    className="rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm"
-                  />
-                  {rowErrors[c.provider_id] && <p className="mt-1 text-xs text-danger">{rowErrors[c.provider_id]}</p>}
-                </div>
-                <Button size="sm" variant="secondary" disabled={busy || !(emails[c.provider_id] ?? "").trim()} onClick={() => saveEmail(c.provider_id)}>
-                  Save email
-                </Button>
+                {emailEditor(c, "Email")}
               </li>
             ))}
           </ul>
@@ -174,7 +188,10 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
                   <td className="px-5 py-4">
                     <Badge status={c.stage}>{label(c.stage)}</Badge>
                   </td>
-                  <td className="px-5 py-4 text-muted">{c.contact_email ?? "—"}</td>
+                  <td className="px-5 py-4 text-muted">
+                    {c.contact_email ?? "—"}
+                    {c.stage === "READY" && <div className="mt-2">{emailEditor(c, "Change email")}</div>}
+                  </td>
                 </tr>
               ))}
             </tbody>

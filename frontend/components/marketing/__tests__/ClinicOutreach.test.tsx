@@ -122,7 +122,7 @@ describe("ClinicOutreachPanel", () => {
 
   it("test_the_panel_shows_funnel_counts_and_the_nothing_is_sent_notice", async () => {
     render(<ClinicOutreachPanel token="t" campaignId="c1" />);
-    expect(await screen.findByText("Alpha Clinic")).toBeInTheDocument();
+    expect((await screen.findAllByText("Alpha Clinic")).length).toBeGreaterThan(0);
     expect(screen.getByText("Nothing is sent in this release.")).toBeInTheDocument();
     expect(screen.getByText("Shadow")).toBeInTheDocument();
     expect(screen.getByTestId("funnel-QUEUED")).toHaveTextContent("2");
@@ -132,7 +132,7 @@ describe("ClinicOutreachPanel", () => {
 
   it("test_start_is_shadow_only_and_go_live_is_disabled", async () => {
     render(<ClinicOutreachPanel token="t" campaignId="c1" />);
-    await screen.findByText("Alpha Clinic");
+    await screen.findAllByText("Alpha Clinic");
     const goLive = screen.getByRole("button", { name: /Go live/ });
     expect(goLive).toBeDisabled();
     expect(goLive).toHaveTextContent("Available after the shadow week (a later release)");
@@ -147,7 +147,7 @@ describe("ClinicOutreachPanel", () => {
       .mockResolvedValueOnce(detail())
       .mockResolvedValue(detail({ clinics: [row("p1", "Alpha Clinic", { stage: "READY", contact_email: "info@alpha.com", contact_source: "website" })] }));
     render(<ClinicOutreachPanel token="t" campaignId="c1" />);
-    await screen.findByText("Alpha Clinic");
+    await screen.findAllByText("Alpha Clinic");
     expect(screen.queryByText("info@alpha.com")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Find contacts" }));
     expect(await screen.findByText("info@alpha.com")).toBeInTheDocument();
@@ -167,5 +167,43 @@ describe("ClinicOutreachPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save email" }));
     await waitFor(() => expect(setContact).toHaveBeenLastCalledWith("t", "c1", "p1", "info@alpha-clinic.com"));
     await waitFor(() => expect(screen.queryByText(/free-mail/)).not.toBeInTheDocument());
+  });
+
+  it("test_a_queued_clinic_without_an_address_gets_the_manual_field_and_a_ready_one_can_be_edited", async () => {
+    getCampaign.mockResolvedValue(detail());
+    render(<ClinicOutreachPanel token="t" campaignId="c1" />);
+    await screen.findByText("Needs you");
+    expect(screen.getByLabelText("Email for Alpha Clinic")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Email for Beta Clinic")).not.toBeInTheDocument();
+    type("Change email for Beta Clinic", "new@beta.com");
+    fireEvent.click(screen.getByRole("button", { name: "Update email" }));
+    await waitFor(() => expect(setContact).toHaveBeenCalledWith("t", "c1", "p2", "new@beta.com"));
+  });
+
+  it("test_button_states_follow_the_campaign_status", async () => {
+    getCampaign.mockResolvedValue(detail({ campaign: { id: "c1", name: "T", status: "PAUSED" } }));
+    const { unmount } = render(<ClinicOutreachPanel token="t" campaignId="c1" />);
+    expect(await screen.findByRole("button", { name: "Resume (shadow)" })).toBeEnabled();
+    unmount();
+    getCampaign.mockResolvedValue(detail({ campaign: { id: "c1", name: "T", status: "ARCHIVED" } }));
+    const second = render(<ClinicOutreachPanel token="t" campaignId="c1" />);
+    expect(await screen.findByRole("button", { name: "Start in shadow mode" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Stop" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Find contacts" })).toBeDisabled();
+    second.unmount();
+    getCampaign.mockResolvedValue(detail({ campaign: { id: "c1", name: "T", status: "COMPLETED" } }));
+    render(<ClinicOutreachPanel token="t" campaignId="c1" />);
+    expect(await screen.findByRole("button", { name: "Find contacts" })).toBeDisabled();
+  });
+
+  it("test_the_find_notice_mentions_no_search_and_failed_searches", async () => {
+    findContacts.mockResolvedValue({ status: "not_configured", checked: 0, found: 0, no_email: 0, search_failed: 0, search_configured: false });
+    render(<ClinicOutreachPanel token="t" campaignId="c1" />);
+    await screen.findByText("Needs you");
+    fireEvent.click(screen.getByRole("button", { name: "Find contacts" }));
+    expect(await screen.findByText(/No web search is set up, so only addresses already on file were checked; add the rest by hand\./)).toBeInTheDocument();
+    findContacts.mockResolvedValue({ status: "ok", checked: 3, found: 1, no_email: 0, search_failed: 2, search_configured: true });
+    fireEvent.click(screen.getByRole("button", { name: "Find contacts" }));
+    expect(await screen.findByText(/2 searches failed/)).toBeInTheDocument();
   });
 });
