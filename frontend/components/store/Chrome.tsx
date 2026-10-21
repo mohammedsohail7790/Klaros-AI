@@ -8,7 +8,7 @@ import { cartCount } from "@/lib/storeCart";
 import { useStore } from "@/components/store/StoreProvider";
 
 export function Wordmark({ className = "" }: { className?: string }) {
-  return <Link href="/store" className={`text-[19px] font-semibold tracking-[-0.03em] ${className}`}>{STORE_NAME}</Link>;
+  return <Link href="/store/welcome" className={`text-[19px] font-semibold tracking-[-0.03em] ${className}`}>{STORE_NAME}</Link>;
 }
 
 const catHref = (c: string) => `/store?category=${encodeURIComponent(c)}#products`;
