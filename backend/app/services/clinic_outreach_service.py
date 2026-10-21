@@ -26,7 +26,9 @@ from app.models.mt_revenue import ProviderTerms
 from app.services import clinic_contact_finder
 from app.services.clinic_contact_finder import _STRICT_ADDRESS, _STRICT_DOMAIN, dns_mx_exists, usable_address
 from app.services.mt_clinic_sourcing import SearchProvider, search_provider_from_settings
+from app.services.outreach_blocks import validate_blocks
 from app.services.outreach_settings import OutreachConfig
+from app.services.tenant_settings_service import OUTREACH_BLOCKS, TenantSettingsService
 
 TERMINAL_STAGES = frozenset({OutreachStage.DECLINED, OutreachStage.OPTED_OUT, OutreachStage.NO_RESPONSE, OutreachStage.HANDED_TO_VERIFICATION})
 HOLDING_STATUSES = (CampaignStatus.DRAFT, CampaignStatus.ACTIVE, CampaignStatus.PAUSED)  # a clinic in one of these campaigns is not free for another
@@ -263,6 +265,12 @@ class ClinicOutreachService:
                 self._config(cfg)
             except ValidationError as exc:
                 raise OutreachError("The campaign settings are incomplete (term sheet, sender details and countries are required); fix them before starting.") from exc
+            if not await self.blocks_approved(tenant_id):
+                raise OutreachError("The clinic email wording has not been approved yet; approve it first.")
+            sender = self._config(cfg).sender
+            for field, label in (("company_name", "sender company name"), ("postal_address", "sender postal address")):
+                if not (getattr(sender, field, "") or "").strip():
+                    raise OutreachError(f"The {label} is blank; set it before starting.")
             clinics = (await session.execute(select(func.count(ClinicOutreach.id)).where(
                 ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id))).scalar_one()
             if not clinics:
@@ -295,6 +303,48 @@ class ClinicOutreachService:
                 row.next_action_at = None
             session.add(self._audit(tenant_id, user_id, "outreach.campaign_stopped", campaign.id, None))
             await session.commit()
+
+    # --- wording blocks ----------------------------------------------------------------------------------------------
+
+    @staticmethod
+    def _blocks_view(value: dict[str, Any]) -> dict[str, Any]:
+        return {"status": value.get("status", "DRAFT"), "version": int(value.get("version", 0) or 0), "approved_by": value.get("approved_by"),
+                "approved_at": value.get("approved_at"), "blocks": dict(value.get("blocks") or {})}
+
+    async def get_blocks(self, tenant_id: uuid.UUID) -> dict[str, Any]:
+        return self._blocks_view(await TenantSettingsService(self._sf).get(tenant_id, OUTREACH_BLOCKS))
+
+    async def save_blocks(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None, blocks: dict[str, str]) -> dict[str, Any]:
+        problems = validate_blocks(blocks)
+        if problems:
+            raise OutreachError("The wording has problems; fix them and save again.", problems)
+        current = await self.get_blocks(tenant_id)
+        value = {"status": "DRAFT", "version": current["version"] + 1, "approved_by": None, "approved_at": None, "blocks": dict(blocks)}
+        await TenantSettingsService(self._sf).set(tenant_id, OUTREACH_BLOCKS, value, updated_by=user_id)
+        return self._blocks_view(value)
+
+    async def approve_blocks(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None) -> dict[str, Any]:
+        current = await self.get_blocks(tenant_id)
+        if current["status"] == "APPROVED":
+            raise OutreachError("This wording is already approved.")
+        problems = validate_blocks(current["blocks"])
+        if problems:
+            raise OutreachError("The wording has problems; fix them before approving.", problems)
+        value = {**current, "status": "APPROVED", "approved_by": str(user_id) if user_id else None, "approved_at": _now().isoformat()}
+        await TenantSettingsService(self._sf).set(tenant_id, OUTREACH_BLOCKS, value, updated_by=user_id)
+        async with self._sf() as session:
+            await set_tenant_context(session, tenant_id)
+            session.add(AuditLog(tenant_id=tenant_id, actor_type=ActorType.USER, actor_id=user_id, action="outreach.blocks_approved", entity_type="outreach_blocks",
+                                 entity_id=tenant_id, input_summary={"tenant_id": str(tenant_id), "approved_by": str(user_id) if user_id else None,
+                                                                      "version": current["version"]}, result="success"))
+            await session.commit()
+        return self._blocks_view(value)
+
+    async def blocks_approved(self, tenant_id: uuid.UUID) -> bool:
+        try:
+            return (await self.get_blocks(tenant_id))["status"] == "APPROVED"
+        except Exception:  # noqa: BLE001 - never raises; an unreadable wording is treated as not approved
+            return False
 
     # --- suppression -------------------------------------------------------------------------------------------------
 

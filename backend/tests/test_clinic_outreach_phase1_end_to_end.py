@@ -14,7 +14,7 @@ from app.services.clinic_outreach_service import ClinicOutreachService
 from app.services.mt_clinic_sourcing import SearchHit
 from tests.test_business_journey_api import _register
 from tests.test_halla_integration import _h, _tenant_id
-from tests.test_outreach_api import BASE, _clinic, _config
+from tests.test_outreach_api import BASE, _approve_default_blocks, _clinic, _config
 
 # Every email/channel send path in the codebase; each must exist (so the zero-call assertion is not vacuous) and must never run in Phase 1.
 SEND_PATHS = [
@@ -90,6 +90,8 @@ async def test_phase_1_flow_shadow_start_audits_sends_nothing_and_is_tenant_isol
         got = (await client.get(f"{BASE}/campaigns/{cid}", headers=h)).json()
         assert {k: v for k, v in got["funnel"].items() if v} == {"READY": 2}
 
+        assert (await client.post(f"{BASE}/campaigns/{cid}/start", headers=h)).status_code == 409  # wording not approved yet
+        await _approve_default_blocks(tid)
         assert (await client.post(f"{BASE}/campaigns/{cid}/start", headers=h)).status_code == 200
         got = (await client.get(f"{BASE}/campaigns/{cid}", headers=h)).json()
         assert got["campaign"]["status"] == "ACTIVE" and got["mode"] == "SHADOW"
@@ -97,7 +99,7 @@ async def test_phase_1_flow_shadow_start_audits_sends_nothing_and_is_tenant_isol
         async with async_session_maker() as s:
             rows = list((await s.execute(select(AuditLog).where(AuditLog.tenant_id == tid, AuditLog.action.like("outreach.%")))).scalars())
         actions = sorted(r.action for r in rows)
-        assert actions == ["outreach.campaign_created", "outreach.campaign_started", "outreach.contact_found", "outreach.contact_set"]
+        assert actions == ["outreach.blocks_approved", "outreach.campaign_created", "outreach.campaign_started", "outreach.contact_found", "outreach.contact_set"]
         assert all("@" not in str(r.input_summary) for r in rows)
 
         assert calls == []

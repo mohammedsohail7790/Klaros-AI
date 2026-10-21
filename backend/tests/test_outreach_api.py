@@ -50,6 +50,11 @@ async def _clinic(tid, name="Alpha Clinic") -> uuid.UUID:
         return p.id
 
 
+async def _approve_default_blocks(tid) -> None:
+    """The start gate needs approved wording; approve the platform's default blocks for this tenant."""
+    await ClinicOutreachService(async_session_maker).approve_blocks(tid, None)
+
+
 async def _setup(client, email):
     token = await _register(client, f"Org {email}", email)
     tid = await _tenant_id(client, token)
@@ -128,8 +133,9 @@ async def test_another_tenant_gets_404_for_the_campaign(client) -> None:
 
 
 async def test_start_pause_stop_change_the_campaign_status(client) -> None:
-    token, _, _ = await _setup(client, "o5@example.com")
+    token, tid, _ = await _setup(client, "o5@example.com")
     cid = (await _create(client, token)).json()["campaign_id"]
+    await _approve_default_blocks(tid)
 
     async def status():
         return (await client.get(f"{BASE}/campaigns/{cid}", headers=_h(token))).json()["campaign"]["status"]

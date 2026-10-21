@@ -83,6 +83,11 @@ async def _audits(tid, action) -> list[AuditLog]:
         return list((await s.execute(select(AuditLog).where(AuditLog.tenant_id == tid, AuditLog.action == action))).scalars())
 
 
+async def _approve_default_blocks(tid) -> None:
+    """The start gate needs approved wording; approve the platform's default blocks for this tenant."""
+    await _svc().approve_blocks(tid, USER)
+
+
 def _search_for(clinics: dict[str, str]) -> FakeSearch:
     """clinic name -> its own domain."""
     return FakeSearch({name: (f"https://www.{d}/contact", f"{name} welcomes international patients. Write to international@{d} for a quote.") for name, d in clinics.items()})
@@ -295,6 +300,7 @@ async def test_start_shadow_sets_active_and_records_shadow_started_at_and_writes
     await _clinic(tid, "Alpha Clinic")
     svc = _svc()
     cid = await svc.create_campaign(tid, USER, name="C", config=_config(), provider_ids=None)
+    await _approve_default_blocks(tid)
     await svc.start_shadow(tid, USER, cid)
     assert (await _campaign(tid, cid)).status == CampaignStatus.ACTIVE
     async with async_session_maker() as s:
@@ -316,6 +322,7 @@ async def test_start_shadow_sets_active_and_records_shadow_started_at_and_writes
     tid2 = uuid.uuid4()
     await _clinic(tid2, "Beta Clinic")
     cid2 = await svc.create_campaign(tid2, USER, name="C2", config=_config(), provider_ids=None)
+    await _approve_default_blocks(tid2)
     async with async_session_maker() as s:
         await s.execute(update(ClinicOutreachCampaign).where(ClinicOutreachCampaign.campaign_id == cid2).values(sender={"display_name": ""}))
         await s.commit()
@@ -324,6 +331,7 @@ async def test_start_shadow_sets_active_and_records_shadow_started_at_and_writes
     tid3 = uuid.uuid4()
     await _clinic(tid3, "Gamma Clinic")
     cid3 = await svc.create_campaign(tid3, USER, name="C3", config=_config(), provider_ids=None)
+    await _approve_default_blocks(tid3)
     async with async_session_maker() as s:
         await s.execute(ClinicOutreach.__table__.delete().where(ClinicOutreach.campaign_id == cid3))
         await s.commit()
@@ -351,6 +359,7 @@ async def test_nothing_is_sent_by_any_outreach_call(monkeypatch) -> None:
     await svc.suppress(tid, "blocked.example", "domain", "test")
     await svc.is_suppressed(tid, "x@blocked.example")
     await svc.set_contact(tid, cid, b, "info@beta-clinic.example")
+    await _approve_default_blocks(tid)
     await svc.start_shadow(tid, USER, cid)
     await svc.get(tid, cid)
     await svc.pause(tid, USER, cid)
@@ -373,6 +382,7 @@ async def test_pause_and_stop_set_status_and_never_resume_automatically() -> Non
     cid = await svc.create_campaign(tid, USER, name="C", config=_config(), provider_ids=None)
     with pytest.raises(OutreachError):
         await svc.pause(tid, USER, cid)  # a draft is not running
+    await _approve_default_blocks(tid)
     await svc.start_shadow(tid, USER, cid)
     await svc.pause(tid, USER, cid)
     assert (await _campaign(tid, cid)).status == CampaignStatus.PAUSED
