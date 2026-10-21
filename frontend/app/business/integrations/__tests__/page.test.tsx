@@ -104,6 +104,7 @@ describe("Integration Center — purpose, connection, requirement, action on eve
     getOps.mockResolvedValue(opsFixture({ integration_groups: ["CRM & operations", "Communication", "Calendar", "Payments", "Accounting", "Marketing", "Ecommerce", "Analytics", "AI Workforce"] }));
     render(<Page />);
     await screen.findByRole("heading", { level: 1, name: "Integrations" }, { timeout: 5000 });
+    await screen.findByRole("heading", { level: 2, name: "AI Workforce" }, { timeout: 5000 });   // the last group: the list is complete only once it is there
     const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     expect(headings).toEqual(["CRM", "Communication", "Calendar", "Payments", "Finance", "Marketing", "Ecommerce", "Analytics", "AI Workforce"]);
   });

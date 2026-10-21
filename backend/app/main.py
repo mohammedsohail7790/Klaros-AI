@@ -146,6 +146,21 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         digest_task = asyncio.create_task(run_store_digest_sweeper(_session_maker_d, _store_tenant_d, sweeper_stop))
     except Exception:  # noqa: BLE001 - the store digest must never stop the API starting
         logger.warning("store_digest_not_started")
+    sync_task: asyncio.Task | None = None
+    try:
+        from app.core.config import get_settings as _get_settings
+        from app.db.session import async_session_maker as _session_maker
+        from app.services.dropshipping_sync_service import DropshippingSyncService, run_supplier_sync_sweeper
+
+        def _store_tenant():
+            try:
+                return uuid.UUID(str(_get_settings().DROPSHIPPING_STORE_TENANT_ID))
+            except (ValueError, TypeError):
+                return None
+
+        sync_task = asyncio.create_task(run_supplier_sync_sweeper(DropshippingSyncService(_session_maker), _store_tenant, sweeper_stop))
+    except Exception:  # noqa: BLE001 - the daily stock sync must never stop the API starting
+        logger.warning("supplier_sync_sweeper_not_started")
 
     try:
         yield
@@ -153,6 +168,8 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         sweeper_stop.set()
         if digest_task is not None:
             await digest_task
+        if sync_task is not None:
+            await sync_task
         if sweeper_task is not None:
             await sweeper_task
         if worker_task is not None:

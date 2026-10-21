@@ -149,6 +149,8 @@ class Settings(BaseSettings):
     DROPSHIPPING_STORE_URL: str | None = None
     # The store's owners get one e-mail a day (orders, revenue, what is waiting, what is sold out) from this hour (UTC) on; 13 is 9 am in New York in summer.
     DROPSHIPPING_DIGEST_HOUR_UTC: int = 13
+    # The store's name in the e-mails it sends to shoppers (the storefront reads its own NEXT_PUBLIC_STORE_NAME).
+    DROPSHIPPING_STORE_NAME: str = "Clean Room"
     # Stops the checkout route from creating unlimited unpaid orders; checked per store.
     DROPSHIPPING_MAX_UNPAID_ORDERS: int = 200
     # Where messages from the public contact form are emailed (they are always stored too). Unset = stored only.

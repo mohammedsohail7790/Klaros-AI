@@ -157,7 +157,7 @@ function OrderInner() {
           <dl className="space-y-2.5 text-[15px]">
             <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd>{money(order.subtotal)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Shipping</dt><dd>{money(order.shipping)}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted">Sales tax</dt><dd>{money(order.tax)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted">Sales tax</dt><dd>{order.tax_at_payment ? "Added when you pay" : money(order.tax)}</dd></div>
             <div className="flex justify-between border-t border-[rgb(var(--color-border))] pt-3 text-[19px] font-semibold"><dt>Total</dt><dd>{money(order.total)}</dd></div>
           </dl>
         </Card>

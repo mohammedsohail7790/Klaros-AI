@@ -170,6 +170,11 @@ def supplier_to_dict(s: Supplier) -> dict:
     return {
         "id": str(s.id), "name": s.name, "integration_type": s.integration_type, "contact_email": s.contact_email, "contact_phone": s.contact_phone,
         "notes": s.notes, "status": s.status,
+        "sync": {
+            "feed_url": s.feed_url, "markup_percent": str(s.markup_percent) if s.markup_percent is not None else None, "stock_buffer": s.stock_buffer,
+            "max_price_change_percent": str(s.max_price_change_percent), "sync_enabled": bool(s.sync_enabled),
+            "last_sync_at": s.last_sync_at.isoformat() if s.last_sync_at else None, "last_sync_summary": s.last_sync_summary,
+        },
     }
 
 
