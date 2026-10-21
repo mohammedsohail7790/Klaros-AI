@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { INFO, product, renderInStore } from "./fixtures";
 
-const api = vi.hoisted(() => ({ getStoreInfo: vi.fn(), listStoreProducts: vi.fn(), getStoreProduct: vi.fn() }));
+const api = vi.hoisted(() => ({ getStoreInfo: vi.fn(), listStoreProducts: vi.fn(), listAllStoreProducts: vi.fn(), getStoreProduct: vi.fn() }));
 vi.mock("@/lib/storeApi", async () => ({ ...(await vi.importActual<object>("@/lib/storeApi")), ...api }));
 vi.mock("next/server", () => ({ connection: async () => undefined }));   // outside a real request there is nothing to wait for
 import StoreHome from "@/app/store/page";
@@ -16,12 +16,16 @@ beforeEach(() => {
   Object.values(api).forEach((f) => f.mockReset());
   api.getStoreInfo.mockResolvedValue(INFO);
   api.listStoreProducts.mockResolvedValue([product()]);
+  api.listAllStoreProducts.mockResolvedValue([product()]);
   api.getStoreProduct.mockResolvedValue(product());
 });
 
 describe("store home (server-rendered)", () => {
+  const names = () => [...screen.getByRole("region", { name: "Products" }).querySelectorAll("ul.grid > li h3")].map((h) => h.textContent);
+  const priced = (name: string, slug: string, category: string, price: string, in_stock = true) => product({ name, slug, category, description: null, items: [{ sku: slug.toUpperCase(), price, currency: "USD", in_stock }] });
+
   it("lists products with price and stock", async () => {
-    api.listStoreProducts.mockResolvedValue([product(), product({ name: "Gone Jam", slug: "gone-jam", items: [{ sku: "J", price: "7.00", currency: "USD", in_stock: false }] })]);
+    api.listAllStoreProducts.mockResolvedValue([product(), product({ name: "Gone Jam", slug: "gone-jam", items: [{ sku: "J", price: "7.00", currency: "USD", in_stock: false }] })]);
     renderInStore(await StoreHome({ searchParams: sp() }));
     const grid = within(screen.getByRole("region", { name: "Products" }));
     expect(grid.getByRole("link", { name: /Green Tea/ }).closest("li")).toHaveTextContent("$10.00");
@@ -29,66 +33,107 @@ describe("store home (server-rendered)", () => {
     expect(grid.getByRole("link", { name: /Green Tea/ })).toHaveAttribute("href", "/store/products/green-tea");
     expect(grid.getByRole("button", { name: "Add Green Tea to basket" })).toBeInTheDocument();         // one tap to add
     expect(grid.queryByRole("button", { name: /Add Gone Jam/ })).not.toBeInTheDocument();             // a sold-out item cannot be added
+    expect(grid.getByRole("link", { name: /Green Tea/ }).closest("li")).toHaveTextContent("Shelf-stable");
   });
 
-  it("passes the search, category and page to the store, and offers the next page", async () => {
-    api.listStoreProducts.mockResolvedValueOnce(many(25)).mockResolvedValueOnce(many(4));
-    renderInStore(await StoreHome({ searchParams: sp({ q: "tea", category: "Tea", page: "2" }) }));
-    expect(api.listStoreProducts).toHaveBeenNthCalledWith(1, { q: "tea", category: "Tea", limit: 25, offset: 24 });
-    expect(screen.getAllByRole("listitem")).toHaveLength(24);
-    expect(screen.getByRole("link", { name: /Next page/ })).toHaveAttribute("href", "/store?q=tea&category=Tea&page=3#products");
-    expect(screen.getByRole("link", { name: /Previous page/ })).toHaveAttribute("href", "/store?q=tea&category=Tea#products");
+  it("reads the whole catalog once and narrows it by search, aisle, stock and price", async () => {
+    api.listAllStoreProducts.mockResolvedValue([priced("Green Tea", "tea-g", "Tea", "10.00"), priced("Black Tea", "tea-b", "Tea", "4.00"), priced("Old Tea", "tea-o", "Tea", "6.00", false), priced("Brown Rice", "rice", "Rice", "3.00")]);
+    renderInStore(await StoreHome({ searchParams: sp({ q: "tea" }) }));
+    expect(api.listAllStoreProducts).toHaveBeenCalledTimes(1);   // the whole catalog, read once
+    expect(names().sort()).toEqual(["Black Tea", "Green Tea", "Old Tea"]);
+    expect(screen.getByRole("heading", { name: "Results for “tea”" })).toBeInTheDocument();
+    expect(screen.getByText("3 products")).toBeInTheDocument();
   });
 
-  it("builds the category bar from the catalog", async () => {
-    api.listStoreProducts.mockResolvedValueOnce(many(3)).mockResolvedValueOnce(many(3));
+  it("filters by aisle, in-stock and price band, and every filter link keeps the others", async () => {
+    api.listAllStoreProducts.mockResolvedValue([priced("Green Tea", "tea-g", "Tea", "10.00"), priced("Black Tea", "tea-b", "Tea", "4.00"), priced("Old Tea", "tea-o", "Tea", "6.00", false), priced("Brown Rice", "rice", "Rice", "3.00")]);
+    renderInStore(await StoreHome({ searchParams: sp({ category: "Tea", stock: "1" }) }));
+    expect(names().sort()).toEqual(["Black Tea", "Green Tea"]);                                      // the sold-out tea and the rice are out
+    const filters = within(screen.getByRole("complementary", { name: "Filters" }));
+    expect(filters.getByRole("link", { name: "Under $5" })).toHaveAttribute("href", "/store?category=Tea&stock=1&price=u5#products");
+    expect(filters.getByRole("link", { name: /Rice/ })).toHaveAttribute("href", "/store?category=Rice&stock=1#products");
+    expect(filters.getByRole("link", { name: /In stock only/ })).toHaveAttribute("href", "/store?category=Tea#products");  // turns it off
+    const applied = within(screen.getByRole("list", { name: "Applied filters" }));
+    expect(applied.getByRole("link", { name: "Remove Tea" })).toHaveAttribute("href", "/store?stock=1#products");
+    expect(applied.getByRole("link", { name: "Remove In stock only" })).toHaveAttribute("href", "/store?category=Tea#products");
+  });
+
+  it("shows aisle counts that match what each aisle would list", async () => {
+    api.listAllStoreProducts.mockResolvedValue(many(5));
     renderInStore(await StoreHome({ searchParams: sp() }));
-    const nav = screen.getByRole("navigation", { name: "Categories" });
-    expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual(["All", "Rice", "Tea"]);
+    const aisles = within(screen.getByRole("complementary", { name: "Filters" }).querySelector("section[aria-label='Aisle']") as HTMLElement);
+    expect(aisles.getByRole("link", { name: /All aisles/ })).toHaveTextContent("5");
+    expect(aisles.getByRole("link", { name: /Rice/ })).toHaveTextContent("3");
+    expect(aisles.getByRole("link", { name: /Tea/ })).toHaveTextContent("2");
   });
 
-  it("opens with the welcome, the trust facts and the category tiles, with real counts", async () => {
-    api.listStoreProducts.mockResolvedValue(many(5));
+  it("sorts, and marks the current order", async () => {
+    api.listAllStoreProducts.mockResolvedValue([priced("Mid", "m", "A", "5.00"), priced("Cheap", "c", "A", "1.00"), priced("Dear", "d", "A", "9.00")]);
+    renderInStore(await StoreHome({ searchParams: sp({ sort: "price-asc" }) }));
+    expect(names()).toEqual(["Cheap", "Mid", "Dear"]);
+    const sort = within(screen.getByRole("navigation", { name: "Sort" }));
+    expect(sort.getByRole("link", { name: "Price: low to high" })).toHaveAttribute("aria-current", "true");
+    expect(sort.getByRole("link", { name: "Name: A to Z" })).toHaveAttribute("href", "/store?sort=name#products");
+  });
+
+  it("pages through a big catalog 24 at a time", async () => {
+    api.listAllStoreProducts.mockResolvedValue(many(30));
+    renderInStore(await StoreHome({ searchParams: sp() }));
+    expect(names()).toHaveLength(24);
+    expect(screen.getByRole("link", { name: /Next page/ })).toHaveAttribute("href", "/store?page=2#products");
+    expect(screen.queryByRole("link", { name: /Previous page/ })).not.toBeInTheDocument();
+  });
+
+  it("shows the second page with a way back", async () => {
+    api.listAllStoreProducts.mockResolvedValue(many(30));
+    renderInStore(await StoreHome({ searchParams: sp({ page: "2", category: "Tea" }) }));
+    expect(screen.getByRole("link", { name: /Previous page/ })).toHaveAttribute("href", "/store?category=Tea#products");
+    expect(screen.queryByRole("link", { name: /Next page/ })).not.toBeInTheDocument();
+  });
+
+  it("opens with the offers, the aisles with real counts, what is in stock now and the trust facts", async () => {
+    api.listAllStoreProducts.mockResolvedValue(many(5));
     renderInStore(await StoreHome({ searchParams: sp() }));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Pantry staples, delivered.");
     expect(screen.getByText("Free shipping from $50.00")).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Why shop here" })).toHaveTextContent("We cannot ship to Alaska, Hawaii or US territories.");
     const tiles = within(screen.getByRole("region", { name: "Shop by category" }));
-    expect(tiles.getByRole("heading", { name: "Rice" }).closest("li")).toHaveTextContent("3 products");
-    expect(tiles.getByRole("heading", { name: "Tea" }).closest("li")).toHaveTextContent("2 products");
-    expect(tiles.getByRole("link", { name: "Shop Rice" })).toHaveAttribute("href", "/store?category=Rice#products");
+    expect(tiles.getByRole("link", { name: "Shop Rice" })).toHaveTextContent("3 products");
+    expect(tiles.getByRole("link", { name: "Shop Tea" })).toHaveAttribute("href", "/store?category=Tea#products");
+    expect(within(screen.getByRole("region", { name: "In stock now" })).getAllByRole("listitem").length).toBeGreaterThan(0);
   });
 
-  it("drops the welcome when the shopper is searching or filtering", async () => {
+  it("drops the offers, aisles and rail when the shopper is searching or filtering", async () => {
     renderInStore(await StoreHome({ searchParams: sp({ q: "tea" }) }));
-    expect(screen.queryByRole("region", { name: "Welcome" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Results for “tea”" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Clear search" })).toHaveAttribute("href", "/store");
+    for (const name of ["Welcome", "Shop by category", "In stock now"]) expect(screen.queryByRole("region", { name })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Remove “tea”" })).toHaveAttribute("href", "/store#products");
   });
 
-  it("says plainly when nothing matches", async () => {
-    api.listStoreProducts.mockResolvedValue([]);
+  it("says plainly when nothing matches and how to get back", async () => {
+    api.listAllStoreProducts.mockResolvedValue([]);
     renderInStore(await StoreHome({ searchParams: sp({ q: "zzz" }) }));
-    expect(screen.getByText("Nothing matches your search.")).toBeInTheDocument();
+    expect(screen.getByText("Nothing matches that.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Clear search and filters" })).toHaveAttribute("href", "/store#products");
   });
 
   it("shows a closed-store page rather than an error when the store is closed", async () => {
     api.getStoreInfo.mockResolvedValue(null);
     renderInStore(await StoreHome({ searchParams: sp() }));
     expect(screen.getByText("The store is not open yet")).toBeInTheDocument();
-    expect(api.listStoreProducts).not.toHaveBeenCalled();
+    expect(api.listAllStoreProducts).not.toHaveBeenCalled();
   });
 
   it("shows 'cannot reach the store' when the API is down, and never crashes", async () => {
-    api.getStoreInfo.mockRejectedValue(new Error("down"));
+    api.listAllStoreProducts.mockRejectedValue(new Error("down"));
     renderInStore(await StoreHome({ searchParams: sp() }));
     expect(screen.getByRole("alert")).toHaveTextContent("We cannot reach the store right now");
   });
 
-  it("ignores junk in the page and search parameters", async () => {
-    renderInStore(await StoreHome({ searchParams: sp({ page: "-4", q: "x".repeat(500) }) }));
-    expect(api.listStoreProducts.mock.calls[0][0].offset).toBe(0);
-    expect(api.listStoreProducts.mock.calls[0][0].q).toHaveLength(80);
+  it("ignores junk in the page, sort, price and search parameters", async () => {
+    api.listAllStoreProducts.mockResolvedValue(many(3));
+    renderInStore(await StoreHome({ searchParams: sp({ page: "abc", sort: "evil", price: "zzz", stock: "maybe", q: "x".repeat(500) }) }));
+    expect(screen.getByRole("heading", { name: /Results for/ }).textContent!.length).toBeLessThan(100);
+    expect(screen.getByRole("link", { name: "Featured" })).toHaveAttribute("aria-current", "true");
   });
 });
 

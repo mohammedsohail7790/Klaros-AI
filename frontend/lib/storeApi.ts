@@ -95,3 +95,14 @@ export async function getStoreProduct(slug: string, opts: { live?: boolean } = {
 export const createCheckout = (body: CheckoutBody) => call<CheckoutResult>("/checkout", { ...LIVE, method: "POST", body: JSON.stringify(body) });
 export const getStoreOrder = async (token: string) => (await call<{ order: StoreOrder }>(`/orders/${encodeURIComponent(token)}`, LIVE)).order;
 export const payStoreOrder = (token: string) => call<CheckoutResult>(`/orders/${encodeURIComponent(token)}/pay`, { ...LIVE, method: "POST" });
+
+/** The whole catalog (up to 500 products, 100 a request), for the shop page to filter and sort. Cached for a minute like every catalog read. */
+export async function listAllStoreProducts(): Promise<StoreProduct[]> {
+  const all: StoreProduct[] = [];
+  for (let offset = 0; offset < 500; offset += 100) {
+    const page = await listStoreProducts({ limit: 100, offset });
+    all.push(...page);
+    if (page.length < 100) break;
+  }
+  return all;
+}
