@@ -370,6 +370,8 @@ class ToolRegistry:
     ) -> None:
         summary = redact_input(raw_input)
         tool = self._tools.get(tool_name)
+        if tool is not None and tool.audit_redacts_input:
+            summary = redact_pii(summary, tool.pii_input_fields)
         # Consent-gated tenants (Medical Tourism): EVERY tool's audit row is redacted, not only tools that declared PII fields — personal, contact,
         # free-text and health values are masked by key, and e-mail/phone patterns are scrubbed from the rest. The error text of a refused or failed
         # call is reduced the same way (`safe_error` for a validation error, which would otherwise echo the offending value). The gate lookup only

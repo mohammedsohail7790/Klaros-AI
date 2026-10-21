@@ -62,6 +62,9 @@ class Tool(ABC):
     tenant_scoped: bool = True
     # Input keys that hold personal data. For a consent-gated tenant their values are replaced in the audit record (see registry._audit).
     pii_input_fields: tuple[str, ...] = ()
+    # True for a tool whose input is something a person proved themselves with (an e-mail address or phone number used as a password): the audit record then masks the
+    # `pii_input_fields` values for EVERY tenant, not only consent-gated ones.
+    audit_redacts_input: bool = False
     # Counted against the tenant's plan's monthly AI-recommendation limit
     # (app/services/billing_service.py::PLAN_LIMITS) before execution.
     # False for every tool by default — only insights.generate_morning_brief

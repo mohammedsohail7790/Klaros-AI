@@ -439,6 +439,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     # Orders (branch 3): ONE read-only tool that returns no address, email or phone. Creating orders, payments, supplier orders and tracking are staff actions
     # through the API, not agent tools.
     "dropshipping.search_orders": ActionPolicy.AUTO,
+    "dropshipping.lookup_order": ActionPolicy.AUTO,  # read-only and proof-gated: an order is revealed only to someone who knows its number and the e-mail or phone it was placed with
 }
 
 
