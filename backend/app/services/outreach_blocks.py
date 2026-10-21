@@ -50,11 +50,50 @@ def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).lower()
 
 
+def _phrase_regex(phrase: str) -> re.Pattern:
+    return re.compile(r"\b" + r"[\s-]+".join(map(re.escape, phrase.split())) + r"\b")
+
+
+_MULTIWORD_BANNED = tuple((p, _phrase_regex(p)) for p in BANNED_PHRASES if " " in p)
+_SINGLEWORD_BANNED = tuple(p for p in BANNED_PHRASES if " " not in p)
+
+
 def banned_phrase_hits(text: str) -> list[str]:
-    """Banned phrases present in `text`, also when hidden by spacing, hyphens, line breaks or invisible characters."""
+    """Banned phrases present in `text`, also when hidden by spacing, hyphens, line breaks or invisible characters.
+
+    Multi-word phrases match as whole words with any whitespace or hyphens between them; single words also match with spaces or hyphens inside them.
+    """
     norm = normalize_text(text)
+    joined = re.sub(r"(?<=\w)-(?=\w)", "", norm)
     squashed = re.sub(r"[\s-]+", "", norm)
-    return [p for p in BANNED_PHRASES if p in norm or re.sub(r"[\s-]+", "", p) in squashed]
+    hits = []
+    for phrase in BANNED_PHRASES:
+        if " " in phrase:
+            regex = dict(_MULTIWORD_BANNED)[phrase]
+            found = bool(regex.search(norm) or regex.search(joined))
+        else:
+            found = phrase in norm or phrase in squashed
+        if found:
+            hits.append(phrase)
+    return hits
+
+
+_PERCENT_FORMS = re.compile(rf"%|per[\s-]*cent|(?:\d|\b(?:{_NUMBER_WORDS}))\s*pc\b", re.IGNORECASE)
+_SPELLED_AMOUNT = re.compile(rf"\b(?:{_NUMBER_WORDS})\s+(?:dollars?|euros?|pounds?|lira|usd|eur|gbp|try|bucks?|grand)\b", re.IGNORECASE)
+_OBFUSCATED_EMAIL = re.compile(r"[(\[]\s*at\s*[)\]](?:\W+\w+){0,3}?\W*(?:[(\[]\s*dot\s*[)\]]|\bdot\b)", re.IGNORECASE)
+
+
+def figure_scan(text: str) -> list[str]:
+    """Problems of the non-digit kind in `text`: percentages, spelled-out amounts, obfuscated email addresses. One scan shared by block validation and the checker."""
+    norm = normalize_text(text)
+    problems = []
+    if _PERCENT_FORMS.search(norm):
+        problems.append("mentions a percentage")
+    if _SPELLED_AMOUNT.search(norm):
+        problems.append("mentions a currency amount in words")
+    if _OBFUSCATED_EMAIL.search(norm):
+        problems.append("contains an email address written out in words")
+    return problems
 
 
 def period_mentions(text: str) -> list[str]:
@@ -102,9 +141,9 @@ def validate_blocks(blocks: dict[str, Any]) -> dict[str, list[str]]:
         norm = normalize_text(text)
         if re.search(r"\d", norm):
             add(name, "contains a digit; figures can only come from placeholders")
-        if _PERCENT_WORDS.search(norm):
-            add(name, "mentions a percentage; figures can only come from placeholders")
-        if _WITHIN_PERIOD.search(text):
+        for message in figure_scan(text):
+            add(name, f"{message}; figures can only come from placeholders")
+        if period_mentions(text):
             add(name, "states a number of days, weeks or months in words; figures can only come from placeholders")
         for phrase in banned_phrase_hits(text):
             add(name, f"contains the claim '{phrase}', which we cannot make")

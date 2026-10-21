@@ -9,6 +9,7 @@ from decimal import Decimal
 from app.models.clinic_outreach import OutreachMessageKind
 from app.services.outreach_blocks import (
     banned_phrase_hits,
+    figure_scan,
     normalize_text,
     BODY_MAX,
     NUMBER_WORDS_PATTERN,
@@ -77,9 +78,6 @@ _PHONE = re.compile(r"\+?\(?\d[\d\s().-]*\d")
 _DIGITS = re.compile(r"\d+(?:[.,]\d+)*")
 _CURRENCY_SYMBOL = re.compile(r"[$€£¥₹]\s*\d|\d\s*[$€£¥₹]")
 _CURRENCY_CODE = re.compile(r"\b[A-Za-z]{3}\s*\d|\d\s*[A-Za-z]{3}\b")
-_PERCENT = re.compile(rf"%|per[\s-]*cent|(?:\d|\b(?:{NUMBER_WORDS_PATTERN}))\s*pc\b", re.IGNORECASE)
-_SPELLED_AMOUNT = re.compile(rf"\b(?:{NUMBER_WORDS_PATTERN})\s+(?:dollars?|euros?|pounds?|lira|usd|eur|gbp|try|bucks?|grand)\b", re.IGNORECASE)
-_OBFUSCATED_EMAIL = re.compile(r"[(\[]\s*at\s*[)\]](?:\W+\w+){0,3}?\W*(?:[(\[]\s*dot\s*[)\]]|\bdot\b)", re.IGNORECASE)
 _NUMBER_WORD_UNIT = re.compile(rf"\b(?:{NUMBER_WORDS_PATTERN})\b", re.IGNORECASE)
 _CURRENCY_CODES = frozenset(
     "USD EUR GBP TRY AED CAD AUD CHF JPY CNY INR SAR QAR KWD EGP MAD THB PLN CZK HUF RON BGN SEK NOK DKK ZAR MXN BRL KRW".split())
@@ -113,12 +111,7 @@ def check(subject: str, body: str, *, clinic: ClinicRef, sender: Sender, opt_out
         problems.append("the opt-out line is missing")
 
     text = normalize_text(_mask(raw, clinic, sender))
-    if _SPELLED_AMOUNT.search(text):
-        problems.append("mentions a currency amount in words")
-    if _OBFUSCATED_EMAIL.search(text):
-        problems.append("contains an email address written out in words")
-    if _PERCENT.search(text):
-        problems.append("mentions a percentage")
+    problems.extend(figure_scan(text))
     if _CURRENCY_SYMBOL.search(text) or any(m.group(0).split()[0].upper() in _CURRENCY_CODES or m.group(0).split()[-1].upper() in _CURRENCY_CODES
                                            for m in _CURRENCY_CODE.finditer(text)):
         problems.append("mentions a currency amount")

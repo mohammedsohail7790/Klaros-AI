@@ -16,7 +16,7 @@ def terms(basis="PERCENTAGE", value="10.00"):
     return TermSheet(basis=basis, min_value=Decimal("5"), max_value=Decimal(value), payment_days=30, currency="usd", qualifying_outcome="completed treatment")
 
 
-def good(kind=K.INTRO, clinic=CLINIC, sender=SENDER, opt_out_line=OPT):
+def good(kind=K.INTRO, clinic=CLINIC, sender=SENDER):
     return compose(kind, clinic, sender, terms(), DEFAULT_BLOCKS)
 
 
@@ -53,7 +53,7 @@ def test_default_blocks_compose_and_pass_the_checker_for_all_three_kinds(kind):
 def test_address_digits_and_clinic_name_digits_do_not_false_block():
     sender = Sender(display_name="Amira Hale", signature="Lead", company_name="Medluxe Travel", postal_address="12 Main St 34000")
     clinic = ClinicRef(name="Clinic 24")
-    s, b = good(clinic=clinic, sender=sender, opt_out_line=OPT)
+    s, b = good(clinic=clinic, sender=sender)
     assert check(s, b, clinic=clinic, sender=sender, opt_out_line=OPT) == []
 
 
@@ -160,3 +160,30 @@ def test_commission_placeholders_rejected_in_composed_blocks(key):
 
     assert key in validate_blocks(blocks_with(**{key: DEFAULT_BLOCKS[key] + " {commission} {payment_days}"}))
     assert "faq_commission" not in validate_blocks(DEFAULT_BLOCKS)
+
+
+@pytest.mark.parametrize("text", ["our partners offer help", "a partner offering", "I am a partner offering", "partners often ask"])
+def test_banned_phrases_do_not_match_across_word_boundaries(text):
+    from app.services.outreach_blocks import validate_blocks
+
+    s, b = good()
+    assert check(s, b + "\n" + text, clinic=CLINIC, sender=SENDER, opt_out_line=OPT) == []
+    assert validate_blocks(blocks_with(followup_2=DEFAULT_BLOCKS["followup_2"] + "\n" + text)) == {}
+
+
+@pytest.mark.parametrize("text", ["partner  of", "partner\nof", "part-ner of", "partners of", "partnered with", "we send you  patients", "patients\nper month"])
+def test_spaced_multiword_phrases_still_block(text):
+    from app.services.outreach_blocks import validate_blocks
+
+    s, b = good()
+    assert check(s, b + "\n" + text, clinic=CLINIC, sender=SENDER, opt_out_line=OPT)
+    assert validate_blocks(blocks_with(followup_2=DEFAULT_BLOCKS["followup_2"] + "\n" + text))
+
+
+@pytest.mark.parametrize("text", ["within five​ days", "within  five  days", "ten days", "fifty bucks", "five grand", "10 pc", "ten per-cent", "tenpercent",
+                                  "info [at] x dot com", "two hundred euros"])
+def test_figure_rules_are_shared_between_validation_and_checker(text):
+    from app.services.outreach_blocks import validate_blocks
+
+    problems = validate_blocks(blocks_with(followup_2=DEFAULT_BLOCKS["followup_2"] + "\n" + text))
+    assert "followup_2" in problems
