@@ -310,6 +310,13 @@ class ClinicOutreachService:
                 session.add(OutreachSuppression(tenant_id=tenant_id, kind=kind, value=value, reason=(reason or "").strip()[:255] or None))
                 await session.commit()
 
+    async def list_suppressions(self, tenant_id: uuid.UUID) -> list[dict[str, Any]]:
+        async with self._sf() as session:
+            await set_tenant_context(session, tenant_id)
+            rows = (await session.execute(select(OutreachSuppression).where(OutreachSuppression.tenant_id == tenant_id)
+                                          .order_by(OutreachSuppression.kind, OutreachSuppression.value))).scalars().all()
+        return [{"kind": r.kind, "value": r.value, "reason": r.reason} for r in rows]
+
     async def is_suppressed(self, tenant_id: uuid.UUID, email: str) -> bool:
         address = _norm(email)
         if not address:

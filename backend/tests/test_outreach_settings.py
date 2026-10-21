@@ -117,3 +117,33 @@ def test_countries_must_be_two_letter_codes_and_not_empty():
             OutreachConfig(
                 term_sheet=TermSheet(**_term()), sender=Sender(**_sender()), countries=bad
             )
+
+
+@pytest.mark.parametrize("value", ["0", "-0.01", "100.01", "NaN", "Infinity", "-Infinity", "sNaN"])
+def test_percentage_rejects_out_of_range_and_non_finite_values(value):
+    with pytest.raises(ValidationError):
+        TermSheet(**_term(min_value="1", max_value=value))
+    with pytest.raises(ValidationError):
+        TermSheet(**_term(min_value=value, max_value="50"))
+
+
+@pytest.mark.parametrize("value", ["0.01", "100"])
+def test_percentage_accepts_the_boundary_values(value):
+    assert TermSheet(**_term(min_value=value, max_value=value)).max_value == Decimal(value)
+
+
+@pytest.mark.parametrize("value", ["NaN", "Infinity", "-Infinity"])
+def test_flat_rejects_non_finite_values(value):
+    with pytest.raises(ValidationError):
+        TermSheet(**_term(basis="FLAT", min_value="1", max_value=value))
+    with pytest.raises(ValidationError):
+        TermSheet(**_term(basis="FLAT", min_value=value, max_value="5"))
+
+
+def test_non_finite_values_in_a_raw_json_body_are_rejected():
+    body = (
+        '{"term_sheet": {"basis": "FLAT", "min_value": "NaN", "max_value": "Infinity", "payment_days": 30, "currency": "USD",'
+        ' "qualifying_outcome": "x"}, "sender": {"display_name": "a", "signature": "b", "company_name": "c", "postal_address": "d"}, "countries": ["TR"]}'
+    )
+    with pytest.raises(ValidationError):
+        OutreachConfig.model_validate_json(body)

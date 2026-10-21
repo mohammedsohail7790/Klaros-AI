@@ -45,6 +45,7 @@ from app.api.v1 import (
     mcp,
     medical_tourism,
     operating_crew,
+    outreach,
     tenant_modules,
     inbound_email,
     site_hosting,
@@ -112,6 +113,7 @@ api_router.include_router(business_builder.router)
 api_router.include_router(consent_wordings.router)
 api_router.include_router(agents.router)
 api_router.include_router(operating_crew.router)
+api_router.include_router(outreach.router)
 api_router.include_router(tenant_modules.router)
 api_router.include_router(tenant_settings.router)
 api_router.include_router(site_hosting.router)
