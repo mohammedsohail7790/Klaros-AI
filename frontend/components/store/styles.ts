@@ -2,13 +2,15 @@ import { cn } from "@/lib/cn";
 
 // Plain class strings for the storefront's buttons and links. Kept out of the "use client" component file so server pages (the shop and product pages) can use them too.
 // Buttons are pills, the way apple.com draws them; the single apricot fill is reserved for the one action that matters on a screen.
-type Variant = "primary" | "secondary" | "light" | "ghost";
+type Variant = "primary" | "secondary" | "brand" | "light" | "ghost";
 type Size = "sm" | "md" | "lg";
 
 const BASE = "cr-press inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium tracking-[-0.01em] transition-[filter] duration-150 disabled:pointer-events-none disabled:opacity-40";
 const VARIANT: Record<Variant, string> = {
   primary: "bg-accent text-accent-foreground",
   secondary: "border border-[rgb(var(--color-brand))] text-[rgb(var(--color-brand))] hover:bg-[rgb(var(--color-brand))] hover:text-[rgb(var(--color-background))]",
+  // a solid Meadow Green fill, for a confirmed state
+  brand: "bg-[rgb(var(--color-brand))] text-[rgb(var(--color-background))]",
   // on a dark panel: a cream outline
   light: "border border-[rgb(var(--color-background))] text-[rgb(var(--color-background))] hover:bg-[rgb(var(--color-background))] hover:text-[rgb(var(--color-foreground))]",
   ghost: "text-muted hover:bg-surface-muted hover:text-foreground",

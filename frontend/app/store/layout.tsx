@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { connection } from "next/server";
 import { StoreHeader } from "@/components/store/Chrome";
-import { PromoStrip, StoreFooter, StoreUnavailable } from "@/components/store/Footer";
+import { StoreFooter, StoreUnavailable } from "@/components/store/Footer";
 import { StoreProvider } from "@/components/store/StoreProvider";
 import { StoreInfo, getStoreInfo, listStoreProducts } from "@/lib/storeApi";
 import { STORE_NAME, STORE_URL } from "@/lib/storeConfig";
@@ -45,8 +45,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
     <StoreProvider info={info}>
       <div className={`cleanroom-theme ${inter.variable} flex min-h-screen flex-col overflow-x-clip bg-background`}>
         <StoreHeader categories={categories} />
-        <PromoStrip info={info} />
-        <main className="mx-auto w-full max-w-[1080px] flex-1 px-4 py-10 sm:px-6 sm:py-14">{unreachable ? <StoreUnavailable /> : children}</main>
+        <main className="mx-auto w-full max-w-[1240px] flex-1 px-4 py-8 sm:px-6 sm:py-12">{unreachable ? <StoreUnavailable /> : children}</main>
         <StoreFooter info={info} categories={categories} />
       </div>
     </StoreProvider>
