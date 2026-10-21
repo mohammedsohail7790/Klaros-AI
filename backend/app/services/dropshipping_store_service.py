@@ -28,6 +28,7 @@ from app.models.dropshipping import (
     SkuStatus,
     SupplierOrder,
 )
+from app.services import dropshipping_shipping as shipping_rules
 from app.services import dropshipping_tax as tax
 from app.services.dropshipping_catalog_import import CURRENCY, CatalogValidationError, parse_money
 from app.services.dropshipping_catalog_service import CatalogNotFoundError, _audit
@@ -52,19 +53,31 @@ def _money(value) -> Decimal:
     return Decimal(value).quantize(Decimal("0.01"))
 
 
-def compute_shipping(settings: dict, subtotal: Decimal) -> Decimal:
-    """The owner's rule, applied on the server: a flat fee, free once the subtotal reaches the threshold (if one is set)."""
-    fee = settings.get("shipping_flat_fee")
-    if fee is None:
+def compute_shipping(settings: dict, subtotal: Decimal, weights: list[tuple[int | None, int]] | None = None) -> Decimal:
+    """The owner's rule, applied on the server: weight tiers when the store has them (`weights` = each item's grams and quantity), otherwise a flat fee; free once the subtotal reaches
+    the threshold, if one is set."""
+    tiers, fee = settings.get("shipping_tiers"), settings.get("shipping_flat_fee")
+    if not tiers and fee is None:
         raise CatalogValidationError(["the store has no shipping rule yet"])
     free_over = settings.get("free_shipping_over")
     if free_over is not None and subtotal >= Decimal(str(free_over)):
         return Decimal("0.00")
+    if tiers:
+        weight = shipping_rules.order_weight_lb(weights or [])
+        if weight is None:
+            raise CatalogValidationError(["Shipping for this order cannot be priced because an item in it has no weight. Please contact the store."])
+        by_weight = shipping_rules.tier_fee(tiers, weight)
+        if by_weight is None:
+            raise CatalogValidationError([f"This order weighs {weight.quantize(Decimal('0.1'))} lb, which is more than the store ships in one order. Please split it into smaller orders."])
+        return by_weight
     return _money(fee)
 
 
 def shipping_text(settings: dict) -> str:
-    fee, free_over = settings.get("shipping_flat_fee"), settings.get("free_shipping_over")
+    fee, free_over, tiers = settings.get("shipping_flat_fee"), settings.get("free_shipping_over"), settings.get("shipping_tiers")
+    if tiers:
+        text = shipping_rules.describe(tiers)
+        return text + (f" Free on orders of ${_money(free_over)} or more." if free_over is not None else "")
     if fee is None:
         return ""
     text = "Free shipping." if _money(fee) == 0 else f"Flat-rate shipping: ${_money(fee)}."
@@ -90,7 +103,7 @@ class DropshippingStoreService:
         out: list[str] = []
         if include_switch and not s.get("open"):
             out.append("The store is switched off.")
-        if s.get("shipping_flat_fee") is None:
+        if s.get("shipping_flat_fee") is None and not s.get("shipping_tiers"):
             out.append("Set a shipping rule (a flat fee, which may be 0).")
         if (s.get("sales_tax_mode") or tax.MODE_NONE) == tax.MODE_NONE and not s.get("sales_tax_acknowledged"):
             out.append("Acknowledge that sales tax is not collected on orders, or collect it with Stripe Tax.")
@@ -104,6 +117,16 @@ class DropshippingStoreService:
             )).scalar_one()
         if not sellable:
             out.append("Publish at least one product with an active item.")
+        if s.get("shipping_tiers"):
+            async with self._session_factory() as session:
+                await set_tenant_context(session, tenant_id)
+                unweighed = (await session.execute(
+                    select(func.count()).select_from(Product).join(Sku, Sku.product_id == Product.id).where(
+                        Product.tenant_id == tenant_id, Product.status == ProductStatus.ACTIVE, Sku.status == SkuStatus.ACTIVE,
+                        (Sku.weight_grams.is_(None)) | (Sku.weight_grams <= 0))
+                )).scalar_one()
+            if unweighed:
+                out.append(f"{unweighed} item{' has' if unweighed == 1 else 's have'} no weight, so shipping by weight cannot be priced. Add each item's weight in the catalog.")
         return out
 
     async def is_open(self, tenant_id: uuid.UUID) -> tuple[bool, dict]:
@@ -111,7 +134,7 @@ class DropshippingStoreService:
         return (bool(s.get("open")) and not await self.blockers(tenant_id, s)), s
 
     async def update_settings(self, tenant_id: uuid.UUID, changes: dict, *, actor_id: uuid.UUID | None) -> dict:
-        allowed = {"open", "shipping_flat_fee", "free_shipping_over", "sales_tax_acknowledged", "sales_tax_mode", "tax_code"}
+        allowed = {"open", "shipping_flat_fee", "free_shipping_over", "shipping_tiers", "sales_tax_acknowledged", "sales_tax_mode", "tax_code"}
         unknown = sorted(set(changes) - allowed)
         problems = [f"unknown setting: {k}" for k in unknown]
         current = await self.get_settings(tenant_id)
@@ -122,6 +145,14 @@ class DropshippingStoreService:
                     problems.append(f"{key} must be true or false")
                 else:
                     new[key] = changes[key]
+        if "shipping_tiers" in changes:
+            if changes["shipping_tiers"] is None:
+                new["shipping_tiers"] = None
+            else:
+                tiers, tier_problems = shipping_rules.normalize_tiers(changes["shipping_tiers"])
+                problems.extend(tier_problems)
+                if not tier_problems:
+                    new["shipping_tiers"] = tiers
         if "sales_tax_mode" in changes:
             if changes["sales_tax_mode"] not in tax.MODES:
                 problems.append("sales_tax_mode must be NONE or STRIPE_TAX")
@@ -143,8 +174,8 @@ class DropshippingStoreService:
                         problems.append(str(exc))
         if problems:
             raise CatalogValidationError(problems)
-        if new.get("free_shipping_over") is not None and new.get("shipping_flat_fee") is None:
-            raise CatalogValidationError(["free_shipping_over needs a shipping_flat_fee"])
+        if new.get("free_shipping_over") is not None and new.get("shipping_flat_fee") is None and not new.get("shipping_tiers"):
+            raise CatalogValidationError(["free_shipping_over needs a shipping rule (a flat fee or weight tiers)"])
         if new.get("sales_tax_mode") == tax.MODE_STRIPE_TAX and current.get("sales_tax_mode") != tax.MODE_STRIPE_TAX:
             key = await resolve_stripe_secret_key(self._connection_service, tenant_id)
             if not key:
@@ -179,7 +210,7 @@ class DropshippingStoreService:
         s = await self.get_settings(tenant_id)
         mode = s.get("sales_tax_mode") or tax.MODE_NONE
         return {"open": True, "currency": CURRENCY, "shipping": shipping_text(s), "free_shipping_over": s.get("free_shipping_over"),
-                "flat_shipping_fee": s.get("shipping_flat_fee"), "sales_tax_mode": mode,
+                "flat_shipping_fee": s.get("shipping_flat_fee"), "shipping_tiers": s.get("shipping_tiers") or None, "sales_tax_mode": mode,
                 "sales_tax_notice": SALES_TAX_NOTICE_STRIPE if mode == tax.MODE_STRIPE_TAX else SALES_TAX_NOTICE, "ships_to": "the continental United States"}
 
     @staticmethod
@@ -187,7 +218,7 @@ class DropshippingStoreService:
         return {
             "name": product.name, "slug": product.slug, "description": product.description, "category": product.category, "image_url": product.image_url,
             "non_perishable": bool(product.is_non_perishable),
-            "items": [{"sku": k.sku_code, "price": str(_money(k.price)), "currency": k.currency, "in_stock": k.availability == SkuAvailability.AVAILABLE} for k in skus],
+            "items": [{"sku": k.sku_code, "price": str(_money(k.price)), "currency": k.currency, "in_stock": k.availability == SkuAvailability.AVAILABLE, "weight_g": k.weight_grams} for k in skus],
         }
 
     async def list_products(self, tenant_id: uuid.UUID, *, q: str | None = None, category: str | None = None, limit: int = 24, offset: int = 0) -> list[dict]:

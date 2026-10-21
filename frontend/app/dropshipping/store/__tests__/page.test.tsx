@@ -31,7 +31,7 @@ describe("Store settings", () => {
     await userEvent.type(await screen.findByLabelText(/Flat shipping fee/), "5.00");
     await userEvent.type(screen.getByLabelText(/Free shipping from/), "50.00");
     await userEvent.click(screen.getByRole("button", { name: "Save shipping" }));
-    await waitFor(() => expect(api.putStoreSettings).toHaveBeenCalledWith("t", { shipping_flat_fee: "5.00", free_shipping_over: "50.00" }));
+    await waitFor(() => expect(api.putStoreSettings).toHaveBeenCalledWith("t", { shipping_tiers: null, shipping_flat_fee: "5.00", free_shipping_over: "50.00" }));
     expect(await screen.findByText("Saved.")).toBeInTheDocument();
   });
 

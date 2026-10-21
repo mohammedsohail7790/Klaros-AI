@@ -4,9 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Settings2 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { ProblemAlert } from "@/components/dropshipping/parts";
+import ShippingRule from "@/components/dropshipping/ShippingRule";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StoreView, canManage, describeError, getStoreSettings, putStoreSettings } from "@/lib/dropshippingApi";
@@ -17,8 +17,6 @@ export default function DropshippingStoreSettingsPage() {
   const { token, user, loading: authLoading } = useAuth();
   const manage = canManage(user?.role);
   const [view, setView] = useState<StoreView | null>(null);
-  const [fee, setFee] = useState("");
-  const [freeOver, setFreeOver] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [refusal, setRefusal] = useState<{ message: string; problems: string[] } | null>(null);
   const [saved, setSaved] = useState(false);
@@ -26,8 +24,6 @@ export default function DropshippingStoreSettingsPage() {
 
   const apply = (v: StoreView) => {
     setView(v);
-    setFee(v.settings.shipping_flat_fee ?? "");
-    setFreeOver(v.settings.free_shipping_over ?? "");
   };
 
   const load = useCallback(async () => {
@@ -83,17 +79,7 @@ export default function DropshippingStoreSettingsPage() {
             {refusal && <ProblemAlert message={refusal.message} problems={refusal.problems} />}
             {saved && <Alert variant="success">Saved.</Alert>}
 
-            <section aria-label="Shipping" className="space-y-4">
-              <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Shipping</h2>
-              <p className="text-sm text-muted">One flat fee per order, in US dollars. Orders at or over the free-shipping amount ship free. Shoppers cannot change either.</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Flat shipping fee (0 for free shipping)"><Input inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="5.00" disabled={!manage} /></Field>
-                <Field label="Free shipping from (optional)"><Input inputMode="decimal" value={freeOver} onChange={(e) => setFreeOver(e.target.value)} placeholder="50.00" disabled={!manage} /></Field>
-              </div>
-              {manage && (
-                <Button disabled={busy || fee.trim() === ""} onClick={() => save({ shipping_flat_fee: fee.trim(), free_shipping_over: freeOver.trim() === "" ? null : freeOver.trim() })}>Save shipping</Button>
-              )}
-            </section>
+            <ShippingRule key={JSON.stringify([s.shipping_flat_fee, s.free_shipping_over, s.shipping_tiers])} settings={s} manage={manage} busy={busy} onSave={save} />
 
             <section aria-label="Sales tax" className="space-y-4">
               <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Sales tax</h2>

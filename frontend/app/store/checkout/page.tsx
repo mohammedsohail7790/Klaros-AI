@@ -130,9 +130,9 @@ export default function CheckoutPage() {
           </ul>
           <dl className="space-y-3 border-t border-[rgb(var(--color-border))] pt-5 text-[17px]">
             <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd>{money(est.subtotalCents)}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted">Shipping (estimate)</dt><dd>{money(est.shippingCents)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted">Shipping (estimate)</dt><dd>{est.shippingKnown ? money(est.shippingCents) : "At checkout"}</dd></div>
             {info.sales_tax_mode === "STRIPE_TAX" && <div className="flex justify-between"><dt className="text-muted">Sales tax</dt><dd>At checkout</dd></div>}
-            <div className="flex justify-between border-t border-[rgb(var(--color-border))] pt-4 text-[21px] font-semibold tracking-[-0.02em]"><dt>{info.sales_tax_mode === "STRIPE_TAX" ? "Estimated total before tax" : "Estimated total"}</dt><dd>{money(est.totalCents)}</dd></div>
+            <div className="flex justify-between border-t border-[rgb(var(--color-border))] pt-4 text-[21px] font-semibold tracking-[-0.02em]"><dt>{est.shippingKnown ? (info.sales_tax_mode === "STRIPE_TAX" ? "Estimated total before tax" : "Estimated total") : "Subtotal before shipping and tax"}</dt><dd>{money(est.totalCents)}</dd></div>
           </dl>
           <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? "Please wait…" : "Pay with card"}</Button>
           <p className="flex items-start gap-2 text-[13px] leading-relaxed text-muted"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /><span>{info.sales_tax_notice} You will pay on Stripe&apos;s secure page; we never see your card. The final total is shown there.</span></p>

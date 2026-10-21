@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PackageCheck, ShieldCheck, Truck } from "lucide-react";
-import { STORE_CONTACT_EMAIL, STORE_NAME } from "@/lib/storeConfig";
+import { STORE_COMPANY, STORE_CONTACT_EMAIL, STORE_NAME } from "@/lib/storeConfig";
 import type { StoreInfo } from "@/lib/storeApi";
 
 /** The slim line under the bar: the owner's real shipping rule, nothing else. */
@@ -71,7 +71,7 @@ export function StoreFooter({ info, categories = [] }: { info: StoreInfo | null;
             </div>
           )}
         </div>
-        <p className="pt-5 text-[12px] text-muted">© {new Date().getFullYear()} {STORE_NAME}. Payments are processed by Stripe.</p>
+        <p className="pt-5 text-[12px] text-muted">© {new Date().getFullYear()} {STORE_COMPANY}. {STORE_NAME} is our brand. Payments are processed by Stripe.</p>
       </div>
     </footer>
   );
