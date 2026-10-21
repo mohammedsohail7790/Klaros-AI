@@ -132,3 +132,17 @@ def test_followup_constants():
         OutreachMessageKind.FOLLOWUP_2: timedelta(days=5),
     }
     assert s.NO_RESPONSE_AFTER == timedelta(days=7)
+
+
+def test_empty_window_on_spring_forward_day_moves_to_next_day():
+    lim = Limits(send_window_start=2, send_window_end=3, weekdays_only=False)
+    got = s.next_send_slot(utc(2026, 3, 28, 12), "PL", lim, horizon_end=FAR)
+    assert got == utc(2026, 3, 30, 0)  # 02:00 CEST Monday
+
+
+def test_warmup_cap_naive_datetimes_raise():
+    with pytest.raises(ValueError):
+        s.warmup_cap(L, datetime(2026, 10, 1), utc(2026, 10, 2))
+    with pytest.raises(ValueError):
+        s.warmup_cap(L, utc(2026, 10, 1), datetime(2026, 10, 2))
+    assert s.warmup_cap(L, None, utc(2026, 10, 2)) == 5

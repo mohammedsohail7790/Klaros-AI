@@ -41,6 +41,8 @@ def timezone_for(country: str | None) -> ZoneInfo | None:
 
 
 def warmup_cap(limits: Limits, shadow_started_at: datetime | None, now: datetime) -> int:
+    if now.tzinfo is None or (shadow_started_at is not None and shadow_started_at.tzinfo is None):
+        raise ValueError("now and shadow_started_at must be timezone-aware")
     n = 0
     if shadow_started_at is not None:
         n = max(0, (now.astimezone(UTC).date() - shadow_started_at.astimezone(UTC).date()).days)
@@ -72,7 +74,7 @@ def next_send_slot(
         if not (limits.weekdays_only and day.weekday() >= 5):
             start = _local_instant(day, limits.send_window_start, zone)
             end = _local_instant(day, limits.send_window_end, zone)
-            if earliest_utc < end:
+            if start < end and earliest_utc < end:
                 slot = max(earliest_utc, start)
                 return slot if slot < horizon_end.astimezone(UTC) else None
         day += timedelta(days=1)
