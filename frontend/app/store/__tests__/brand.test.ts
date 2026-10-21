@@ -72,10 +72,10 @@ describe("Clean Room palette", () => {
 describe("the store's own domain", () => {
   const req = (url: string, host: string) => new NextRequest(url, { headers: { host } });
 
-  it("shows the shop at the home page of yourcleanroom.com and www.yourcleanroom.com", async () => {
+  it("shows the welcome page at the home page of yourcleanroom.com and www.yourcleanroom.com", async () => {
     for (const host of ["yourcleanroom.com", "www.yourcleanroom.com"]) {
       const res = await proxy(req(`https://${host}/`, host));
-      expect(res.headers.get("x-middleware-rewrite"), host).toBe(`https://${host}/store`);
+      expect(res.headers.get("x-middleware-rewrite"), host).toBe(`https://${host}/store/welcome`);
     }
   });
 

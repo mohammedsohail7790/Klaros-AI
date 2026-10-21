@@ -6294,3 +6294,91 @@ export function getWhatsAppWebhookInfo(token: string) {
     headers: authHeaders(token),
   });
 }
+
+// --- Clinic outreach (shadow mode only: nothing is sent) ---
+
+export interface OutreachConfig {
+  term_sheet: { basis: "PERCENTAGE" | "FLAT"; min_value: string; max_value: string; payment_days: number; currency: string; qualifying_outcome: string };
+  sender: { display_name: string; signature: string; company_name: string; postal_address: string };
+  limits: { daily_cap: number; ramp_start: number; max_emails_per_clinic: number; send_window_start: number; send_window_end: number; weekdays_only: boolean };
+  countries: string[];
+}
+
+export interface EligibleOutreachClinic {
+  id: string;
+  name: string;
+  country: string | null;
+  city: string | null;
+  has_email: boolean;
+}
+
+export interface OutreachClinicRow {
+  provider_id: string;
+  name: string;
+  country: string | null;
+  city: string | null;
+  stage: string;
+  contact_email: string | null;
+  contact_source: string | null;
+  contact_checked_at: string | null;
+}
+
+export interface OutreachCampaignDetail {
+  campaign: { id: string; name: string; status: string };
+  config: OutreachConfig | null;
+  mode: string;
+  funnel: Record<string, number>;
+  clinics: OutreachClinicRow[];
+}
+
+export interface OutreachFindContactsResult {
+  status: string;
+  checked: number;
+  found: number;
+  no_email: number;
+  search_failed: number;
+  search_configured: boolean;
+}
+
+export function listEligibleOutreachClinics(token: string, countries: string[]) {
+  return request<{ clinics: EligibleOutreachClinic[] }>(`/api/v1/outreach/eligible-clinics?countries=${encodeURIComponent(countries.join(","))}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export function createOutreachCampaign(token: string, body: { name: string; config: OutreachConfig; provider_ids?: string[] }) {
+  return request<{ campaign_id: string }>("/api/v1/outreach/campaigns", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
+}
+
+/** A 404 means the id is not a clinic outreach campaign (or not this workspace's), so callers fall back to the ordinary campaign page. */
+export function getOutreachCampaign(token: string, campaignId: string) {
+  return request<OutreachCampaignDetail>(`/api/v1/outreach/campaigns/${campaignId}`, { headers: authHeaders(token) });
+}
+
+export function findOutreachContacts(token: string, campaignId: string) {
+  return request<OutreachFindContactsResult>(`/api/v1/outreach/campaigns/${campaignId}/find-contacts`, { method: "POST", headers: authHeaders(token) });
+}
+
+export function setOutreachContact(token: string, campaignId: string, providerId: string, email: string) {
+  return request<{ status: string }>(`/api/v1/outreach/campaigns/${campaignId}/contacts/${providerId}`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function startOutreachCampaign(token: string, campaignId: string) {
+  return request<{ status: string }>(`/api/v1/outreach/campaigns/${campaignId}/start`, { method: "POST", headers: authHeaders(token) });
+}
+
+export function pauseOutreachCampaign(token: string, campaignId: string) {
+  return request<{ status: string }>(`/api/v1/outreach/campaigns/${campaignId}/pause`, { method: "POST", headers: authHeaders(token) });
+}
+
+export function stopOutreachCampaign(token: string, campaignId: string) {
+  return request<{ status: string }>(`/api/v1/outreach/campaigns/${campaignId}/stop`, { method: "POST", headers: authHeaders(token) });
+}
