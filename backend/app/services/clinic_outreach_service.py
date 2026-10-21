@@ -6,6 +6,7 @@ message channel. Contact discovery only reads public web search results. Every q
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
@@ -31,6 +32,18 @@ TERMINAL_STAGES = frozenset({OutreachStage.DECLINED, OutreachStage.OPTED_OUT, Ou
 HOLDING_STATUSES = (CampaignStatus.DRAFT, CampaignStatus.ACTIVE, CampaignStatus.PAUSED)  # a clinic in one of these campaigns is not free for another
 NO_EMAIL_RETRY_AFTER = timedelta(days=14)
 SUPPRESSION_KINDS = ("address", "domain")
+CONTACT_EDITABLE_STAGES = (OutreachStage.QUEUED, OutreachStage.NO_EMAIL, OutreachStage.READY)
+
+# One lock per tenant around campaign creation, so two creates in this process never both claim a clinic. Across processes the
+# Provider row locks taken inside the create transaction (SELECT ... FOR UPDATE) do the same job on Postgres.
+_create_locks: dict[uuid.UUID, asyncio.Lock] = {}
+
+
+def _create_lock(tenant_id: uuid.UUID) -> asyncio.Lock:
+    lock = _create_locks.get(tenant_id)
+    if lock is None:
+        lock = _create_locks[tenant_id] = asyncio.Lock()
+    return lock
 
 
 class OutreachError(ValueError):
@@ -86,14 +99,23 @@ class ClinicOutreachService:
         if not name:
             raise OutreachError("Give the campaign a name.")
         stored = config.model_dump(mode="json")  # Decimal -> str, so it can live in JSON columns
-        async with self._sf() as session:
+        no_clinics = "No eligible clinics: choose countries with active clinics that have no agreed terms and are not already in another open outreach campaign."
+        async with _create_lock(tenant_id), self._sf() as session:
             await set_tenant_context(session, tenant_id)
             providers = list((await session.execute(self._eligible_query(tenant_id, config.countries))).scalars().all())
             if provider_ids is not None:
                 wanted = set(provider_ids)
                 providers = [p for p in providers if p.id in wanted]
             if not providers:
-                raise OutreachError("No eligible clinics: choose countries with active clinics that have no agreed terms and are not already in another open outreach campaign.")
+                raise OutreachError(no_clinics)
+            # Lock the chosen clinics (in id order, so two creates never deadlock), then re-check eligibility while holding the locks:
+            # only the clinics that pass this second check are inserted.
+            chosen = sorted(p.id for p in providers)
+            await session.execute(select(Provider.id).where(Provider.tenant_id == tenant_id, Provider.id.in_(chosen)).order_by(Provider.id).with_for_update())
+            providers = list((await session.execute(
+                self._eligible_query(tenant_id, config.countries).where(Provider.id.in_(chosen)).execution_options(populate_existing=True))).scalars().all())
+            if not providers:
+                raise OutreachError(no_clinics)
             campaign = Campaign(tenant_id=tenant_id, name=name[:255], channel=CampaignChannel.OUTBOUND, objective=CampaignObjective.LEAD_GEN,
                                 status=CampaignStatus.DRAFT, external_provider="internal")
             session.add(campaign)
@@ -147,8 +169,8 @@ class ClinicOutreachService:
     # --- contact discovery -------------------------------------------------------------------------------------------
 
     async def find_contacts(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, *, limit: int = 10) -> dict[str, Any]:
-        result = {"status": "ok", "checked": 0, "found": 0, "no_email": 0, "search_failed": 0}
         search = self._search_factory()
+        result = {"status": "ok", "checked": 0, "found": 0, "no_email": 0, "search_failed": 0, "search_configured": search is not None}
         retry_before = _now() - NO_EMAIL_RETRY_AFTER
         async with self._sf() as session:
             campaign, _ = await self._load(session, tenant_id, campaign_id)
@@ -163,12 +185,19 @@ class ClinicOutreachService:
                 q = q.where(func.trim(func.coalesce(Provider.contact_email, "")) != "")
             q = q.order_by(case((ClinicOutreach.stage == OutreachStage.QUEUED, 0), else_=1), ClinicOutreach.contact_checked_at, ClinicOutreach.created_at,
                            ClinicOutreach.id).limit(max(0, int(limit)))
-            todo = (await session.execute(q)).all()
+            rows = (await session.execute(q)).all()
+        todo = []
+        for outreach_id, name, city, country, contact_email in rows:
+            own = _norm(contact_email or "")
+            if own and (not usable_address(own) or await self.is_suppressed(tenant_id, own)):
+                own = ""  # a free-mail, role or suppressed own address is ignored for this attempt; the clinic's site is searched instead
+            if search is None and not own:
+                continue  # nothing to work with until a search provider is configured
+            todo.append((outreach_id, SimpleNamespace(name=name, city=city, country=country, contact_email=own or None)))
         if search is None and not todo:
             return {**result, "status": "not_configured"}
 
-        for outreach_id, name, city, country, contact_email in todo:
-            snapshot = SimpleNamespace(name=name, city=city, country=country, contact_email=contact_email)
+        for outreach_id, snapshot in todo:
             found = await clinic_contact_finder.find_contact(snapshot, search, self._mx_exists)
             if found.reason == "search_failed":  # left untouched so the next run retries it
                 result["checked"] += 1
@@ -206,14 +235,19 @@ class ClinicOutreachService:
         if await self.is_suppressed(tenant_id, address):
             raise OutreachError("This address or its domain is on the do-not-contact list.")
         async with self._sf() as session:
-            await self._load(session, tenant_id, campaign_id)
+            campaign, _ = await self._load(session, tenant_id, campaign_id)
+            if campaign.status not in HOLDING_STATUSES:
+                raise OutreachError(f"This campaign is {campaign.status}; a contact can only be set in a draft, active or paused campaign.")
             row = (await session.execute(select(ClinicOutreach).where(
                 ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id, ClinicOutreach.provider_id == provider_id))).scalar_one_or_none()
             if row is None:
                 raise OutreachError("That clinic is not part of this campaign.")
+            if row.stage not in CONTACT_EDITABLE_STAGES:
+                raise OutreachError(f"This clinic is at stage {row.stage}; its contact can only be set before any email goes out (stage QUEUED, NO_EMAIL or READY).")
             now = _now()
             row.stage, row.contact_email, row.contact_source, row.contact_source_url = OutreachStage.READY, address, "owner", None
             row.contact_checked_at, row.contact_found_at = now, now
+            session.add(self._audit(tenant_id, None, "outreach.contact_set", campaign_id, {"outreach_id": str(row.id), "provider_id": str(row.provider_id)}))
             await session.commit()
 
     # --- lifecycle ---------------------------------------------------------------------------------------------------

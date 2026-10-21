@@ -5,6 +5,7 @@ unusable or suppressed addresses are refused, and one tenant never sees or chang
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -187,7 +188,7 @@ async def test_find_contacts_moves_clinics_to_ready_or_no_email_and_records_the_
 
     search.search = search_some_fail
     r = await svc.find_contacts(tid, cid, limit=10)
-    assert r == {"status": "ok", "checked": 4, "found": 2, "no_email": 1, "search_failed": 1}
+    assert r == {"status": "ok", "checked": 4, "found": 2, "no_email": 1, "search_failed": 1, "search_configured": True}
     assert not any(q.startswith("Owner Clinic ") for q in search.queries)  # an owner address needs no search
 
     rows = await _rows(tid, cid)
@@ -226,7 +227,7 @@ async def test_find_contacts_without_a_search_provider_returns_not_configured_an
     svc = _svc(None)
     cid = await svc.create_campaign(tid, USER, name="C", config=_config(), provider_ids=None)
     r = await svc.find_contacts(tid, cid)
-    assert r == {"status": "not_configured", "checked": 0, "found": 0, "no_email": 0, "search_failed": 0}
+    assert r == {"status": "not_configured", "checked": 0, "found": 0, "no_email": 0, "search_failed": 0, "search_configured": False}
     row = (await _rows(tid, cid))[a]
     assert (row.stage, row.contact_checked_at) == (OutreachStage.QUEUED, None)
 
@@ -236,7 +237,7 @@ async def test_find_contacts_without_a_search_provider_returns_not_configured_an
     other = await _clinic(tid2, "Plain Clinic")
     cid2 = await svc.create_campaign(tid2, USER, name="C2", config=_config(), provider_ids=None)
     r = await svc.find_contacts(tid2, cid2)
-    assert r == {"status": "ok", "checked": 1, "found": 1, "no_email": 0, "search_failed": 0}
+    assert r == {"status": "ok", "checked": 1, "found": 1, "no_email": 0, "search_failed": 0, "search_configured": False}
     rows = await _rows(tid2, cid2)
     assert rows[own].stage == OutreachStage.READY and (rows[other].stage, rows[other].contact_checked_at) == (OutreachStage.QUEUED, None)
 
@@ -257,7 +258,7 @@ async def test_a_no_email_clinic_is_retried_only_after_14_days() -> None:
     search.queries.clear()
     search.pages = {"Old Clinic": ("https://www.old-clinic.example/contact", "Old Clinic welcomes you. Email international@old-clinic.example")}
     r = await svc.find_contacts(tid, cid)
-    assert r == {"status": "ok", "checked": 1, "found": 1, "no_email": 0, "search_failed": 0}
+    assert r == {"status": "ok", "checked": 1, "found": 1, "no_email": 0, "search_failed": 0, "search_configured": True}
     assert [q.split(" Istanbul")[0] for q in search.queries] == ["Old Clinic"]
     rows = await _rows(tid, cid)
     assert rows[old].stage == OutreachStage.READY and rows[recent].stage == OutreachStage.NO_EMAIL
@@ -426,3 +427,99 @@ async def test_other_tenants_cannot_read_or_change_a_campaign() -> None:
     assert (row.stage, row.contact_email, row.contact_checked_at) == (OutreachStage.QUEUED, None, None)
     await svc.suppress(other, "alpha.example", "domain", "theirs")
     assert not await svc.is_suppressed(tid, "info@alpha.example")
+
+
+# --- fix round 1 -----------------------------------------------------------------------------------------------------
+
+
+async def test_concurrent_creates_never_put_a_clinic_in_two_open_campaigns() -> None:
+    tid = uuid.uuid4()
+    ids = {await _clinic(tid, f"Clinic {i}") for i in range(4)}
+    svc = _svc()
+    first, second = await asyncio.gather(
+        svc.create_campaign(tid, USER, name="First", config=_config(), provider_ids=None),
+        svc.create_campaign(tid, USER, name="Second", config=_config(), provider_ids=None),
+        return_exceptions=True)
+    # the first call holds the tenant's lock and takes every clinic; the second re-checks inside the lock and finds none left
+    assert isinstance(first, uuid.UUID)
+    assert isinstance(second, OutreachError) and "No eligible clinics" in str(second)
+    assert set(await _rows(tid, first)) == ids
+    async with async_session_maker() as s:
+        held = (await s.execute(select(ClinicOutreach.provider_id).where(ClinicOutreach.tenant_id == tid))).scalars().all()
+        campaigns = (await s.execute(select(Campaign).where(Campaign.tenant_id == tid))).scalars().all()
+    assert sorted(held) == sorted(ids) and len(campaigns) == 1  # each clinic exactly once, and no empty campaign was left behind
+
+    # overlapping hand-picked lists: the second gets only what the first did not take
+    tid2 = uuid.uuid4()
+    a = await _clinic(tid2, "A Clinic")
+    b = await _clinic(tid2, "B Clinic")
+    c = await _clinic(tid2, "C Clinic")
+    one, two = await asyncio.gather(
+        svc.create_campaign(tid2, USER, name="One", config=_config(), provider_ids=[a, b]),
+        svc.create_campaign(tid2, USER, name="Two", config=_config(), provider_ids=[b, c]))
+    assert set(await _rows(tid2, one)) == {a, b} and set(await _rows(tid2, two)) == {c}
+
+
+async def _set_stage(tid, cid, provider_id, stage) -> None:
+    async with async_session_maker() as s:
+        await s.execute(update(ClinicOutreach).where(ClinicOutreach.tenant_id == tid, ClinicOutreach.campaign_id == cid,
+                                                     ClinicOutreach.provider_id == provider_id).values(stage=stage))
+        await s.commit()
+
+
+async def test_set_contact_only_for_early_stages_in_an_open_campaign() -> None:
+    tid = uuid.uuid4()
+    p = await _clinic(tid, "Alpha Clinic")
+    svc = _svc()
+    cid = await svc.create_campaign(tid, USER, name="C", config=_config(), provider_ids=None)
+    for stage in (OutreachStage.OPTED_OUT, OutreachStage.DECLINED, OutreachStage.INTRO_SENT, OutreachStage.HANDED_TO_VERIFICATION):
+        await _set_stage(tid, cid, p, stage)
+        with pytest.raises(OutreachError, match="stage"):
+            await svc.set_contact(tid, cid, p, "info@alpha.example")
+        assert (await _rows(tid, cid))[p].stage == stage and (await _rows(tid, cid))[p].contact_email is None
+    for stage in (OutreachStage.QUEUED, OutreachStage.NO_EMAIL, OutreachStage.READY):
+        await _set_stage(tid, cid, p, stage)
+        await svc.set_contact(tid, cid, p, f"{stage.lower()}@alpha.example")
+        row = (await _rows(tid, cid))[p]
+        assert (row.stage, row.contact_email) == (OutreachStage.READY, f"{stage.lower()}@alpha.example")
+    audits = await _audits(tid, "outreach.contact_set")
+    assert len(audits) == 3 and all("@" not in str(a.input_summary) for a in audits) and audits[0].entity_id == cid
+
+    await _set_stage(tid, cid, p, OutreachStage.QUEUED)
+    await svc.stop(tid, USER, cid)
+    with pytest.raises(OutreachError, match="COMPLETED"):
+        await svc.set_contact(tid, cid, p, "late@alpha.example")
+    assert (await _rows(tid, cid))[p].stage == OutreachStage.QUEUED
+
+
+async def test_an_unusable_or_suppressed_own_address_falls_through_to_the_site_search() -> None:
+    tid = uuid.uuid4()
+    gm = await _clinic(tid, "Gmail Clinic", email="gmailclinic@gmail.com")
+    quiet = await _clinic(tid, "Quiet Gmail Clinic", email="quiet@gmail.com")
+    sup = await _clinic(tid, "Suppressed Clinic", email="boss@suppressed-clinic.example")
+    search = FakeSearch({
+        "Gmail Clinic": ("https://www.gmail-clinic.example/contact", "Gmail Clinic welcomes you. Email international@gmail-clinic.example"),
+        "Suppressed Clinic": ("https://www.suppressed-clinic.example/contact", "Suppressed Clinic: write to patients@suppressed-clinic.example"),
+    })
+    svc = _svc(search)
+    await svc.suppress(tid, "boss@suppressed-clinic.example", "address", "asked to stop")
+    cid = await svc.create_campaign(tid, USER, name="C", config=_config(), provider_ids=None)
+    r = await svc.find_contacts(tid, cid)
+    assert r == {"status": "ok", "checked": 3, "found": 2, "no_email": 1, "search_failed": 0, "search_configured": True}
+    assert {q.split(" Istanbul")[0] for q in search.queries} == {"Gmail Clinic", "Quiet Gmail Clinic", "Suppressed Clinic"}
+    rows = await _rows(tid, cid)
+    assert (rows[gm].stage, rows[gm].contact_email, rows[gm].contact_source) == (OutreachStage.READY, "international@gmail-clinic.example", "site")
+    assert (rows[sup].stage, rows[sup].contact_email, rows[sup].contact_source) == (OutreachStage.READY, "patients@suppressed-clinic.example", "site")
+    assert (rows[quiet].stage, rows[quiet].contact_email) == (OutreachStage.NO_EMAIL, None)
+    async with async_session_maker() as s:
+        own = dict((await s.execute(select(Provider.id, Provider.contact_email).where(Provider.tenant_id == tid))).all())
+    assert own == {gm: "gmailclinic@gmail.com", quiet: "quiet@gmail.com", sup: "boss@suppressed-clinic.example"}  # the clinic's own record is untouched
+
+    # without a search provider an unusable own address is not something to process: nothing changes
+    tid2 = uuid.uuid4()
+    g2 = await _clinic(tid2, "Gmail Clinic", email="gmailclinic@gmail.com")
+    none_svc = _svc(None)
+    cid2 = await none_svc.create_campaign(tid2, USER, name="C2", config=_config(), provider_ids=None)
+    r = await none_svc.find_contacts(tid2, cid2)
+    assert r == {"status": "not_configured", "checked": 0, "found": 0, "no_email": 0, "search_failed": 0, "search_configured": False}
+    assert (await _rows(tid2, cid2))[g2].stage == OutreachStage.QUEUED
