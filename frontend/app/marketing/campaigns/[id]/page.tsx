@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/useAuth";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { useToast } from "@/components/ui/Toast";
+import { ClinicOutreachPanel } from "@/components/marketing/ClinicOutreachPanel";
 import {
   ApiError,
   Campaign,
@@ -14,6 +15,7 @@ import {
   CampaignPerformance,
   getCampaign,
   getCampaignBudgetStatus,
+  getOutreachCampaign,
   recordCampaignSpend,
   setCampaignStatus,
 } from "@/lib/api";
@@ -28,6 +30,31 @@ export default function CampaignDetailPage() {
   const [loading, setLoading] = useState(false);
   const [spendAmount, setSpendAmount] = useState("");
   const [busy, setBusy] = useState(false);
+  // Is this id a clinic outreach campaign? Only a 404 means it is an ordinary one; any other failure is shown as an error so the ordinary status controls never act on an outreach campaign.
+  const [outreach, setOutreach] = useState<"checking" | "yes" | "no" | { error: string }>("checking");
+  const [outreachName, setOutreachName] = useState("");
+  const [outreachTry, setOutreachTry] = useState(0);
+
+  useEffect(() => {
+    setOutreach("checking");
+    if (!token || !id) return;
+    let cancelled = false;
+    getOutreachCampaign(token, id)
+      .then((r) => {
+        if (cancelled) return;
+        setOutreachName(r.campaign.name);
+        setOutreach("yes");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 404) setOutreach("no");
+        else if (err instanceof ApiError && err.status === 403) setOutreach({ error: "You don't have permission to view this campaign's outreach details." });
+        else setOutreach({ error: "Couldn't load outreach details." });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, id, outreachTry]);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -80,6 +107,32 @@ export default function CampaignDetailPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (outreach === "yes") {
+    return (
+      <AppShell user={user}>
+        <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
+          <h1 className="mb-6 font-display text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.75rem]">{outreachName}</h1>
+          <ClinicOutreachPanel token={token} campaignId={id} />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (typeof outreach === "object") {
+    return (
+      <AppShell user={user}>
+        <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
+          <div role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">
+            {outreach.error}
+            <button onClick={() => setOutreachTry((n) => n + 1)} className="ml-2 underline">
+              Retry
+            </button>
+          </div>
+        </div>
+      </AppShell>
+    );
   }
 
   if (authLoading || loading) {
@@ -167,12 +220,12 @@ export default function CampaignDetailPage() {
             </button>
           </form>
 
-          {campaign.status === "DRAFT" && (
+          {outreach === "no" && campaign.status === "DRAFT" && (
             <button disabled={busy} onClick={() => handleToggleStatus("ACTIVE")} className="klaros-btn-secondary !px-3 !py-1.5">
               Activate
             </button>
           )}
-          {campaign.status === "ACTIVE" && (
+          {outreach === "no" && campaign.status === "ACTIVE" && (
             <button disabled={busy} onClick={() => handleToggleStatus("PAUSED")} className="klaros-btn-secondary !px-3 !py-1.5">
               Pause
             </button>

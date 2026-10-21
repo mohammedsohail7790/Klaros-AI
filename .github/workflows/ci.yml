@@ -74,8 +74,11 @@ jobs:
         run: alembic upgrade head
 
       - name: Alembic downgrade/re-upgrade smoke test (migration reversibility)
+        # One step back from the newest migration. `alembic downgrade -1` is ambiguous when the newest revision is a merge of two chains, so the step goes back to
+        # the head's first parent explicitly (for an ordinary migration that is the same one step).
         run: |
-          alembic downgrade -1
+          PREV=$(python -c "from alembic.config import Config; from alembic.script import ScriptDirectory; sd = ScriptDirectory.from_config(Config('alembic.ini')); d = sd.get_revision(sd.get_current_head()).down_revision; print(d[0] if isinstance(d, tuple) else d)")
+          alembic downgrade "$PREV"
           alembic upgrade head
 
       - name: pytest (full suite — sqlite-backed tests + postgres-only tests, since DATABASE_URL is real Postgres here)

@@ -148,7 +148,7 @@ describe("store layout", () => {
     expect(foot).toHaveTextContent("Sales tax is not collected");
     expect(foot).toHaveTextContent("Flat-rate shipping: $5.00");
     expect(screen.getAllByText("Flat-rate shipping: $5.00. Free on orders of $50.00 or more.")).toHaveLength(2);   // the bar above the header and the footer
-    expect(screen.getByRole("link", { name: "Clean Room" })).toHaveAttribute("href", "/store");
+    expect(screen.getByRole("link", { name: "Clean Room" })).toHaveAttribute("href", "/store/welcome");
     expect(within(foot).getByRole("link", { name: "info@yourcleanroom.com" })).toHaveAttribute("href", "mailto:info@yourcleanroom.com");
     expect(document.querySelector(".cleanroom-theme")).not.toBeNull();
     // no invented policy: nothing about delivery times or returns

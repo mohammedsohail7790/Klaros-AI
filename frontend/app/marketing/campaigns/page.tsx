@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Megaphone } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { StatusSummary } from "@/components/ui/layout";
@@ -11,10 +12,13 @@ import { ApiError, Campaign, createCampaign, detectMarketingExceptions, listCamp
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ClinicOutreachWizard } from "@/components/marketing/ClinicOutreachWizard";
 const CHANNELS = ["GOOGLE_ADS", "META_ADS", "YOUTUBE_ADS", "LOCAL_SERVICES_ADS", "SEO", "LOCAL", "CONTENT", "OUTBOUND", "REFERRAL", "OTHER"];
 
 export default function CampaignsPage() {
+  const router = useRouter();
   const { token, user, loading: authLoading } = useAuth();
+  const [showOutreach, setShowOutreach] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +95,9 @@ export default function CampaignsPage() {
             >
               {detecting ? "Detecting..." : "Detect exceptions"}
             </button>
+            <button onClick={() => setShowOutreach((v) => !v)} className="klaros-btn-secondary !px-3 !py-1.5">
+              New clinic outreach campaign
+            </button>
             <button onClick={() => setShowCreate((v) => !v)} className="klaros-btn-primary">
               New campaign
             </button>
@@ -100,6 +107,12 @@ export default function CampaignsPage() {
         {detectNotice && (
           <div className="mb-4 rounded-xl border border-warning/25 bg-warning/[0.07] p-3 text-sm text-warning">
             {detectNotice}
+          </div>
+        )}
+
+        {showOutreach && (
+          <div className="mb-6">
+            <ClinicOutreachWizard token={token} onCreated={(campaignId) => router.push(`/marketing/campaigns/${campaignId}`)} />
           </div>
         )}
 

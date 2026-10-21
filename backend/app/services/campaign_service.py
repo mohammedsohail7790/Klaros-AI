@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.session import set_tenant_context
 from app.events.bus import EventBus
+from app.models.clinic_outreach import ClinicOutreachCampaign
 from app.models.event import EventType
 from app.models.marketing import Campaign, CampaignStatus, MarketingSpend, MarketingSpendAllocation
 from app.models.operations import ExceptionType
@@ -27,6 +28,10 @@ LOW_CONVERSION_SPEND_THRESHOLD = Decimal("100.00")
 
 class CampaignNotFoundError(Exception):
     pass
+
+
+class OutreachCampaignStatusError(Exception):
+    """The campaign is a clinic outreach campaign; its status changes only through the outreach endpoints."""
 
 
 @dataclass
@@ -102,6 +107,11 @@ class CampaignService:
             campaign = await session.get(Campaign, campaign_id)
             if campaign is None or campaign.tenant_id != tenant_id:
                 raise CampaignNotFoundError("Campaign not found")
+            outreach = (await session.execute(select(ClinicOutreachCampaign.id).where(
+                ClinicOutreachCampaign.campaign_id == campaign_id, ClinicOutreachCampaign.tenant_id == tenant_id).limit(1))).first()
+            if outreach is not None:
+                raise OutreachCampaignStatusError(
+                    "This is a clinic outreach campaign; start, pause or stop it from the outreach page (POST /api/v1/outreach/campaigns/{id}/start, /pause or /stop).")
             campaign.status = status
             await session.commit()
             await session.refresh(campaign)
