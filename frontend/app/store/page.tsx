@@ -1,136 +1,187 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Truck, X } from "lucide-react";
+import { FilterToggle } from "@/components/store/Filters";
 import { StoreClosed, StoreUnavailable, TrustStrip } from "@/components/store/Footer";
-import { ProductVisual } from "@/components/store/LabelTile";
-import { ProductCard, productSummary } from "@/components/store/parts";
+import { ShelfMark } from "@/components/store/Illustrations";
+import { ProductCard, ProductRail, productSummary } from "@/components/store/parts";
 import { buttonClass, linkClass } from "@/components/store/styles";
-import { Chip } from "@/components/store/ui";
 import { cn } from "@/lib/cn";
-import { StoreProduct, getStoreInfo, listStoreProducts } from "@/lib/storeApi";
+import { STORE_NAME } from "@/lib/storeConfig";
+import { StoreInfo, StoreProduct, getStoreInfo, listAllStoreProducts } from "@/lib/storeApi";
+import { Filters, PRICE_BANDS, SORTS, aisleCounts, filterHref, filterProducts, isDefault, paginate, parseFilters, sortProducts } from "@/lib/storeCatalog";
 
-const PAGE_SIZE = 24;
-// Category tiles alternate between the palette's light and dark surfaces, the way apple.com alternates its promo tiles.
-const TILES = [
-  { bg: "bg-surface-muted text-foreground", sub: "text-muted", dark: false },
-  { bg: "bg-[rgb(var(--color-brand))] text-[rgb(var(--color-background))]", sub: "text-[rgb(var(--color-background))]/80", dark: true },
-  { bg: "bg-[rgb(var(--color-foreground))] text-[rgb(var(--color-background))]", sub: "text-[rgb(var(--color-background))]/70", dark: true },
-];
-
-/** The shop front, rendered on the server so search engines can read it. Prices and stock may be up to a minute old here; the basket re-reads them live. */
-export default async function StoreHome({ searchParams }: { searchParams: Promise<{ q?: string; category?: string; page?: string }> }) {
-  const sp = await searchParams;
-  const q = (sp.q ?? "").trim().slice(0, 80);
-  const category = (sp.category ?? "").trim().slice(0, 120);
-  const page = Math.max(1, Math.floor(Number(sp.page)) || 1);
-
-  let info;
-  let products: StoreProduct[] = [];
+/** The shop. Rendered on the server so search engines can read it; prices and stock may be up to a minute old here and the basket re-reads them live. */
+export default async function StoreHome({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const f = parseFilters(await searchParams);
+  let info: StoreInfo | null;
   let all: StoreProduct[] = [];
   try {
     info = await getStoreInfo();
     if (!info) return <StoreClosed />;
-    products = await listStoreProducts({ q, category, limit: PAGE_SIZE + 1, offset: (page - 1) * PAGE_SIZE });
-    all = await listStoreProducts({ limit: 100 });
+    all = await listAllStoreProducts();
   } catch {
     return <StoreUnavailable />;
   }
-  const counts = new Map<string, number>();
-  for (const p of all) if (p.category) counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
-  const categories = [...counts.keys()].sort();
-  const featured = all.filter((p) => productSummary(p).inStock).slice(0, 3);
-  const isHome = !q && !category && page === 1;
-  const hasNext = products.length > PAGE_SIZE;
-  const shown = products.slice(0, PAGE_SIZE);
-  const link = (over: { page?: number; category?: string }) => {
-    const qs = new URLSearchParams();
-    if (q) qs.set("q", q);
-    const c = over.category !== undefined ? over.category : category;
-    if (c) qs.set("category", c);
-    if (over.page && over.page > 1) qs.set("page", String(over.page));
-    const s = qs.toString();
-    return s ? `/store?${s}` : "/store";
-  };
-  const heading = q ? `Results for “${q}”` : category || "All products";
+
+  const aisles = [...new Set(all.map((p) => p.category).filter((c): c is string => !!c))].sort();
+  const counts = aisleCounts(all, f);
+  const matching = sortProducts(filterProducts(all, f), f.sort);
+  const { items, hasNext } = paginate(matching, f.page);
+  const home = isDefault(f);
+  const inStockNow = all.filter((p) => productSummary(p).inStock);
+  const activeFilters = [f.category && "category", f.stock && "stock", f.price && "price"].filter(Boolean).length;
+  const heading = f.q ? `Results for “${f.q}”` : f.category || "All products";
 
   return (
-    <div className="space-y-20 sm:space-y-28">
-      {isHome && (
-        <section aria-label="Welcome" className="cr-on-dark overflow-hidden rounded-[32px] bg-[rgb(var(--color-brand))] text-[rgb(var(--color-background))]">
-          <div className="px-6 pb-12 pt-14 text-center sm:px-12 sm:pt-20">
-            <h1 className="mx-auto max-w-3xl text-[44px] font-semibold leading-[1.04] sm:text-[72px]">Pantry staples, delivered.</h1>
-            <p className="mx-auto mt-5 max-w-xl text-[19px] leading-snug text-[rgb(var(--color-background))]/85 sm:text-[24px]">Shelf-stable groceries shipped straight to you, anywhere in the continental United States.</p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
-              <a href="#products" className={buttonClass("primary", "lg")}>Shop all products</a>
-              {categories.length > 0 && <a href="#categories" className={linkClass(true)}>Browse categories <ChevronRight className="h-5 w-5" aria-hidden /></a>}
-            </div>
-            {info.free_shipping_over && Number(info.free_shipping_over) > 0 && <p className="mt-6"><Chip tone="apricot" className="px-4 py-1.5 text-[14px] font-semibold">Free shipping from ${info.free_shipping_over}</Chip></p>}
+    <div className="space-y-16 sm:space-y-24">
+      {home && <Promo info={info} />}
+
+      {home && aisles.length > 0 && (
+        <section aria-label="Shop by category" className="scroll-mt-40">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <h2 className="text-[28px] sm:text-[36px]">Shop by aisle</h2>
           </div>
-          {featured.length > 0 && (
-            <ul className="mx-auto grid max-w-2xl grid-cols-3 gap-3 px-6 pb-0 sm:gap-5 sm:px-12" aria-label="In stock now">
-              {featured.map((p, i) => (
-                <li key={p.slug} className={cn(i === 1 ? "translate-y-4 sm:translate-y-6" : "translate-y-8 sm:translate-y-12")}>
-                  <Link href={`/store/products/${p.slug}`} className="block">
-                    <ProductVisual name={p.name} imageUrl={p.image_url} size="mini" tone="on-sage" />
-                    <span className="sr-only">{p.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-          {featured.length > 0 && <div className="h-10 sm:h-14" />}
-        </section>
-      )}
-
-      {isHome && <TrustStrip />}
-
-      {isHome && categories.length > 0 && (
-        <section id="categories" aria-label="Shop by category" className="scroll-mt-20">
-          <h2 className="mb-8 text-[32px] sm:text-[40px]">Shop by category</h2>
-          <ul className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-            {categories.map((c, i) => {
-              const t = TILES[i % TILES.length];
-              return (
-                <li key={c} className="sm:[&:last-child:nth-child(odd)]:col-span-2">
-                  <div className={cn("flex min-h-[260px] flex-col items-center justify-center rounded-[32px] px-6 py-12 text-center sm:min-h-[320px]", t.bg)}>
-                    <h3 className="text-[32px] sm:text-[40px]" style={{ color: "inherit" }}>{c}</h3>
-                    <p className={cn("mt-2 text-[19px]", t.sub)}>{counts.get(c)} {counts.get(c) === 1 ? "product" : "products"}</p>
-                    <Link href={`${link({ category: c })}#products`} className={cn(linkClass(t.dark), "mt-5")} aria-label={`Shop ${c}`}>Shop <ChevronRight className="h-5 w-5" aria-hidden /></Link>
-                  </div>
-                </li>
-              );
-            })}
+          <ul className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:gap-6 sm:px-6 [scrollbar-width:thin]">
+            {aisles.map((c) => (
+              <li key={c} className="shrink-0">
+                <Link href={filterHref(f, { category: c })} aria-label={`Shop ${c}`} className="group flex w-[104px] flex-col items-center gap-3 text-center sm:w-[124px]">
+                  <span aria-hidden className="flex h-[88px] w-[88px] items-center justify-center rounded-full bg-surface-muted text-[34px] font-semibold tracking-[-0.04em] text-[rgb(var(--color-brand))] transition-transform duration-200 group-hover:scale-105 sm:h-[104px] sm:w-[104px] sm:text-[40px]">{c.slice(0, 1).toUpperCase()}</span>
+                  <span className="text-[15px] font-medium leading-tight text-foreground group-hover:underline">{c}</span>
+                  <span className="-mt-2 text-[13px] text-muted">{counts.get(c) ?? 0} {counts.get(c) === 1 ? "product" : "products"}</span>
+                </Link>
+              </li>
+            ))}
           </ul>
         </section>
       )}
 
-      <section id="products" aria-label="Products" className="scroll-mt-20 space-y-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-[32px] sm:text-[40px]">{heading}</h2>
-          {(q || category) && <Link href="/store" className={linkClass()}>Clear search</Link>}
-        </div>
-        {categories.length > 0 && (
-          <nav aria-label="Categories" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
-            {["", ...categories].map((c) => {
-              const active = (c || "") === category;
-              return <Link key={c || "all"} href={`${link({ category: c })}#products`} aria-current={active ? "page" : undefined} className={cn("shrink-0 rounded-full px-5 py-2 text-[15px] font-medium transition-colors", active ? "bg-[rgb(var(--color-foreground))] text-[rgb(var(--color-background))]" : "bg-surface-muted text-foreground hover:brightness-95")}>{c || "All"}</Link>;
+      {home && inStockNow.length > 0 && (
+        <section aria-label="In stock now">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <h2 className="text-[28px] sm:text-[36px]">In stock now</h2>
+            <a href="#products" className={linkClass()}>See everything <ChevronRight className="h-5 w-5" aria-hidden /></a>
+          </div>
+          <ProductRail products={inStockNow.slice(0, 12)} label="In stock now" />
+        </section>
+      )}
+
+      <section id="products" aria-label="Products" className="scroll-mt-40 space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div>
+            <h2 className="text-[28px] sm:text-[36px]">{heading}</h2>
+            <p className="mt-1 text-[15px] text-muted" aria-live="polite">{matching.length} {matching.length === 1 ? "product" : "products"}</p>
+          </div>
+          <nav aria-label="Sort" className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            {SORTS.map((s) => {
+              const on = f.sort === s.id;
+              return <Link key={s.id} href={filterHref(f, { sort: s.id })} aria-current={on ? "true" : undefined} className={cn("shrink-0 rounded-full px-4 py-2 text-[14px] font-medium transition-colors", on ? "bg-foreground text-background" : "bg-surface-muted text-foreground hover:brightness-95")}>{s.label}</Link>;
             })}
           </nav>
-        )}
-        {shown.length === 0 ? (
-          <div className="rounded-[28px] bg-surface-muted px-6 py-20 text-center">
-            <p className="text-[24px] font-semibold tracking-[-0.02em]">{q || category ? "Nothing matches your search." : "There are no products on sale yet."}</p>
-            {(q || category) && <p className="mt-2 text-muted">Try a different word, or <Link href="/store" className="text-[rgb(var(--color-brand))] underline underline-offset-4">browse everything</Link>.</p>}
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-[236px_1fr] lg:gap-12">
+          <FilterToggle activeCount={activeFilters}>
+            <FilterGroup title="Aisle">
+              <Option href={filterHref(f, { category: "" })} on={!f.category}>All aisles <small>{[...aisleCounts(all, { ...f, category: "" }).values()].reduce((a, b) => a + b, 0)}</small></Option>
+              {aisles.map((c) => <Option key={c} href={filterHref(f, { category: c })} on={f.category === c}>{c} <small>{counts.get(c) ?? 0}</small></Option>)}
+            </FilterGroup>
+            <FilterGroup title="Availability">
+              <Option href={filterHref(f, { stock: !f.stock })} on={f.stock} check>In stock only</Option>
+            </FilterGroup>
+            <FilterGroup title="Price">
+              <Option href={filterHref(f, { price: "" })} on={!f.price}>Any price</Option>
+              {PRICE_BANDS.map((b) => <Option key={b.id} href={filterHref(f, { price: b.id })} on={f.price === b.id}>{b.label}</Option>)}
+            </FilterGroup>
+            {!isDefault({ ...f, sort: "featured", page: 1 }) && <Link href="/store#products" className={linkClass()}>Clear all filters</Link>}
+          </FilterToggle>
+
+          <div>
+            <Applied f={f} />
+            {items.length === 0 ? (
+              <div className="rounded-[24px] bg-surface-muted px-6 py-20 text-center">
+                <p className="text-[24px] font-semibold tracking-[-0.02em]">{f.q || activeFilters ? "Nothing matches that." : "Nothing here yet."}</p>
+                <p className="mt-2 text-[17px] text-muted">{f.q || activeFilters ? "Try a different word or remove a filter." : "Please check back soon."}</p>
+                {(f.q || activeFilters > 0) && <p className="mt-7"><Link href="/store#products" className={buttonClass("secondary", "md")}>Clear search and filters</Link></p>}
+              </div>
+            ) : (
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">{items.map((p) => <ProductCard key={p.slug} product={p} />)}</ul>
+            )}
+            {(f.page > 1 || hasNext) && (
+              <nav aria-label="Pages" className="mt-12 flex items-center justify-center gap-4">
+                {f.page > 1 && <Link href={filterHref(f, { page: f.page - 1 })} className={buttonClass("secondary", "md")}><ChevronLeft className="h-4 w-4" aria-hidden /> Previous page</Link>}
+                <span className="text-[15px] text-muted">Page {f.page}</span>
+                {hasNext && <Link href={filterHref(f, { page: f.page + 1 })} className={buttonClass("secondary", "md")}>Next page <ChevronRight className="h-4 w-4" aria-hidden /></Link>}
+              </nav>
+            )}
           </div>
-        ) : (
-          <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">{shown.map((p) => <ProductCard key={p.slug} product={p} />)}</ul>
-        )}
-        {(page > 1 || hasNext) && (
-          <nav aria-label="Pages" className="flex items-center justify-between pt-2">
-            {page > 1 ? <Link href={`${link({ page: page - 1 })}#products`} rel="prev" className={buttonClass("secondary", "md")}><ChevronLeft className="h-4 w-4" aria-hidden /> Previous page</Link> : <span />}
-            {hasNext && <Link href={`${link({ page: page + 1 })}#products`} rel="next" className={buttonClass("secondary", "md")}>Next page <ChevronRight className="h-4 w-4" aria-hidden /></Link>}
-          </nav>
-        )}
+        </div>
       </section>
+
+      {home && <TrustStrip />}
     </div>
+  );
+}
+
+/** The top of the shop: one large offer and two small ones, all drawn from the store's real rules. */
+function Promo({ info }: { info: StoreInfo }) {
+  const shipping = info.free_shipping_over && Number(info.free_shipping_over) > 0 ? { big: `Free shipping from $${info.free_shipping_over}`, small: info.shipping } : { big: "Delivered across the continental US", small: info.shipping };
+  return (
+    <section aria-label="Welcome" className="grid gap-4 lg:grid-cols-[1.9fr_1fr]">
+      <div className="cr-on-dark relative flex min-h-[340px] flex-col justify-between overflow-hidden rounded-[28px] bg-[rgb(var(--color-brand))] p-7 text-[rgb(var(--color-background))] sm:min-h-[400px] sm:p-10">
+        <div className="relative z-10 max-w-[19ch] sm:max-w-[54%]">
+          <h1 className="text-[40px] font-semibold leading-[1.02] tracking-[-0.04em] sm:text-[60px]">Pantry staples, delivered.</h1>
+          <p className="mt-4 max-w-[30ch] text-[17px] leading-snug text-[rgb(var(--color-background))]/85 sm:text-[20px]">Shelf-stable groceries shipped to your door across the continental United States.</p>
+        </div>
+        <div className="relative z-10 mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <a href="#products" className={buttonClass("primary", "lg")}>Shop all products</a>
+          <Link href="/store/welcome" className={linkClass(true)}>About {STORE_NAME} <ChevronRight className="h-5 w-5" aria-hidden /></Link>
+        </div>
+        <ShelfMark className="pointer-events-none absolute -bottom-4 -right-6 hidden h-auto w-[44%] max-w-[470px] sm:block" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="flex min-h-[180px] flex-col justify-between rounded-[28px] bg-surface-muted p-6 sm:p-7">
+          <Truck className="h-8 w-8 text-[rgb(var(--color-brand))]" strokeWidth={1.5} aria-hidden />
+          <div><p className="text-[24px] font-semibold leading-tight tracking-[-0.03em] text-foreground">{shipping.big}</p>{shipping.small && <p className="mt-1.5 text-[14px] text-muted">{shipping.small}</p>}</div>
+        </div>
+        <div className="flex min-h-[180px] flex-col justify-between rounded-[28px] bg-accent p-6 text-accent-foreground sm:p-7">
+          <Check className="h-8 w-8" strokeWidth={2} aria-hidden />
+          <div><p className="text-[24px] font-semibold leading-tight tracking-[-0.03em]">No fridge. No freezer.</p><p className="mt-1.5 text-[14px] opacity-85">Everything on our shelves is shelf-stable.</p></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section aria-label={title}>
+      <h3 className="mb-3 text-[15px] font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
+      <ul className="space-y-1">{children}</ul>
+    </section>
+  );
+}
+
+function Option({ href, on, check, children }: { href: string; on: boolean; check?: boolean; children: React.ReactNode }) {
+  return (
+    <li>
+      <Link href={href} aria-current={on ? "true" : undefined} className={cn("flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-[15px] transition-colors [&_small]:text-[13px] [&_small]:text-muted", on ? "bg-surface-muted font-semibold text-foreground" : "text-foreground/80 hover:bg-surface-muted/70")}>
+        <span className="flex items-center gap-2">{check && <span aria-hidden className={cn("flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border", on ? "border-[rgb(var(--color-brand))] bg-[rgb(var(--color-brand))] text-[rgb(var(--color-background))]" : "border-[rgb(var(--color-foreground))]/40")}>{on && <Check className="h-3 w-3" strokeWidth={3} />}</span>}{children}</span>
+      </Link>
+    </li>
+  );
+}
+
+/** What is currently narrowing the list, each with a way to take it off. */
+function Applied({ f }: { f: Filters }) {
+  const chips: { label: string; href: string }[] = [];
+  if (f.q) chips.push({ label: `“${f.q}”`, href: filterHref(f, { q: "" }) });
+  if (f.category) chips.push({ label: f.category, href: filterHref(f, { category: "" }) });
+  if (f.price) chips.push({ label: PRICE_BANDS.find((b) => b.id === f.price)!.label, href: filterHref(f, { price: "" }) });
+  if (f.stock) chips.push({ label: "In stock only", href: filterHref(f, { stock: false }) });
+  if (chips.length === 0) return null;
+  return (
+    <ul aria-label="Applied filters" className="mb-5 flex flex-wrap items-center gap-2">
+      {chips.map((c) => <li key={c.label}><Link href={c.href} aria-label={`Remove ${c.label}`} className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted py-1.5 pl-3.5 pr-2.5 text-[14px] font-medium hover:brightness-95">{c.label}<X className="h-3.5 w-3.5" aria-hidden /></Link></li>)}
+    </ul>
   );
 }

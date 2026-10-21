@@ -3,18 +3,6 @@ import { PackageCheck, ShieldCheck, Truck } from "lucide-react";
 import { STORE_COMPANY, STORE_CONTACT_EMAIL, STORE_NAME } from "@/lib/storeConfig";
 import type { StoreInfo } from "@/lib/storeApi";
 
-/** The slim line under the bar: the owner's real shipping rule, nothing else. */
-export function PromoStrip({ info }: { info: StoreInfo | null }) {
-  if (!info?.shipping) return null;
-  return (
-    <div className="bg-surface-muted">
-      <p className="mx-auto flex w-full max-w-[1080px] items-center justify-center gap-2 px-4 py-3 text-center text-[14px] text-foreground sm:px-6">
-        <Truck className="h-4 w-4 shrink-0 text-[rgb(var(--color-brand))]" aria-hidden /> <span>{info.shipping}</span>
-      </p>
-    </div>
-  );
-}
-
 /** Three plain facts about buying here. Every one is true today: where we deliver, who takes payment, and that the supplier ships to you. */
 export function TrustStrip() {
   const items = [
@@ -41,7 +29,7 @@ export function StoreFooter({ info, categories = [] }: { info: StoreInfo | null;
   const small = "space-y-2 text-[12px] leading-snug text-muted";
   return (
     <footer className="mt-24 bg-surface-muted">
-      <div className="mx-auto w-full max-w-[1080px] px-4 pb-8 pt-12 sm:px-6">
+      <div className="mx-auto w-full max-w-[1240px] px-4 pb-8 pt-12 sm:px-6">
         <div className="grid gap-10 border-b border-[rgb(var(--color-border))] pb-10 sm:grid-cols-[1.3fr_1fr_1fr_1fr]">
           <div>
             <p className="text-[21px] font-semibold tracking-[-0.03em] text-foreground">{STORE_NAME}</p>
