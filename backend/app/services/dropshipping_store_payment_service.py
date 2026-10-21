@@ -17,17 +17,48 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
+import structlog
 from sqlalchemy import select
 
 from app.db.session import async_session_maker, set_tenant_context
 from app.events.bus import EventBus
 from app.models.dropshipping import Order, OrderStatus
+from app.integrations.stripe_client import StripeAPIError, StripeClient
+from app.services import dropshipping_tax as tax
 from app.services.dropshipping_catalog_import import CatalogValidationError
 from app.services.dropshipping_catalog_service import CatalogConflictError, _audit
 from app.services.dropshipping_order_rules import OrderTransitionError
 from app.services.dropshipping_order_service import DropshippingOrderService
 from app.services.integration_connection_service import IntegrationConnectionService
 from app.services.payment_service import PaymentService
+from app.tools.builtin.stripe_tools import resolve_stripe_secret_key
+
+logger = structlog.get_logger(__name__)
+
+
+async def _accept_tax(tenant_id: uuid.UUID, order_id: uuid.UUID, connection_service: IntegrationConnectionService, *, payment_intent_id: str, amount: Decimal,
+                      total: Decimal) -> tuple[bool, str | None]:
+    """A payment larger than the order total is accepted only when Stripe itself says the difference is tax (see dropshipping_tax.verify_tax). On success the order records
+    the tax and its total becomes the amount charged. Returns (accepted, reason). A Stripe failure while checking raises: the caller treats it as transient so Stripe redelivers."""
+    async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
+        order = (await session.execute(select(Order).where(Order.tenant_id == tenant_id, Order.id == order_id))).scalar_one_or_none()
+        session_id = order.stripe_session_id if order is not None else None
+    key = await resolve_stripe_secret_key(connection_service, tenant_id)
+    if not session_id or not key:
+        return False, "no Checkout Session to check the tax against"
+    checkout = await StripeClient(key).retrieve_checkout_session(session_id)
+    paid_tax, reason = tax.verify_tax(checkout, payment_intent_id=payment_intent_id, received=amount, pre_tax_total=total)
+    if paid_tax is None:
+        return False, reason
+    async with async_session_maker() as session:
+        await set_tenant_context(session, tenant_id)
+        order = (await session.execute(select(Order).where(Order.tenant_id == tenant_id, Order.id == order_id))).scalar_one()
+        order.tax, order.total = paid_tax, amount.quantize(Decimal("0.01"))
+        _audit(session, tenant_id, None, "dropshipping.order.tax_recorded", "dropshipping_order", order.id,
+               {"order_number": order.order_number, "tax": str(paid_tax), "total": str(order.total), "payment_intent": payment_intent_id})
+        await session.commit()
+    return True, None
 
 
 async def _flag(tenant_id: uuid.UUID, order_id: uuid.UUID, note: str, *, reference: str | None, action: str) -> None:
@@ -71,6 +102,16 @@ async def handle_store_payment_succeeded(
         )
     except Exception as exc:  # noqa: BLE001 - reported as a processing failure; transient, so Stripe redelivers (record_payment is idempotent)
         return tenant_id, f"record_payment failed: {exc}"
+
+    if amount.quantize(Decimal("0.01")) > total and (not currency or currency.upper() == order_currency.upper()):
+        try:
+            accepted, why = await _accept_tax(tenant_id, order_id, connection_service, payment_intent_id=payment_intent_id, amount=amount, total=total)
+        except StripeAPIError as exc:  # transient: Stripe redelivers the event and this check runs again (the payment record above is idempotent)
+            return tenant_id, f"record_payment failed: could not check the tax with Stripe: {exc}"
+        if accepted:
+            total = amount.quantize(Decimal("0.01"))
+        else:
+            logger.info("dropshipping_tax_not_accepted", order_id=str(order_id), reason=why)
 
     if amount.quantize(Decimal("0.01")) != total or (currency and currency.upper() != order_currency.upper()):
         await _flag(tenant_id, order_id, f"Payment of {amount} {currency or ''} received but the order total is {total} {order_currency}: review and refund or correct by hand.".replace("  ", " "),

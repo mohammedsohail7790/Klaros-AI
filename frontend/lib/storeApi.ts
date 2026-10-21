@@ -6,6 +6,8 @@ const BASE = `${API_BASE}/api/v1/public/store`;
 
 export interface StoreInfo {
   open: true; currency: string; shipping: string; free_shipping_over: string | null; flat_shipping_fee: string | null; sales_tax_notice: string; ships_to: string;
+  /** "STRIPE_TAX": tax is worked out by Stripe at checkout from the delivery address; "NONE": none is collected */
+  sales_tax_mode?: "NONE" | "STRIPE_TAX";
 }
 export interface StoreItem { sku: string; price: string; currency: string; in_stock: boolean }
 export interface StoreProduct {
@@ -13,7 +15,9 @@ export interface StoreProduct {
 }
 export interface StoreOrder {
   order_number: string; status: string; status_label: string; currency: string; placed_at: string | null; subtotal: string; shipping: string; tax: string; total: string;
-  can_pay: boolean; items: { name: string; quantity: number; unit_price: string; line_total: string }[];
+  can_pay: boolean;
+  /** sales tax is worked out by Stripe when the order is paid, so none is shown yet */
+  tax_at_payment?: boolean; items: { name: string; quantity: number; unit_price: string; line_total: string }[];
   tracking: { carrier: string | null; tracking_number: string; tracking_url: string | null; status: string }[];
 }
 export interface CheckoutBody {
