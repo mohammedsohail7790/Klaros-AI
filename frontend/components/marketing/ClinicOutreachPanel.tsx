@@ -61,6 +61,8 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
   async function saveEmail(providerId: string) {
     if (!token || busy) return;
     setBusy(true);
+    setError(null);
+    setNotice(null);
     setRowErrors((r) => ({ ...r, [providerId]: "" }));
     try {
       await setOutreachContact(token, campaignId, providerId, (emails[providerId] ?? "").trim());
@@ -73,7 +75,7 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
     }
   }
 
-  if (!data) return error ? <p role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</p> : null;
+  if (!data) return error ? <p role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</p> : <p className="text-sm text-muted">Loading...</p>;
 
   const status = data.campaign.status;
   const needsYou = data.clinics.filter((c) => c.stage === "NO_EMAIL");
