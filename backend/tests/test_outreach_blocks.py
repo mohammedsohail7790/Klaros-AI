@@ -184,3 +184,10 @@ def test_opt_out_line_is_plain_text_and_rejects_every_placeholder(placeholder) -
 @pytest.mark.parametrize("phrase", ["partners of ours", "we have partnered with others", "Partnered With a group"])
 def test_partner_variants_are_rejected(phrase) -> None:
     assert "faq_what_we_do" in validate_blocks(_blocks(faq_what_we_do=phrase))
+
+
+def test_period_mentions_finds_spelled_out_counts():
+    from app.services.outreach_blocks import period_mentions
+
+    assert period_mentions("Reply within five days or in ten weeks.") == ["within five days", "ten weeks"]
+    assert period_mentions("No figures here, just one team.") == []

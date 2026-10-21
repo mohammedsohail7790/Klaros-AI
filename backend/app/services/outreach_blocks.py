@@ -38,6 +38,22 @@ _NUMBER_WORDS = ("one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve
 _WITHIN_PERIOD = re.compile(rf"\bwithin\s+(?:an?\s+)?(?:{_NUMBER_WORDS})(?:[\s-]+(?:{_NUMBER_WORDS}))*\s+(?:days?|weeks?|fortnights?|months?)\b"
                             rf"|\bwithin\s+an?\s+(?:day|week|fortnight|month)\b", re.IGNORECASE)
 
+_COUNT_WORDS = re.compile(rf"\b(?:{_NUMBER_WORDS})(?:[\s-]+(?:{_NUMBER_WORDS}))*[\s-]+(?:days?|weeks?|fortnights?|months?)\b", re.IGNORECASE)
+NUMBER_WORDS_PATTERN = _NUMBER_WORDS
+
+
+def period_mentions(text: str) -> list[str]:
+    """Spelled-out day/week/month counts in `text` (for example "within five days", "ten days"), lower-cased, in order of appearance."""
+    spans = sorted([m.span() for m in _WITHIN_PERIOD.finditer(text)] + [m.span() for m in _COUNT_WORDS.finditer(text)])
+    out: list[str] = []
+    last_end = -1
+    for start, end in spans:
+        if start < last_end:  # overlaps an earlier match (e.g. "within five days" also matches "five days")
+            continue
+        out.append(text[start:end].lower())
+        last_end = end
+    return out
+
 
 def validate_blocks(blocks: dict[str, Any]) -> dict[str, list[str]]:
     """Block name -> plain-language problems. An empty dict means the set is valid."""
