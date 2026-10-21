@@ -283,4 +283,11 @@ select:not([multiple]):not([size]):disabled {
 .cleanroom-theme .cr-bump { animation: cr-bump 0.35s ease-out; }
 @keyframes cr-fade { from { opacity: 0; } to { opacity: 1; } }
 .cleanroom-theme .cr-fade { animation: cr-fade 0.3s ease-out; }
-@media (prefers-reduced-motion: reduce) { .cleanroom-theme .cr-bump, .cleanroom-theme .cr-fade { animation: none; } .cleanroom-theme .cr-press { transition: none; } }
+/* The welcome page's single page-load sequence: the headline block rises, then the three shelves of goods settle into place. */
+@keyframes cr-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes cr-settle { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+.cleanroom-theme .cr-hero > * { animation: cr-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.cleanroom-theme .cr-hero > *:nth-child(2) { animation-delay: 0.12s; }
+.cleanroom-theme .cr-hero > *:nth-child(3) { animation-delay: 0.24s; }
+.cleanroom-theme .cr-settle { animation: cr-settle 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .cleanroom-theme .cr-bump, .cleanroom-theme .cr-fade, .cleanroom-theme .cr-hero > *, .cleanroom-theme .cr-settle { animation: none; } .cleanroom-theme .cr-press { transition: none; } }
