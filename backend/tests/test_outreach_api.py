@@ -184,3 +184,45 @@ async def test_unauthenticated_requests_are_401(client) -> None:
     ]:
         r = await getattr(client, method)(url, **({"json": body} if body is not None else {}))
         assert r.status_code == 401, (method, url)
+
+
+async def test_generic_campaign_status_route_refuses_an_outreach_campaign_but_not_an_ordinary_one(client) -> None:
+    token, _, _ = await _setup(client, "o20@example.com")
+    cid = (await _create(client, token)).json()["campaign_id"]
+    r = await client.post(f"/api/v1/marketing/campaigns/{cid}/status", params={"status": "ACTIVE"}, headers=_h(token))
+    assert 400 <= r.status_code < 500 and "outreach" in r.text.lower()
+    got = (await client.get(f"{BASE}/campaigns/{cid}", headers=_h(token))).json()
+    assert got["campaign"]["status"] == "DRAFT"
+
+    plain = await client.post("/api/v1/marketing/campaigns", json={"name": "Plain", "channel": "GOOGLE_ADS", "objective": "LEAD_GEN"}, headers=_h(token))
+    pid = plain.json()["campaign"]["id"]
+    ok = await client.post(f"/api/v1/marketing/campaigns/{pid}/status", params={"status": "ACTIVE"}, headers=_h(token))
+    assert ok.status_code == 200
+
+
+async def test_set_contact_with_header_injection_is_409_and_suppress_rejects_it(client) -> None:
+    token, _, pid = await _setup(client, "o21@example.com")
+    cid = (await _create(client, token)).json()["campaign_id"]
+    for bad in ("info@alpha.example\r\nBcc: x@evil.example", "a b@alpha.example", "x@y", '"a"@alpha.example', "info@-.example"):
+        r = await client.put(f"{BASE}/campaigns/{cid}/contacts/{pid}", json={"email": bad}, headers=_h(token))
+        assert r.status_code == 409, bad
+        s = await client.post(f"{BASE}/suppressions", json={"value": bad, "kind": "address"}, headers=_h(token))
+        assert s.status_code == 409, bad
+    got = (await client.get(f"{BASE}/campaigns/{cid}", headers=_h(token))).json()
+    assert got["clinics"][0]["stage"] == "QUEUED"
+
+
+async def test_find_contacts_default_limit_is_five_and_set_contact_audit_has_the_actor(client) -> None:
+    token, tid, pid = await _setup(client, "o22@example.com")
+    for i in range(7):
+        await _clinic(tid, f"Extra Clinic {i}")
+    cid = (await _create(client, token)).json()["campaign_id"]
+    r = await client.post(f"{BASE}/campaigns/{cid}/find-contacts", headers=_h(token))
+    assert r.status_code == 200 and r.json()["checked"] == 5
+    ok = await client.put(f"{BASE}/campaigns/{cid}/contacts/{pid}", json={"email": "info@alpha.example"}, headers=_h(token))
+    assert ok.status_code == 200
+    from sqlalchemy import select
+    from app.models.audit_log import AuditLog
+    async with async_session_maker() as s:
+        rows = (await s.execute(select(AuditLog).where(AuditLog.tenant_id == tid, AuditLog.action == "outreach.contact_set"))).scalars().all()
+    assert len(rows) == 1 and rows[0].actor_id is not None

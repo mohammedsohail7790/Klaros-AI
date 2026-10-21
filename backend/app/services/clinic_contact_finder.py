@@ -35,10 +35,19 @@ class ContactResult:
     reason: str
 
 
+# One plain address: no whitespace, control characters, quotes, comments or lists; a dotted domain of valid labels and an alphabetic TLD.
+_STRICT_ADDRESS = re.compile(r"[a-z0-9_%+-]+(?:\.[a-z0-9_%+-]+)*@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}")
+
+_STRICT_DOMAIN = re.compile(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}")
+
+
 def usable_address(email: str) -> bool:
-    local, sep, domain = email.strip().lower().partition("@")
-    if not sep or not local or not domain or "@" in domain:
+    if not isinstance(email, str) or len(email) > 254:
         return False
+    email = email.lower()  # not stripped: surrounding whitespace or a trailing newline is not a valid address
+    if not _STRICT_ADDRESS.fullmatch(email):
+        return False
+    local, _, domain = email.partition("@")
     base = local.split("+", 1)[0]
     return domain not in FREE_MAIL_DOMAINS and base not in BLOCKED_LOCAL_PARTS and _registered_domain(domain) not in PLATFORM_DOMAINS
 
@@ -80,10 +89,11 @@ async def dns_mx_exists(domain: str) -> bool:
 
 
 async def find_contact(provider: Provider, search: SearchProvider | None, mx_exists: Callable[[str], Awaitable[bool]] = dns_mx_exists) -> ContactResult:
-    if (provider.contact_email or "").strip():
-        return ContactResult(provider.contact_email.strip(), None, "owner", "owner")
+    own = (provider.contact_email or "").strip().lower()
+    if own and usable_address(own) and await mx_exists(own.split("@", 1)[1]):
+        return ContactResult(own, None, "owner", "owner")
     if search is None:
-        return ContactResult(None, None, None, "not_configured")
+        return ContactResult(None, None, None, "mx_failed" if own else "not_configured")
     country = COUNTRY_NAMES.get(provider.country, provider.country)
     try:
         hits = await search.search(f"{provider.name} {provider.city} {country} international patients contact email")

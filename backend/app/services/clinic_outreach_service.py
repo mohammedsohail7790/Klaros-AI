@@ -24,7 +24,7 @@ from app.models.marketing import Campaign, CampaignChannel, CampaignObjective, C
 from app.models.medical_tourism import Provider, ProviderStatus
 from app.models.mt_revenue import ProviderTerms
 from app.services import clinic_contact_finder
-from app.services.clinic_contact_finder import dns_mx_exists, usable_address
+from app.services.clinic_contact_finder import _STRICT_ADDRESS, _STRICT_DOMAIN, dns_mx_exists, usable_address
 from app.services.mt_clinic_sourcing import SearchProvider, search_provider_from_settings
 from app.services.outreach_settings import OutreachConfig
 
@@ -168,7 +168,7 @@ class ClinicOutreachService:
 
     # --- contact discovery -------------------------------------------------------------------------------------------
 
-    async def find_contacts(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, *, limit: int = 10) -> dict[str, Any]:
+    async def find_contacts(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, *, limit: int = 5) -> dict[str, Any]:
         search = self._search_factory()
         result = {"status": "ok", "checked": 0, "found": 0, "no_email": 0, "search_failed": 0, "search_configured": search is not None}
         retry_before = _now() - NO_EMAIL_RETRY_AFTER
@@ -176,19 +176,21 @@ class ClinicOutreachService:
             campaign, _ = await self._load(session, tenant_id, campaign_id)
             if campaign.status not in HOLDING_STATUSES:
                 raise OutreachError(f"This campaign is {campaign.status}; contact discovery only runs for a draft, active or paused campaign.")
-            q = (select(ClinicOutreach.id, Provider.name, Provider.city, Provider.country, Provider.contact_email)
+            q = (select(ClinicOutreach.id, Provider.name, Provider.city, Provider.country, Provider.contact_email, Provider.idempotency_key)
                  .join(Provider, Provider.id == ClinicOutreach.provider_id)
                  .where(ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id, Provider.tenant_id == tenant_id,
                         (ClinicOutreach.stage == OutreachStage.QUEUED)
                         | ((ClinicOutreach.stage == OutreachStage.NO_EMAIL) & (ClinicOutreach.contact_checked_at <= retry_before))))
-            if search is None:  # without search only a clinic's own address can be used
-                q = q.where(func.trim(func.coalesce(Provider.contact_email, "")) != "")
+            if search is None:  # without search only a person-entered clinic address can be used (an auto-sourced one is not trusted)
+                q = q.where(func.trim(func.coalesce(Provider.contact_email, "")) != "", Provider.idempotency_key.is_(None))
             q = q.order_by(case((ClinicOutreach.stage == OutreachStage.QUEUED, 0), else_=1), ClinicOutreach.contact_checked_at, ClinicOutreach.created_at,
                            ClinicOutreach.id).limit(max(0, int(limit)))
             rows = (await session.execute(q)).all()
         todo = []
-        for outreach_id, name, city, country, contact_email in rows:
+        for outreach_id, name, city, country, contact_email, idempotency_key in rows:
             own = _norm(contact_email or "")
+            if idempotency_key is not None:
+                own = ""  # auto-sourcing copied this address from a search hit; it is not the clinic's own entry, so the site is searched
             if own and (not usable_address(own) or await self.is_suppressed(tenant_id, own)):
                 own = ""  # a free-mail, role or suppressed own address is ignored for this attempt; the clinic's site is searched instead
             if search is None and not own:
@@ -218,7 +220,7 @@ class ClinicOutreachService:
                 row.contact_checked_at = now
                 if email:
                     row.stage, row.contact_email, row.contact_source = OutreachStage.READY, email, found.source
-                    row.contact_source_url, row.contact_found_at = found.source_url, now
+                    row.contact_source_url, row.contact_found_at = (found.source_url or None) and found.source_url[:2000], now
                     session.add(self._audit(tenant_id, None, "outreach.contact_found", campaign_id,
                                             {"outreach_id": str(row.id), "provider_id": str(row.provider_id), "source": found.source}, actor_type=ActorType.SYSTEM))
                     result["found"] += 1
@@ -228,10 +230,10 @@ class ClinicOutreachService:
                 await session.commit()
         return result
 
-    async def set_contact(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, provider_id: uuid.UUID, email: str) -> None:
+    async def set_contact(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, provider_id: uuid.UUID, email: str, user_id: uuid.UUID | None = None) -> None:
         address = _norm(email)
         if not usable_address(address):
-            raise OutreachError("Use the clinic's own business address: free-mail, role addresses such as noreply, and website-builder domains are not accepted.")
+            raise OutreachError("Use the clinic's own business address: one plain address, not free-mail, a role address such as noreply, or a website-builder domain.")
         if await self.is_suppressed(tenant_id, address):
             raise OutreachError("This address or its domain is on the do-not-contact list.")
         async with self._sf() as session:
@@ -247,7 +249,7 @@ class ClinicOutreachService:
             now = _now()
             row.stage, row.contact_email, row.contact_source, row.contact_source_url = OutreachStage.READY, address, "owner", None
             row.contact_checked_at, row.contact_found_at = now, now
-            session.add(self._audit(tenant_id, None, "outreach.contact_set", campaign_id, {"outreach_id": str(row.id), "provider_id": str(row.provider_id)}))
+            session.add(self._audit(tenant_id, user_id, "outreach.contact_set", campaign_id, {"outreach_id": str(row.id), "provider_id": str(row.provider_id)}))
             await session.commit()
 
     # --- lifecycle ---------------------------------------------------------------------------------------------------
@@ -300,8 +302,12 @@ class ClinicOutreachService:
         value, kind = _norm(value), _norm(kind)
         if kind not in SUPPRESSION_KINDS:
             raise OutreachError("kind must be 'address' or 'domain'.")
-        if not value or (kind == "address") != ("@" in value) or value.count("@") > 1:
-            raise OutreachError("Give a full email address for kind 'address', or a bare domain for kind 'domain'.")
+        if kind == "address":
+            ok = bool(_STRICT_ADDRESS.fullmatch(value))
+        else:
+            ok = bool(_STRICT_DOMAIN.fullmatch(value))
+        if not ok:
+            raise OutreachError("Give a plain full email address for kind 'address', or a bare domain such as clinic.com for kind 'domain'.")
         async with self._sf() as session:
             await set_tenant_context(session, tenant_id)
             existing = (await session.execute(select(OutreachSuppression).where(

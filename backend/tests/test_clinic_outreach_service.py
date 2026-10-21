@@ -523,3 +523,100 @@ async def test_an_unusable_or_suppressed_own_address_falls_through_to_the_site_s
     r = await none_svc.find_contacts(tid2, cid2)
     assert r == {"status": "not_configured", "checked": 0, "found": 0, "no_email": 0, "search_failed": 0, "search_configured": False}
     assert (await _rows(tid2, cid2))[g2].stage == OutreachStage.QUEUED
+
+
+async def _auto_clinic(tid, name, email) -> uuid.UUID:
+    async with async_session_maker() as s:
+        p = Provider(tenant_id=tid, name=name, country="TR", city="Istanbul", status=ProviderStatus.ACTIVE, contact_email=email,
+                     verification_status="UNVERIFIED", idempotency_key=f"auto-{uuid.uuid4()}")
+        s.add(p)
+        await s.commit()
+        return p.id
+
+
+async def test_auto_sourced_record_address_is_not_trusted_and_goes_through_the_search() -> None:
+    tid = uuid.uuid4()
+    auto = await _auto_clinic(tid, "Auto Clinic", "random@elsewhere.example")
+    search = _search_for({"Auto Clinic": "auto-clinic.example"})
+    svc = _svc(search)
+    cid = await svc.create_campaign(tid, USER, name="C", config=_config(), provider_ids=None)
+    r = await svc.find_contacts(tid, cid)
+    assert r["found"] == 1 and any(q.startswith("Auto Clinic ") for q in search.queries)
+    row = (await _rows(tid, cid))[auto]
+    assert (row.contact_email, row.contact_source) == ("international@auto-clinic.example", "site")
+
+
+async def test_person_created_address_is_mx_checked_and_without_mx_is_not_ready() -> None:
+    tid = uuid.uuid4()
+    good = await _clinic(tid, "Good Clinic", email="info@good-clinic.example")
+    bad = await _clinic(tid, "Nomx Clinic", email="info@nomx.example")
+
+    async def mx(domain: str) -> bool:
+        return domain != "nomx.example"
+
+    svc = ClinicOutreachService(async_session_maker, search_factory=lambda: FakeSearch(), mx_exists=mx)
+    cid = await svc.create_campaign(tid, USER, name="C", config=_config(), provider_ids=None)
+    await svc.find_contacts(tid, cid)
+    rows = await _rows(tid, cid)
+    assert (rows[good].stage, rows[good].contact_source) == (OutreachStage.READY, "owner")
+    assert rows[bad].stage == OutreachStage.NO_EMAIL and rows[bad].contact_email is None
+
+
+@pytest.mark.parametrize("bad", ["info@clinic.example\r\nBcc: x@evil.example", "a b@clinic.example", "x@y", '"a"@clinic.example', "info@-.example",
+                                 "a@b..example", "info@clinic.example,other@x.example"])
+async def test_strict_address_syntax_in_usable_address_set_contact_and_suppress(bad) -> None:
+    from app.services.clinic_contact_finder import usable_address
+    assert not usable_address(bad)
+    tid = uuid.uuid4()
+    a = await _clinic(tid, "Alpha Clinic")
+    svc = _svc()
+    cid = await svc.create_campaign(tid, USER, name="C", config=_config(), provider_ids=None)
+    with pytest.raises(OutreachError):
+        await svc.set_contact(tid, cid, a, bad)
+    with pytest.raises(OutreachError):
+        await svc.suppress(tid, bad, "address", "x")
+    assert (await _rows(tid, cid))[a].stage == OutreachStage.QUEUED
+
+
+def test_usable_address_does_not_strip_a_trailing_newline() -> None:
+    from app.services.clinic_contact_finder import usable_address
+    assert usable_address("info@clinic.example") and not usable_address("info@clinic.example\n")
+
+
+async def test_source_url_is_truncated_to_2000_chars() -> None:
+    tid = uuid.uuid4()
+    c = await _clinic(tid, "Acme Dental Clinic")
+    long_url = "https://www.acme-dental.example/contact?" + "q" * 3000
+    search = FakeSearch({"Acme Dental Clinic": (long_url, "Acme Dental Clinic: international@acme-dental.example")})
+    svc = _svc(search)
+    cid = await svc.create_campaign(tid, USER, name="C", config=_config(), provider_ids=None)
+    await svc.find_contacts(tid, cid)
+    row = (await _rows(tid, cid))[c]
+    assert row.stage == OutreachStage.READY and len(row.contact_source_url) == 2000
+
+
+async def test_find_contacts_default_limit_is_five() -> None:
+    import inspect
+    assert inspect.signature(ClinicOutreachService.find_contacts).parameters["limit"].default == 5
+
+
+async def test_set_contact_audit_records_the_acting_user() -> None:
+    tid = uuid.uuid4()
+    a = await _clinic(tid, "Alpha Clinic")
+    svc = _svc()
+    cid = await svc.create_campaign(tid, USER, name="C", config=_config(), provider_ids=None)
+    actor = uuid.uuid4()
+    await svc.set_contact(tid, cid, a, "info@alpha.example", user_id=actor)
+    assert [r.actor_id for r in await _audits(tid, "outreach.contact_set")] == [actor]
+
+
+async def test_campaign_service_set_status_refuses_an_outreach_campaign() -> None:
+    from app.services.campaign_service import CampaignService, OutreachCampaignStatusError
+    tid = uuid.uuid4()
+    await _clinic(tid, "Alpha Clinic")
+    svc = _svc()
+    cid = await svc.create_campaign(tid, USER, name="C", config=_config(), provider_ids=None)
+    cs = CampaignService(async_session_maker, None, None)  # set_status uses neither the bus nor the exception service
+    with pytest.raises(OutreachCampaignStatusError, match="outreach"):
+        await cs.set_status(tid, cid, "ACTIVE")
+    assert (await _campaign(tid, cid)).status == CampaignStatus.DRAFT

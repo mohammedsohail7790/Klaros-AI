@@ -7,7 +7,7 @@ An OutreachError is a 409 with its message, an unknown (or another tenant's) cam
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.api.deps import CurrentUser, require_permission
@@ -82,11 +82,12 @@ async def get_campaign(
 @router.post("/campaigns/{campaign_id}/find-contacts")
 async def find_contacts(
     campaign_id: uuid.UUID,
+    limit: int = Query(default=5, ge=1, le=10),
     current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_CAMPAIGNS)),
     service: ClinicOutreachService = Depends(get_outreach_service),
 ) -> dict[str, Any]:
     try:
-        return await service.find_contacts(current_user.tenant_id, campaign_id)
+        return await service.find_contacts(current_user.tenant_id, campaign_id, limit=limit)
     except OutreachError as exc:
         _raise(exc)
 
@@ -100,7 +101,7 @@ async def set_contact(
     service: ClinicOutreachService = Depends(get_outreach_service),
 ) -> dict[str, Any]:
     try:
-        await service.set_contact(current_user.tenant_id, campaign_id, provider_id, body.email)
+        await service.set_contact(current_user.tenant_id, campaign_id, provider_id, body.email, user_id=current_user.id)
     except OutreachError as exc:
         _raise(exc)
     return {"status": "ok"}
