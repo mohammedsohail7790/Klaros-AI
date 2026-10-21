@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from app.models.marketing import Campaign
 from app.models.rbac import Permission
-from app.services.campaign_service import CampaignNotFoundError, CampaignService
+from app.services.campaign_service import CampaignNotFoundError, CampaignService, OutreachCampaignStatusError
 from app.tools.base import ExecutionContext, Tool
 
 
@@ -73,7 +73,7 @@ class SetCampaignStatus(Tool):
     async def execute(self, input: SetCampaignStatusInput, context: ExecutionContext) -> CampaignOutput:
         try:
             campaign = await self._campaign_service.set_status(context.tenant_id, input.campaign_id, input.status)
-        except CampaignNotFoundError as e:
+        except (CampaignNotFoundError, OutreachCampaignStatusError) as e:
             raise ValueError(str(e)) from e
         return CampaignOutput(campaign=_campaign_to_dict(campaign))
 
