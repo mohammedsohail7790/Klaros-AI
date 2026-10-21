@@ -1,6 +1,6 @@
 // Pure cart logic for the storefront (no React, no network), so it is easy to test. A cart line holds only an item code and a quantity, plus the product slug and name
 // to show before prices are re-read. Prices are never stored: they are re-read from the store every time the cart opens, and the server prices the real order.
-import type { StoreInfo, StoreProduct } from "@/lib/storeApi";
+import type { ShippingTier, StoreInfo, StoreProduct } from "@/lib/storeApi";
 
 export interface CartLine { sku: string; slug: string; name: string; quantity: number }
 export const MAX_QTY = 99;
@@ -61,30 +61,61 @@ export interface PricedLine extends CartLine {
   lineCents: number | null;
   imageUrl: string | null;
   category: string | null;
+  /** the item's weight in grams, when the store has one (shipping by weight needs it) */
+  weightG: number | null;
 }
 
 /** Joins the cart with what the store says now. `products` maps slug to the product, or null when the store no longer has it. */
 export function priceLines(lines: CartLine[], products: Map<string, StoreProduct | null>): PricedLine[] {
   return lines.map((l) => {
     const item = products.get(l.slug)?.items.find((i) => i.sku === l.sku);
-    if (!item) return { ...l, gone: true, inStock: false, price: null, lineCents: null, imageUrl: null, category: null };
+    if (!item) return { ...l, gone: true, inStock: false, price: null, lineCents: null, imageUrl: null, category: null, weightG: null };
     const cents = toCents(item.price);
     const product = products.get(l.slug)!;
-    return { ...l, name: product.name, gone: false, inStock: item.in_stock, price: item.price, lineCents: Number.isNaN(cents) ? null : cents * l.quantity, imageUrl: product.image_url, category: product.category };
+    return { ...l, name: product.name, gone: false, inStock: item.in_stock, price: item.price, lineCents: Number.isNaN(cents) ? null : cents * l.quantity, imageUrl: product.image_url, category: product.category, weightG: item.weight_g ?? null };
   });
 }
 
-export interface Estimate { subtotalCents: number; shippingCents: number; totalCents: number; /** something in the basket cannot be bought right now */ blocked: boolean }
+export interface Estimate {
+  subtotalCents: number; shippingCents: number; totalCents: number;
+  /** something in the basket cannot be bought right now (or is too heavy to ship) */
+  blocked: boolean;
+  /** false when shipping goes by weight and an item has no weight: it is then worked out at checkout */
+  shippingKnown: boolean;
+  /** the basket weighs more than the store ships in one order */
+  tooHeavy: boolean;
+}
+
+export const GRAMS_PER_POUND = 453.59237;
+
+/** The fee in cents of the first tier whose limit covers this many grams, or null when the order is heavier than every limited tier and there is no open-ended one (the server's own rule). */
+export function tierFeeCents(tiers: ShippingTier[], grams: number): number | null {
+  const pounds = grams / GRAMS_PER_POUND;
+  for (const t of tiers) if (t.max_lb === null || pounds <= Number(t.max_lb)) return toCents(t.fee);
+  return null;
+}
 
 /** An ESTIMATE from the published shipping rule. The server prices the real order and Stripe charges the server's total. */
-export function estimate(info: Pick<StoreInfo, "flat_shipping_fee" | "free_shipping_over"> | null, lines: PricedLine[]): Estimate {
-  const blocked = lines.length === 0 || lines.some((l) => l.gone || !l.inStock || l.lineCents == null);
+export function estimate(info: Pick<StoreInfo, "flat_shipping_fee" | "free_shipping_over" | "shipping_tiers"> | null, lines: PricedLine[]): Estimate {
+  let blocked = lines.length === 0 || lines.some((l) => l.gone || !l.inStock || l.lineCents == null);
   const subtotalCents = lines.reduce((n, l) => n + (l.lineCents ?? 0), 0);
-  const fee = toCents(info?.flat_shipping_fee);
   const freeOver = toCents(info?.free_shipping_over);
   const free = !Number.isNaN(freeOver) && subtotalCents >= freeOver;
-  const shippingCents = Number.isNaN(fee) || free || lines.length === 0 ? 0 : fee;
-  return { subtotalCents, shippingCents, totalCents: subtotalCents + shippingCents, blocked };
+  let shippingCents = 0, shippingKnown = true, tooHeavy = false;
+  const tiers = info?.shipping_tiers;
+  if (lines.length > 0 && !free) {
+    if (tiers && tiers.length > 0) {
+      if (lines.some((l) => l.weightG == null || l.weightG <= 0)) shippingKnown = false;
+      else {
+        const fee = tierFeeCents(tiers, lines.reduce((g, l) => g + (l.weightG as number) * l.quantity, 0));
+        if (fee === null) { tooHeavy = true; blocked = true; } else shippingCents = fee;
+      }
+    } else {
+      const fee = toCents(info?.flat_shipping_fee);
+      shippingCents = Number.isNaN(fee) ? 0 : fee;
+    }
+  }
+  return { subtotalCents, shippingCents, totalCents: subtotalCents + shippingCents, blocked, shippingKnown, tooHeavy };
 }
 
 /** A stable fingerprint of the basket: the checkout idempotency key is kept while this is unchanged and renewed when it changes. */

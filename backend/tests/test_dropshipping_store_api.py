@@ -207,7 +207,7 @@ async def test_the_catalog_shows_only_what_a_shopper_needs(client, monkeypatch, 
         assert secret.lower() not in text.lower(), secret
     by_slug = {p["slug"]: p for p in listing.json()["products"]}
     assert set(by_slug) == {"green-tea", "brown-rice", "gone-jam"}
-    assert by_slug["green-tea"]["items"] == [{"sku": "TEA-1", "price": "10.00", "currency": "USD", "in_stock": True}]
+    assert by_slug["green-tea"]["items"] == [{"sku": "TEA-1", "price": "10.00", "currency": "USD", "in_stock": True, "weight_g": None}]
     assert by_slug["gone-jam"]["items"][0]["in_stock"] is False
 
     assert (await client.get(f"{STORE}/products", params={"q": "tea"})).json()["products"][0]["slug"] == "green-tea"

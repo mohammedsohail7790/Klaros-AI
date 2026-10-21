@@ -131,6 +131,10 @@ where an active registration exists); (3) use the same account whose key is `STR
 either is missing; (5) do one test-mode order to a registered state and confirm the order page shows the tax and the Stripe payment equals the order total plus that tax. The store sends Stripe one line per 
 product with the tax code `txcd_40040000` (Food for Non-Immediate Consumption, the grocery code; NOT `txcd_40060003`, which is prepared food) and a shipping line with `txcd_92010001`. Candy, soft drinks and 
 dietary supplements have their own tax codes and are not covered by the one store-wide code. No migration is involved.
+Shipping by weight (store setting `shipping_tiers`, edited in Store settings; it replaces the flat fee). Each tier is {max_lb, fee}: orders up to max_lb pounds (inclusive) cost fee; the last tier may have no 
+limit. The weight of an order is the sum of each item's `weight_grams` times its quantity, so EVERY item on sale needs a weight (the catalog CSV has a `weight_grams` column): the store stays closed while any 
+active item has none, and an order heavier than the last limited tier (with no open-ended tier) is refused at checkout. Free shipping over a threshold still applies. The frontend reads `NEXT_PUBLIC_STORE_COMPANY` 
+(default `Clean Room LLC`) for the footer. No migration is involved.
 
 OPTIONAL: `OBJECT_STORAGE_*` (blank = real local-disk storage adapter, not a mock),
 `TEMPORAL_HOST`/`_NAMESPACE`/`_TASK_QUEUE` (only needed if Temporal workflows are in use),

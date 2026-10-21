@@ -85,7 +85,7 @@ class DropshippingCheckoutService:
                 await set_tenant_context(session, tenant_id)
                 skus = await DropshippingOrderService._resolve_skus(session, tenant_id, refs, strict=True)
             subtotal = sum((Decimal(s.price) * q for s, q in skus), Decimal("0.00"))
-            shipping = compute_shipping(store_settings, subtotal)
+            shipping = compute_shipping(store_settings, subtotal, [(s.weight_grams, q) for s, q in skus])
 
         order, _created = await self._orders.create_order(tenant_id, lines=lines, contact=contact, ship_to=ship_to, idempotency_key=store_key, shipping=str(shipping))
         row = await self._load(tenant_id, uuid.UUID(order["id"]))
