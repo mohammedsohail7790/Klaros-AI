@@ -18,9 +18,10 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.core.config import get_settings
 from app.db.session import set_tenant_context
 from app.integrations.stripe_client import StripeAPIError, StripeClient
-from app.models.dropshipping import Order, OrderStatus
+from app.models.dropshipping import Order, OrderLine, OrderStatus
 from app.services.dropshipping_catalog_import import CatalogValidationError
 from app.services.dropshipping_catalog_service import CatalogNotFoundError
+from app.services import dropshipping_tax as tax
 from app.services.dropshipping_order_rules import normalize_order_lines
 from app.services.dropshipping_order_service import DropshippingOrderService
 from app.services.dropshipping_store_service import DropshippingStoreService, compute_shipping
@@ -136,13 +137,29 @@ class DropshippingCheckoutService:
             return result  # a replayed checkout of an order that is already paid: nothing to pay
         status_url = f"{store_base_url()}/store/orders/{order.public_token}"
         total = Decimal(order.total).quantize(Decimal("0.01"))
+        settings_now = await self._store.get_settings(tenant_id)
+        collect_tax = settings_now.get("sales_tax_mode") == tax.MODE_STRIPE_TAX
+        client = StripeClient(secret_key)
         try:
-            session_obj = await StripeClient(secret_key).create_checkout_session(
+            extra: dict = {}
+            if collect_tax:
+                # Stripe Tax needs what was bought and where it goes: one line per product, shipping as its own line, and the delivery address on a Stripe Customer.
+                async with self._session_factory() as session:
+                    await set_tenant_context(session, tenant_id)
+                    lines = list((await session.execute(select(OrderLine).where(OrderLine.tenant_id == tenant_id, OrderLine.order_id == order.id))).scalars())
+                ship = dict(order.ship_to or {})
+                customer = await client.create_customer(
+                    email=order.contact_email or None, name=ship.get("name"), shipping={**ship, "country": "US"}, metadata={"order_id": str(order.id)},
+                    idempotency_key=f"klaros-ds-cust-{order.id}",
+                )
+                extra = {"line_items": tax.build_line_items([(ln.name_snapshot, Decimal(ln.unit_price), ln.quantity) for ln in lines], Decimal(order.shipping),
+                                                            settings_now.get("tax_code") or tax.FOOD_TAX_CODE), "customer_id": customer.id, "automatic_tax": True}
+            session_obj = await client.create_checkout_session(
                 amount=total, currency=order.currency,
                 metadata={"tenant_id": str(tenant_id), "order_id": str(order.id), "customer_id": str(order.customer_id), "purpose": PURPOSE},
                 success_url=f"{status_url}?payment=success", cancel_url=f"{status_url}?payment=cancelled",
-                description=f"Order {order.order_number}", customer_email=order.contact_email or None,
-                idempotency_key=f"klaros-ds-order-{order.id}-{total}-{attempt}",
+                description=f"Order {order.order_number}", customer_email=None if collect_tax else (order.contact_email or None),
+                idempotency_key=f"klaros-ds-order-{order.id}-{total}-{attempt}" + ("-tax" if collect_tax else ""), **extra,
             )
         except StripeAPIError as exc:
             raise StoreCheckoutError(f"Stripe checkout session creation failed: {exc}") from exc

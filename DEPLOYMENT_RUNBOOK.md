@@ -125,6 +125,12 @@ and which must not be changed for the store), `DROPSHIPPING_MAX_UNPAID_ORDERS` (
 `STRIPE_WEBHOOK_SECRET` (the platform-wide webhook secret: reuse the existing one, do not replace it). Frontend: `NEXT_PUBLIC_STORE_NAME`, `NEXT_PUBLIC_STORE_CONTACT_EMAIL`,
 `NEXT_PUBLIC_STORE_URL` (all have Clean Room defaults) and `STORE_HOSTS` (hosts whose home page is the shop; default `yourcleanroom.com,www.yourcleanroom.com`).
 The migrations `0080_dropshipping_store` and `0081_dropshipping_order_notes` only add tables and nullable columns; rollback is `alembic downgrade 0079_catalog_real_connectors`.
+Sales tax with Stripe Tax (store setting `sales_tax_mode` = `STRIPE_TAX`, chosen in the staff Store settings; the default `NONE` collects no tax). Steps on the Stripe side, in order: 
+(1) Stripe Dashboard > Tax > Settings: set the head-office address and finish activating Stripe Tax; (2) Tax > Registrations: add every state where the business must collect (Stripe only charges tax 
+where an active registration exists); (3) use the same account whose key is `STRIPE_SECRET_KEY`; (4) in Klaros choose "Collect sales tax with Stripe Tax": it checks (1) and (2) live and refuses with the reasons if 
+either is missing; (5) do one test-mode order to a registered state and confirm the order page shows the tax and the Stripe payment equals the order total plus that tax. The store sends Stripe one line per 
+product with the tax code `txcd_40040000` (Food for Non-Immediate Consumption, the grocery code; NOT `txcd_40060003`, which is prepared food) and a shipping line with `txcd_92010001`. Candy, soft drinks and 
+dietary supplements have their own tax codes and are not covered by the one store-wide code. No migration is involved.
 
 OPTIONAL: `OBJECT_STORAGE_*` (blank = real local-disk storage adapter, not a mock),
 `TEMPORAL_HOST`/`_NAMESPACE`/`_TASK_QUEUE` (only needed if Temporal workflows are in use),

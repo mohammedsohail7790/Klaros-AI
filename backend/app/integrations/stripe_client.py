@@ -227,6 +227,9 @@ class StripeClient:
         description: str | None = None,
         customer_email: str | None = None,
         idempotency_key: str | None = None,
+        line_items: list[dict[str, Any]] | None = None,
+        customer_id: str | None = None,
+        automatic_tax: bool = False,
     ) -> StripeCheckoutSessionResponse:
         """A hosted Stripe Checkout page — the practical, verifiable real
         payment flow for a product with no custom card-collection frontend
@@ -239,16 +242,30 @@ class StripeClient:
         a network blip) must never create two separate Stripe Checkout
         Sessions/PaymentIntents for one invoice."""
         cents = int((amount * 100).to_integral_value())
-        data: dict[str, Any] = {
-            "mode": "payment",
-            "success_url": success_url,
-            "cancel_url": cancel_url,
-            "line_items[0][price_data][currency]": currency.lower(),
-            "line_items[0][price_data][unit_amount]": cents,
-            "line_items[0][price_data][product_data][name]": description or "Invoice payment",
-            "line_items[0][quantity]": 1,
-        }
-        if customer_email:
+        data: dict[str, Any] = {"mode": "payment", "success_url": success_url, "cancel_url": cancel_url}
+        if line_items:
+            # One entry per thing bought: {name, unit_amount (cents), quantity, tax_code?}. Prices are tax-exclusive, so Stripe Tax adds the tax on top.
+            for i, li in enumerate(line_items):
+                data[f"line_items[{i}][price_data][currency]"] = currency.lower()
+                data[f"line_items[{i}][price_data][unit_amount]"] = int(li["unit_amount"])
+                data[f"line_items[{i}][price_data][product_data][name]"] = li["name"]
+                data[f"line_items[{i}][quantity]"] = int(li["quantity"])
+                if li.get("tax_code"):
+                    data[f"line_items[{i}][price_data][product_data][tax_code]"] = li["tax_code"]
+                if automatic_tax:
+                    data[f"line_items[{i}][price_data][tax_behavior]"] = "exclusive"
+        else:
+            data.update({
+                "line_items[0][price_data][currency]": currency.lower(),
+                "line_items[0][price_data][unit_amount]": cents,
+                "line_items[0][price_data][product_data][name]": description or "Invoice payment",
+                "line_items[0][quantity]": 1,
+            })
+        if automatic_tax:
+            data["automatic_tax[enabled]"] = "true"
+        if customer_id:
+            data["customer"] = customer_id
+        elif customer_email:
             data["customer_email"] = customer_email
         for k, v in metadata.items():
             data[f"metadata[{k}]"] = v
@@ -260,7 +277,8 @@ class StripeClient:
         return _validate_response(StripeCheckoutSessionResponse, body)
 
     async def create_customer(
-        self, *, email: str | None = None, metadata: dict[str, str] | None = None
+        self, *, email: str | None = None, metadata: dict[str, str] | None = None, name: str | None = None, shipping: dict[str, str] | None = None,
+        idempotency_key: str | None = None,
     ) -> StripeCustomerResponse:
         """Klaros's own platform-billing customer — created once per
         Organization the first time it starts a paid-plan Checkout, then
@@ -269,9 +287,17 @@ class StripeClient:
         data: dict[str, Any] = {}
         if email:
             data["email"] = email
+        if name:
+            data["name"] = name
+        # `shipping` = {name, line1, line2?, city, state, postal_code, country}: the address Stripe Tax uses to work out the tax of a Checkout Session for this customer.
+        if shipping:
+            data["shipping[name]"] = shipping.get("name") or name or ""
+            for key in ("line1", "line2", "city", "state", "postal_code", "country"):
+                if shipping.get(key):
+                    data[f"shipping[address][{key}]"] = shipping[key]
         for k, v in (metadata or {}).items():
             data[f"metadata[{k}]"] = v
-        body = await self._request("POST", "/customers", data=data)
+        body = await self._request("POST", "/customers", data=data, idempotency_key=idempotency_key)
         return _validate_response(StripeCustomerResponse, body)
 
     async def create_subscription_checkout_session(
@@ -318,6 +344,18 @@ class StripeClient:
         data = {"customer": customer_id, "return_url": return_url}
         body = await self._request("POST", "/billing_portal/sessions", data=data)
         return _validate_response(StripeBillingPortalSessionResponse, body)
+
+    async def retrieve_checkout_session(self, session_id: str) -> dict[str, Any]:
+        """The Checkout Session as Stripe holds it (used to read the tax Stripe calculated). Read-only."""
+        return await self._request("GET", f"/checkout/sessions/{session_id}")
+
+    async def get_tax_settings(self) -> dict[str, Any]:
+        """Whether Stripe Tax is set up on this Stripe account (`status` is "active" when it is). Read-only."""
+        return await self._request("GET", "/tax/settings")
+
+    async def list_active_tax_registrations(self) -> dict[str, Any]:
+        """The places where this account has an active tax registration: Stripe Tax only charges tax where it has one. Read-only."""
+        return await self._request("GET", "/tax/registrations?status=active&limit=100")
 
     async def retrieve_payment_intent(self, payment_intent_id: str) -> StripePaymentIntent:
         body = await self._request("GET", f"/payment_intents/{payment_intent_id}")
