@@ -83,7 +83,7 @@ def _schedule_day(scheduled_for: datetime) -> date:
 
 @dataclass
 class _Outcome:
-    kind: str  # composed | blocked | parked | skipped | stop_cap | stop_state | done
+    kind: str  # composed | blocked | parked | skipped | stop_state | done
 
 
 class ClinicOutreachEngine:
@@ -133,10 +133,13 @@ class ClinicOutreachEngine:
             except ValidationError:
                 config = None
             shadow_started_at = _utc(cfg_row.shadow_started_at) if cfg_row.shadow_started_at is not None else None
-        if paused or mode != OutreachMode.SHADOW or config is None or not await service.blocks_approved(tenant_id):
+        try:
+            view = await service.get_blocks(tenant_id)  # ONE read: the approval check and the wording used come from the same snapshot
+        except Exception:  # noqa: BLE001 - unreadable wording is treated as not approved
+            view = None
+        if paused or mode != OutreachMode.SHADOW or config is None or view is None or view["status"] != "APPROVED":
             counts["skipped"] += 1  # kill switch on, a LIVE campaign (refused in this phase), unusable settings, or wording not approved
             return counts
-        view = await service.get_blocks(tenant_id)
         blocks, version = view["blocks"], view["version"]
 
         horizon_end = now + HORIZON
@@ -149,7 +152,10 @@ class ClinicOutreachEngine:
                        ((ClinicOutreach.stage == OutreachStage.READY) & (ClinicOutreach.next_action_at.is_(None) | due))
                        | (ClinicOutreach.stage.in_([OutreachStage.INTRO_SENT.value, OutreachStage.FOLLOWUP_1.value]) & due)
                        | ((ClinicOutreach.stage == OutreachStage.FOLLOWUP_2) & (ClinicOutreach.next_action_at <= now)))
-                .order_by(case((ClinicOutreach.next_action_at.is_(None), 0), else_=1), ClinicOutreach.next_action_at, ClinicOutreach.id))).scalars())
+                # due transitions (FOLLOWUP_2 -> NO_RESPONSE, no draft, never capped) first, then the longest-overdue clinics first (a never-touched
+                # READY clinic counts as due now), so an intro backlog cannot starve follow-ups
+                .order_by(case((ClinicOutreach.stage == OutreachStage.FOLLOWUP_2, 0), else_=1), func.coalesce(ClinicOutreach.next_action_at, now),
+                          ClinicOutreach.id))).scalars())
 
         for index, outreach_id in enumerate(candidates):
             await self._between_clinics(tenant_id, campaign_id, outreach_id)
@@ -157,17 +163,13 @@ class ClinicOutreachEngine:
                 outcome = await self._process(tenant_id, campaign_id, outreach_id, config, blocks, version, now, shadow_started_at)
             except Exception as exc:  # noqa: BLE001 - one clinic must never stop the others
                 logger.warning("outreach_engine_clinic_failed", outreach_id=str(outreach_id), error_type=type(exc).__name__)
-                counts["skipped"] += 1
-                if await self._record_failure(tenant_id, campaign_id, outreach_id):
-                    counts["parked"] += 1
+                counts["parked" if await self._record_failure(tenant_id, campaign_id, outreach_id) else "skipped"] += 1  # each clinic counted once
                 continue
-            if outcome.kind in ("stop_cap", "stop_state"):
+            if outcome.kind == "stop_state":
                 counts["skipped"] += len(candidates) - index  # this clinic and every one after it
                 break
-            if outcome.kind == "blocked":
-                counts["blocked"] += 1
-                counts["parked"] += 1
-            elif outcome.kind in counts:
+            await self._clear_failures(tenant_id, campaign_id, outreach_id)  # any run that did not raise ends a streak of failures
+            if outcome.kind in counts:
                 counts[outcome.kind] += 1
 
         async with self._sf() as session:
@@ -259,13 +261,14 @@ class ClinicOutreachEngine:
             if slot is None:
                 return _Outcome("skipped")  # no send window before the horizon: left for a later run
 
+            day = _schedule_day(slot)  # the cap is per UTC day of the slot, so hourly runs cannot each spend a fresh allowance
             held = (await session.execute(select(func.count(ClinicOutreachMessage.id))
                                           .join(ClinicOutreach, ClinicOutreach.id == ClinicOutreachMessage.outreach_id)
                                           .where(ClinicOutreach.campaign_id == campaign_id, ClinicOutreachMessage.tenant_id == tenant_id,
                                                  ClinicOutreachMessage.status != OutreachMessageStatus.BLOCKED,
-                                                 ClinicOutreachMessage.scheduled_for >= now, ClinicOutreachMessage.scheduled_for < horizon_end))).scalar_one()
-            if warmup_cap(config.limits, shadow_started_at, now) - held <= 0:
-                return _Outcome("stop_cap")
+                                                 ClinicOutreachMessage.schedule_day == day))).scalar_one()
+            if held >= warmup_cap(config.limits, shadow_started_at, slot):
+                return _Outcome("skipped")  # that day is full: this clinic waits for a later run (untouched); others may fall on another day
 
             ref = ClinicRef(name=provider.name)
             subject, body = compose(kind, ref, config.sender, config.term_sheet, blocks)
@@ -285,7 +288,6 @@ class ClinicOutreachEngine:
             if not stored:
                 return _Outcome("skipped")  # the unique key says it was already done
             clinic.stage, clinic.next_action_at = next_stage, slot + gap  # emails_sent and last_sent_at are real-send counters: never touched here
-            await self._mark_recovered(session, tenant_id, campaign_id, outreach_id)
             await session.commit()
             return _Outcome("composed")
 
@@ -316,10 +318,17 @@ class ClinicOutreachEngine:
             AuditLog.tenant_id == tenant_id, AuditLog.action == RECOVERED_ACTION, AuditLog.entity_id == outreach_id))).scalars().all()
         return errors - sum(int((c or {}).get("cleared", 0)) for c in cleared)
 
-    async def _mark_recovered(self, session, tenant_id: uuid.UUID, campaign_id: uuid.UUID, outreach_id: uuid.UUID) -> None:
-        pending = await self._failures_since_success(session, tenant_id, outreach_id)
-        if pending:
-            session.add(self._marker(tenant_id, RECOVERED_ACTION, outreach_id, {"campaign_id": str(campaign_id), "cleared": pending}))
+    async def _clear_failures(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, outreach_id: uuid.UUID) -> None:
+        """After any run that did not raise: if the clinic has uncleared errors, record that they are cleared. Never raises."""
+        try:
+            async with self._sf() as session:
+                await set_tenant_context(session, tenant_id)
+                pending = await self._failures_since_success(session, tenant_id, outreach_id)
+                if pending > 0:
+                    session.add(self._marker(tenant_id, RECOVERED_ACTION, outreach_id, {"campaign_id": str(campaign_id), "cleared": pending}))
+                    await session.commit()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("outreach_engine_failure_clear_failed", outreach_id=str(outreach_id), error_type=type(exc).__name__)
 
     async def _record_failure(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, outreach_id: uuid.UUID) -> bool:
         """Store the failure; after three in a row park the clinic. Returns True when it was parked. Never raises."""
@@ -332,7 +341,7 @@ class ClinicOutreachEngine:
                 if parked:
                     clinic = (await session.execute(select(ClinicOutreach).where(
                         ClinicOutreach.id == outreach_id, ClinicOutreach.tenant_id == tenant_id).with_for_update())).scalar_one_or_none()
-                    if clinic is not None and clinic.stage in _DRAFTING_STAGES:
+                    if clinic is not None and clinic.stage in (*_DRAFTING_STAGES, OutreachStage.FOLLOWUP_2.value):
                         clinic.stage, clinic.handoff_reason = OutreachStage.NEEDS_PERSON, COULD_NOT_PROCESS
                     else:
                         parked = False

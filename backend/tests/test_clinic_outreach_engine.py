@@ -7,7 +7,6 @@ unsafe clinics are parked with a plain reason, one clinic's failure never stops 
 from __future__ import annotations
 
 import asyncio
-import importlib
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -20,6 +19,7 @@ from app.models.audit_log import AuditLog
 from app.models.clinic_outreach import (ClinicOutreach, ClinicOutreachCampaign, ClinicOutreachMessage, OutreachMessageKind, OutreachMessageStatus,
                                         OutreachMode, OutreachStage)
 from app.models.marketing import Campaign, CampaignStatus
+from app.models.medical_tourism import Provider
 from app.models.organization import Organization
 from app.services import clinic_outreach_engine
 from app.services.clinic_outreach_engine import ClinicOutreachEngine
@@ -330,7 +330,7 @@ async def test_checker_failure_stores_a_blocked_message_and_parks() -> None:
         await s.execute(update(Provider).where(Provider.tenant_id == tid).values(name="Guaranteed Clinic"))
         await s.commit()
     out = await ENGINE.run(tid, now=NOW)
-    assert out == {"campaigns": 1, "composed": 0, "blocked": 1, "skipped": 0, "parked": 1}
+    assert out == {"campaigns": 1, "composed": 0, "blocked": 1, "skipped": 0, "parked": 0}  # counted once, as blocked
     [m] = await _messages(ids["Alpha Clinic"])
     assert m.status == OutreachMessageStatus.BLOCKED and m.blocked_reason and "guarantee" in m.blocked_reason.lower()
     assert "Guaranteed Clinic" in m.body and _utc(m.scheduled_for) == NOW and m.schedule_day == NOW.date()
@@ -428,3 +428,180 @@ async def test_no_send_path_is_called(monkeypatch) -> None:
         await ENGINE.run(tid, now=day)
         day += timedelta(days=1)
     assert calls == [] and len(await _messages(tid=tid)) == 6
+
+
+# --- fix round 1 ------------------------------------------------------------------------------------------------------------------------
+
+
+async def test_hourly_runs_never_exceed_the_daily_cap() -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid, tuple(f"Clinic{c} Clinic" for c in "ABCDEFGHIJKLMNOPQRST"))
+    for h in range(7):  # 10:00 to 16:00 in Istanbul; from 17:00 the window is closed and slots move to the next day
+        await ENGINE.run(tid, now=NOW + timedelta(hours=h))
+    msgs = await _messages(tid=tid)
+    assert len(msgs) == 5 and {m.schedule_day for m in msgs} == {NOW.date()}  # warm-up day 0 allows 5, however often the engine runs
+
+
+async def test_clinics_in_zones_that_fall_on_different_utc_days_use_each_days_allowance() -> None:
+    tid = uuid.uuid4()
+    late = NOW.replace(hour=20)  # Monday 20:00 UTC: Mexico City is mid-afternoon, Seoul's next window opens Tuesday 00:00 UTC
+    cid, ids = await _campaign(tid, ("Alpha Clinic", "Beta Clinic"), country="MX")
+    async with async_session_maker() as s:
+        await s.execute(update(Provider).where(Provider.tenant_id == tid, Provider.name == "Beta Clinic").values(country="KR"))
+        await s.commit()
+    await _set_cfg(cid, limits={"daily_cap": 1, "ramp_start": 1})
+    out = await ENGINE.run(tid, now=late)
+    assert out["composed"] == 2
+    days = sorted(m.schedule_day for m in await _messages(tid=tid))
+    assert days == [late.date(), late.date() + timedelta(days=1)]
+
+
+async def test_a_full_day_skips_that_clinic_but_not_the_ones_after_it() -> None:
+    tid = uuid.uuid4()
+    late = NOW.replace(hour=20)
+    cid, ids = await _campaign(tid, ("Alpha Clinic", "Beta Clinic", "Gamma Clinic"), country="MX")
+    async with async_session_maker() as s:  # order by id decides who goes first; make the last clinic the one in the other zone
+        rows = (await s.execute(select(ClinicOutreach).where(ClinicOutreach.campaign_id == cid).order_by(ClinicOutreach.id))).scalars().all()
+        last = rows[-1]
+        await s.execute(update(Provider).where(Provider.id == last.provider_id).values(country="KR"))
+        await s.commit()
+    await _set_cfg(cid, limits={"daily_cap": 1, "ramp_start": 1})
+    out = await ENGINE.run(tid, now=late)
+    assert out["composed"] == 2 and out["skipped"] == 1  # one MX clinic (day full for the other MX one) and the KR clinic on the next day
+    rows = [await _clinic_row(i) for i in ids.values()]
+    waiting = [r for r in rows if r.stage == OutreachStage.READY]
+    assert len(waiting) == 1 and waiting[0].next_action_at is None  # untouched
+
+
+async def test_failures_are_counted_as_consecutive_across_every_kind_of_success(monkeypatch) -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid, ("Boom Clinic",))
+    oid = ids["Boom Clinic"]
+    real = clinic_outreach_engine.compose
+    monkeypatch.setattr(clinic_outreach_engine, "compose", lambda kind, clinic, *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    await ENGINE.run(tid, now=NOW)
+    await ENGINE.run(tid, now=NOW)
+    async with async_session_maker() as s:  # an Onboarder invitation makes the next run a skip (a success that composes nothing)
+        row = await _clinic_row(oid)
+        s.add(AuditLog(tenant_id=tid, actor_type="agent", action=INVITE_ACTION, entity_type="p", entity_id=row.provider_id, result="success", created_at=NOW))
+        await s.commit()
+    assert (await ENGINE.run(tid, now=NOW + timedelta(hours=1)))["skipped"] == 1
+    out = await ENGINE.run(tid, now=NOW + timedelta(days=14, hours=1))  # one failure, 14 days later: not three in a row
+    assert out["parked"] == 0 and (await _clinic_row(oid)).stage == OutreachStage.READY
+
+
+async def test_a_followup_2_clinic_that_keeps_failing_is_parked(monkeypatch) -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid)
+    oid = ids["Alpha Clinic"]
+    await _set_stage(oid, OutreachStage.FOLLOWUP_2, NOW - timedelta(hours=1))
+    real = ClinicOutreachEngine._process
+
+    async def failing(self, tenant_id, campaign_id, outreach_id, *a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(ClinicOutreachEngine, "_process", failing)
+    for _ in range(2):
+        assert (await ENGINE.run(tid, now=NOW))["parked"] == 0
+    assert (await ENGINE.run(tid, now=NOW))["parked"] == 1
+    row = await _clinic_row(oid)
+    assert row.stage == OutreachStage.NEEDS_PERSON and row.handoff_reason == "the outreach engine could not process this clinic"
+    monkeypatch.setattr(ClinicOutreachEngine, "_process", real)
+
+
+async def _set_stage(outreach_id, stage, next_action_at):
+    async with async_session_maker() as s:
+        await s.execute(update(ClinicOutreach).where(ClinicOutreach.id == outreach_id).values(stage=stage, next_action_at=next_action_at))
+        await s.commit()
+
+
+async def test_follow_ups_and_no_response_come_before_more_intros() -> None:
+    tid = uuid.uuid4()
+    names = tuple(f"Intro{i:02d} Clinic" for i in range(40))
+    cid, ids = await _campaign(tid, names + ("Late Clinic", "Done Clinic"))
+    await _set_stage(ids["Late Clinic"], OutreachStage.INTRO_SENT, NOW - timedelta(days=3))
+    await _set_stage(ids["Done Clinic"], OutreachStage.FOLLOWUP_2, NOW - timedelta(days=1))
+    async with async_session_maker() as s:  # the overdue follow-up has its intro on record
+        o = await _clinic_row(ids["Late Clinic"])
+        s.add(ClinicOutreachMessage(tenant_id=tid, outreach_id=o.id, direction="OUT", kind="intro", status="QUEUED_SHADOW", subject="s", body="b",
+                                    blocks_version=0, scheduled_for=NOW - timedelta(days=7), schedule_day=(NOW - timedelta(days=7)).date()))
+        await s.commit()
+    out = await ENGINE.run(tid, now=NOW)
+    assert out["composed"] == 5  # the cap still holds
+    assert (await _clinic_row(ids["Done Clinic"])).stage == OutreachStage.NO_RESPONSE  # a transition, never blocked by the cap
+    assert (await _clinic_row(ids["Late Clinic"])).stage == OutreachStage.FOLLOWUP_1  # drafted before any of the 40 intros
+    assert len([m for m in await _messages(tid=tid) if m.kind == "intro" and _utc(m.scheduled_for) == NOW]) == 4
+
+
+async def test_wording_edited_between_the_check_and_the_read_is_not_used(monkeypatch) -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid)
+    tid2 = uuid.uuid4()
+    await _campaign(tid2)
+    from app.services.clinic_outreach_service import ClinicOutreachService
+    real = ClinicOutreachService.get_blocks
+    reads = []
+
+    async def edited_after_first_read(self, tenant_id):
+        reads.append(1)
+        view = await real(self, tenant_id)
+        # the owner saves an edit right after the first read: any later read is an unapproved draft with a new version
+        return view if len(reads) == 1 else {**view, "status": "DRAFT", "version": 7}
+
+    monkeypatch.setattr(ClinicOutreachService, "get_blocks", edited_after_first_read)
+    out = await ENGINE.run(tid, now=NOW)
+    assert len(reads) == 1  # approval and wording come from one read
+    assert out["composed"] == 1 and [m.blocks_version for m in await _messages(tid=tid)] == [0]
+    # and a read that is not approved makes nothing
+    async def unapproved(self, tenant_id):
+        return {**await real(self, tenant_id), "status": "DRAFT"}
+
+    monkeypatch.setattr(ClinicOutreachService, "get_blocks", unapproved)
+    assert (await ENGINE.run(tid2, now=NOW))["skipped"] == 1 and await _messages(tid=tid2) == []
+
+
+async def test_a_clinic_without_an_address_is_parked() -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid)
+    async with async_session_maker() as s:
+        await s.execute(update(ClinicOutreach).where(ClinicOutreach.id == ids["Alpha Clinic"]).values(contact_email=None))
+        await s.commit()
+    out = await ENGINE.run(tid, now=NOW)
+    assert out["parked"] == 1 and (await _clinic_row(ids["Alpha Clinic"])).handoff_reason == "clinic has no email address on file"
+
+
+async def test_no_send_window_before_the_horizon_leaves_the_clinic_for_later() -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid)
+    saturday = datetime(2026, 11, 7, 7, 0, tzinfo=UTC)  # weekdays only: the next window opens Monday, past the 24 hour horizon
+    out = await ENGINE.run(tid, now=saturday)
+    assert out["composed"] == 0 and out["skipped"] == 1
+    row = await _clinic_row(ids["Alpha Clinic"])
+    assert row.stage == OutreachStage.READY and row.next_action_at is None
+
+
+async def test_a_clinic_at_its_maximum_drafts_becomes_no_response() -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid)
+    await ENGINE.run(tid, now=NOW)
+    await _set_cfg(cid, limits={"max_emails_per_clinic": 1})
+    out = await ENGINE.run(tid, now=NOW + timedelta(days=4))
+    assert out["composed"] == 0
+    assert (await _clinic_row(ids["Alpha Clinic"])).stage == OutreachStage.NO_RESPONSE and len(await _messages(ids["Alpha Clinic"])) == 1
+
+
+async def test_a_duplicate_insert_is_reported_as_already_done_and_leaves_the_transaction_usable() -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid)
+    oid = ids["Alpha Clinic"]
+
+    def message():
+        return ClinicOutreachMessage(tenant_id=tid, outreach_id=oid, direction="OUT", kind="intro", status="QUEUED_SHADOW", subject="s", body="b",
+                                     blocks_version=0, scheduled_for=NOW, schedule_day=NOW.date())
+
+    async with async_session_maker() as s:
+        assert await ClinicOutreachEngine._insert(s, message()) is True
+        assert await ClinicOutreachEngine._insert(s, message()) is False  # same clinic, kind and UTC day
+        s.add(AuditLog(tenant_id=tid, actor_type="system", action="x", result="success"))  # the outer transaction still works
+        await s.commit()
+    assert len(await _messages(oid)) == 1
