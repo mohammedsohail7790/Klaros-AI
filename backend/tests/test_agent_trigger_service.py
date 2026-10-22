@@ -352,3 +352,42 @@ async def test_a_malformed_scheduled_action_is_rejected_at_version_creation(tool
         with pytest.raises(InvalidTriggerConfigError):
             await agent_service.create_version(tenant_id, agent.id, instructions="x",
                                                triggers={"schedule": {"enabled": True, "frequency": "DAILY", "time": "09:00", "goal": "g", "action": bad}}, created_by=None)
+
+
+_HOURLY = {"enabled": True, "frequency": "HOURLY", "minute": 5, "goal": "run the outreach engine", "action": {"tool_name": "outreach.run_engine", "tool_input": {}}}
+
+
+async def test_an_hourly_action_runs_once_each_hour_after_its_minute_and_never_catches_up(tool_registry):
+    tenant_id = uuid.uuid4()
+    await _org(tenant_id)
+    await _agent_with_schedule(tool_registry, tenant_id, grants=("outreach.run_engine",), schedule=_HOURLY)
+    svc = _trigger_service(tool_registry)
+    assert await svc.check_and_dispatch_scheduled(tenant_id, now_utc=datetime(2026, 1, 5, 9, 3, tzinfo=timezone.utc)) == []  # before this hour's minute
+    assert len(await svc.check_and_dispatch_scheduled(tenant_id, now_utc=datetime(2026, 1, 5, 9, 6, tzinfo=timezone.utc))) == 1
+    assert await svc.check_and_dispatch_scheduled(tenant_id, now_utc=datetime(2026, 1, 5, 9, 40, tzinfo=timezone.utc)) == []  # the same hour never runs twice
+    assert len(await svc.check_and_dispatch_scheduled(tenant_id, now_utc=datetime(2026, 1, 5, 10, 5, tzinfo=timezone.utc))) == 1
+    assert len(await svc.check_and_dispatch_scheduled(tenant_id, now_utc=datetime(2026, 1, 5, 14, 30, tzinfo=timezone.utc))) == 1  # hours in between were missed: one run, no burst
+    from app.db.session import async_session_maker
+    from app.models.agent import AgentExecution
+    from sqlalchemy import select
+    async with async_session_maker() as session:
+        assert len((await session.execute(select(AgentExecution).where(AgentExecution.tenant_id == tenant_id))).scalars().all()) == 3
+
+
+async def test_an_hourly_schedule_must_be_a_direct_action_with_a_valid_minute(tool_registry):
+    from app.db.session import async_session_maker
+
+    tenant_id = uuid.uuid4()
+    agent_service = AgentService(async_session_maker)
+    agent = await agent_service.create_agent(tenant_id, name="BadHourly", purpose="x", autonomy_tier=AgentAutonomyTier.OBSERVE, acting_role=Role.MANAGER, created_by=None)
+    for bad in ({"enabled": True, "frequency": "HOURLY", "goal": "g"}, {**_HOURLY, "minute": 60}, {**_HOURLY, "minute": True}):
+        with pytest.raises(InvalidTriggerConfigError):
+            await agent_service.create_version(tenant_id, agent.id, instructions="x", triggers={"schedule": bad}, created_by=None)
+    await agent_service.create_version(tenant_id, agent.id, instructions="x", triggers={"schedule": _HOURLY}, created_by=None)  # the valid one is accepted
+
+
+async def test_automations_still_refuse_an_hourly_frequency():
+    from app.services.automation_schedule import InvalidScheduleError, validate_schedule_config
+
+    with pytest.raises(InvalidScheduleError):
+        validate_schedule_config({"frequency": "HOURLY", "time": "09:00"})

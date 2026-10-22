@@ -21,7 +21,7 @@ shape this phase defines and enforces is
     triggers = {
         "schedule": {
             "enabled": bool,
-            "frequency": "DAILY" | "WEEKLY",
+            "frequency": "DAILY" | "WEEKLY" | "HOURLY",   # HOURLY: a direct action only, at `minute` past each UTC hour
             "time": "HH:MM",            # tenant-local, see automation_schedule.py
             "weekdays": [0..6, ...],    # required only for WEEKLY
             "goal": "<the goal text handed to AgentReasoningService.start>",
@@ -136,13 +136,24 @@ class AgentTriggerService:
         for agent, version in candidates:
             schedule = version.triggers["schedule"]
             tz_name = org_timezone.get(agent.tenant_id, "UTC")
-            try:
-                due = check_due(schedule, tz_name, now_utc=now_utc)
-            except Exception as exc:  # noqa: BLE001 — one agent's bad schedule config must never block others
-                logger.error("agent_schedule_invalid_config", agent_id=str(agent.id), error=str(exc))
-                continue
-            if not due.is_due:
-                continue
+            hourly = schedule.get("frequency") == "HOURLY"
+            if hourly:
+                minute = schedule.get("minute", 5)
+                if not isinstance(schedule.get("action"), dict) or not isinstance(minute, int) or isinstance(minute, bool) or not (0 <= minute <= 59):
+                    logger.error("agent_schedule_invalid_config", agent_id=str(agent.id), error="HOURLY needs a direct action and a minute 0-59")
+                    continue
+                if now_utc.minute < minute:
+                    continue  # not yet this hour's turn; at most one occurrence per UTC hour (the idempotency key below), never a catch-up burst
+                occurrence = now_utc.strftime("%Y-%m-%dT%H")
+            else:
+                try:
+                    due = check_due(schedule, tz_name, now_utc=now_utc)
+                except Exception as exc:  # noqa: BLE001 — one agent's bad schedule config must never block others
+                    logger.error("agent_schedule_invalid_config", agent_id=str(agent.id), error=str(exc))
+                    continue
+                if not due.is_due:
+                    continue
+                occurrence = due.occurrence_date.isoformat()
 
             if agent.status != AgentStatus.ACTIVE:
                 await self._audit_skip(
@@ -150,7 +161,7 @@ class AgentTriggerService:
                 )
                 continue
 
-            idempotency_key = f"schedule:{agent.id}:{due.occurrence_date.isoformat()}"
+            idempotency_key = f"schedule:{agent.id}:{occurrence}"
             goal = schedule.get("goal") or version.instructions_snapshot
 
             action = schedule.get("action")

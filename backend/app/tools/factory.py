@@ -790,6 +790,10 @@ def build_tool_registry(session_factory: async_sessionmaker, bus: EventBus) -> T
     registry.register(RemindClinic())
     registry.register(InviteClinic())
 
+    from app.tools.builtin.outreach_tools import RunOutreachEngine
+
+    registry.register(RunOutreachEngine())
+
     # --- Dropshipping store (vertical extension), catalog tools: same registry, same governance as every other domain. ---
     from app.services.dropshipping_catalog_service import DropshippingCatalogService
     from app.tools.builtin.dropshipping_tools import (

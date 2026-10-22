@@ -33,6 +33,24 @@ class SetContactRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
 
 
+class BlocksRequest(BaseModel):
+    blocks: dict[str, str]
+
+
+class ReviewRequest(BaseModel):
+    mark: str | None = Field(default=None, pattern="^(GOOD|FLAGGED)$")
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class GoLiveRequest(BaseModel):
+    confirm: bool = False
+
+
+class TryReplyRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=5000)
+    provider_id: uuid.UUID | None = None
+
+
 class SuppressionRequest(BaseModel):
     value: str = Field(min_length=1, max_length=320)
     kind: str = Field(min_length=1, max_length=10)
@@ -165,3 +183,142 @@ async def add_suppression(
     except OutreachError as exc:
         _raise(exc)
     return {"status": "ok"}
+
+
+# --- wording blocks and shadow review (Phase 2: drafts only, nothing is sent) --------------------------------------------
+
+
+def _unprocessable(exc: OutreachError) -> None:
+    problems = exc.args[1] if len(exc.args) > 1 else None
+    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=problems or str(exc)) from exc
+
+
+@router.get("/blocks")
+async def get_blocks(
+    current_user: CurrentUser = Depends(require_permission(Permission.READ_MARKETING)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    return await service.get_blocks(current_user.tenant_id)
+
+
+@router.put("/blocks")
+async def save_blocks(
+    body: BlocksRequest,
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_CAMPAIGNS)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    try:
+        return await service.save_blocks(current_user.tenant_id, current_user.id, body.blocks)
+    except OutreachError as exc:
+        _unprocessable(exc)
+
+
+@router.post("/blocks/approve")
+async def approve_blocks(
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_CAMPAIGNS)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    try:
+        return await service.approve_blocks(current_user.tenant_id, current_user.id)
+    except OutreachError as exc:
+        _raise(exc)
+
+
+@router.get("/campaigns/{campaign_id}/messages")
+async def list_messages(
+    campaign_id: uuid.UUID,
+    stage: str | None = None,
+    message_status: str | None = Query(default=None, alias="status"),
+    review: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    current_user: CurrentUser = Depends(require_permission(Permission.READ_MARKETING)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    try:
+        return await service.list_messages(current_user.tenant_id, campaign_id, stage=stage, status=message_status, review=review, limit=limit, offset=offset)
+    except OutreachError as exc:
+        _raise(exc)
+
+
+@router.get("/campaigns/{campaign_id}/messages/{message_id}")
+async def get_message(
+    campaign_id: uuid.UUID,
+    message_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_permission(Permission.READ_MARKETING)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    try:
+        return await service.get_message(current_user.tenant_id, campaign_id, message_id)
+    except OutreachError as exc:
+        _raise(exc)
+
+
+@router.put("/campaigns/{campaign_id}/messages/{message_id}/review")
+async def review_message(
+    campaign_id: uuid.UUID,
+    message_id: uuid.UUID,
+    body: ReviewRequest,
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_CAMPAIGNS)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    try:
+        await service.review_message(current_user.tenant_id, current_user.id, campaign_id, message_id, body.mark, body.reason)
+    except OutreachNotFound as exc:
+        _raise(exc)
+    except OutreachError as exc:
+        _unprocessable(exc)
+    return {"status": "ok"}
+
+
+@router.get("/campaigns/{campaign_id}/clinics/{provider_id}/preview-sequence")
+async def preview_sequence(
+    campaign_id: uuid.UUID,
+    provider_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_permission(Permission.READ_MARKETING)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    try:
+        return {"messages": await service.preview_sequence(current_user.tenant_id, campaign_id, provider_id)}
+    except OutreachError as exc:
+        _raise(exc)
+
+
+@router.get("/campaigns/{campaign_id}/shadow-progress")
+async def shadow_progress(
+    campaign_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_permission(Permission.READ_MARKETING)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    try:
+        return await service.shadow_progress(current_user.tenant_id, campaign_id)
+    except OutreachError as exc:
+        _raise(exc)
+
+
+@router.post("/campaigns/{campaign_id}/try-reply")
+async def try_reply(
+    campaign_id: uuid.UUID,
+    body: TryReplyRequest,
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_CAMPAIGNS)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    """Classify a pasted clinic reply and show the answer that would be drafted. Stores nothing about any clinic and sends nothing."""
+    try:
+        return await service.try_reply(current_user.tenant_id, current_user.id, campaign_id, body.text, body.provider_id)
+    except OutreachError as exc:
+        _raise(exc)
+
+
+@router.post("/campaigns/{campaign_id}/go-live")
+async def go_live(
+    campaign_id: uuid.UUID,
+    body: GoLiveRequest,
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_CAMPAIGNS)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    """Start emailing clinics for real. Needs `confirm: true`, a shadow campaign that passed every go-live check, and a real email provider."""
+    try:
+        return await service.go_live(current_user.tenant_id, current_user.id, campaign_id, confirm=body.confirm)
+    except OutreachError as exc:
+        _raise(exc)

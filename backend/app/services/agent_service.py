@@ -57,10 +57,18 @@ def _validate_triggers(triggers: dict) -> None:
         if "enabled" not in schedule or not isinstance(schedule.get("enabled"), bool):
             raise InvalidTriggerConfigError("triggers.schedule.enabled (bool) is required")
         if schedule.get("enabled"):
-            try:
-                validate_schedule_config(schedule)
-            except InvalidScheduleError as exc:
-                raise InvalidTriggerConfigError(str(exc)) from exc
+            if schedule.get("frequency") == "HOURLY":
+                # Hourly is only for a direct, deterministic tool call: a model-driven goal never runs every hour.
+                minute = schedule.get("minute", 5)
+                if not isinstance(minute, int) or isinstance(minute, bool) or not (0 <= minute <= 59):
+                    raise InvalidTriggerConfigError("triggers.schedule.minute must be an integer 0-59 for HOURLY")
+                if not isinstance(schedule.get("action"), dict):
+                    raise InvalidTriggerConfigError("an HOURLY schedule must run a direct action")
+            else:
+                try:
+                    validate_schedule_config(schedule)
+                except InvalidScheduleError as exc:
+                    raise InvalidTriggerConfigError(str(exc)) from exc
             if not schedule.get("goal"):
                 raise InvalidTriggerConfigError("triggers.schedule.goal is required when enabled")
             action = schedule.get("action")

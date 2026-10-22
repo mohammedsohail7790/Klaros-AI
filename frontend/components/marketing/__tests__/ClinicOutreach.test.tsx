@@ -9,6 +9,9 @@ const setContact = vi.fn();
 const start = vi.fn();
 const pause = vi.fn();
 const stop = vi.fn();
+const getBlocks = vi.fn();
+const progressFn = vi.fn();
+const goLiveFn = vi.fn();
 vi.mock("@/lib/api", () => ({
   ApiError: class extends Error {
     status: number;
@@ -25,6 +28,10 @@ vi.mock("@/lib/api", () => ({
   startOutreachCampaign: (...a: unknown[]) => start(...a),
   pauseOutreachCampaign: (...a: unknown[]) => pause(...a),
   stopOutreachCampaign: (...a: unknown[]) => stop(...a),
+  getOutreachBlocks: (...a: unknown[]) => getBlocks(...a),
+  getOutreachShadowProgress: (...a: unknown[]) => progressFn(...a),
+  goLiveOutreachCampaign: (...a: unknown[]) => goLiveFn(...a),
+  listOutreachMessages: vi.fn(),
 }));
 import { ApiError } from "@/lib/api";
 import { ClinicOutreachWizard } from "@/components/marketing/ClinicOutreachWizard";
@@ -97,7 +104,7 @@ describe("ClinicOutreachWizard", () => {
     fillSender();
     next();
     next(); // limits keep their defaults
-    expect(screen.getByText(/Nothing is sent in this release\./)).toBeInTheDocument();
+    expect(screen.getByText(/nothing is sent until you take it live/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Create campaign" }));
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith("c1"));
     const [token, body] = create.mock.calls[0];
@@ -113,6 +120,9 @@ describe("ClinicOutreachWizard", () => {
 describe("ClinicOutreachPanel", () => {
   beforeEach(() => {
     getCampaign.mockReset().mockResolvedValue(detail());
+    progressFn.mockReset().mockResolvedValue({ golive_checks: { all_ok: false } });
+    goLiveFn.mockReset().mockResolvedValue({ status: "ok", mode: "LIVE", clinics_restarted: 2 });
+    getBlocks.mockReset().mockResolvedValue({ status: "APPROVED", version: 1, approved_by: "u", approved_at: "2026-10-22T00:00:00Z", blocks: {} });
     findContacts.mockReset().mockResolvedValue({ status: "ok", checked: 1, found: 1, no_email: 0, search_failed: 0, search_configured: true });
     setContact.mockReset().mockResolvedValue({ status: "ok" });
     start.mockReset().mockResolvedValue({ status: "ok" });
@@ -123,19 +133,19 @@ describe("ClinicOutreachPanel", () => {
   it("test_the_panel_shows_funnel_counts_and_the_nothing_is_sent_notice", async () => {
     render(<ClinicOutreachPanel token="t" campaignId="c1" />);
     expect((await screen.findAllByText("Alpha Clinic")).length).toBeGreaterThan(0);
-    expect(screen.getByText("Nothing is sent in this release.")).toBeInTheDocument();
+    expect(screen.getByText("Nothing is sent while a campaign is in shadow mode.")).toBeInTheDocument();
     expect(screen.getByText("Shadow")).toBeInTheDocument();
     expect(screen.getByTestId("funnel-QUEUED")).toHaveTextContent("2");
     expect(screen.getByTestId("funnel-READY")).toHaveTextContent("1");
     expect(screen.getByText("hello@beta.com")).toBeInTheDocument();
   });
 
-  it("test_start_is_shadow_only_and_go_live_is_disabled", async () => {
+  it("test_start_is_shadow_and_go_live_is_disabled_until_the_checks_pass", async () => {
     render(<ClinicOutreachPanel token="t" campaignId="c1" />);
     await screen.findAllByText("Alpha Clinic");
     const goLive = screen.getByRole("button", { name: /Go live/ });
     expect(goLive).toBeDisabled();
-    expect(goLive).toHaveTextContent("Available after the shadow week (a later release)");
+    expect(goLive).toHaveTextContent("available once the checks pass");
     expect(screen.getByRole("button", { name: "Start in shadow mode" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Start in shadow mode" }));
     await waitFor(() => expect(start).toHaveBeenCalledWith("t", "c1"));
@@ -205,5 +215,33 @@ describe("ClinicOutreachPanel", () => {
     findContacts.mockResolvedValue({ status: "ok", checked: 3, found: 1, no_email: 0, search_failed: 2, search_configured: true });
     fireEvent.click(screen.getByRole("button", { name: "Find contacts" }));
     expect(await screen.findByText(/2 searches failed/)).toBeInTheDocument();
+  });
+
+  it("test_go_live_enables_when_the_checks_pass_asks_for_confirmation_and_then_calls_the_api", async () => {
+    getCampaign.mockResolvedValue(detail({ campaign: { id: "c1", name: "Turkey clinics", status: "ACTIVE" } }));
+    progressFn.mockResolvedValue({ golive_checks: { all_ok: true } });
+    render(<ClinicOutreachPanel token="t" campaignId="c1" />);
+    const button = await screen.findByRole("button", { name: "Go live" });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    expect(goLiveFn).not.toHaveBeenCalled();
+    expect(screen.getByText(/starts emailing real clinics/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(goLiveFn).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Go live" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, go live" }));
+    await waitFor(() => expect(goLiveFn).toHaveBeenCalledWith("t", "c1"));
+  });
+
+  it("test_a_live_campaign_shows_live_numbers_resume_and_no_go_live_button", async () => {
+    getCampaign.mockResolvedValue(detail({
+      mode: "LIVE", campaign: { id: "c1", name: "Turkey clinics", status: "PAUSED" },
+      live: { sent_total: 12, sent_today: 3, replies: 4, interested: 2, asked_terms: 1, bounced: 0, opted_out: 1, declined: 0, needs_person: 1 },
+    }));
+    render(<ClinicOutreachPanel token="t" campaignId="c1" />);
+    expect(await screen.findByText("Live: emails are being sent to clinics.")).toBeInTheDocument();
+    expect(screen.getByText("Sent in total").nextSibling?.textContent).toBe("12");
+    expect(screen.getByRole("button", { name: "Resume" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /Go live/ })).toBeNull();
   });
 });

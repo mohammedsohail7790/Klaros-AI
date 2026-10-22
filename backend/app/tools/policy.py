@@ -425,6 +425,7 @@ DEFAULT_TOOL_POLICIES: dict[str, ActionPolicy] = {
     "medical_tourism.send_referral": ActionPolicy.APPROVAL_REQUIRED,
     "medical_tourism.remind_clinic": ActionPolicy.APPROVAL_REQUIRED,
     "medical_tourism.invite_clinic": ActionPolicy.APPROVAL_REQUIRED,  # first contact with a clinic: a person approves it unless the tenant sets it to AUTO
+    "outreach.run_engine": ActionPolicy.AUTO,  # drafts always; sends only for a campaign the owner explicitly took live (Go live), behind the sender's guards
 
     # Dropshipping store (vertical extension), catalog tools. Reading and the internal catalog writes are AUTO, the same tier as medical_tourism.create_provider:
     # they move no money, contact no one, and each has a database uniqueness rule behind it (SKU code, product slug, supplier name). Putting a product on sale and

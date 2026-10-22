@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   ApiError,
   OutreachCampaignDetail,
   OutreachFindContactsResult,
   findOutreachContacts,
+  getOutreachBlocks,
   getOutreachCampaign,
+  getOutreachShadowProgress,
+  goLiveOutreachCampaign,
   pauseOutreachCampaign,
   setOutreachContact,
   startOutreachCampaign,
@@ -15,6 +19,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ShadowReview } from "@/components/marketing/ShadowReview";
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, " ");
 
@@ -36,6 +41,10 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
   const [notice, setNotice] = useState<string | null>(null);
   const [emails, setEmails] = useState<Record<string, string>>({});
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const [tab, setTab] = useState<"overview" | "review">("overview");
+  const [blocksApproved, setBlocksApproved] = useState<boolean | null>(null);
+  const [canGoLive, setCanGoLive] = useState(false);
+  const [confirmingLive, setConfirmingLive] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -49,6 +58,23 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!token || data?.mode !== "SHADOW" || data.campaign.status !== "ACTIVE") {
+      setCanGoLive(false);
+      return;
+    }
+    getOutreachShadowProgress(token, campaignId)
+      .then((p) => setCanGoLive(Boolean(p.golive_checks?.all_ok)))
+      .catch(() => setCanGoLive(false));
+  }, [token, campaignId, data?.mode, data?.campaign.status]);
+
+  useEffect(() => {
+    if (!token) return;
+    getOutreachBlocks(token)
+      .then((b) => setBlocksApproved(b.status === "APPROVED"))
+      .catch(() => setBlocksApproved(false));
+  }, [token]);
 
   async function run(action: (t: string, id: string) => Promise<unknown>, after?: (r: never) => void) {
     if (!token || busy) return;
@@ -86,6 +112,7 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
   if (!data) return error ? <p role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-4 text-sm text-danger">{error}</p> : <p className="text-sm text-muted">Loading...</p>;
 
   const status = data.campaign.status;
+  const live = data.mode === "LIVE";
   const closed = status === "COMPLETED" || status === "ARCHIVED";
   // Without a web search provider a clinic with no address stays QUEUED, so it needs a hand-typed address just like a NO_EMAIL one.
   const needsYou = data.clinics.filter((c) => c.stage === "NO_EMAIL" || (c.stage === "QUEUED" && !c.contact_email));
@@ -112,9 +139,23 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
       <div className="flex flex-wrap items-center gap-2">
         <Badge status={status}>{status}</Badge>
         <Badge>{label(data.mode)}</Badge>
-        <span className="text-sm text-muted">Nothing is sent in this release.</span>
+        <span className="text-sm text-muted">{live ? "Live: emails are being sent to clinics." : "Nothing is sent while a campaign is in shadow mode."}</span>
       </div>
 
+      <div className="flex gap-2" role="tablist">
+        <Button variant={tab === "overview" ? "primary" : "secondary"} size="sm" role="tab" aria-selected={tab === "overview"} onClick={() => setTab("overview")}>Overview</Button>
+        <Button variant={tab === "review" ? "primary" : "secondary"} size="sm" role="tab" aria-selected={tab === "review"} onClick={() => setTab("review")}>Shadow review</Button>
+      </div>
+
+      {tab === "review" ? (
+        <ShadowReview token={token} campaignId={campaignId} />
+      ) : (
+      <>
+      {blocksApproved === false && (
+        <p className="rounded-xl border border-border bg-surface p-3 text-sm">
+          Approve the wording to begin. <Link href="/marketing/outreach-wording" className="underline">Open the wording page</Link>
+        </p>
+      )}
       {error && <p role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</p>}
       {notice && <p className="rounded-xl border border-border bg-surface p-3 text-sm text-muted">{notice}</p>}
 
@@ -128,8 +169,8 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
         >
           Find contacts
         </Button>
-        <Button disabled={busy || status === "ACTIVE" || closed} onClick={() => run(startOutreachCampaign)}>
-          {status === "PAUSED" ? "Resume (shadow)" : "Start in shadow mode"}
+        <Button disabled={busy || status === "ACTIVE" || closed || blocksApproved !== true} onClick={() => run(startOutreachCampaign)}>
+          {status === "PAUSED" ? (live ? "Resume" : "Resume (shadow)") : "Start in shadow mode"}
         </Button>
         <Button variant="secondary" disabled={busy || status !== "ACTIVE"} onClick={() => run(pauseOutreachCampaign)}>
           Pause
@@ -137,10 +178,31 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
         <Button variant="danger" disabled={busy || closed} onClick={() => run(stopOutreachCampaign)}>
           Stop
         </Button>
-        <Button variant="ghost" disabled>
-          Go live: Available after the shadow week (a later release)
-        </Button>
+        {!live && !confirmingLive && (
+          <Button variant="secondary" disabled={busy || !canGoLive || closed} onClick={() => setConfirmingLive(true)}>
+            {canGoLive ? "Go live" : "Go live: available once the checks pass"}
+          </Button>
+        )}
+        {!live && confirmingLive && (
+          <span className="flex flex-wrap items-center gap-2 rounded-xl border border-border-strong p-2 text-sm">
+            This starts emailing real clinics, beginning with a small first wave. You can pause or stop at any time.
+            <Button size="sm" disabled={busy} onClick={() => run(goLiveOutreachCampaign, () => setConfirmingLive(false))}>Yes, go live</Button>
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => setConfirmingLive(false)}>Cancel</Button>
+          </span>
+        )}
       </div>
+
+      {data.live && (
+        <section aria-label="Live numbers" className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {([["Sent today", data.live.sent_today], ["Sent in total", data.live.sent_total], ["Replies", data.live.replies], ["Interested", data.live.interested],
+             ["Asked about terms", data.live.asked_terms], ["Bounced", data.live.bounced], ["Opted out", data.live.opted_out], ["Handed to a person", data.live.needs_person]] as [string, number][]).map(([name, n]) => (
+            <div key={name} className="rounded-xl border border-border bg-surface p-3">
+              <div className="text-xs text-muted">{name}</div>
+              <div className="text-xl font-semibold">{n}</div>
+            </div>
+          ))}
+        </section>
+      )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {Object.entries(data.funnel).map(([stage, count]) => (
@@ -197,6 +259,8 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
             </tbody>
           </table>
         </div>
+      )}
+      </>
       )}
     </div>
   );

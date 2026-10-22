@@ -88,7 +88,7 @@ function toConfig(f: Form): OutreachConfig {
 
 /**
  * The short wizard that creates a clinic outreach campaign: basics, which clinics, the term sheet the AI may offer within, the sender, limits and a plain-words review.
- * Next stays off, with the reason shown, until the step is valid. Nothing is sent in this release: the campaign starts in shadow mode.
+ * Next stays off, with the reason shown, until the step is valid. The campaign starts in shadow mode and nothing is sent until the owner takes it live.
  */
 export function ClinicOutreachWizard({ token, onCreated }: { token: string | null; onCreated: (campaignId: string) => void }) {
   const [step, setStep] = useState(0);
@@ -292,7 +292,7 @@ export function ClinicOutreachWizard({ token, onCreated }: { token: string | nul
               At most {form.dailyCap} emails a day, starting at {form.rampStart}, and {form.perClinic} per clinic, between {form.windowStart}:00 and {form.windowEnd}:00{form.weekdaysOnly ? " on weekdays" : ""}.
             </li>
           </ul>
-          <p className="font-medium text-foreground">Nothing is sent in this release. The campaign starts in shadow mode.</p>
+          <p className="font-medium text-foreground">The campaign starts in shadow mode: nothing is sent until you take it live.</p>
         </div>
       )}
 

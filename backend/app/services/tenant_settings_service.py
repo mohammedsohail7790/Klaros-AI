@@ -3,6 +3,7 @@
 Keys in use:
   `crew`           {"auto_provision": bool (default True), "disabled_members": [crew member keys] (default [])}
   `ai_processing`  {"external_providers": [AI provider names the owner allows for this business's data] (default []), "acknowledged_by": user id, "acknowledged_at": iso time}
+  `outreach_blocks`  {"status": "DRAFT" | "APPROVED", "version": int, "blocks": {block name: text}, "approved_by": user id, "approved_at": iso time} (clinic outreach wording; default is the platform's draft text, not approved)
 
 Reads never fail a caller: a missing row or a lookup error returns the default. For `ai_processing` that default is the strict one (no extra provider).
 """
@@ -19,15 +20,17 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.db.session import set_tenant_context
 from app.models.tenant_settings import TenantSetting
+from app.services.outreach_blocks import DEFAULT_BLOCKS
 
 logger = structlog.get_logger(__name__)
 
-CREW, AI_PROCESSING, DROPSHIPPING_STORE = "crew", "ai_processing", "dropshipping_store"
+CREW, AI_PROCESSING, DROPSHIPPING_STORE, OUTREACH_BLOCKS = "crew", "ai_processing", "dropshipping_store", "outreach_blocks"
 DEFAULTS: dict[str, dict[str, Any]] = {
     CREW: {"auto_provision": True, "disabled_members": []},
     AI_PROCESSING: {"external_providers": []},
     # closed until the owner has set a shipping rule and acknowledged that sales tax is not collected (see dropshipping_store_service)
     DROPSHIPPING_STORE: {"open": False, "shipping_flat_fee": None, "free_shipping_over": None, "sales_tax_acknowledged": False},
+    OUTREACH_BLOCKS: {"status": "DRAFT", "version": 0, "blocks": DEFAULT_BLOCKS},
 }
 
 

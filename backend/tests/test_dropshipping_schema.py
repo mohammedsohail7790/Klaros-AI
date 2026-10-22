@@ -211,11 +211,11 @@ def _drop_row(db_path: Path) -> tuple:
         conn.close()
 
 
-def test_the_migration_chain_has_one_head_and_0083_is_it() -> None:
+def test_the_migration_chain_has_exactly_one_head() -> None:
     result = subprocess.run([sys.executable, "-m", "alembic", "heads"], cwd=BACKEND_ROOT, capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, result.stderr
     heads = [line for line in result.stdout.splitlines() if "(head)" in line]
-    assert len(heads) == 1 and heads[0].startswith("0083_dropshipping_supplier_sync"), result.stdout
+    assert len(heads) == 1, result.stdout  # later migrations may extend the chain; it must never fork
 
 
 def _columns(db_path: Path, table: str) -> set[str]:
