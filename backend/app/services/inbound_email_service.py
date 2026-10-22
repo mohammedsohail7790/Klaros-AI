@@ -80,6 +80,11 @@ async def reply_to_for(session_factory, tenant_id: uuid.UUID, to_email: str) -> 
             provider_id = None
             if lead_id is None:
                 provider_id = (await session.execute(select(Provider.id).where(Provider.tenant_id == tenant_id, func.lower(Provider.contact_email) == addr).limit(1))).scalar_one_or_none()
+            if lead_id is None and provider_id is None:  # an address a clinic outreach campaign writes to (found on the clinic's own site, or entered by a person)
+                from app.models.clinic_outreach import ClinicOutreach
+
+                provider_id = (await session.execute(select(ClinicOutreach.provider_id).where(ClinicOutreach.tenant_id == tenant_id, func.lower(ClinicOutreach.contact_email) == addr)
+                                                     .order_by(ClinicOutreach.created_at.desc()).limit(1))).scalar_one_or_none()
         if lead_id is not None:
             return reply_address(await ensure_route(session_factory, tenant_id, "lead", lead_id))
         if provider_id is not None:
@@ -184,7 +189,11 @@ async def _handle_one(session_factory, item: dict) -> str:
             provider = (await session.execute(select(Provider).where(Provider.id == route.entity_id, Provider.tenant_id == tenant_id))).scalar_one_or_none()
             if provider is None:
                 return "unknown"
-            matches = (provider.contact_email or "").strip().lower() == sender
+            from app.models.clinic_outreach import ClinicOutreach
+
+            outreach_addresses = {(a or "").strip().lower() for (a,) in (await session.execute(select(ClinicOutreach.contact_email).where(
+                ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.provider_id == provider.id))).all()}
+            matches = (provider.contact_email or "").strip().lower() == sender or sender in outreach_addresses
             label = f"clinic {provider.name}"
         session.add(InboundEmail(tenant_id=tenant_id, entity_type=route.entity_type, entity_id=route.entity_id, message_id=message_id, from_address=sender, from_name=sender_name,
                                  subject=subject, body_text=body if keep_body else None, body_stored=keep_body, sender_matches=matches, spam_score=spam, attachment_count=attachments,
@@ -203,7 +212,33 @@ async def _handle_one(session_factory, item: dict) -> str:
         except IntegrityError:  # the same message arrived twice at once
             await session.rollback()
             return "duplicate"
+    if route.entity_type == "provider" and matches:
+        await _hand_to_outreach(session_factory, tenant_id, route.entity_id, sender, subject, body)
     return "stored"
+
+
+async def _hand_to_outreach(session_factory, tenant_id: uuid.UUID, provider_id: uuid.UUID, sender: str, subject: str | None, body: str) -> None:
+    """If this clinic is in a LIVE outreach campaign and the reply came from the address we wrote to, let the outreach reply handler classify it and act (drafts only; the sender
+    sends any answer behind its own guards). Never raises: the reply is already stored and notified."""
+    try:
+        from app.models.clinic_outreach import ClinicOutreach, ClinicOutreachCampaign, OutreachMode
+        from app.models.marketing import Campaign, CampaignStatus
+        from app.services.clinic_outreach_service import ClinicOutreachService
+
+        async with session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            campaign_id = (await session.execute(
+                select(ClinicOutreach.campaign_id).join(ClinicOutreachCampaign, ClinicOutreachCampaign.campaign_id == ClinicOutreach.campaign_id)
+                .join(Campaign, Campaign.id == ClinicOutreach.campaign_id)
+                .where(ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.provider_id == provider_id, func.lower(ClinicOutreach.contact_email) == sender,
+                       ClinicOutreachCampaign.mode == OutreachMode.LIVE, Campaign.status.in_([CampaignStatus.ACTIVE, CampaignStatus.PAUSED]))
+                .order_by(Campaign.created_at.desc()).limit(1))).scalar_one_or_none()
+        if campaign_id is None:
+            return
+        text = f"{subject or ''}\n{body or ''}".strip()
+        await ClinicOutreachService(session_factory).handle_reply(tenant_id, None, campaign_id, provider_id, text)
+    except Exception as exc:  # noqa: BLE001 - a handling problem must never lose or fail the stored reply
+        logger.warning("outreach_reply_handling_failed", error=type(exc).__name__)
 
 
 async def list_replies(session_factory, tenant_id: uuid.UUID, limit: int = 50) -> list[dict[str, Any]]:
