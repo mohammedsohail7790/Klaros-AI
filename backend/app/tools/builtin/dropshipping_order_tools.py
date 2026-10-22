@@ -12,6 +12,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.models.rbac import Permission
+from app.services.dropshipping_order_lookup import DropshippingOrderLookupService
 from app.services.dropshipping_order_service import DropshippingOrderService
 from app.tools.base import ExecutionContext, Tool
 
@@ -41,3 +42,37 @@ class SearchOrders(Tool):
     async def execute(self, input: SearchOrdersInput, context: ExecutionContext) -> SearchOrdersOutput:
         orders = await self._service.search_orders(context.tenant_id, status=input.status, q=input.q, limit=input.limit, offset=input.offset, include_personal=False)
         return SearchOrdersOutput(orders=orders)
+
+
+class LookupOrderInput(BaseModel):
+    order_number: str = Field(max_length=40)
+    email: str | None = Field(default=None, max_length=254)  # the e-mail address the order was placed with
+    phone: str | None = Field(default=None, max_length=30)  # or the phone number it was placed with
+
+
+class LookupOrderOutput(BaseModel):
+    found: bool
+    message: str | None = None
+    order: dict[str, Any] | None = None
+
+
+class LookupOrder(Tool):
+    name = "dropshipping.lookup_order"
+    description = (
+        "Answer a customer's 'where is my order?'. Needs the order number AND the e-mail address or phone number the order was placed with: ask the customer for both. "
+        "Returns found=false (always the same message) when they do not match, and otherwise the order's status, items, total and tracking, with a one-sentence summary to read out. "
+        "Never returns an address, e-mail, phone or name. Read-only."
+    )
+    input_schema = LookupOrderInput
+    output_schema = LookupOrderOutput
+    required_permission = Permission.READ_DROPSHIPPING
+    supports_idempotency = True  # reads, plus a failure record that only limits repeated wrong guesses
+    pii_input_fields = ("email", "phone")
+    audit_redacts_input = True  # the proof the customer gave is not kept in the audit log
+
+    def __init__(self, service: DropshippingOrderLookupService) -> None:
+        self._service = service
+
+    async def execute(self, input: LookupOrderInput, context: ExecutionContext) -> LookupOrderOutput:
+        result = await self._service.lookup(context.tenant_id, order_number=input.order_number, email=input.email, phone=input.phone, actor_id=context.actor_id)
+        return LookupOrderOutput(**result)

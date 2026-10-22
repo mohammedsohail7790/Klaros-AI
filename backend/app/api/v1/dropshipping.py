@@ -82,6 +82,18 @@ async def create_supplier(
     return output.model_dump(mode="json")
 
 
+@router.post("/orders/lookup")
+async def lookup_order_for_customer(body: dict, current_user: CurrentUser = Depends(get_current_user), registry: ToolRegistry = Depends(get_tool_registry)) -> dict[str, Any]:
+    """'Where is my order?' for an integration (the voice receptionist, a chat widget) acting for a customer who is not signed in.
+    body = {order_number, email? | phone?}: the customer must give the order number and the e-mail or phone it was placed with. A wrong or unknown pair always gets found=false."""
+    _require(current_user, Permission.READ_DROPSHIPPING)
+    try:
+        output = await registry.execute("dropshipping.lookup_order", body, execution_context(current_user))
+    except (ToolError, ValueError) as exc:
+        raise_http_for_tool_error(exc)
+    return output.model_dump(mode="json")
+
+
 @router.get("/digest/preview")
 async def preview_digest(current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
     """The owner digest as it would be written right now (nothing is sent). Contains no customer details."""
