@@ -323,6 +323,17 @@ MEDICAL_TOURISM_CREW: tuple[CrewMember, ...] = (
         goal="Invite up to five clinics that have not yet been asked to send their credentials.",
         max_tool_chain_depth=12,
     ),
+    CrewMember(
+        key="outreach-runner",
+        name="Outreach Runner",
+        purpose="Every morning prepares the next clinic outreach drafts for your review. It sends nothing.",
+        instructions=_COMMON_RULES + " Each run: call the outreach engine once and report its counts. It only stores drafts for the owner to review; you never send or contact a clinic.",
+        tools=("outreach.run_engine",),
+        schedule_time="06:00",
+        schedule_action=("outreach.run_engine", {}),
+        goal="Prepare clinic outreach drafts for review and send nothing.",
+        max_tool_chain_depth=2,
+    ),
 )
 
 PLAYBOOKS: dict[str, tuple[CrewMember, ...]] = {"generic": GENERIC_CREW, MEDICAL_TOURISM: MEDICAL_TOURISM_CREW}

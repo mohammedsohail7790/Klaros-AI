@@ -186,6 +186,28 @@ class RemindClinic(Tool):
         return RemindClinicOutput(reminded=True)
 
 
+async def _in_live_outreach(tid: uuid.UUID, provider_id: uuid.UUID) -> bool:
+    """True when the clinic is in a live outreach campaign (active or paused) or already has a sent outreach message, so the Onboarder never emails it as well."""
+    from app.models.clinic_outreach import ClinicOutreach, ClinicOutreachCampaign, ClinicOutreachMessage, OutreachMode
+    from app.models.marketing import Campaign, CampaignStatus
+
+    async with async_session_maker() as session:
+        await set_tenant_context(session, tid)
+        live = (await session.execute(
+            select(ClinicOutreach.id)
+            .join(ClinicOutreachCampaign, ClinicOutreachCampaign.campaign_id == ClinicOutreach.campaign_id)
+            .join(Campaign, Campaign.id == ClinicOutreach.campaign_id)
+            .where(ClinicOutreach.tenant_id == tid, ClinicOutreach.provider_id == provider_id, ClinicOutreachCampaign.mode == OutreachMode.LIVE,
+                   Campaign.status.in_([CampaignStatus.ACTIVE, CampaignStatus.PAUSED])).limit(1))).first()
+        if live is not None:
+            return True
+        # "SENT" is not an enum member yet: sending arrives in a later phase.
+        sent = (await session.execute(
+            select(ClinicOutreachMessage.id).join(ClinicOutreach, ClinicOutreach.id == ClinicOutreachMessage.outreach_id)
+            .where(ClinicOutreachMessage.tenant_id == tid, ClinicOutreach.provider_id == provider_id, ClinicOutreachMessage.status == "SENT").limit(1))).first()
+        return sent is not None
+
+
 class InviteClinicInput(BaseModel):
     provider_id: uuid.UUID
 
@@ -221,6 +243,8 @@ class InviteClinic(Tool):
             return InviteClinicOutput(invited=False, reason="clinic not found")
         if provider.verification_status == "VERIFIED":
             return InviteClinicOutput(invited=False, reason="this clinic is already verified")
+        if await _in_live_outreach(tid, provider.id):
+            return InviteClinicOutput(invited=False, reason="this clinic is in an active outreach campaign")
         if last is not None and datetime.now(timezone.utc) - _aware(last) < timedelta(days=INVITE_EVERY_DAYS):
             return InviteClinicOutput(invited=False, reason="this clinic was invited in the last 14 days")
         to = (provider.contact_email or "").strip()
