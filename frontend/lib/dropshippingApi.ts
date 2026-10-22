@@ -91,6 +91,17 @@ export const erasePersonalData = (token: string, id: string) => post(token, `/or
 // --- the supplier work queue ---
 export const listSupplierOrders = (token: string, status?: SupplierOrderStatus) =>
   request<{ supplier_orders: WorkQueueEntry[] }>(`${BASE}/supplier-orders${status ? `?status=${status}` : ""}`, { headers: authHeaders(token) });
+/** The queue as a spreadsheet for the supplier: fetched with the staff token, then saved by the browser (a plain link could not carry the token). */
+export async function downloadSupplierOrdersCsv(token: string, status: SupplierOrderStatus): Promise<void> {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}${BASE}/supplier-orders/export?status=${status}`, { headers: authHeaders(token) });
+  if (!res.ok) throw new ApiError(res.status, res.status === 403 ? "Only staff who work orders can download this file." : "Could not make the file. Please try again.");
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `supplier-orders-${status.toLowerCase()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 export const placeSupplierOrder = (token: string, id: string, supplier_reference: string, note?: string) =>
   post(token, `/supplier-orders/${id}/placed`, { supplier_reference, note: note || undefined });
 export const confirmSupplierOrder = (token: string, id: string) => post(token, `/supplier-orders/${id}/confirmed`, {});

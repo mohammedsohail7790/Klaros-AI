@@ -13,7 +13,7 @@ import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
-  SupplierOrderStatus, WorkQueueEntry, addShipment, canCoordinate, confirmSupplierOrder, describeError, failSupplierOrder, listSupplierOrders, markShipment, placeSupplierOrder,
+  SupplierOrderStatus, WorkQueueEntry, addShipment, canCoordinate, confirmSupplierOrder, describeError, downloadSupplierOrdersCsv, failSupplierOrder, listSupplierOrders, markShipment, placeSupplierOrder,
 } from "@/lib/dropshippingApi";
 import { addressBlock, SUPPLIER_STATUS } from "@/lib/dropshippingLabels";
 import { useAuth } from "@/lib/useAuth";
@@ -75,6 +75,16 @@ export default function DropshippingFulfilmentPage() {
   const [entries, setEntries] = useState<WorkQueueEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  async function exportCsv() {
+    setExportError(null);
+    try {
+      await downloadSupplierOrdersCsv(token!, tab);
+    } catch (err) {
+      setExportError(describeError(err, "Could not make the file.").message);
+    }
+  }
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -110,6 +120,13 @@ export default function DropshippingFulfilmentPage() {
             <button key={t.value} role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)} className={`rounded-full px-4 py-2 text-sm font-medium ${tab === t.value ? "bg-accent text-accent-foreground" : "bg-surface-muted text-foreground"}`}>{t.label}</button>
           ))}
         </div>
+        {coordinate && entries && entries.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <Button size="sm" variant="secondary" onClick={exportCsv}>Download for the supplier (CSV)</Button>
+            <span className="text-sm text-muted">One row per item, with the delivery address. Staff only.</span>
+          </div>
+        )}
+        {exportError && <div className="mb-4"><Alert variant="danger">{exportError}</Alert></div>}
         {!coordinate && <div className="mb-4"><Alert variant="info">You can look at the queue. Only staff, managers and owners can record what was ordered.</Alert></div>}
         {authLoading || (!entries && !error) ? (
           <Skeleton />
