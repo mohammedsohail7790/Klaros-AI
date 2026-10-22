@@ -2,10 +2,10 @@
 
 Additive only. clinic_outreach_messages has row-level security on PostgreSQL (tenant_id = current_tenant_id()) like 0080. Nothing here sends email.
 
-Rollback: `alembic downgrade 0082_merge_outreach_and_dropshipping` drops the table (drafted shadow messages and review marks are lost) and the engine_last_run_at column.
+Rollback: `alembic downgrade 0083_dropshipping_supplier_sync` drops the table (drafted shadow messages and review marks are lost) and the engine_last_run_at column.
 
-Revision ID: 0083_clinic_outreach_messages
-Revises: 0082_merge_outreach_and_dropshipping
+Revision ID: 0084_clinic_outreach_messages
+Revises: 0083_dropshipping_supplier_sync
 Create Date: 2026-10-21
 """
 from typing import Sequence, Union
@@ -13,8 +13,8 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0083_clinic_outreach_messages"
-down_revision: Union[str, None] = "0082_merge_outreach_and_dropshipping"
+revision: str = "0084_clinic_outreach_messages"
+down_revision: Union[str, None] = "0083_dropshipping_supplier_sync"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

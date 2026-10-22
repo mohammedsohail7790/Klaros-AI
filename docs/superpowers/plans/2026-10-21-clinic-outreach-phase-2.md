@@ -18,7 +18,7 @@
 - Wording blocks contain **no digits at all**; every figure reaches a message only through a placeholder filled from the term sheet. Allowed placeholders exactly: `{clinic_name}`, `{business_name}`, `{sender_name}`, `{sender_title}`, `{postal_address}`, `{opt_out_line}`, `{commission}`, `{payment_days}`.
 - Block limits: subject 120 characters, body 1,500. Banned phrases (case-insensitive): `partner of`, `official partner`, `endorsed`, `guarantee`, `guaranteed`, `exclusive`, `we send you patients`, `patients per month`.
 - Warm-up cap on campaign day `n` (0 for the day shadow started): `min(limits.daily_cap, limits.ramp_start + 2 * n)`. At most 3 outbound drafts per clinic. Spacing: follow-up 1 four days after the intro's scheduled time, follow-up 2 five days after follow-up 1, `NO_RESPONSE` seven days after follow-up 2.
-- New migration is `0083_clinic_outreach_messages`, `down_revision = "0082_merge_outreach_and_dropshipping"` (the merge revision that joined the outreach and dropshipping heads; main must keep a single head). The unmerged Xero/Google Business Profile branch also uses 0080; whichever merges second renumbers.
+- New migration is `0084_clinic_outreach_messages`, `down_revision = "0082_merge_outreach_and_dropshipping"` (the merge revision that joined the outreach and dropshipping heads; main must keep a single head). The unmerged Xero/Google Business Profile branch also uses 0080; whichever merges second renumbers.
 - Permissions: reads `READ_MARKETING`, every mutation the campaign-management permission used by `api/v1/outreach.py`.
 - English only. No public-holiday calendar.
 - Commit messages end with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
@@ -38,7 +38,7 @@ Failure modes the spec implies but no single task's tests would otherwise cover,
 ### Task 1: Message table and migration
 
 **Files:**
-- Create: `backend/alembic/versions/0083_clinic_outreach_messages.py`
+- Create: `backend/alembic/versions/0084_clinic_outreach_messages.py`
 - Modify: `backend/app/models/clinic_outreach.py` (add `ClinicOutreachMessage`, `engine_last_run_at` on `ClinicOutreachCampaign`), `backend/app/models/__init__.py` (export)
 - Test: `backend/tests/test_clinic_outreach_messages_model.py`
 
@@ -49,7 +49,7 @@ Failure modes the spec implies but no single task's tests would otherwise cover,
 
 - [ ] **Step 1: Write failing tests** `test_message_row_round_trips_with_defaults`, `test_duplicate_kind_for_the_same_day_is_rejected`, `test_same_kind_on_a_different_day_is_allowed`, `test_migration_creates_table_with_rls_policies` (follow the pattern in `tests/test_clinic_outreach_models.py` and the existing migration test style).
 - [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement** the model changes and migration 0083 mirroring 0080_clinic_outreach's RLS statements (ENABLE, three policies) with a working `downgrade`.
+- [ ] **Step 3: Implement** the model changes and migration 0084 mirroring 0080_clinic_outreach's RLS statements (ENABLE, three policies) with a working `downgrade`.
 - [ ] **Step 4: Run the new tests and `tests/test_clinic_outreach_models.py`; all pass.**
 - [ ] **Step 5: Commit** `feat(outreach): shadow message table`.
 

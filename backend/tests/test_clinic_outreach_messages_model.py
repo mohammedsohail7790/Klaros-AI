@@ -88,7 +88,7 @@ def test_migration_creates_table_with_rls_policies(tmp_path) -> None:
         assert "engine_last_run_at" in {r[1] for r in conn.execute("PRAGMA table_info(clinic_outreach_campaigns)")}
     finally:
         conn.close()
-    down = run("downgrade", "0082_merge_outreach_and_dropshipping")
+    down = run("downgrade", "0083_dropshipping_supplier_sync")
     assert down.returncode == 0, down.stdout + down.stderr
     conn = sqlite3.connect(db_path)
     try:
@@ -96,6 +96,6 @@ def test_migration_creates_table_with_rls_policies(tmp_path) -> None:
         assert "engine_last_run_at" not in {r[1] for r in conn.execute("PRAGMA table_info(clinic_outreach_campaigns)")}
     finally:
         conn.close()
-    src = (BACKEND_ROOT / "alembic/versions/0083_clinic_outreach_messages.py").read_text()
+    src = (BACKEND_ROOT / "alembic/versions/0084_clinic_outreach_messages.py").read_text()
     for stmt in ("ENABLE ROW LEVEL SECURITY", "tenant_select", "tenant_insert", "tenant_update", "current_tenant_id()"):
         assert stmt in src
