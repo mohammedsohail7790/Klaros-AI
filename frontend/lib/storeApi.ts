@@ -100,6 +100,10 @@ export async function getStoreProduct(slug: string, opts: { live?: boolean } = {
   }
 }
 
+export interface EnquiryBody { name: string; email: string; message: string; order_number?: string; website?: string; idempotency_key?: string }
+/** The "write to us" form. It becomes a lead in the shop owner's CRM; it works while the shop is closed. */
+export const sendEnquiry = (body: EnquiryBody) => call<{ received: boolean }>("/enquiry", { ...LIVE, method: "POST", body: JSON.stringify(body) });
+
 export const createCheckout = (body: CheckoutBody) => call<CheckoutResult>("/checkout", { ...LIVE, method: "POST", body: JSON.stringify(body) });
 export const getStoreOrder = async (token: string) => (await call<{ order: StoreOrder }>(`/orders/${encodeURIComponent(token)}`, LIVE)).order;
 export const payStoreOrder = (token: string) => call<CheckoutResult>(`/orders/${encodeURIComponent(token)}/pay`, { ...LIVE, method: "POST" });
