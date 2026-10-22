@@ -139,3 +139,23 @@ async def test_the_routes_preview_for_staff_and_send_only_for_managers(client, c
     sent = await client.post(f"{BASE}/digest/send", headers=_h(owner))
     assert sent.status_code == 200 and sent.json() == {"sent": 1, "reason": None}
     assert (await client.post(f"{BASE}/digest/send", headers=_h(owner))).json()["reason"] == "already_sent_today"
+
+
+async def test_the_margin_is_an_estimate_from_supplier_costs_and_says_what_it_left_out(client, catalog, orders, channel) -> None:
+    owner, t = await _tenant_with_owner(client, "Margin Shop", "margin-owner@example.com")
+    await _shop(catalog, t)
+    await _order(orders, t, [{"sku": "TEA-1", "quantity": 2}])          # 20.00 of tea
+    await _order(orders, t, [{"sku": "RICE-1", "quantity": 1}])         # rice has no supplier cost
+    none = await digest.gather(async_session_maker, t)
+    assert none["margin_7d"] is None and "Product margin" not in digest.compose(none, "https://app.example.com")[1]     # no cost known anywhere: no made-up figure
+
+    async with async_session_maker() as session:
+        await session.execute(update(Sku).where(Sku.tenant_id == t, Sku.sku_code == "TEA-1").values(supplier_cost=6))
+        await session.commit()
+    data = await digest.gather(async_session_maker, t)
+    assert str(data["margin_7d"]["sales"]) == "20.00" and str(data["margin_7d"]["margin"]) == "8.00" and str(data["margin_7d"]["percent"]) == "40.0" and data["margin_7d"]["uncosted_lines"] == 1
+    body = digest.compose(data, "https://app.example.com")[1]
+    assert "Product margin, last 7 days: $8.00 on $20.00 of product sales (40.0%); last 24 hours: $8.00" in body
+    assert "an estimate from today's supplier costs, before shipping, tax and refunds; 1 order line left out" in body
+    for private in ("pat@example.com", "Pat Shopper", "12 Main St", "512-555-0147"):
+        assert private not in body
