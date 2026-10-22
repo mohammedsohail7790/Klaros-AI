@@ -94,9 +94,11 @@ export function MiniCart() {
               {est && (
                 <dl className="space-y-1.5 text-[15px]">
                   <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd>{money(est.subtotalCents)}</dd></div>
-                  <div className="flex justify-between"><dt className="text-muted">Shipping (estimate)</dt><dd>{est.shippingCents === 0 ? "Free" : money(est.shippingCents)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">Shipping (estimate)</dt><dd>{!est.shippingKnown ? "At checkout" : est.shippingCents === 0 ? "Free" : money(est.shippingCents)}</dd></div>
+                  {info?.sales_tax_mode === "STRIPE_TAX" && <div className="flex justify-between"><dt className="text-muted">Sales tax</dt><dd>At checkout</dd></div>}
                 </dl>
               )}
+              {est?.tooHeavy && <p role="alert" className="text-[15px] font-medium text-red-800">This basket is heavier than we ship in one order. Please split it into smaller orders.</p>}
               {est?.blocked ? <Button size="lg" className="w-full" disabled>Checkout</Button> : <Link href="/store/checkout" onClick={closeCart} className={buttonClass("primary", "lg", "w-full")}>Checkout</Link>}
               <Link href="/store/cart" onClick={closeCart} className="block text-center text-[15px] text-[rgb(var(--color-brand))] underline-offset-4 hover:underline">View full basket</Link>
             </div>
