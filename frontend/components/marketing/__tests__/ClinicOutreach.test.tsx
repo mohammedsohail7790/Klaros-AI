@@ -9,6 +9,7 @@ const setContact = vi.fn();
 const start = vi.fn();
 const pause = vi.fn();
 const stop = vi.fn();
+const getBlocks = vi.fn();
 vi.mock("@/lib/api", () => ({
   ApiError: class extends Error {
     status: number;
@@ -25,6 +26,9 @@ vi.mock("@/lib/api", () => ({
   startOutreachCampaign: (...a: unknown[]) => start(...a),
   pauseOutreachCampaign: (...a: unknown[]) => pause(...a),
   stopOutreachCampaign: (...a: unknown[]) => stop(...a),
+  getOutreachBlocks: (...a: unknown[]) => getBlocks(...a),
+  getOutreachShadowProgress: vi.fn(),
+  listOutreachMessages: vi.fn(),
 }));
 import { ApiError } from "@/lib/api";
 import { ClinicOutreachWizard } from "@/components/marketing/ClinicOutreachWizard";
@@ -113,6 +117,7 @@ describe("ClinicOutreachWizard", () => {
 describe("ClinicOutreachPanel", () => {
   beforeEach(() => {
     getCampaign.mockReset().mockResolvedValue(detail());
+    getBlocks.mockReset().mockResolvedValue({ status: "APPROVED", version: 1, approved_by: "u", approved_at: "2026-10-22T00:00:00Z", blocks: {} });
     findContacts.mockReset().mockResolvedValue({ status: "ok", checked: 1, found: 1, no_email: 0, search_failed: 0, search_configured: true });
     setContact.mockReset().mockResolvedValue({ status: "ok" });
     start.mockReset().mockResolvedValue({ status: "ok" });

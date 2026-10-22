@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   ApiError,
   OutreachCampaignDetail,
   OutreachFindContactsResult,
   findOutreachContacts,
+  getOutreachBlocks,
   getOutreachCampaign,
   pauseOutreachCampaign,
   setOutreachContact,
@@ -15,6 +17,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ShadowReview } from "@/components/marketing/ShadowReview";
 
 const label = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, " ");
 
@@ -36,6 +39,8 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
   const [notice, setNotice] = useState<string | null>(null);
   const [emails, setEmails] = useState<Record<string, string>>({});
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const [tab, setTab] = useState<"overview" | "review">("overview");
+  const [blocksApproved, setBlocksApproved] = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -49,6 +54,13 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!token) return;
+    getOutreachBlocks(token)
+      .then((b) => setBlocksApproved(b.status === "APPROVED"))
+      .catch(() => setBlocksApproved(false));
+  }, [token]);
 
   async function run(action: (t: string, id: string) => Promise<unknown>, after?: (r: never) => void) {
     if (!token || busy) return;
@@ -115,6 +127,20 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
         <span className="text-sm text-muted">Nothing is sent in this release.</span>
       </div>
 
+      <div className="flex gap-2" role="tablist">
+        <Button variant={tab === "overview" ? "primary" : "secondary"} size="sm" role="tab" aria-selected={tab === "overview"} onClick={() => setTab("overview")}>Overview</Button>
+        <Button variant={tab === "review" ? "primary" : "secondary"} size="sm" role="tab" aria-selected={tab === "review"} onClick={() => setTab("review")}>Shadow review</Button>
+      </div>
+
+      {tab === "review" ? (
+        <ShadowReview token={token} campaignId={campaignId} />
+      ) : (
+      <>
+      {blocksApproved === false && (
+        <p className="rounded-xl border border-border bg-surface p-3 text-sm">
+          Approve the wording to begin. <Link href="/marketing/outreach-wording" className="underline">Open the wording page</Link>
+        </p>
+      )}
       {error && <p role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</p>}
       {notice && <p className="rounded-xl border border-border bg-surface p-3 text-sm text-muted">{notice}</p>}
 
@@ -128,7 +154,7 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
         >
           Find contacts
         </Button>
-        <Button disabled={busy || status === "ACTIVE" || closed} onClick={() => run(startOutreachCampaign)}>
+        <Button disabled={busy || status === "ACTIVE" || closed || blocksApproved !== true} onClick={() => run(startOutreachCampaign)}>
           {status === "PAUSED" ? "Resume (shadow)" : "Start in shadow mode"}
         </Button>
         <Button variant="secondary" disabled={busy || status !== "ACTIVE"} onClick={() => run(pauseOutreachCampaign)}>
@@ -197,6 +223,8 @@ export function ClinicOutreachPanel({ token, campaignId }: { token: string | nul
             </tbody>
           </table>
         </div>
+      )}
+      </>
       )}
     </div>
   );

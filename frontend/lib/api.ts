@@ -6382,3 +6382,88 @@ export function pauseOutreachCampaign(token: string, campaignId: string) {
 export function stopOutreachCampaign(token: string, campaignId: string) {
   return request<{ status: string }>(`/api/v1/outreach/campaigns/${campaignId}/stop`, { method: "POST", headers: authHeaders(token) });
 }
+
+// --- Outreach wording and shadow review (drafts only: nothing is sent) ---
+
+export interface OutreachBlocks {
+  status: "DRAFT" | "APPROVED";
+  version: number;
+  approved_by: string | null;
+  approved_at: string | null;
+  blocks: Record<string, string>;
+}
+
+export interface OutreachMessageRow {
+  id: string;
+  provider_id: string;
+  clinic: string;
+  kind: string;
+  status: string;
+  subject: string;
+  scheduled_for: string | null;
+  review_mark: "GOOD" | "FLAGGED" | null;
+  review_reason: string | null;
+  blocked_reason: string | null;
+  body?: string;
+}
+
+export interface OutreachSequenceMessage {
+  kind: string;
+  subject: string;
+  body: string;
+  problems: string[];
+}
+
+export interface OutreachShadowProgress {
+  days_in_shadow: number;
+  shadow_messages: number;
+  reviewed: number;
+  flagged: number;
+  flagged_share: number;
+  blocked: number;
+  engine_last_run_at: string | null;
+  blocks_status: "DRAFT" | "APPROVED";
+  needs_you: { provider_id: string; clinic: string; reason: string }[];
+  next_sends: { provider_id: string; clinic: string; kind: string; next_action_at: string | null }[];
+  try_a_reply_tests: number;
+  try_a_reply_available: boolean;
+}
+
+export function getOutreachBlocks(token: string) {
+  return request<OutreachBlocks>("/api/v1/outreach/blocks", { headers: authHeaders(token) });
+}
+
+export function saveOutreachBlocks(token: string, blocks: Record<string, string>) {
+  return request<OutreachBlocks>("/api/v1/outreach/blocks", { method: "PUT", headers: authHeaders(token), body: JSON.stringify({ blocks }) });
+}
+
+export function approveOutreachBlocks(token: string) {
+  return request<OutreachBlocks>("/api/v1/outreach/blocks/approve", { method: "POST", headers: authHeaders(token) });
+}
+
+export function listOutreachMessages(token: string, campaignId: string, params: { stage?: string; status?: string; review?: string; limit?: number; offset?: number } = {}) {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => v !== undefined && v !== "" && q.set(k, String(v)));
+  const qs = q.toString();
+  return request<{ items: OutreachMessageRow[]; total: number }>(`/api/v1/outreach/campaigns/${campaignId}/messages${qs ? `?${qs}` : ""}`, { headers: authHeaders(token) });
+}
+
+export function getOutreachMessage(token: string, campaignId: string, messageId: string) {
+  return request<OutreachMessageRow>(`/api/v1/outreach/campaigns/${campaignId}/messages/${messageId}`, { headers: authHeaders(token) });
+}
+
+export function reviewOutreachMessage(token: string, campaignId: string, messageId: string, mark: "GOOD" | "FLAGGED" | null, reason?: string) {
+  return request<{ status: string }>(`/api/v1/outreach/campaigns/${campaignId}/messages/${messageId}/review`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({ mark, reason: reason ?? null }),
+  });
+}
+
+export function previewOutreachSequence(token: string, campaignId: string, providerId: string) {
+  return request<{ messages: OutreachSequenceMessage[] }>(`/api/v1/outreach/campaigns/${campaignId}/clinics/${providerId}/preview-sequence`, { headers: authHeaders(token) });
+}
+
+export function getOutreachShadowProgress(token: string, campaignId: string) {
+  return request<OutreachShadowProgress>(`/api/v1/outreach/campaigns/${campaignId}/shadow-progress`, { headers: authHeaders(token) });
+}
