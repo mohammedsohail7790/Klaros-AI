@@ -26,6 +26,8 @@ router = APIRouter(prefix="/operating-crew", tags=["operating-crew"])
 
 
 def _trigger_text(m: operating_crew.CrewMember) -> str:
+    if m.schedule_hourly:
+        return "Every hour"
     if m.event_type and m.schedule_time:
         return f"When {m.event_type} happens, and daily at {m.schedule_time}"
     if m.event_type:

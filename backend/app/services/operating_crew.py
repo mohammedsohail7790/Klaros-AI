@@ -52,6 +52,7 @@ class CrewMember:
     schedule_time: str | None = None  # HH:MM tenant-local, daily
     goal: str = ""
     max_tool_chain_depth: int = 6
+    schedule_hourly: bool = False  # run the direct action every hour instead of once a day (needs schedule_action)
     schedule_action: tuple[str, dict[str, Any]] | None = None  # a daily tool call run exactly as given, with no model deciding anything
 
 
@@ -326,12 +327,13 @@ MEDICAL_TOURISM_CREW: tuple[CrewMember, ...] = (
     CrewMember(
         key="outreach-runner",
         name="Outreach Runner",
-        purpose="Every morning prepares the next clinic outreach drafts for your review. It sends nothing.",
-        instructions=_COMMON_RULES + " Each run: call the outreach engine once and report its counts. It only stores drafts for the owner to review; you never send or contact a clinic.",
+        purpose="Every hour prepares the next clinic outreach emails and, only for a campaign you have taken live, sends the ones that are due.",
+        instructions=_COMMON_RULES + " Each run: call the outreach engine once and report its counts. It drafts for review while a campaign is in shadow and sends only for a campaign the owner took live; you never contact a clinic yourself.",
         tools=("outreach.run_engine",),
         schedule_time="06:00",
+        schedule_hourly=True,
         schedule_action=("outreach.run_engine", {}),
-        goal="Prepare clinic outreach drafts for review and send nothing.",
+        goal="Prepare clinic outreach emails and send the due ones for live campaigns.",
         max_tool_chain_depth=2,
     ),
 )
@@ -356,7 +358,8 @@ def _triggers(m: CrewMember) -> dict[str, Any]:
     if m.event_type:
         t["event"] = {"enabled": True, "event_type": m.event_type, "conditions": dict(m.event_conditions), "goal": m.goal}
     if m.schedule_time:
-        t["schedule"] = {"enabled": True, "frequency": "DAILY", "time": m.schedule_time, "goal": m.goal}
+        t["schedule"] = ({"enabled": True, "frequency": "HOURLY", "minute": 5, "goal": m.goal} if m.schedule_hourly
+                         else {"enabled": True, "frequency": "DAILY", "time": m.schedule_time, "goal": m.goal})
         if m.schedule_action:
             t["schedule"]["action"] = {"tool_name": m.schedule_action[0], "tool_input": dict(m.schedule_action[1])}
     return t

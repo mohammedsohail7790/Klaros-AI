@@ -178,7 +178,7 @@ async def test_phase_2_shadow_flow_drafts_paces_reviews_audits_and_sends_nothing
         assert (await client.get(f"{BASE}/campaigns/{cid}/messages", headers=oh)).status_code == 404
         assert (await client.get(f"{BASE}/campaigns/{cid}/shadow-progress", headers=oh)).status_code == 404
         other_ctx = ExecutionContext(tenant_id=await _tenant_id(client, other), actor_type=ActorType.USER, actor_id=uuid.uuid4(), role=Role.OWNER)
-        assert (await get_tool_registry().execute("outreach.run_engine", {}, other_ctx)).model_dump() == {"campaigns": 0, "composed": 0, "blocked": 0, "skipped": 0, "parked": 0}
+        assert (await get_tool_registry().execute("outreach.run_engine", {}, other_ctx)).model_dump() == {"campaigns": 0, "composed": 0, "blocked": 0, "skipped": 0, "parked": 0, "sent": 0, "send_failed": 0, "send_held": 0}
 
         assert calls == []
     finally:

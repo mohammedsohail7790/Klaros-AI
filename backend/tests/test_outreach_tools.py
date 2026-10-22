@@ -46,7 +46,7 @@ async def test_the_tool_runs_the_engine_for_the_calling_tenant(monkeypatch) -> N
     org = await _org()
     out = await get_tool_registry().execute("outreach.run_engine", {}, _ctx(org.id))
     assert seen == [org.id]
-    assert out.model_dump() == {"campaigns": 1, "composed": 2, "blocked": 0, "skipped": 0, "parked": 1}
+    assert out.model_dump() == {"campaigns": 1, "composed": 2, "blocked": 0, "skipped": 0, "parked": 1, "sent": 0, "send_failed": 0, "send_held": 0}
 
 
 async def test_the_tool_is_blocked_by_the_kill_switch_through_the_registry() -> None:
@@ -67,7 +67,7 @@ async def test_outreach_runner_is_in_the_mt_crew_with_a_direct_action_and_no_oth
     m = members["outreach-runner"]
     assert m.tools == ("outreach.run_engine",) and m.schedule_action == ("outreach.run_engine", {}) and m.schedule_time == "06:00"
     assert "outreach-runner" not in {x.key for x in oc.crew_for([])}
-    assert "sends nothing" in m.purpose.lower() or "send nothing" in m.goal.lower()
+    assert m.schedule_hourly and "live" in m.purpose.lower()
 
 
 async def _clinic_in_campaign(tid, *, mode):
