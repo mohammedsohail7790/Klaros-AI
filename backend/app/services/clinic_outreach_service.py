@@ -17,12 +17,14 @@ from pydantic import ValidationError
 from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
 
+from app.communications.email_config import email_configured
 from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
 from app.models.clinic_outreach import (ClinicOutreach, ClinicOutreachCampaign, ClinicOutreachMessage, OutreachMessageKind, OutreachMessageStatus, OutreachMode, OutreachStage,
                                         OutreachSuppression)
 from app.models.marketing import Campaign, CampaignChannel, CampaignObjective, CampaignStatus
+from app.models.notification import Notification
 from app.models.medical_tourism import Provider, ProviderStatus
 from app.models.mt_revenue import ProviderTerms
 from app.services import clinic_contact_finder
@@ -170,8 +172,11 @@ class ClinicOutreachService:
             clinics.append({"provider_id": str(p.id), "name": p.name, "country": p.country, "city": p.city, "stage": o.stage,
                             "contact_email": o.contact_email, "contact_source": o.contact_source,
                             "contact_checked_at": o.contact_checked_at.isoformat() if o.contact_checked_at else None})
-        return {"campaign": {"id": str(campaign.id), "name": campaign.name, "status": campaign.status}, "config": config, "mode": cfg.mode,
-                "funnel": funnel, "clinics": clinics}
+        out = {"campaign": {"id": str(campaign.id), "name": campaign.name, "status": campaign.status}, "config": config, "mode": cfg.mode,
+               "funnel": funnel, "clinics": clinics}
+        if cfg.mode == OutreachMode.LIVE:
+            out["live"] = await self.live_stats(tenant_id, campaign_id)
+        return out
 
     # --- contact discovery -------------------------------------------------------------------------------------------
 
@@ -546,8 +551,9 @@ class ClinicOutreachService:
             raise OutreachError("Approve the wording before handling replies.")
         async with self._sf() as session:
             _, cfg = await self._load(session, tenant_id, campaign_id)
-            if cfg.mode != OutreachMode.SHADOW:
-                raise OutreachError("Replies in a live campaign are handled in a later release.")
+            if cfg.mode not in (OutreachMode.SHADOW, OutreachMode.LIVE):
+                raise OutreachError("This campaign cannot take replies.")
+            live = cfg.mode == OutreachMode.LIVE
             config = self._config(cfg)
             found = (await session.execute(
                 select(ClinicOutreach, Provider).join(Provider, Provider.id == ClinicOutreach.provider_id)
@@ -568,7 +574,8 @@ class ClinicOutreachService:
             session.add(ClinicOutreachMessage(tenant_id=tenant_id, outreach_id=row.id, direction="IN", kind=self.REPLY_IN, status=f"IN_{c.label.value}", subject="(clinic reply)",
                                               body=text[:5000], blocks_version=int(blocks["version"]), scheduled_for=now, schedule_day=now.date()))
             if plan.draft:
-                session.add(ClinicOutreachMessage(tenant_id=tenant_id, outreach_id=row.id, direction="OUT", kind=self.REPLY_OUT, status=OutreachMessageStatus.QUEUED_SHADOW,
+                session.add(ClinicOutreachMessage(tenant_id=tenant_id, outreach_id=row.id, direction="OUT", kind=self.REPLY_OUT,
+                                                  status=OutreachMessageStatus.QUEUED_LIVE if live else OutreachMessageStatus.QUEUED_SHADOW,
                                                   subject=plan.draft[0], body=plan.draft[1], blocks_version=int(blocks["version"]), scheduled_for=now, schedule_day=now.date()))
             row.last_reply_at = now
             if plan.next_stage:
@@ -585,6 +592,8 @@ class ClinicOutreachService:
                 row.contact_email, row.contact_source, row.contact_source_url = None, None, None
             if plan.reschedule and row.next_action_at is not None:
                 row.next_action_at = max(row.next_action_at if row.next_action_at.tzinfo else row.next_action_at.replace(tzinfo=UTC), now + plan.reschedule)
+            if live and plan.next_stage == OutreachStage.NEEDS_PERSON:
+                self._notify(session, tenant_id, "A clinic reply needs you", f"{provider.name} replied and a person needs to read it: {plan.handoff_reason}."[:2000], "WARNING", row.id)
             session.add(self._audit(tenant_id, user_id, "outreach.reply_handled", campaign_id, {"campaign_id": str(campaign_id), "outreach_id": str(row.id), "label": c.label.value,
                                                                                              "next_stage": plan.next_stage}))
             try:
@@ -615,6 +624,66 @@ class ClinicOutreachService:
         }
         checks["all_ok"] = all(v["ok"] for v in checks.values() if isinstance(v, dict))
         return checks
+
+    @staticmethod
+    def _notify(session, tenant_id: uuid.UUID, title: str, body: str, severity: str, entity_id: uuid.UUID | None) -> None:
+        session.add(Notification(tenant_id=tenant_id, title=title[:255], body=body[:2000], severity=severity, category="outreach", entity_type="clinic_outreach", entity_id=entity_id))
+
+    async def go_live(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None, campaign_id: uuid.UUID, *, confirm: bool) -> dict[str, Any]:
+        """Start contacting clinics for real. Refused unless the owner confirms, the campaign is running in shadow, every go-live check passes and a real email provider is configured."""
+        if not confirm:
+            raise OutreachError("Confirm that you want this campaign to start emailing clinics.")
+        async with self._sf() as session:
+            campaign, cfg = await self._load(session, tenant_id, campaign_id)
+            if campaign.status != CampaignStatus.ACTIVE or cfg.mode != OutreachMode.SHADOW:
+                raise OutreachError("Only a campaign that is running in shadow mode can go live.")
+        if not email_configured():
+            raise OutreachError("No real email provider is configured on this deployment, so nothing could be delivered. Set one up first.")
+        checks = await self.golive_checks(tenant_id, campaign_id)
+        if not checks["all_ok"]:
+            failing = [name for name, v in checks.items() if isinstance(v, dict) and not v["ok"]]
+            raise OutreachError("The go-live checks have not all passed yet: " + ", ".join(n.replace("_", " ") for n in failing) + ".")
+        now = _now()
+        async with self._sf() as session:
+            campaign, cfg = await self._load(session, tenant_id, campaign_id)
+            if campaign.status != CampaignStatus.ACTIVE or cfg.mode != OutreachMode.SHADOW:  # changed while the checks ran
+                raise OutreachError("Only a campaign that is running in shadow mode can go live.")
+            rows = (await session.execute(select(ClinicOutreach).where(ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id).with_for_update())).scalars().all()
+            ids = [r.id for r in rows]
+            if ids:
+                shadow = (await session.execute(select(ClinicOutreachMessage).where(
+                    ClinicOutreachMessage.tenant_id == tenant_id, ClinicOutreachMessage.outreach_id.in_(ids), ClinicOutreachMessage.status == OutreachMessageStatus.QUEUED_SHADOW))).scalars().all()
+                for m in shadow:
+                    m.status = OutreachMessageStatus.SHADOW_ARCHIVED  # kept for history; never sent
+            reset = (OutreachStage.INTRO_SENT, OutreachStage.FOLLOWUP_1, OutreachStage.FOLLOWUP_2, OutreachStage.NO_RESPONSE, OutreachStage.REPLIED, OutreachStage.TERMS_PROPOSED)
+            restarted = 0
+            for r in rows:
+                if r.stage in reset and not r.emails_sent:
+                    r.stage, r.next_action_at, r.handoff_reason = OutreachStage.READY, None, None
+                    restarted += 1
+            cfg.mode, cfg.live_at = OutreachMode.LIVE, now
+            session.add(self._audit(tenant_id, user_id, "outreach.went_live", campaign_id, {"campaign_id": str(campaign_id), "clinics_restarted": restarted}))
+            self._notify(session, tenant_id, "Clinic outreach is live", "The campaign has started emailing clinics, beginning with a small first wave. You can pause it at any time.", "INFO", campaign_id)
+            await session.commit()
+        return {"status": "ok", "mode": OutreachMode.LIVE.value, "clinics_restarted": restarted}
+
+    async def live_stats(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID) -> dict[str, int]:
+        """Funnel numbers for the campaign page. Counts only; read only."""
+        async with self._sf() as session:
+            await self._load(session, tenant_id, campaign_id)
+            base = (ClinicOutreachMessage.tenant_id == tenant_id, ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id)
+            join = ClinicOutreach.id == ClinicOutreachMessage.outreach_id
+            day_start = _now().replace(hour=0, minute=0, second=0, microsecond=0)
+            sent_total = (await session.execute(select(func.count(ClinicOutreachMessage.id)).join(ClinicOutreach, join).where(*base, ClinicOutreachMessage.status == OutreachMessageStatus.SENT))).scalar_one()
+            sent_today = (await session.execute(select(func.count(ClinicOutreachMessage.id)).join(ClinicOutreach, join).where(
+                *base, ClinicOutreachMessage.status == OutreachMessageStatus.SENT, ClinicOutreachMessage.sent_at >= day_start))).scalar_one()
+            inbound = dict((await session.execute(select(ClinicOutreachMessage.status, func.count(ClinicOutreachMessage.id)).join(ClinicOutreach, join).where(
+                *base, ClinicOutreachMessage.direction == "IN").group_by(ClinicOutreachMessage.status))).all())
+            stages = dict((await session.execute(select(ClinicOutreach.stage, func.count(ClinicOutreach.id)).where(
+                ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id).group_by(ClinicOutreach.stage))).all())
+        return {"sent_total": int(sent_total), "sent_today": int(sent_today), "replies": int(sum(inbound.values())), "interested": int(inbound.get("IN_INTERESTED", 0) + inbound.get("IN_ASKS_WHO", 0)),
+                "asked_terms": int(inbound.get("IN_ASKS_TERMS", 0)), "bounced": int(inbound.get("IN_BOUNCE", 0)), "opted_out": int(stages.get(OutreachStage.OPTED_OUT, 0)),
+                "declined": int(stages.get(OutreachStage.DECLINED, 0)), "needs_person": int(stages.get(OutreachStage.NEEDS_PERSON, 0))}
 
     # --- suppression -------------------------------------------------------------------------------------------------
 

@@ -139,7 +139,7 @@ async def test_handle_reply_handoff_and_repeated_question_go_to_a_person() -> No
         await _svc().handle_reply(tid, USER, cid, pids["Alpha Clinic"], "Yes we are interested", now=NOW + timedelta(days=1))
 
 
-async def test_handle_reply_refuses_live_campaigns_other_tenants_and_audits_labels_only() -> None:
+async def test_handle_reply_live_drafts_for_sending_other_tenants_get_404_and_audits_hold_labels_only() -> None:
     tid, cid, ids, pids = await _setup()
     other_tid = uuid.uuid4()
     with pytest.raises(OutreachNotFound):
@@ -151,8 +151,9 @@ async def test_handle_reply_refuses_live_campaigns_other_tenants_and_audits_labe
         from sqlalchemy import update
         await s.execute(update(ClinicOutreachCampaign).where(ClinicOutreachCampaign.campaign_id == cid).values(mode=OutreachMode.LIVE))
         await s.commit()
-    with pytest.raises(OutreachError):
-        await _svc().handle_reply(tid, USER, cid, pids["Alpha Clinic"], "hello", now=NOW + timedelta(days=2))
+    await _svc().handle_reply(tid, USER, cid, pids["Alpha Clinic"], "Please send more information", now=NOW + timedelta(days=2))  # a live campaign answers too
+    drafts = await _msgs(ids["Alpha Clinic"], "reply_out")
+    assert sorted(d.status for d in drafts) == ["QUEUED_LIVE", "QUEUED_SHADOW"]  # the earlier shadow answer stays shadow; the live one is queued for sending
 
 
 async def test_try_reply_api_permissions_validation_and_tenant_isolation(client) -> None:
