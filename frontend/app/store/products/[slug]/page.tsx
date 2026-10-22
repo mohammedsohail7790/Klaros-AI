@@ -7,6 +7,8 @@ import { StoreClosed, StoreUnavailable } from "@/components/store/Footer";
 import { ProductVisual } from "@/components/store/LabelTile";
 import { ProductCard } from "@/components/store/parts";
 import { StoreInfo, StoreProduct, getStoreInfo, getStoreProduct, listStoreProducts } from "@/lib/storeApi";
+import { STORE_NAME } from "@/lib/storeConfig";
+import { jsonLdScript, productJsonLd, productUrl } from "@/lib/storeSeo";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -23,7 +25,11 @@ async function load(slug: string): Promise<{ product: StoreProduct | null; info:
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { product } = await load((await params).slug);
   if (!product) return { title: "Product" };
-  return { title: product.name, description: product.description?.slice(0, 160) ?? `Buy ${product.name} online.` };
+  const description = product.description?.slice(0, 160) ?? `Buy ${product.name} online.`;
+  return {
+    title: product.name, description, alternates: { canonical: productUrl(product.slug) },
+    openGraph: { type: "website", siteName: STORE_NAME, title: product.name, description, url: productUrl(product.slug), ...(product.image_url ? { images: [product.image_url] } : {}) },
+  };
 }
 
 /** One product, rendered on the server. Prices and stock may be up to a minute old here; the basket and checkout re-read them live. */
@@ -47,6 +53,7 @@ export default async function ProductPage({ params }: Params) {
 
   return (
     <div className="space-y-24">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(productJsonLd(product)) }} />
       <div>
         <nav aria-label="Breadcrumb" className="mb-8 flex flex-wrap items-center gap-1.5 text-[13px] text-muted">
           <Link href="/store" className="hover:text-foreground hover:underline">Store</Link>
