@@ -185,6 +185,9 @@ class Order(TenantScopedMixin, Base):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     personal_data_erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Added by 0086: how many "your order is waiting for payment" e-mails this order has had (at most two), and when the last one went.
+    payment_reminders_sent: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    last_payment_reminder_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class OrderLine(TenantScopedMixin, Base):
