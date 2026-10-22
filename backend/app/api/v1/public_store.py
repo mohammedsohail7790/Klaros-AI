@@ -14,10 +14,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.api.tool_deps import get_wired_event_bus
 from app.api.tool_deps_integrations import get_integration_connection_service
 from app.core.config import get_settings
 from app.core.rate_limit import rate_limit
 from app.db.session import async_session_maker
+from app.events.bus import EventBus
 from app.services.dropshipping_catalog_import import CatalogValidationError
 from app.services.dropshipping_catalog_service import CatalogConflictError, CatalogNotFoundError
 from app.services.dropshipping_checkout_service import (
@@ -36,10 +38,20 @@ router = APIRouter(prefix="/public/store", tags=["public-store"])
 _browse = Depends(rate_limit("public_store_browse", limit_setting="RATE_LIMIT_PUBLIC_STORE_BROWSE_PER_MINUTE", window_seconds=60))
 _status = Depends(rate_limit("public_store_status", limit_setting="RATE_LIMIT_PUBLIC_STORE_STATUS_PER_MINUTE", window_seconds=60))
 _checkout = Depends(rate_limit("public_store_checkout", limit_setting="RATE_LIMIT_PUBLIC_STORE_CHECKOUT_PER_MINUTE", window_seconds=60))
+_enquiry = Depends(rate_limit("public_store_enquiry", limit_setting="RATE_LIMIT_PUBLIC_STORE_ENQUIRY_PER_MINUTE", window_seconds=60))
 
 
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+class EnquiryBody(_Strict):
+    name: str = Field(min_length=1, max_length=255)
+    email: str = Field(min_length=3, max_length=255, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    message: str = Field(min_length=1, max_length=1800)
+    order_number: str | None = Field(default=None, max_length=40)
+    idempotency_key: str | None = Field(default=None, max_length=100)
+    website: str | None = Field(default=None, max_length=255)  # honeypot: a person never sees this field, so anything in it is a bot
 
 
 class CheckoutLine(_Strict):
@@ -150,3 +162,19 @@ async def pay_again(status_token: str) -> dict[str, Any]:
         return await _checkout_service().pay_again(tenant_id, status_token[:80])
     except _HANDLED as exc:
         raise _refuse(exc)
+
+
+@router.post("/enquiry", status_code=201, dependencies=[_enquiry])
+async def send_enquiry(body: EnquiryBody, bus: EventBus = Depends(get_wired_event_bus)) -> dict[str, bool]:
+    """The store's "write to us" form. It becomes an ordinary lead in the store business's CRM (source WEB), so it goes through the normal acknowledgement and follow-up. It works
+    while the store is closed (people ask questions before it opens). The tenant is the store's, never the caller's; nothing but `received` comes back, so no lead id leaks."""
+    tenant_id = _tenant()
+    from app.api.v1 import public_leads  # the lead intake (honeypot, tenant check, de-duplication) is the one place that creates public leads
+
+    note = body.message.strip() + (f"\n\nOrder number given: {body.order_number.strip()}" if body.order_number and body.order_number.strip() else "")
+    lead = public_leads.PublicLeadRequest(
+        name=body.name.strip(), source="WEB", email=body.email.strip(), service_requested="Store enquiry", description=note[:2000],
+        idempotency_key=body.idempotency_key, website=body.website,
+    )
+    await public_leads.submit_public_lead(tenant_id, lead, bus)
+    return {"received": True}

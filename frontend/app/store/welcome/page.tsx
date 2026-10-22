@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import EnquiryForm from "@/components/store/EnquiryForm";
 import { PantryScene, ParcelRoute, SecureCard, ShelfMark } from "@/components/store/Illustrations";
 import { buttonClass, linkClass } from "@/components/store/styles";
 import { getStoreInfo } from "@/lib/storeApi";
@@ -115,6 +116,7 @@ export default async function Welcome() {
           <a className="underline underline-offset-4" href={`mailto:${STORE_CONTACT_EMAIL}`}>{STORE_CONTACT_EMAIL}</a>.
         </p>
         {open && <div className="mt-10"><Link href="/store#products" className={buttonClass("primary", "lg")}>Shop all products</Link></div>}
+        <div className="mt-14"><EnquiryForm /></div>
       </section>
     </div>
   );

@@ -114,6 +114,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_PUBLIC_CONTRACT_PER_MINUTE: int = 30
     RATE_LIMIT_PUBLIC_INVITE_PER_MINUTE: int = 20
     # The dropshipping storefront (one business): browsing, order-status lookups, and the much stricter checkout/pay-again routes.
+    RATE_LIMIT_PUBLIC_STORE_ENQUIRY_PER_MINUTE: int = 5  # the "write to us" form: a person types one, a bot sends many
     RATE_LIMIT_PUBLIC_STORE_BROWSE_PER_MINUTE: int = 60
     RATE_LIMIT_PUBLIC_STORE_STATUS_PER_MINUTE: int = 30
     RATE_LIMIT_PUBLIC_STORE_CHECKOUT_PER_MINUTE: int = 10
