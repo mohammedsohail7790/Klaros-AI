@@ -42,6 +42,11 @@ class OutreachMessageKind(StrEnum):
 class OutreachMessageStatus(StrEnum):
     QUEUED_SHADOW = "QUEUED_SHADOW"
     BLOCKED = "BLOCKED"
+    QUEUED_LIVE = "QUEUED_LIVE"  # drafted in a live campaign, waiting for its time to be sent
+    SENT = "SENT"
+    FAILED = "FAILED"  # two send attempts failed
+    CANCELLED = "CANCELLED"  # a guard stopped it at send time (suppressed, clinic replied, handed to a person)
+    SHADOW_ARCHIVED = "SHADOW_ARCHIVED"  # a shadow draft kept for history after Go live; never sent, ignored by the engine
 
 
 class ClinicOutreachCampaign(TenantScopedMixin, Base):
@@ -112,3 +117,6 @@ class ClinicOutreachMessage(TenantScopedMixin, Base):
     review_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    failure_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)

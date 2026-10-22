@@ -46,7 +46,7 @@ async def test_message_row_round_trips_with_defaults() -> None:
         assert row.schedule_day == date(2026, 10, 21)
         assert camp.engine_last_run_at is None
     assert [k.value for k in OutreachMessageKind] == ["intro", "followup_1", "followup_2"]
-    assert {s.name for s in OutreachMessageStatus} == {"QUEUED_SHADOW", "BLOCKED"}
+    assert {s.name for s in OutreachMessageStatus} == {"QUEUED_SHADOW", "BLOCKED", "QUEUED_LIVE", "SENT", "FAILED", "CANCELLED", "SHADOW_ARCHIVED"}
 
 
 @pytest.mark.asyncio
@@ -84,11 +84,11 @@ def test_migration_creates_table_with_rls_policies(tmp_path) -> None:
     try:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(clinic_outreach_messages)")}
         assert {"outreach_id", "direction", "kind", "status", "subject", "body", "blocks_version", "blocked_reason",
-                "scheduled_for", "schedule_day", "review_mark", "review_reason", "reviewed_by", "reviewed_at", "tenant_id"} <= cols
+                "scheduled_for", "schedule_day", "review_mark", "review_reason", "reviewed_by", "reviewed_at", "tenant_id", "sent_at", "attempts", "failure_reason"} <= cols
         assert "engine_last_run_at" in {r[1] for r in conn.execute("PRAGMA table_info(clinic_outreach_campaigns)")}
     finally:
         conn.close()
-    down = run("downgrade", "0083_dropshipping_supplier_sync")
+    down = run("downgrade", "0083_dropshipping_supplier_sync")  # through 0085 and 0084
     assert down.returncode == 0, down.stdout + down.stderr
     conn = sqlite3.connect(db_path)
     try:
