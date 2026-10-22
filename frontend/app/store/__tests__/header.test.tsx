@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { product, renderInStore, saveCart, teaLine } from "./fixtures";
+import { INFO, product, renderInStore, saveCart, teaLine } from "./fixtures";
 
 const api = vi.hoisted(() => ({ getStoreProduct: vi.fn() }));
 vi.mock("@/lib/storeApi", async () => ({ ...(await vi.importActual<object>("@/lib/storeApi")), ...api }));
@@ -41,6 +41,37 @@ describe("store header", () => {
     expect(within(panel).getByRole("link", { name: "View full basket" })).toHaveAttribute("href", "/store/cart");
     expect(within(panel).getByText("Shipping (estimate)")).toBeInTheDocument();
     expect(api.getStoreProduct).toHaveBeenCalledWith("green-tea", { live: true });  // prices are read live, and only once the panel is open
+  });
+
+  it("shows the weight-based shipping, the tax note and the too-heavy warning in the panel", async () => {
+    const tiered = { ...INFO, sales_tax_mode: "STRIPE_TAX" as const, shipping_tiers: [{ max_lb: "1", fee: "6.95" }, { max_lb: "5", fee: "10.95" }], free_shipping_over: null };
+    const weighed = (g: number | null) => product({ items: [{ sku: "TEA-1", price: "10.00", currency: "USD", in_stock: true, weight_g: g }] });
+    saveCart([teaLine(2)]);
+    api.getStoreProduct.mockResolvedValue(weighed(500));                                     // 1000 g = 2.2 lb: the up-to-5-lb tier
+    const first = renderInStore(<StoreHeader />, tiered);
+    await userEvent.click(await screen.findByRole("button", { name: "Basket, 2 items" }));
+    let panel = await screen.findByRole("dialog", { name: "Basket" });
+    await within(panel).findByRole("listitem", { name: "Green Tea" });
+    expect(within(panel).getByText("Shipping (estimate)").nextElementSibling).toHaveTextContent("$10.95");
+    expect(within(panel).getByText("Sales tax").nextElementSibling).toHaveTextContent("At checkout");
+    first.unmount();
+
+    api.getStoreProduct.mockResolvedValue(weighed(null));                                    // no weight: the server works the shipping out
+    renderInStore(<StoreHeader />, tiered);
+    await userEvent.click(await screen.findByRole("button", { name: "Basket, 2 items" }));
+    panel = await screen.findByRole("dialog", { name: "Basket" });
+    await within(panel).findByRole("listitem", { name: "Green Tea" });
+    expect(within(panel).getByText("Shipping (estimate)").nextElementSibling).toHaveTextContent("At checkout");
+  });
+
+  it("warns and disables Checkout when the basket is heavier than the store ships", async () => {
+    saveCart([teaLine(2)]);
+    api.getStoreProduct.mockResolvedValue(product({ items: [{ sku: "TEA-1", price: "10.00", currency: "USD", in_stock: true, weight_g: 500 }] }));
+    renderInStore(<StoreHeader />, { ...INFO, shipping_tiers: [{ max_lb: "2", fee: "5.00" }], free_shipping_over: null });
+    await userEvent.click(await screen.findByRole("button", { name: "Basket, 2 items" }));
+    const panel = await screen.findByRole("dialog", { name: "Basket" });
+    expect(await within(panel).findByRole("alert")).toHaveTextContent("heavier than we ship in one order");
+    expect(within(panel).getByRole("button", { name: "Checkout" })).toBeDisabled();
   });
 
   it("changes quantities and removes items inside the panel", async () => {
