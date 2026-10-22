@@ -27,7 +27,7 @@ const FILTERS = [
 
 const kindLabel = (k: string) => ({ intro: "Introduction", followup_1: "First follow-up", followup_2: "Last follow-up" })[k] ?? k;
 
-/** The shadow week: the drafts the engine prepared, where the owner marks each one good or flags it. Nothing is sent in this release. */
+/** The shadow week: the drafts the engine prepared, where the owner marks each one good or flags it. Nothing is sent while a campaign is in shadow mode. */
 export function ShadowReview({ token, campaignId }: { token: string | null; campaignId: string }) {
   const [progress, setProgress] = useState<OutreachShadowProgress | null>(null);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["key"]>("ALL");
@@ -127,7 +127,7 @@ export function ShadowReview({ token, campaignId }: { token: string | null; camp
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted">Nothing is sent in this release.</p>
+      <p className="text-sm text-muted">Nothing is sent while a campaign is in shadow mode.</p>
       {error && <p role="alert" className="rounded-xl border border-danger/25 bg-danger/[0.06] p-3 text-sm text-danger">{error}</p>}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">

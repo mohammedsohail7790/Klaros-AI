@@ -6329,6 +6329,20 @@ export interface OutreachCampaignDetail {
   mode: string;
   funnel: Record<string, number>;
   clinics: OutreachClinicRow[];
+  /** Present once the campaign is live. */
+  live?: OutreachLiveStats;
+}
+
+export interface OutreachLiveStats {
+  sent_total: number;
+  sent_today: number;
+  replies: number;
+  interested: number;
+  asked_terms: number;
+  bounced: number;
+  opted_out: number;
+  declined: number;
+  needs_person: number;
 }
 
 export interface OutreachFindContactsResult {
@@ -6493,5 +6507,13 @@ export function tryOutreachReply(token: string, campaignId: string, text: string
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify({ text, provider_id: providerId ?? null }),
+  });
+}
+
+export function goLiveOutreachCampaign(token: string, campaignId: string) {
+  return request<{ status: string; mode: string; clinics_restarted: number }>(`/api/v1/outreach/campaigns/${campaignId}/go-live`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ confirm: true }),
   });
 }

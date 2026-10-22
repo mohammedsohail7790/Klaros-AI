@@ -12,6 +12,7 @@ const progress = vi.fn();
 const tryReply = vi.fn();
 const getCampaign = vi.fn();
 const start = vi.fn();
+const goLive = vi.fn();
 vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a> }));
 vi.mock("@/lib/api", () => ({
   ApiError: class extends Error {
@@ -34,6 +35,7 @@ vi.mock("@/lib/api", () => ({
   tryOutreachReply: (...a: unknown[]) => tryReply(...a),
   getOutreachCampaign: (...a: unknown[]) => getCampaign(...a),
   startOutreachCampaign: (...a: unknown[]) => start(...a),
+  goLiveOutreachCampaign: (...a: unknown[]) => goLive(...a),
   findOutreachContacts: vi.fn(),
   setOutreachContact: vi.fn(),
   pauseOutreachCampaign: vi.fn(),
@@ -110,7 +112,7 @@ describe("ShadowReview", () => {
     render(<ShadowReview token="t" campaignId="c1" />);
     expect(await screen.findByText(/Alpha Clinic: Introduction/)).toBeTruthy();
     expect(screen.getByText(/Gamma Clinic: clinic country has no known time zone/)).toBeTruthy();
-    expect(screen.getByText("Nothing is sent in this release.")).toBeTruthy();
+    expect(screen.getByText("Nothing is sent while a campaign is in shadow mode.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Flagged" }));
     await waitFor(() => expect(listMessages).toHaveBeenLastCalledWith("t", "c1", { review: "FLAGGED", limit: 100 }));
     fireEvent.click(screen.getByRole("button", { name: "Blocked" }));
