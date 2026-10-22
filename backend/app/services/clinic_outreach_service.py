@@ -19,7 +19,8 @@ from sqlalchemy import case, func, select
 from app.db.session import set_tenant_context
 from app.models.actor import ActorType
 from app.models.audit_log import AuditLog
-from app.models.clinic_outreach import ClinicOutreach, ClinicOutreachCampaign, OutreachMode, OutreachStage, OutreachSuppression
+from app.models.clinic_outreach import (ClinicOutreach, ClinicOutreachCampaign, ClinicOutreachMessage, OutreachMessageKind, OutreachMessageStatus, OutreachMode, OutreachStage,
+                                        OutreachSuppression)
 from app.models.marketing import Campaign, CampaignChannel, CampaignObjective, CampaignStatus
 from app.models.medical_tourism import Provider, ProviderStatus
 from app.models.mt_revenue import ProviderTerms
@@ -27,6 +28,7 @@ from app.services import clinic_contact_finder
 from app.services.clinic_contact_finder import _STRICT_ADDRESS, _STRICT_DOMAIN, dns_mx_exists, usable_address
 from app.services.mt_clinic_sourcing import SearchProvider, search_provider_from_settings
 from app.services.outreach_blocks import validate_blocks
+from app.services.outreach_composer import ClinicRef, check, compose
 from app.services.outreach_settings import OutreachConfig
 from app.services.tenant_settings_service import OUTREACH_BLOCKS, TenantSettingsService
 
@@ -345,6 +347,120 @@ class ClinicOutreachService:
             return (await self.get_blocks(tenant_id))["status"] == "APPROVED"
         except Exception:  # noqa: BLE001 - never raises; an unreadable wording is treated as not approved
             return False
+
+    # --- shadow review -----------------------------------------------------------------------------------------------
+
+    @staticmethod
+    def _message_view(m: ClinicOutreachMessage, clinic: str, provider_id: uuid.UUID, *, body: bool = False) -> dict[str, Any]:
+        out = {"id": str(m.id), "provider_id": str(provider_id), "clinic": clinic, "kind": m.kind, "status": m.status, "subject": m.subject,
+               "scheduled_for": m.scheduled_for.isoformat() if m.scheduled_for else None, "review_mark": m.review_mark, "review_reason": m.review_reason,
+               "blocked_reason": m.blocked_reason}
+        if body:
+            out["body"] = m.body
+        return out
+
+    async def list_messages(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, *, stage: str | None = None, status: str | None = None, review: str | None = None,
+                            limit: int = 50, offset: int = 0) -> dict[str, Any]:
+        async with self._sf() as session:
+            await self._load(session, tenant_id, campaign_id)
+            conds = [ClinicOutreachMessage.tenant_id == tenant_id, ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id]
+            if stage:
+                conds.append(ClinicOutreach.stage == stage)
+            if status:
+                conds.append(ClinicOutreachMessage.status == status)
+            if review == "UNREVIEWED":
+                conds.append(ClinicOutreachMessage.review_mark.is_(None))
+            elif review:
+                conds.append(ClinicOutreachMessage.review_mark == review)
+            base = select(ClinicOutreachMessage, Provider).join(ClinicOutreach, ClinicOutreach.id == ClinicOutreachMessage.outreach_id).join(Provider, Provider.id == ClinicOutreach.provider_id).where(*conds)
+            total = (await session.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
+            rows = (await session.execute(base.order_by(ClinicOutreachMessage.scheduled_for, ClinicOutreachMessage.id).limit(limit).offset(offset))).all()
+        return {"items": [self._message_view(m, p.name, p.id) for m, p in rows], "total": int(total)}
+
+    async def _message(self, session, tenant_id: uuid.UUID, campaign_id: uuid.UUID, message_id: uuid.UUID) -> tuple[ClinicOutreachMessage, Provider]:
+        await self._load(session, tenant_id, campaign_id)
+        row = (await session.execute(
+            select(ClinicOutreachMessage, Provider)
+            .join(ClinicOutreach, ClinicOutreach.id == ClinicOutreachMessage.outreach_id).join(Provider, Provider.id == ClinicOutreach.provider_id)
+            .where(ClinicOutreachMessage.id == message_id, ClinicOutreachMessage.tenant_id == tenant_id, ClinicOutreach.tenant_id == tenant_id,
+                   ClinicOutreach.campaign_id == campaign_id))).first()
+        if row is None:
+            raise OutreachNotFound("Outreach message not found.")
+        return row[0], row[1]
+
+    async def get_message(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, message_id: uuid.UUID) -> dict[str, Any]:
+        async with self._sf() as session:
+            m, p = await self._message(session, tenant_id, campaign_id, message_id)
+            return self._message_view(m, p.name, p.id, body=True)
+
+    async def review_message(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None, campaign_id: uuid.UUID, message_id: uuid.UUID, mark: str | None, reason: str | None) -> None:
+        if mark not in (None, "GOOD", "FLAGGED"):
+            raise OutreachError("The mark must be GOOD, FLAGGED or empty.")
+        reason = (reason or "").strip()
+        if mark == "FLAGGED" and not reason:
+            raise OutreachError("Say what is wrong with a flagged message.")
+        async with self._sf() as session:
+            m, _ = await self._message(session, tenant_id, campaign_id, message_id)
+            m.review_mark = mark
+            m.review_reason = reason[:500] if mark == "FLAGGED" else None
+            m.reviewed_by = user_id if mark else None
+            m.reviewed_at = _now() if mark else None
+            session.add(AuditLog(tenant_id=tenant_id, actor_type=ActorType.USER, actor_id=user_id, action="outreach.message_reviewed", entity_type="clinic_outreach_message",
+                                 entity_id=m.id, input_summary={"campaign_id": str(campaign_id), "message_id": str(m.id), "mark": mark}, result="success"))
+            await session.commit()
+
+    async def preview_sequence(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, provider_id: uuid.UUID) -> list[dict[str, Any]]:
+        """What the three emails would say for one clinic, from the approved wording. Nothing is stored and no clinic moves on."""
+        blocks = await self.get_blocks(tenant_id)
+        if blocks["status"] != "APPROVED":
+            raise OutreachError("Approve the wording before previewing a sequence.")
+        async with self._sf() as session:
+            _, cfg = await self._load(session, tenant_id, campaign_id)
+            provider = (await session.execute(
+                select(Provider).join(ClinicOutreach, ClinicOutreach.provider_id == Provider.id)
+                .where(Provider.id == provider_id, Provider.tenant_id == tenant_id, ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id))).scalar_one_or_none()
+            if provider is None:
+                raise OutreachNotFound("That clinic is not in this campaign.")
+            config = self._config(cfg)
+        ref = ClinicRef(name=provider.name)
+        out = []
+        for kind in (OutreachMessageKind.INTRO, OutreachMessageKind.FOLLOWUP_1, OutreachMessageKind.FOLLOWUP_2):
+            subject, body = compose(kind, ref, config.sender, config.term_sheet, blocks["blocks"])
+            out.append({"kind": kind.value, "subject": subject, "body": body,
+                        "problems": check(subject, body, clinic=ref, sender=config.sender, opt_out_line=blocks["blocks"]["opt_out_line"])})
+        return out
+
+    async def shadow_progress(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID) -> dict[str, Any]:
+        blocks = await self.get_blocks(tenant_id)
+        async with self._sf() as session:
+            _, cfg = await self._load(session, tenant_id, campaign_id)
+            msgs = (await session.execute(
+                select(ClinicOutreachMessage.status, ClinicOutreachMessage.review_mark, func.count())
+                .join(ClinicOutreach, ClinicOutreach.id == ClinicOutreachMessage.outreach_id)
+                .where(ClinicOutreachMessage.tenant_id == tenant_id, ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id)
+                .group_by(ClinicOutreachMessage.status, ClinicOutreachMessage.review_mark))).all()
+            clinics = (await session.execute(
+                select(ClinicOutreach, Provider).join(Provider, Provider.id == ClinicOutreach.provider_id)
+                .where(ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id, Provider.tenant_id == tenant_id)
+                .order_by(Provider.name))).all()
+        shadow = sum(n for st, _, n in msgs if st == OutreachMessageStatus.QUEUED_SHADOW)
+        blocked = sum(n for st, _, n in msgs if st == OutreachMessageStatus.BLOCKED)
+        reviewed = sum(n for _, mark, n in msgs if mark)
+        flagged = sum(n for _, mark, n in msgs if mark == "FLAGGED")
+        needs_you = [{"provider_id": str(p.id), "clinic": p.name, "reason": o.handoff_reason or "needs a business email address"}
+                     for o, p in clinics if o.stage in (OutreachStage.NEEDS_PERSON, OutreachStage.NO_EMAIL)]
+        next_kind = {OutreachStage.READY: OutreachMessageKind.INTRO, OutreachStage.INTRO_SENT: OutreachMessageKind.FOLLOWUP_1, OutreachStage.FOLLOWUP_1: OutreachMessageKind.FOLLOWUP_2}
+        due = [(o, p) for o, p in clinics if o.stage in next_kind]
+        due.sort(key=lambda r: (r[0].next_action_at is not None, r[0].next_action_at or _now(), str(r[0].id)))
+        next_sends = [{"provider_id": str(p.id), "clinic": p.name, "kind": next_kind[o.stage].value, "next_action_at": o.next_action_at.isoformat() if o.next_action_at else None}
+                      for o, p in due[:10]]
+        started = cfg.shadow_started_at
+        if started is not None and started.tzinfo is None:
+            started = started.replace(tzinfo=UTC)
+        return {"days_in_shadow": max(0, (_now() - started).days) if started else 0, "shadow_messages": int(shadow), "reviewed": int(reviewed), "flagged": int(flagged),
+                "flagged_share": round(flagged / reviewed, 3) if reviewed else 0.0, "blocked": int(blocked),
+                "engine_last_run_at": cfg.engine_last_run_at.isoformat() if cfg.engine_last_run_at else None, "blocks_status": blocks["status"],
+                "needs_you": needs_you, "next_sends": next_sends, "try_a_reply_tests": 0, "try_a_reply_available": False}
 
     # --- suppression -------------------------------------------------------------------------------------------------
 
