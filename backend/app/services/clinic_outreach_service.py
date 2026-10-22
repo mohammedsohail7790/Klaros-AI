@@ -286,10 +286,11 @@ class ClinicOutreachService:
             if not clinics:
                 raise OutreachError("The campaign has no clinics; create a new campaign with at least one clinic.")
             campaign.status = CampaignStatus.ACTIVE
-            cfg.mode = OutreachMode.SHADOW
+            if cfg.mode != OutreachMode.LIVE:  # resuming a paused live campaign keeps it live; it never silently drops back to shadow
+                cfg.mode = OutreachMode.SHADOW
             if cfg.shadow_started_at is None:
                 cfg.shadow_started_at = _now()
-            session.add(self._audit(tenant_id, user_id, "outreach.campaign_started", campaign.id, {"mode": OutreachMode.SHADOW.value}))
+            session.add(self._audit(tenant_id, user_id, "outreach.campaign_started", campaign.id, {"mode": cfg.mode}))
             await session.commit()
 
     async def pause(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None, campaign_id: uuid.UUID) -> None:
@@ -311,6 +312,12 @@ class ClinicOutreachService:
                 ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id))).scalars().all()
             for row in rows:
                 row.next_action_at = None
+            if rows:  # anything still waiting to be sent is cancelled, so a stopped campaign can never send later
+                queued = (await session.execute(select(ClinicOutreachMessage).where(
+                    ClinicOutreachMessage.tenant_id == tenant_id, ClinicOutreachMessage.outreach_id.in_([r.id for r in rows]),
+                    ClinicOutreachMessage.status == OutreachMessageStatus.QUEUED_LIVE))).scalars().all()
+                for m in queued:
+                    m.status, m.failure_reason = OutreachMessageStatus.CANCELLED, "the campaign was stopped"
             session.add(self._audit(tenant_id, user_id, "outreach.campaign_stopped", campaign.id, None))
             await session.commit()
 

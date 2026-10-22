@@ -94,3 +94,41 @@ async def test_go_live_is_tenant_scoped_and_a_paused_campaign_cannot_go_live(pro
     await _svc().pause(tid, USER, cid)
     with pytest.raises(OutreachError, match="shadow"):
         await _svc().go_live(tid, USER, cid, confirm=True)
+
+
+async def test_stop_cancels_everything_still_waiting_to_be_sent_and_resume_keeps_a_live_campaign_live(provider) -> None:
+    tid, cid, ids = await _ready_for_golive()
+    await _svc().go_live(tid, USER, cid, confirm=True)
+    await ENGINE.run(tid, now=datetime.now(UTC))
+    await _svc().pause(tid, USER, cid)
+    await _svc().start_shadow(tid, USER, cid)  # the Resume button
+    assert (await _svc().get(tid, cid))["mode"] == "LIVE"
+    await _svc().stop(tid, USER, cid)
+    async with async_session_maker() as s:
+        statuses = {m.status for m in (await s.execute(select(ClinicOutreachMessage).where(ClinicOutreachMessage.tenant_id == tid))).scalars()}
+    assert OutreachMessageStatus.QUEUED_LIVE not in statuses and OutreachMessageStatus.CANCELLED in statuses
+
+
+async def test_go_live_api_needs_confirm_permission_and_tenant(client, provider) -> None:
+    from app.api.v1.outreach import get_outreach_service
+    from app.main import app
+    from tests.test_agent_api import _readonly_token
+    from tests.test_business_journey_api import _register
+    from tests.test_halla_integration import _h, _tenant_id
+    from tests.test_outreach_api import BASE
+
+    app.dependency_overrides[get_outreach_service] = lambda: _svc()
+    try:
+        token = await _register(client, "Org Go Live", "golive@example.com")
+        tid = await _tenant_id(client, token)
+        cid, _ = await _campaign(tid, ("Alpha Clinic",))
+        h = _h(token)
+        assert (await client.post(f"{BASE}/campaigns/{cid}/go-live", json={}, headers=h)).status_code == 409  # not confirmed
+        assert (await client.post(f"{BASE}/campaigns/{cid}/go-live", json={"confirm": True}, headers=h)).status_code == 409  # checks have not passed
+        ro = await _readonly_token(client, tid, "ro-golive@example.com")
+        assert (await client.post(f"{BASE}/campaigns/{cid}/go-live", json={"confirm": True}, headers=_h(ro))).status_code == 403
+        other = await _register(client, "Other Go Live", "golive-b@example.com")
+        assert (await client.post(f"{BASE}/campaigns/{cid}/go-live", json={"confirm": True}, headers=_h(other))).status_code == 404
+        assert (await client.post(f"{BASE}/campaigns/{cid}/go-live", json={"confirm": True})).status_code == 401
+    finally:
+        app.dependency_overrides.pop(get_outreach_service, None)

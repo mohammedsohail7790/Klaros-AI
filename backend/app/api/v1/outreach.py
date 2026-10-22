@@ -42,6 +42,10 @@ class ReviewRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
+class GoLiveRequest(BaseModel):
+    confirm: bool = False
+
+
 class TryReplyRequest(BaseModel):
     text: str = Field(min_length=1, max_length=5000)
     provider_id: uuid.UUID | None = None
@@ -302,5 +306,19 @@ async def try_reply(
     """Classify a pasted clinic reply and show the answer that would be drafted. Stores nothing about any clinic and sends nothing."""
     try:
         return await service.try_reply(current_user.tenant_id, current_user.id, campaign_id, body.text, body.provider_id)
+    except OutreachError as exc:
+        _raise(exc)
+
+
+@router.post("/campaigns/{campaign_id}/go-live")
+async def go_live(
+    campaign_id: uuid.UUID,
+    body: GoLiveRequest,
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_CAMPAIGNS)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    """Start emailing clinics for real. Needs `confirm: true`, a shadow campaign that passed every go-live check, and a real email provider."""
+    try:
+        return await service.go_live(current_user.tenant_id, current_user.id, campaign_id, confirm=body.confirm)
     except OutreachError as exc:
         _raise(exc)
