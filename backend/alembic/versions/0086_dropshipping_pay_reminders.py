@@ -5,7 +5,7 @@ Additive only: two columns on dropshipping_orders (payment_reminders_sent, last_
 
 Rollback: `alembic downgrade 0085_clinic_outreach_sending` drops the two columns (the count of reminders already sent is lost).
 
-Revision ID: 0086_dropshipping_payment_reminders
+Revision ID: 0086_dropshipping_pay_reminders
 Revises: 0085_clinic_outreach_sending
 Create Date: 2026-10-23
 """
@@ -14,7 +14,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0086_dropshipping_payment_reminders"
+revision: str = "0086_dropshipping_pay_reminders"
 down_revision: Union[str, None] = "0085_clinic_outreach_sending"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
