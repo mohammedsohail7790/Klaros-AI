@@ -24,6 +24,11 @@ def test_the_owners_tiers_are_accepted_and_stored_tidily() -> None:
     assert ship.normalize_tiers(TIERS)[1] == []
 
 
+def test_round_tens_are_never_written_in_exponent_form() -> None:
+    tiers, problems = ship.normalize_tiers([{"max_lb": "10", "fee": "1"}, {"max_lb": 20, "fee": "2"}, {"max_lb": "100", "fee": "3"}, {"max_lb": "100.50", "fee": "4"}])
+    assert problems == [] and [t["max_lb"] for t in tiers] == ["10", "20", "100", "100.5"]
+
+
 @pytest.mark.parametrize("raw", [None, [], "tiers", [{"max_lb": "1"}], [{"max_lb": "0", "fee": "1"}], [{"max_lb": "-2", "fee": "1"}], [{"max_lb": "abc", "fee": "1"}], [{"max_lb": "1", "fee": "-1"}],
                                 [{"max_lb": "5", "fee": "1"}, {"max_lb": "5", "fee": "2"}], [{"max_lb": "5", "fee": "1"}, {"max_lb": "3", "fee": "2"}],
                                 [{"max_lb": None, "fee": "9"}, {"max_lb": "5", "fee": "1"}], [{"max_lb": "9999", "fee": "1"}], ["x"], [{"max_lb": str(i + 1), "fee": "1"} for i in range(21)]])

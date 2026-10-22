@@ -57,7 +57,7 @@ def normalize_tiers(raw: object) -> tuple[list[dict], list[str]]:
             problems.append(f"tier {i}: max_lb must be larger than the tier before it")
             continue
         previous = limit
-        out.append({"max_lb": str(limit.normalize() if limit == limit.to_integral() else limit), "fee": str(fee.quantize(Decimal("0.01"), ROUND_HALF_UP))})
+        out.append({"max_lb": str(int(limit)) if limit == limit.to_integral() else format(limit.normalize(), "f"), "fee": str(fee.quantize(Decimal("0.01"), ROUND_HALF_UP))})
     return ([] if problems else out), problems
 
 
