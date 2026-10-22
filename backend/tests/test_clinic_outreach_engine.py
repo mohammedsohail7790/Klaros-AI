@@ -261,13 +261,31 @@ async def test_the_kill_switch_flipped_mid_run_stops_it() -> None:
     assert out["composed"] == 1 and out["skipped"] == 1
 
 
-async def test_a_live_campaign_is_refused() -> None:
+async def test_a_live_campaign_drafts_queued_live_messages_paced_from_live_at_and_stops_at_ten_clinics_in_week_one() -> None:
     tid = uuid.uuid4()
-    cid, ids = await _campaign(tid)
-    await _set_cfg(cid, mode=OutreachMode.LIVE)
+    names = tuple(f"Clinic {c}" for c in "ABCDEFGHIJKL")
+    cid, ids = await _campaign(tid, names)
+    await _set_cfg(cid, mode=OutreachMode.LIVE, live_at=NOW, limits={"daily_cap": 50, "ramp_start": 50})
     out = await ENGINE.run(tid, now=NOW)
-    assert out == {"campaigns": 1, "composed": 0, "blocked": 0, "skipped": 1, "parked": 0}
-    assert await _messages(tid=tid) == [] and (await _clinic_row(ids["Alpha Clinic"])).stage == OutreachStage.READY
+    msgs = await _messages(tid=tid)
+    assert out["composed"] == 10 and out["skipped"] == 2  # the first live week reaches at most 10 clinics
+    assert len(msgs) == 10 and all(m.status == OutreachMessageStatus.QUEUED_LIVE and m.kind == "intro" for m in msgs)
+    for oid in ids.values():
+        assert (await _clinic_row(oid)).emails_sent == 0  # drafting never counts as sending
+
+
+async def test_live_pacing_starts_at_the_ramp_and_shadow_archived_drafts_are_ignored() -> None:
+    tid = uuid.uuid4()
+    cid, ids = await _campaign(tid, ("Alpha Clinic", "Beta Clinic", "Gamma Clinic"))
+    await _set_cfg(cid, mode=OutreachMode.LIVE, live_at=NOW, limits={"daily_cap": 10, "ramp_start": 1})
+    async with async_session_maker() as s:  # an archived shadow intro from before Go live must not count as the live intro or against the cap
+        s.add(ClinicOutreachMessage(tenant_id=tid, outreach_id=ids["Alpha Clinic"], kind="intro", status=OutreachMessageStatus.SHADOW_ARCHIVED, subject="old", body="old",
+                                    blocks_version=0, scheduled_for=NOW, schedule_day=NOW.date()))
+        await s.commit()
+    out = await ENGINE.run(tid, now=NOW)
+    assert out["composed"] == 1  # day 0 of live: one draft only
+    live = [m for m in await _messages(tid=tid) if m.status == OutreachMessageStatus.QUEUED_LIVE]
+    assert len(live) == 1
 
 
 async def test_an_invalid_stored_config_skips_the_campaign() -> None:

@@ -39,6 +39,8 @@ from app.tools.builtin.mt_referral_tools import INVITE_ACTION
 logger = structlog.get_logger(__name__)
 
 HORIZON = timedelta(hours=24)
+FIRST_WAVE_DAYS = timedelta(days=7)
+FIRST_WAVE_CLINICS = 10
 ONBOARDER_QUIET = timedelta(days=14)
 FAILURES_BEFORE_PARKING = 3
 ERROR_ACTION = "outreach.engine_clinic_error"
@@ -52,6 +54,8 @@ _STEPS: dict[str, tuple[OutreachMessageKind, OutreachStage, timedelta]] = {
     OutreachStage.FOLLOWUP_1: (OutreachMessageKind.FOLLOWUP_2, OutreachStage.FOLLOWUP_2, NO_RESPONSE_AFTER),
 }
 _DRAFTING_STAGES = tuple(s.value for s in _STEPS)
+
+_NOT_COUNTED = (OutreachMessageStatus.BLOCKED, OutreachMessageStatus.SHADOW_ARCHIVED, OutreachMessageStatus.CANCELLED)  # never counted as a draft of its kind or against the cap
 
 SUPPRESSED = "address is on the suppression list"
 NO_TIME_ZONE = "clinic country has no known time zone"
@@ -132,13 +136,14 @@ class ClinicOutreachEngine:
                                                         "countries": cfg_row.countries})
             except ValidationError:
                 config = None
-            shadow_started_at = _utc(cfg_row.shadow_started_at) if cfg_row.shadow_started_at is not None else None
+            started = cfg_row.live_at if mode == OutreachMode.LIVE else cfg_row.shadow_started_at  # the ramp counts from whichever phase is running
+            shadow_started_at = _utc(started) if started is not None else None
         try:
             view = await service.get_blocks(tenant_id)  # ONE read: the approval check and the wording used come from the same snapshot
         except Exception:  # noqa: BLE001 - unreadable wording is treated as not approved
             view = None
-        if paused or mode != OutreachMode.SHADOW or config is None or view is None or view["status"] != "APPROVED":
-            counts["skipped"] += 1  # kill switch on, a LIVE campaign (refused in this phase), unusable settings, or wording not approved
+        if paused or mode not in (OutreachMode.SHADOW, OutreachMode.LIVE) or config is None or view is None or view["status"] != "APPROVED":
+            counts["skipped"] += 1  # kill switch on, unusable settings, or wording not approved
             return counts
         blocks, version = view["blocks"], view["version"]
 
@@ -203,7 +208,7 @@ class ClinicOutreachEngine:
             cfg_row = (await session.execute(select(ClinicOutreachCampaign).where(
                 ClinicOutreachCampaign.campaign_id == campaign_id, ClinicOutreachCampaign.tenant_id == tenant_id).with_for_update())).scalar_one_or_none()
             state = await self._state(session, tenant_id, campaign_id)
-            if cfg_row is None or state is None or state[0] != CampaignStatus.ACTIVE or state[1] or cfg_row.mode != OutreachMode.SHADOW:
+            if cfg_row is None or state is None or state[0] != CampaignStatus.ACTIVE or state[1] or cfg_row.mode not in (OutreachMode.SHADOW, OutreachMode.LIVE):
                 return _Outcome("stop_state")
             clinic = (await session.execute(select(ClinicOutreach).where(
                 ClinicOutreach.id == outreach_id, ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id).with_for_update())).scalar_one_or_none()
@@ -219,7 +224,7 @@ class ClinicOutreachEngine:
             kind, next_stage, gap = _STEPS[clinic.stage]
             existing = (await session.execute(select(ClinicOutreachMessage.scheduled_for).where(
                 ClinicOutreachMessage.tenant_id == tenant_id, ClinicOutreachMessage.outreach_id == outreach_id, ClinicOutreachMessage.kind == kind.value,
-                ClinicOutreachMessage.status != OutreachMessageStatus.BLOCKED).order_by(ClinicOutreachMessage.scheduled_for).limit(1))).scalar_one_or_none()
+                ClinicOutreachMessage.status.notin_(_NOT_COUNTED)).order_by(ClinicOutreachMessage.scheduled_for).limit(1))).scalar_one_or_none()
             if existing is not None:  # a draft of this kind exists already: never make a second one; make the stage agree with it
                 clinic.stage, clinic.next_action_at = next_stage, _utc(existing) + gap
                 await session.commit()
@@ -254,12 +259,21 @@ class ClinicOutreachEngine:
 
             drafted = (await session.execute(select(func.count(ClinicOutreachMessage.id)).where(
                 ClinicOutreachMessage.tenant_id == tenant_id, ClinicOutreachMessage.outreach_id == outreach_id, ClinicOutreachMessage.direction == "OUT",
-                ClinicOutreachMessage.status != OutreachMessageStatus.BLOCKED))).scalar_one()
+                ClinicOutreachMessage.status.notin_(_NOT_COUNTED)))).scalar_one()
             if drafted >= config.limits.max_emails_per_clinic:
                 clinic.stage, clinic.next_action_at = OutreachStage.NO_RESPONSE, None
                 await session.commit()
                 return _Outcome("done")
 
+            live = cfg_row.mode == OutreachMode.LIVE
+            if live and kind == OutreachMessageKind.INTRO and cfg_row.live_at is not None and (now - _utc(cfg_row.live_at)) < FIRST_WAVE_DAYS:
+                introduced = (await session.execute(select(func.count(func.distinct(ClinicOutreachMessage.outreach_id)))
+                                                    .join(ClinicOutreach, ClinicOutreach.id == ClinicOutreachMessage.outreach_id)
+                                                    .where(ClinicOutreach.campaign_id == campaign_id, ClinicOutreachMessage.tenant_id == tenant_id,
+                                                           ClinicOutreachMessage.kind == OutreachMessageKind.INTRO.value,
+                                                           ClinicOutreachMessage.status.notin_(_NOT_COUNTED)))).scalar_one()
+                if introduced >= FIRST_WAVE_CLINICS:
+                    return _Outcome("skipped")  # the first live week reaches at most 10 clinics
             earliest = max(now, _utc(clinic.next_action_at)) if clinic.next_action_at is not None else now
             slot = next_send_slot(earliest, provider.country, config.limits, horizon_end=horizon_end)
             if slot is None:
@@ -269,7 +283,7 @@ class ClinicOutreachEngine:
             held = (await session.execute(select(func.count(ClinicOutreachMessage.id))
                                           .join(ClinicOutreach, ClinicOutreach.id == ClinicOutreachMessage.outreach_id)
                                           .where(ClinicOutreach.campaign_id == campaign_id, ClinicOutreachMessage.tenant_id == tenant_id,
-                                                 ClinicOutreachMessage.status != OutreachMessageStatus.BLOCKED, ClinicOutreachMessage.direction == "OUT",
+                                                 ClinicOutreachMessage.status.notin_(_NOT_COUNTED), ClinicOutreachMessage.direction == "OUT",
                                                  ClinicOutreachMessage.schedule_day == day))).scalar_one()
             if held >= warmup_cap(config.limits, shadow_started_at, slot):
                 return _Outcome("day_full")  # that day is full: this clinic waits for a later run (untouched); others may fall on another day
@@ -287,8 +301,8 @@ class ClinicOutreachEngine:
                 return _Outcome("blocked" if stored else "parked")
 
             stored = await self._insert(session, ClinicOutreachMessage(
-                tenant_id=tenant_id, outreach_id=outreach_id, direction="OUT", kind=kind.value, status=OutreachMessageStatus.QUEUED_SHADOW, subject=subject[:255],
-                body=body, blocks_version=version, scheduled_for=slot, schedule_day=_schedule_day(slot)))
+                tenant_id=tenant_id, outreach_id=outreach_id, direction="OUT", kind=kind.value, status=OutreachMessageStatus.QUEUED_LIVE if live else OutreachMessageStatus.QUEUED_SHADOW,
+                subject=subject[:255], body=body, blocks_version=version, scheduled_for=slot, schedule_day=_schedule_day(slot)))
             if not stored:
                 return _Outcome("skipped")  # the unique key says it was already done
             clinic.stage, clinic.next_action_at = next_stage, slot + gap  # emails_sent and last_sent_at are real-send counters: never touched here
