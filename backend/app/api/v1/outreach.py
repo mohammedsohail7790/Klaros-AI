@@ -42,6 +42,11 @@ class ReviewRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
+class TryReplyRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=5000)
+    provider_id: uuid.UUID | None = None
+
+
 class SuppressionRequest(BaseModel):
     value: str = Field(min_length=1, max_length=320)
     kind: str = Field(min_length=1, max_length=10)
@@ -283,5 +288,19 @@ async def shadow_progress(
 ) -> dict[str, Any]:
     try:
         return await service.shadow_progress(current_user.tenant_id, campaign_id)
+    except OutreachError as exc:
+        _raise(exc)
+
+
+@router.post("/campaigns/{campaign_id}/try-reply")
+async def try_reply(
+    campaign_id: uuid.UUID,
+    body: TryReplyRequest,
+    current_user: CurrentUser = Depends(require_permission(Permission.MANAGE_CAMPAIGNS)),
+    service: ClinicOutreachService = Depends(get_outreach_service),
+) -> dict[str, Any]:
+    """Classify a pasted clinic reply and show the answer that would be drafted. Stores nothing about any clinic and sends nothing."""
+    try:
+        return await service.try_reply(current_user.tenant_id, current_user.id, campaign_id, body.text, body.provider_id)
     except OutreachError as exc:
         _raise(exc)

@@ -138,7 +138,7 @@ async def test_shadow_progress_counts_and_needs_you(client) -> None:
     await client.put(f"{BASE}/campaigns/{cid}/messages/{mid}/review", json={"mark": "FLAGGED", "reason": "too long"}, headers=_h(token))
     p = (await client.get(f"{BASE}/campaigns/{cid}/shadow-progress", headers=_h(token))).json()
     assert p["shadow_messages"] == 2 and p["reviewed"] == 1 and p["flagged"] == 1 and p["flagged_share"] == 1.0 and p["blocked"] == 0
-    assert p["blocks_status"] == "APPROVED" and p["engine_last_run_at"] and p["try_a_reply_tests"] == 0 and p["try_a_reply_available"] is False
+    assert p["blocks_status"] == "APPROVED" and p["engine_last_run_at"] and p["try_a_reply_tests"] == 0 and p["try_a_reply_available"] is True and p["golive_checks"]["all_ok"] is False
     assert p["needs_you"] == [] and len(p["next_sends"]) == 2 and all(n["kind"] == "followup_1" for n in p["next_sends"])
 
 

@@ -91,7 +91,9 @@ def _mask(text: str, clinic: ClinicRef, sender: Sender) -> str:
     return text
 
 
-def check(subject: str, body: str, *, clinic: ClinicRef, sender: Sender, opt_out_line: str, allowed_figures: frozenset[str] = frozenset()) -> list[str]:
+def check(subject: str, body: str, *, clinic: ClinicRef, sender: Sender, opt_out_line: str, allowed_figures: frozenset[str] = frozenset(),
+          permitted_phrases: tuple[str, ...] = ()) -> list[str]:
+    """`permitted_phrases` are exact sentences the term sheet itself produced (for example the rendered commission); they are removed before the figure scans, so only the owner's own terms can pass."""
     problems: list[str] = []
     if len(subject) > SUBJECT_MAX:
         problems.append(f"subject is {len(subject)} characters; the limit is {SUBJECT_MAX}")
@@ -111,6 +113,8 @@ def check(subject: str, body: str, *, clinic: ClinicRef, sender: Sender, opt_out
         problems.append("the opt-out line is missing")
 
     text = normalize_text(_mask(raw, clinic, sender))
+    for phrase in permitted_phrases:
+        text = text.replace(normalize_text(phrase), " ")
     problems.extend(figure_scan(text))
     if _CURRENCY_SYMBOL.search(text) or any(m.group(0).split()[0].upper() in _CURRENCY_CODES or m.group(0).split()[-1].upper() in _CURRENCY_CODES
                                            for m in _CURRENCY_CODE.finditer(text)):

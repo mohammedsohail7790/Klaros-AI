@@ -15,6 +15,7 @@ from typing import Any
 
 from pydantic import ValidationError
 from sqlalchemy import case, func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.db.session import set_tenant_context
 from app.models.actor import ActorType
@@ -29,6 +30,8 @@ from app.services.clinic_contact_finder import _STRICT_ADDRESS, _STRICT_DOMAIN, 
 from app.services.mt_clinic_sourcing import SearchProvider, search_provider_from_settings
 from app.services.outreach_blocks import validate_blocks
 from app.services.outreach_composer import ClinicRef, check, compose
+from app.services.outreach_reply_classifier import ReplyLabel, classify
+from app.services.outreach_reply_composer import plan_reply
 from app.services.outreach_settings import OutreachConfig
 from app.services.tenant_settings_service import OUTREACH_BLOCKS, TenantSettingsService
 
@@ -430,7 +433,7 @@ class ClinicOutreachService:
                         "problems": check(subject, body, clinic=ref, sender=config.sender, opt_out_line=blocks["blocks"]["opt_out_line"])})
         return out
 
-    async def shadow_progress(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID) -> dict[str, Any]:
+    async def shadow_progress(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, *, with_checks: bool = True) -> dict[str, Any]:
         blocks = await self.get_blocks(tenant_id)
         async with self._sf() as session:
             _, cfg = await self._load(session, tenant_id, campaign_id)
@@ -457,10 +460,161 @@ class ClinicOutreachService:
         started = cfg.shadow_started_at
         if started is not None and started.tzinfo is None:
             started = started.replace(tzinfo=UTC)
-        return {"days_in_shadow": max(0, (_now() - started).days) if started else 0, "shadow_messages": int(shadow), "reviewed": int(reviewed), "flagged": int(flagged),
+        out = {"days_in_shadow": max(0, (_now() - started).days) if started else 0, "shadow_messages": int(shadow), "reviewed": int(reviewed), "flagged": int(flagged),
                 "flagged_share": round(flagged / reviewed, 3) if reviewed else 0.0, "blocked": int(blocked),
                 "engine_last_run_at": cfg.engine_last_run_at.isoformat() if cfg.engine_last_run_at else None, "blocks_status": blocks["status"],
-                "needs_you": needs_you, "next_sends": next_sends, "try_a_reply_tests": 0, "try_a_reply_available": False}
+                "needs_you": needs_you, "next_sends": next_sends,
+                "try_a_reply_tests": int(((cfg.exit_checks or {}).get("reply_tests") or {}).get("total", 0)), "try_a_reply_available": True}
+        if with_checks:
+            out["golive_checks"] = await self.golive_checks(tenant_id, campaign_id, progress=out)
+        return out
+
+    # --- replies (Phase 3: classify, plan and draft; nothing is sent) ------------------------------------------------
+
+    REPLY_IN, REPLY_OUT = "reply_in", "reply_out"
+    REPLY_TEST_KINDS = ("interested", "terms", "opt_out", "legal", "unclear")
+
+    @staticmethod
+    def _test_kind(label: ReplyLabel, confidence: float, handoff_reason: str | None) -> str | None:
+        if label in (ReplyLabel.INTERESTED, ReplyLabel.ASKS_WHO):
+            return "interested"
+        if label is ReplyLabel.ASKS_TERMS:
+            return "terms"
+        if label is ReplyLabel.OPT_OUT:
+            return "opt_out"
+        if label is ReplyLabel.HANDOFF and "legal" in (handoff_reason or "").lower():
+            return "legal"
+        if label is ReplyLabel.OTHER:
+            return "unclear"
+        return None
+
+    @staticmethod
+    def _plan_view(label: ReplyLabel, confidence: float, reasons: tuple[str, ...], plan) -> dict[str, Any]:
+        return {"label": label.value, "confidence": confidence, "reasons": list(reasons), "next_stage": plan.next_stage, "suppress": plan.suppress,
+                "handoff_reason": plan.handoff_reason, "problems": list(plan.problems),
+                "draft": {"subject": plan.draft[0], "body": plan.draft[1]} if plan.draft else None}
+
+    async def try_reply(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None, campaign_id: uuid.UUID, text: str, provider_id: uuid.UUID | None = None) -> dict[str, Any]:
+        """Classify a sample clinic reply and show the answer the engine would draft. Stores nothing about the clinic and sends nothing; it only counts that a test of that kind ran."""
+        text = (text or "").strip()
+        if not text:
+            raise OutreachError("Paste the clinic's reply to try.")
+        async with self._sf() as session:
+            await self._load(session, tenant_id, campaign_id)  # another tenant's campaign is a 404 before anything else is said
+        blocks = await self.get_blocks(tenant_id)
+        if blocks["status"] != "APPROVED":
+            raise OutreachError("Approve the wording before trying a reply.")
+        async with self._sf() as session:
+            _, cfg = await self._load(session, tenant_id, campaign_id)
+            config = self._config(cfg)
+            name, stage = "Example Clinic", None
+            if provider_id is not None:
+                row = (await session.execute(
+                    select(ClinicOutreach, Provider).join(Provider, Provider.id == ClinicOutreach.provider_id)
+                    .where(ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id, ClinicOutreach.provider_id == provider_id,
+                           Provider.tenant_id == tenant_id))).first()
+                if row is None:
+                    raise OutreachNotFound("That clinic is not in this campaign.")
+                name, stage = row[1].name, row[0].stage
+        c = classify(text)
+        plan = plan_reply(c, stage=stage, clinic=ClinicRef(name), sender=config.sender, term_sheet=config.term_sheet, blocks=blocks["blocks"])
+        kind = self._test_kind(c.label, c.confidence, c.handoff_reason)
+        async with self._sf() as session:
+            campaign, cfg = await self._load(session, tenant_id, campaign_id)
+            checks = dict(cfg.exit_checks or {})
+            tests = dict(checks.get("reply_tests") or {})
+            if kind:
+                tests[kind] = int(tests.get(kind, 0)) + 1
+            tests["total"] = int(tests.get("total", 0)) + 1
+            checks["reply_tests"] = tests
+            cfg.exit_checks = checks
+            session.add(self._audit(tenant_id, user_id, "outreach.reply_tested", campaign.id, {"campaign_id": str(campaign.id), "label": c.label.value, "kind": kind}))
+            await session.commit()
+        return self._plan_view(c.label, c.confidence, c.reasons, plan)
+
+    async def handle_reply(self, tenant_id: uuid.UUID, user_id: uuid.UUID | None, campaign_id: uuid.UUID, provider_id: uuid.UUID, text: str, *, now: datetime | None = None) -> dict[str, Any]:
+        """Apply the reply action table to one clinic of a SHADOW campaign: record the reply, move the clinic, suppress or clear its address where the table says so, and store the
+        drafted answer in shadow. Nothing is sent. A live campaign is refused until sending is built."""
+        now = now or _now()
+        text = (text or "").strip()
+        if not text:
+            raise OutreachError("The reply is empty.")
+        async with self._sf() as session:
+            await self._load(session, tenant_id, campaign_id)  # another tenant's campaign is a 404 before anything else is said
+        blocks = await self.get_blocks(tenant_id)
+        if blocks["status"] != "APPROVED":
+            raise OutreachError("Approve the wording before handling replies.")
+        async with self._sf() as session:
+            _, cfg = await self._load(session, tenant_id, campaign_id)
+            if cfg.mode != OutreachMode.SHADOW:
+                raise OutreachError("Replies in a live campaign are handled in a later release.")
+            config = self._config(cfg)
+            found = (await session.execute(
+                select(ClinicOutreach, Provider).join(Provider, Provider.id == ClinicOutreach.provider_id)
+                .where(ClinicOutreach.tenant_id == tenant_id, ClinicOutreach.campaign_id == campaign_id, ClinicOutreach.provider_id == provider_id, Provider.tenant_id == tenant_id)
+                .with_for_update())).first()
+            if found is None:
+                raise OutreachNotFound("That clinic is not in this campaign.")
+            row, provider = found
+            c = classify(text)
+            last_in = (await session.execute(
+                select(ClinicOutreachMessage.status).where(ClinicOutreachMessage.tenant_id == tenant_id, ClinicOutreachMessage.outreach_id == row.id, ClinicOutreachMessage.kind == self.REPLY_IN)
+                .order_by(ClinicOutreachMessage.scheduled_for.desc(), ClinicOutreachMessage.id.desc()).limit(1))).scalar_one_or_none()
+            answered = (await session.execute(
+                select(func.count(ClinicOutreachMessage.id)).where(ClinicOutreachMessage.tenant_id == tenant_id, ClinicOutreachMessage.outreach_id == row.id,
+                                                                   ClinicOutreachMessage.kind == self.REPLY_OUT))).scalar_one()
+            repeated = bool(last_in == f"IN_{c.label.value}" and answered)
+            plan = plan_reply(c, stage=row.stage, clinic=ClinicRef(provider.name), sender=config.sender, term_sheet=config.term_sheet, blocks=blocks["blocks"], repeated=repeated)
+            session.add(ClinicOutreachMessage(tenant_id=tenant_id, outreach_id=row.id, direction="IN", kind=self.REPLY_IN, status=f"IN_{c.label.value}", subject="(clinic reply)",
+                                              body=text[:5000], blocks_version=int(blocks["version"]), scheduled_for=now, schedule_day=now.date()))
+            if plan.draft:
+                session.add(ClinicOutreachMessage(tenant_id=tenant_id, outreach_id=row.id, direction="OUT", kind=self.REPLY_OUT, status=OutreachMessageStatus.QUEUED_SHADOW,
+                                                  subject=plan.draft[0], body=plan.draft[1], blocks_version=int(blocks["version"]), scheduled_for=now, schedule_day=now.date()))
+            row.last_reply_at = now
+            if plan.next_stage:
+                row.stage = plan.next_stage
+            if plan.next_stage == OutreachStage.NEEDS_PERSON:
+                row.handoff_reason = plan.handoff_reason
+            if plan.suppress and row.contact_email:
+                address = _norm(row.contact_email)
+                if not (await session.execute(select(OutreachSuppression.id).where(OutreachSuppression.tenant_id == tenant_id, OutreachSuppression.value == address))).first():
+                    session.add(OutreachSuppression(tenant_id=tenant_id, kind="address", value=address, reason=f"clinic reply: {c.label.value.lower()}"[:255]))
+            if plan.next_stage in (OutreachStage.OPTED_OUT, OutreachStage.DECLINED, OutreachStage.NEEDS_PERSON, OutreachStage.NO_EMAIL):
+                row.next_action_at = None
+            if plan.clear_contact:
+                row.contact_email, row.contact_source, row.contact_source_url = None, None, None
+            if plan.reschedule and row.next_action_at is not None:
+                row.next_action_at = max(row.next_action_at if row.next_action_at.tzinfo else row.next_action_at.replace(tzinfo=UTC), now + plan.reschedule)
+            session.add(self._audit(tenant_id, user_id, "outreach.reply_handled", campaign_id, {"campaign_id": str(campaign_id), "outreach_id": str(row.id), "label": c.label.value,
+                                                                                             "next_stage": plan.next_stage}))
+            try:
+                await session.commit()
+            except IntegrityError as exc:
+                await session.rollback()
+                raise OutreachError("A reply from this clinic was already recorded today.") from exc
+        return self._plan_view(c.label, c.confidence, c.reasons, plan)
+
+    async def golive_checks(self, tenant_id: uuid.UUID, campaign_id: uuid.UUID, *, progress: dict[str, Any] | None = None) -> dict[str, Any]:
+        """The conditions the owner's Go live decision will need (Phase 4 enables the button). Read only."""
+        progress = progress or await self.shadow_progress(tenant_id, campaign_id, with_checks=False)
+        async with self._sf() as session:
+            _, cfg = await self._load(session, tenant_id, campaign_id)
+            tests = dict((cfg.exit_checks or {}).get("reply_tests") or {})
+            try:
+                self._config(cfg)
+                settings_ok = True
+            except ValidationError:
+                settings_ok = False
+        covered = [k for k in self.REPLY_TEST_KINDS if int(tests.get(k, 0)) > 0]
+        checks = {
+            "shadow_days": {"required": 7, "actual": progress["days_in_shadow"], "ok": progress["days_in_shadow"] >= 7},
+            "reviewed": {"required": 20, "actual": progress["reviewed"], "flagged_share": progress["flagged_share"], "max_flagged_share": 0.1,
+                         "ok": progress["reviewed"] >= 20 and progress["flagged_share"] < 0.1},
+            "reply_tests": {"required_kinds": list(self.REPLY_TEST_KINDS), "covered": covered, "total": int(tests.get("total", 0)), "ok": len(covered) == len(self.REPLY_TEST_KINDS)},
+            "settings": {"ok": settings_ok},
+        }
+        checks["all_ok"] = all(v["ok"] for v in checks.values() if isinstance(v, dict))
+        return checks
 
     # --- suppression -------------------------------------------------------------------------------------------------
 
