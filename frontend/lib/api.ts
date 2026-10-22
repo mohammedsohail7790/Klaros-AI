@@ -6427,6 +6427,26 @@ export interface OutreachShadowProgress {
   next_sends: { provider_id: string; clinic: string; kind: string; next_action_at: string | null }[];
   try_a_reply_tests: number;
   try_a_reply_available: boolean;
+  golive_checks?: OutreachGoLiveChecks;
+}
+
+export interface OutreachGoLiveChecks {
+  shadow_days: { required: number; actual: number; ok: boolean };
+  reviewed: { required: number; actual: number; flagged_share: number; max_flagged_share: number; ok: boolean };
+  reply_tests: { required_kinds: string[]; covered: string[]; total: number; ok: boolean };
+  settings: { ok: boolean };
+  all_ok: boolean;
+}
+
+export interface OutreachReplyTry {
+  label: string;
+  confidence: number;
+  reasons: string[];
+  next_stage: string | null;
+  suppress: boolean;
+  handoff_reason: string | null;
+  problems: string[];
+  draft: { subject: string; body: string } | null;
 }
 
 export function getOutreachBlocks(token: string) {
@@ -6466,4 +6486,12 @@ export function previewOutreachSequence(token: string, campaignId: string, provi
 
 export function getOutreachShadowProgress(token: string, campaignId: string) {
   return request<OutreachShadowProgress>(`/api/v1/outreach/campaigns/${campaignId}/shadow-progress`, { headers: authHeaders(token) });
+}
+
+export function tryOutreachReply(token: string, campaignId: string, text: string, providerId?: string) {
+  return request<OutreachReplyTry>(`/api/v1/outreach/campaigns/${campaignId}/try-reply`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ text, provider_id: providerId ?? null }),
+  });
 }

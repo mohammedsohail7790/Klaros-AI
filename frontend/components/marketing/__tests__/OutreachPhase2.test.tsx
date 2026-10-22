@@ -9,6 +9,7 @@ const getMessage = vi.fn();
 const review = vi.fn();
 const previewSeq = vi.fn();
 const progress = vi.fn();
+const tryReply = vi.fn();
 const getCampaign = vi.fn();
 const start = vi.fn();
 vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a> }));
@@ -30,6 +31,7 @@ vi.mock("@/lib/api", () => ({
   reviewOutreachMessage: (...a: unknown[]) => review(...a),
   previewOutreachSequence: (...a: unknown[]) => previewSeq(...a),
   getOutreachShadowProgress: (...a: unknown[]) => progress(...a),
+  tryOutreachReply: (...a: unknown[]) => tryReply(...a),
   getOutreachCampaign: (...a: unknown[]) => getCampaign(...a),
   startOutreachCampaign: (...a: unknown[]) => start(...a),
   findOutreachContacts: vi.fn(),
@@ -143,6 +145,50 @@ describe("ShadowReview", () => {
     expect(screen.getByText("First follow-up: S2")).toBeTruthy();
     expect(screen.getByText("Last follow-up: S3")).toBeTruthy();
     expect(previewSeq).toHaveBeenCalledWith("t", "c1", "p1");
+  });
+});
+
+describe("ShadowReview Phase 3", () => {
+  beforeEach(() => {
+    listMessages.mockReset().mockResolvedValue({ items: [], total: 0 });
+    tryReply.mockReset().mockResolvedValue({ label: "ASKS_TERMS", confidence: 0.9, reasons: ["x"], next_stage: "TERMS_PROPOSED", suppress: false, handoff_reason: null, problems: [],
+                                              draft: { subject: "Re: MedLuxe", body: "Thank you for your reply." } });
+    progress.mockReset().mockResolvedValue(prog({
+      golive_checks: {
+        shadow_days: { required: 7, actual: 2, ok: false },
+        reviewed: { required: 20, actual: 0, flagged_share: 0, max_flagged_share: 0.1, ok: false },
+        reply_tests: { required_kinds: ["interested", "terms", "opt_out", "legal", "unclear"], covered: ["terms"], total: 1, ok: false },
+        settings: { ok: true },
+        all_ok: false,
+      },
+    }));
+  });
+
+  it("shows the go-live checklist with what is done and what is not", async () => {
+    render(<ShadowReview token="t" campaignId="c1" />);
+    expect(await screen.findByText(/Not yet: at least 7 days in shadow \(2 so far\)/)).toBeTruthy();
+    expect(screen.getByText(/Done: terms and sender details complete/)).toBeTruthy();
+    expect(screen.getByText(/1 of 5 covered/)).toBeTruthy();
+  });
+
+  it("tries a pasted reply and shows how it was read and the drafted answer", async () => {
+    render(<ShadowReview token="t" campaignId="c1" />);
+    const box = await screen.findByLabelText("Sample clinic reply");
+    expect((screen.getByRole("button", { name: "Try this reply" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(box, { target: { value: "What commission do you pay?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Try this reply" }));
+    await waitFor(() => expect(tryReply).toHaveBeenCalledWith("t", "c1", "What commission do you pay?"));
+    expect(await screen.findByText(/asks terms \(90% sure\)/)).toBeTruthy();
+    expect(screen.getByText("Thank you for your reply.")).toBeTruthy();
+  });
+
+  it("says a person takes over when the reply is handed off", async () => {
+    tryReply.mockResolvedValue({ label: "HANDOFF", confidence: 0.95, reasons: [], next_stage: "NEEDS_PERSON", suppress: false, handoff_reason: "It mentions a legal matter", problems: [], draft: null });
+    render(<ShadowReview token="t" campaignId="c1" />);
+    fireEvent.change(await screen.findByLabelText("Sample clinic reply"), { target: { value: "our lawyer" } });
+    fireEvent.click(screen.getByRole("button", { name: "Try this reply" }));
+    expect(await screen.findByText(/A person takes over. It mentions a legal matter./)).toBeTruthy();
+    expect(screen.getByText("No answer is drafted for this one.")).toBeTruthy();
   });
 });
 

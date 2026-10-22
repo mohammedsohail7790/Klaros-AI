@@ -10,6 +10,8 @@ import {
   getOutreachShadowProgress,
   listOutreachMessages,
   previewOutreachSequence,
+  OutreachReplyTry,
+  tryOutreachReply,
   reviewOutreachMessage,
 } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
@@ -37,6 +39,8 @@ export function ShadowReview({ token, campaignId }: { token: string | null; camp
   const [preview, setPreview] = useState<OutreachSequenceMessage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [tried, setTried] = useState<OutreachReplyTry | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -88,6 +92,20 @@ export function ShadowReview({ token, campaignId }: { token: string | null; camp
     }
   }
 
+  async function tryReply() {
+    if (!token || busy || !replyText.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setTried(await tryOutreachReply(token, campaignId, replyText.trim()));
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "We couldn't try that reply just now.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function previewFor(providerId: string) {
     if (!token) return;
     try {
@@ -120,6 +138,40 @@ export function ShadowReview({ token, campaignId }: { token: string | null; camp
           </div>
         ))}
       </div>
+
+      {progress.golive_checks && (
+        <section aria-label="Before going live">
+          <h2 className="mb-2 font-medium">Before going live</h2>
+          <ul className="space-y-1 text-sm">
+            <li>{progress.golive_checks.shadow_days.ok ? "Done" : "Not yet"}: at least {progress.golive_checks.shadow_days.required} days in shadow ({progress.golive_checks.shadow_days.actual} so far)</li>
+            <li>{progress.golive_checks.reviewed.ok ? "Done" : "Not yet"}: at least {progress.golive_checks.reviewed.required} drafts reviewed with under 10 percent flagged ({progress.golive_checks.reviewed.actual} reviewed)</li>
+            <li>{progress.golive_checks.reply_tests.ok ? "Done" : "Not yet"}: try a reply of each kind: {progress.golive_checks.reply_tests.required_kinds.map((k) => k.replace("_", "-")).join(", ")} ({progress.golive_checks.reply_tests.covered.length} of {progress.golive_checks.reply_tests.required_kinds.length} covered)</li>
+            <li>{progress.golive_checks.settings.ok ? "Done" : "Not yet"}: terms and sender details complete</li>
+          </ul>
+        </section>
+      )}
+
+      <section aria-label="Try a reply" className="space-y-2">
+        <h2 className="font-medium">Try a reply</h2>
+        <p className="text-sm text-muted">Paste a sample reply from a clinic to see how it would be read and answered. Nothing is stored about any clinic and nothing is sent.</p>
+        <label htmlFor="try-reply-text" className="text-sm">Sample clinic reply</label>
+        <textarea id="try-reply-text" rows={4} value={replyText} onChange={(e) => setReplyText(e.target.value)} className="w-full rounded-xl border border-border-strong bg-surface px-3 py-2 text-sm" />
+        <Button size="sm" variant="secondary" disabled={busy || !replyText.trim()} onClick={tryReply}>Try this reply</Button>
+        {tried && (
+          <div className="space-y-2 rounded-xl border border-border p-3 text-sm" aria-label="Reply result">
+            <p><span className="font-medium">Read as:</span> {tried.label.replace(/_/g, " ").toLowerCase()} ({Math.round(tried.confidence * 100)}% sure)</p>
+            <p><span className="font-medium">Next step:</span> {tried.handoff_reason ? `A person takes over. ${tried.handoff_reason}.` : tried.next_stage ? tried.next_stage.replace(/_/g, " ").toLowerCase() : "no change"}</p>
+            {tried.draft ? (
+              <div>
+                <p className="font-medium">{tried.draft.subject}</p>
+                <p className="whitespace-pre-wrap text-muted">{tried.draft.body}</p>
+              </div>
+            ) : (
+              <p className="text-muted">No answer is drafted for this one.</p>
+            )}
+          </div>
+        )}
+      </section>
 
       {progress.needs_you.length > 0 && (
         <section>
