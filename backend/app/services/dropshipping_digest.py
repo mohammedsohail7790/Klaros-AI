@@ -22,6 +22,7 @@ from app.models.audit_log import AuditLog
 from app.models.dropshipping import (
     InventorySnapshot,
     Order,
+    OrderLine,
     OrderStatus,
     Product,
     ProductStatus,
@@ -49,6 +50,25 @@ def _money(value: Decimal | None) -> str:
     return f"${(value or Decimal(0)).quantize(Decimal('0.01'))}"
 
 
+def margin_of(rows, since: datetime) -> dict[str, Any] | None:
+    """An ESTIMATE of what the paid product lines since `since` earned: price paid minus today's supplier cost, before shipping, tax and refunds. Lines whose item has no supplier cost
+    are left out and counted, so the figure is never made up. None when no line has a cost."""
+    sales = cost = Decimal(0)
+    uncosted = 0
+    for line_total, quantity, supplier_cost, paid_at in rows:
+        at = paid_at if paid_at.tzinfo else paid_at.replace(tzinfo=timezone.utc)
+        if at < since:
+            continue
+        if supplier_cost is None:
+            uncosted += 1
+            continue
+        sales += Decimal(line_total)
+        cost += Decimal(supplier_cost) * int(quantity)
+    if sales == 0:
+        return None
+    return {"sales": sales, "margin": sales - cost, "percent": ((sales - cost) / sales * 100).quantize(Decimal("0.1")), "uncosted_lines": uncosted}
+
+
 async def gather(session_factory, tenant_id: uuid.UUID, now: datetime | None = None) -> dict[str, Any]:
     """The numbers. Pure reads, tenant-scoped."""
     now = now or datetime.now(timezone.utc)
@@ -64,6 +84,9 @@ async def gather(session_factory, tenant_id: uuid.UUID, now: datetime | None = N
         paid_24h = await count(select(func.count()).select_from(Order).where(Order.tenant_id == tenant_id, paid, Order.paid_at >= day))
         revenue_24h = (await session.execute(select(func.coalesce(func.sum(Order.total), 0)).where(Order.tenant_id == tenant_id, paid, Order.paid_at >= day))).scalar_one()
         revenue_7d = (await session.execute(select(func.coalesce(func.sum(Order.total), 0)).where(Order.tenant_id == tenant_id, paid, Order.paid_at >= week))).scalar_one()
+        margin_rows = (await session.execute(select(OrderLine.line_total, OrderLine.quantity, Sku.supplier_cost, Order.paid_at).join(Order, Order.id == OrderLine.order_id).join(
+            Sku, Sku.id == OrderLine.sku_id).where(Order.tenant_id == tenant_id, paid, Order.paid_at >= week))).all()
+        margin_24h, margin_7d = margin_of(margin_rows, day), margin_of(margin_rows, week)
         waiting_to_order = await count(select(func.count()).select_from(SupplierOrder).where(SupplierOrder.tenant_id == tenant_id, SupplierOrder.status == SupplierOrderStatus.TO_PLACE.value))
         failed_supplier = await count(select(func.count()).select_from(SupplierOrder).where(SupplierOrder.tenant_id == tenant_id, SupplierOrder.status == SupplierOrderStatus.FAILED.value))
         refunds = (await session.execute(select(Order.order_number).where(Order.tenant_id == tenant_id, Order.status == OrderStatus.REFUND_REQUESTED.value).order_by(Order.placed_at).limit(MAX_NAMES))).scalars().all()
@@ -90,7 +113,7 @@ async def gather(session_factory, tenant_id: uuid.UUID, now: datetime | None = N
         "business": org.name if org is not None else "Your store", "owners": owners, "already_sent_today": bool(done),
         "orders_24h": orders_24h, "paid_24h": paid_24h, "revenue_24h": Decimal(revenue_24h), "revenue_7d": Decimal(revenue_7d),
         "waiting_to_order": waiting_to_order, "failed_supplier": failed_supplier, "refunds": list(refunds), "exceptions": exceptions, "stuck": list(stuck),
-        "sold_out": sold_out, "low": low,
+        "sold_out": sold_out, "low": low, "margin_24h": margin_24h, "margin_7d": margin_7d,
     }
 
 
@@ -109,6 +132,13 @@ def compose(d: dict[str, Any], base_url: str) -> tuple[str, str]:
     subject = f"{d['business']}: {d['paid_24h']} paid order{'' if d['paid_24h'] == 1 else 's'}, {_money(d['revenue_24h'])} yesterday" + (f", {waiting} waiting on you" if waiting else "")
     out = [f"Good morning,\n\nHere is how {d['business']} did in the last 24 hours.\n",
            f"Orders placed: {d['orders_24h']}", f"Orders paid: {d['paid_24h']}", f"Revenue: {_money(d['revenue_24h'])} (last 7 days: {_money(d['revenue_7d'])})"]
+    m = d.get("margin_7d")
+    if m:
+        today = d.get("margin_24h")
+        out.append(f"Product margin, last 7 days: {_money(m['margin'])} on {_money(m['sales'])} of product sales ({m['percent']}%)"
+                   + (f"; last 24 hours: {_money(today['margin'])}" if today else ""))
+        out.append("  (an estimate from today's supplier costs, before shipping, tax and refunds"
+                   + (f"; {m['uncosted_lines']} order line{'' if m['uncosted_lines'] == 1 else 's'} left out because the item has no supplier cost" if m["uncosted_lines"] else "") + ")")
     if waiting:
         out.append("\nWaiting on you")
         if d["waiting_to_order"]:
