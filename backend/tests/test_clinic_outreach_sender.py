@@ -168,7 +168,7 @@ async def test_the_daily_cap_counts_sent_emails_but_never_holds_back_replies() -
     msgs = await _messages(tid=tid)
     assert len(msgs) == 1  # the engine itself drafted only one for the day
     async with async_session_maker() as s:  # a second introduction was queued by hand, plus a reply to a clinic
-        second = ids["Beta Clinic"]
+        second = next(i for i in ids.values() if i != msgs[0].outreach_id)  # the clinic the engine did NOT draft for (which one that is depends on the random ids)
         s.add(ClinicOutreachMessage(tenant_id=tid, outreach_id=second, kind="intro", status=OutreachMessageStatus.QUEUED_LIVE, subject="i", body="b", blocks_version=0, scheduled_for=NOW, schedule_day=NOW.date()))
         s.add(ClinicOutreachMessage(tenant_id=tid, outreach_id=second, kind="reply_out", status=OutreachMessageStatus.QUEUED_LIVE, subject="r", body="b", blocks_version=0, scheduled_for=NOW, schedule_day=NOW.date()))
         await s.execute(update(ClinicOutreach).where(ClinicOutreach.id == second).values(stage=OutreachStage.INTRO_SENT))
