@@ -5,13 +5,14 @@ import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { ToneBadge } from "@/components/dropshipping/parts";
+import ProblemReports from "@/components/dropshipping/ProblemReports";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
-import { DsOrder, StoreView, WorkQueueEntry, describeError, getStoreSettings, listOrders, listSupplierOrders } from "@/lib/dropshippingApi";
+import { DsOrder, StoreView, WorkQueueEntry, canCoordinate, describeError, getStoreSettings, listOrders, listSupplierOrders } from "@/lib/dropshippingApi";
 import { money, ORDER_STATUS } from "@/lib/dropshippingLabels";
 import { useAuth } from "@/lib/useAuth";
 
@@ -75,6 +76,8 @@ export default function DropshippingTodayPage() {
               <StatCard label="Waiting for payment" value={data.unpaid.length} />
               <StatCard label="Store" value={data.store ? (data.store.open_to_shoppers ? "Open" : "Closed") : "Unknown"} tone={data.store?.open_to_shoppers ? "success" : "neutral"} compact />
             </div>
+
+            {token && <ProblemReports token={token} canDecide={canCoordinate(user?.role)} />}
 
             {nothingToDo && <EmptyState icon={ShoppingBag} title="Nothing needs you right now." />}
 

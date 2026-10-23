@@ -230,3 +230,23 @@ class Shipment(TenantScopedMixin, Base):
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     entered_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)  # added by 0081: what went wrong, for an EXCEPTION
+
+
+class ProblemStatus(StrEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
+class ProblemReport(TenantScopedMixin, Base):
+    """A shopper's report (made from their own order page) that something is wrong with what arrived. Staff approve it, which flags the order for a refund, or reject it with a note."""
+
+    __tablename__ = "dropshipping_problem_reports"
+    __table_args__ = (Index("ix_ds_problem_reports_tenant_status", "tenant_id", "status"),)
+
+    order_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("dropshipping_orders.id"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default=ProblemStatus.PENDING.value, server_default="PENDING")
+    description: Mapped[str] = mapped_column(Text, nullable=False)  # what the shopper wrote: personal data, shown to staff only
+    decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)

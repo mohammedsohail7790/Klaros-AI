@@ -30,6 +30,7 @@ from app.services.dropshipping_checkout_service import (
     TooManyUnpaidOrdersError,
 )
 from app.services.dropshipping_order_rules import OrderTransitionError
+from app.services.dropshipping_problem_service import DropshippingProblemService
 from app.services.dropshipping_store_service import DropshippingStoreService
 from app.services.quote_deposit_service import StripeNotConfiguredError
 
@@ -52,6 +53,10 @@ class EnquiryBody(_Strict):
     order_number: str | None = Field(default=None, max_length=40)
     idempotency_key: str | None = Field(default=None, max_length=100)
     website: str | None = Field(default=None, max_length=255)  # honeypot: a person never sees this field, so anything in it is a bot
+
+
+class ProblemBody(_Strict):
+    description: str = Field(min_length=1, max_length=2000)
 
 
 class CheckoutLine(_Strict):
@@ -177,4 +182,15 @@ async def send_enquiry(body: EnquiryBody, bus: EventBus = Depends(get_wired_even
         idempotency_key=body.idempotency_key, website=body.website,
     )
     await public_leads.submit_public_lead(tenant_id, lead, bus)
+    return {"received": True}
+
+
+@router.post("/orders/{status_token}/problem", status_code=201, dependencies=[_checkout])
+async def report_problem(status_token: str, body: ProblemBody) -> dict[str, bool]:
+    """The shopper tells us something is wrong with what arrived (from their own order page). Only a shipped or delivered order, once; staff decide. Nothing but `received` comes back."""
+    tenant_id = _tenant()
+    try:
+        await DropshippingProblemService(async_session_maker).report(tenant_id, status_token[:80], body.description)
+    except _HANDLED as exc:
+        raise _refuse(exc)
     return {"received": True}

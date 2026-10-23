@@ -21,6 +21,7 @@ from app.services.dropshipping_catalog_service import CatalogConflictError, Cata
 from app.services.dropshipping_order_export import supplier_orders_csv
 from app.services.dropshipping_order_rules import OrderTransitionError
 from app.services.dropshipping_order_service import DropshippingOrderService
+from app.services.dropshipping_problem_service import DropshippingProblemService
 
 router = APIRouter(prefix="/dropshipping", tags=["dropshipping-orders"])
 
@@ -165,6 +166,28 @@ async def export_supplier_orders(
     entries = await _service().list_supplier_orders(current_user.tenant_id, status=status, limit=200)
     return Response(content=supplier_orders_csv(entries), media_type="text/csv; charset=utf-8", headers={
         "Content-Disposition": f'attachment; filename="supplier-orders-{status.lower()}.csv"', "Cache-Control": "no-store"})
+
+
+@router.get("/problem-reports")
+async def list_problem_reports(
+    status: str | None = Query(default=None, pattern="^(PENDING|APPROVED|REJECTED)$"), limit: int = Query(default=100, ge=1, le=200), current_user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """What shoppers reported as wrong with their orders (damaged, wrong or missing items). Default view for staff: status=PENDING."""
+    _need_read(current_user)
+    return {"problem_reports": await DropshippingProblemService(async_session_maker).list(current_user.tenant_id, status=status, limit=limit)}
+
+
+@router.post("/problem-reports/{report_id}/{decision}")
+async def decide_problem_report(report_id: uuid.UUID, decision: str, body: dict | None = None, current_user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """decision = approve (flags the order for a refund; Klaros moves no money, staff refund in Stripe) | reject (body: note, required: why). Staff who work orders only."""
+    _need_coordinate(current_user)
+    if decision not in ("approve", "reject"):
+        raise HTTPException(status_code=404, detail="Unknown decision")
+    try:
+        return {"problem_report": await DropshippingProblemService(async_session_maker).decide(
+            current_user.tenant_id, report_id, approve=decision == "approve", note=(body or {}).get("note"), actor_id=current_user.id)}
+    except _HANDLED as exc:
+        raise _http_for(exc)
 
 
 @router.post("/supplier-orders/{supplier_order_id}/shipments")

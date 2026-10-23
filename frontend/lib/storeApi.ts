@@ -21,7 +21,9 @@ export interface StoreOrder {
   order_number: string; status: string; status_label: string; currency: string; placed_at: string | null; subtotal: string; shipping: string; tax: string; total: string;
   can_pay: boolean;
   /** sales tax is worked out by Stripe when the order is paid, so none is shown yet */
-  tax_at_payment?: boolean; items: { name: string; quantity: number; unit_price: string; line_total: string }[];
+  tax_at_payment?: boolean;
+  /** the shopper may tell us something is wrong with what arrived (shipped or delivered, within the window, none open yet) */
+  can_report_problem?: boolean; problem?: { status: "PENDING" | "APPROVED" | "REJECTED" } | null; items: { name: string; quantity: number; unit_price: string; line_total: string }[];
   tracking: { carrier: string | null; tracking_number: string; tracking_url: string | null; status: string }[];
 }
 export interface CheckoutBody {
@@ -103,6 +105,10 @@ export async function getStoreProduct(slug: string, opts: { live?: boolean } = {
 export interface EnquiryBody { name: string; email: string; message: string; order_number?: string; website?: string; idempotency_key?: string }
 /** The "write to us" form. It becomes a lead in the shop owner's CRM; it works while the shop is closed. */
 export const sendEnquiry = (body: EnquiryBody) => call<{ received: boolean }>("/enquiry", { ...LIVE, method: "POST", body: JSON.stringify(body) });
+
+/** "Something is wrong with my order": from the shopper's own order page; staff decide. */
+export const reportOrderProblem = (token: string, description: string) =>
+  call<{ received: boolean }>(`/orders/${encodeURIComponent(token)}/problem`, { ...LIVE, method: "POST", body: JSON.stringify({ description }) });
 
 export const createCheckout = (body: CheckoutBody) => call<CheckoutResult>("/checkout", { ...LIVE, method: "POST", body: JSON.stringify(body) });
 export const getStoreOrder = async (token: string) => (await call<{ order: StoreOrder }>(`/orders/${encodeURIComponent(token)}`, LIVE)).order;
