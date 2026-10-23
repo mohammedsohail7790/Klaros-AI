@@ -11,13 +11,14 @@ cancel, flag a refund); MANAGE_DROPSHIPPING alone to record a payment and to era
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.api.deps import CurrentUser, get_current_user
 from app.db.session import async_session_maker
 from app.models.rbac import Permission, role_has_permission
 from app.services.dropshipping_catalog_import import CatalogValidationError
 from app.services.dropshipping_catalog_service import CatalogConflictError, CatalogNotFoundError
+from app.services.dropshipping_order_export import supplier_orders_csv
 from app.services.dropshipping_order_rules import OrderTransitionError
 from app.services.dropshipping_order_service import DropshippingOrderService
 
@@ -153,6 +154,17 @@ async def list_supplier_orders(
     """What to order from each supplier, with the items and where they ship. Default view for staff: status=TO_PLACE."""
     _need_read(current_user)
     return {"supplier_orders": await _service().list_supplier_orders(current_user.tenant_id, status=status, limit=limit, offset=offset)}
+
+
+@router.get("/supplier-orders/export")
+async def export_supplier_orders(
+    status: str = Query(default="TO_PLACE", pattern="^(TO_PLACE|PLACED|CONFIRMED|FAILED|CANCELLED)$"), current_user: CurrentUser = Depends(get_current_user),
+) -> Response:
+    """The queue as a CSV (one row per item to order, with the delivery address) to hand to the supplier. A bulk file of addresses: staff who work orders only."""
+    _need_coordinate(current_user)
+    entries = await _service().list_supplier_orders(current_user.tenant_id, status=status, limit=200)
+    return Response(content=supplier_orders_csv(entries), media_type="text/csv; charset=utf-8", headers={
+        "Content-Disposition": f'attachment; filename="supplier-orders-{status.lower()}.csv"', "Cache-Control": "no-store"})
 
 
 @router.post("/supplier-orders/{supplier_order_id}/shipments")
