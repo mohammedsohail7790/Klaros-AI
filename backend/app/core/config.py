@@ -150,6 +150,8 @@ class Settings(BaseSettings):
     DROPSHIPPING_STORE_URL: str | None = None
     # The store's owners get one e-mail a day (orders, revenue, what is waiting, what is sold out) from this hour (UTC) on; 13 is 9 am in New York in summer.
     DROPSHIPPING_DIGEST_HOUR_UTC: int = 13
+    # A shopper who started an order and did not pay gets up to two plain reminders (after 1 hour and after 24 hours). Set to false to switch them off.
+    DROPSHIPPING_PAYMENT_REMINDERS: bool = True
     # The store's name in the e-mails it sends to shoppers (the storefront reads its own NEXT_PUBLIC_STORE_NAME).
     DROPSHIPPING_STORE_NAME: str = "Clean Room"
     # Stops the checkout route from creating unlimited unpaid orders; checked per store.
