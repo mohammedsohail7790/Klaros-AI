@@ -31,6 +31,7 @@ from app.services.dropshipping_checkout_service import (
 )
 from app.services.dropshipping_order_rules import OrderTransitionError
 from app.services.dropshipping_problem_service import DropshippingProblemService
+from app.services.dropshipping_stock_alerts import subscribe as subscribe_stock_alert
 from app.services.dropshipping_store_service import DropshippingStoreService
 from app.services.quote_deposit_service import StripeNotConfiguredError
 
@@ -57,6 +58,12 @@ class EnquiryBody(_Strict):
 
 class ProblemBody(_Strict):
     description: str = Field(min_length=1, max_length=2000)
+
+
+class StockAlertBody(_Strict):
+    sku: str = Field(min_length=1, max_length=80)
+    email: str = Field(min_length=3, max_length=255)
+    website: str | None = Field(default=None, max_length=255)  # honeypot: a person never sees this field
 
 
 class CheckoutLine(_Strict):
@@ -191,6 +198,19 @@ async def report_problem(status_token: str, body: ProblemBody) -> dict[str, bool
     tenant_id = _tenant()
     try:
         await DropshippingProblemService(async_session_maker).report(tenant_id, status_token[:80], body.description)
+    except _HANDLED as exc:
+        raise _refuse(exc)
+    return {"received": True}
+
+
+@router.post("/stock-alerts", status_code=201, dependencies=[_enquiry])
+async def ask_to_be_told(body: StockAlertBody) -> dict[str, bool]:
+    """A shopper asks to be told when a sold-out item is back. One plain message later, and the address is then removed. Nothing but `received` comes back."""
+    tenant_id = _tenant()
+    if body.website:
+        return {"received": True}  # a bot: no signal that it was caught
+    try:
+        await subscribe_stock_alert(async_session_maker, tenant_id, body.sku, body.email)
     except _HANDLED as exc:
         raise _refuse(exc)
     return {"received": True}
