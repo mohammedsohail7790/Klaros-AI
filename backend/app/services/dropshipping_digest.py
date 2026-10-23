@@ -24,6 +24,8 @@ from app.models.dropshipping import (
     Order,
     OrderLine,
     OrderStatus,
+    ProblemReport,
+    ProblemStatus,
     Product,
     ProductStatus,
     Shipment,
@@ -90,6 +92,7 @@ async def gather(session_factory, tenant_id: uuid.UUID, now: datetime | None = N
         waiting_to_order = await count(select(func.count()).select_from(SupplierOrder).where(SupplierOrder.tenant_id == tenant_id, SupplierOrder.status == SupplierOrderStatus.TO_PLACE.value))
         failed_supplier = await count(select(func.count()).select_from(SupplierOrder).where(SupplierOrder.tenant_id == tenant_id, SupplierOrder.status == SupplierOrderStatus.FAILED.value))
         refunds = (await session.execute(select(Order.order_number).where(Order.tenant_id == tenant_id, Order.status == OrderStatus.REFUND_REQUESTED.value).order_by(Order.placed_at).limit(MAX_NAMES))).scalars().all()
+        problems = await count(select(func.count()).select_from(ProblemReport).where(ProblemReport.tenant_id == tenant_id, ProblemReport.status == ProblemStatus.PENDING.value))
         exceptions = await count(select(func.count()).select_from(Shipment).where(Shipment.tenant_id == tenant_id, Shipment.status == ShipmentStatus.EXCEPTION.value))
         stuck = (await session.execute(select(Order.order_number).where(
             Order.tenant_id == tenant_id, Order.status.in_([OrderStatus.PAID.value, OrderStatus.SUPPLIER_ORDER_PLACED.value]), Order.paid_at < now - STUCK_AFTER).order_by(Order.paid_at).limit(MAX_NAMES))).scalars().all()
@@ -112,13 +115,13 @@ async def gather(session_factory, tenant_id: uuid.UUID, now: datetime | None = N
     return {
         "business": org.name if org is not None else "Your store", "owners": owners, "already_sent_today": bool(done),
         "orders_24h": orders_24h, "paid_24h": paid_24h, "revenue_24h": Decimal(revenue_24h), "revenue_7d": Decimal(revenue_7d),
-        "waiting_to_order": waiting_to_order, "failed_supplier": failed_supplier, "refunds": list(refunds), "exceptions": exceptions, "stuck": list(stuck),
+        "waiting_to_order": waiting_to_order, "failed_supplier": failed_supplier, "refunds": list(refunds), "problems": problems, "exceptions": exceptions, "stuck": list(stuck),
         "sold_out": sold_out, "low": low, "margin_24h": margin_24h, "margin_7d": margin_7d,
     }
 
 
 def needs_attention(d: dict[str, Any]) -> bool:
-    return bool(d["waiting_to_order"] or d["failed_supplier"] or d["refunds"] or d["exceptions"] or d["stuck"] or d["sold_out"] or d["low"])
+    return bool(d["waiting_to_order"] or d["failed_supplier"] or d["refunds"] or d.get("problems") or d["exceptions"] or d["stuck"] or d["sold_out"] or d["low"])
 
 
 def is_quiet(d: dict[str, Any]) -> bool:
@@ -128,7 +131,7 @@ def is_quiet(d: dict[str, Any]) -> bool:
 def compose(d: dict[str, Any], base_url: str) -> tuple[str, str]:
     """(subject, body). Counts, money, order numbers and product names only."""
     base = base_url.rstrip("/")
-    waiting = d["waiting_to_order"] + d["failed_supplier"] + len(d["refunds"]) + d["exceptions"] + len(d["stuck"])
+    waiting = d["waiting_to_order"] + d["failed_supplier"] + len(d["refunds"]) + d.get("problems", 0) + d["exceptions"] + len(d["stuck"])
     subject = f"{d['business']}: {d['paid_24h']} paid order{'' if d['paid_24h'] == 1 else 's'}, {_money(d['revenue_24h'])} yesterday" + (f", {waiting} waiting on you" if waiting else "")
     out = [f"Good morning,\n\nHere is how {d['business']} did in the last 24 hours.\n",
            f"Orders placed: {d['orders_24h']}", f"Orders paid: {d['paid_24h']}", f"Revenue: {_money(d['revenue_24h'])} (last 7 days: {_money(d['revenue_7d'])})"]
@@ -147,6 +150,8 @@ def compose(d: dict[str, Any], base_url: str) -> tuple[str, str]:
             out.append(f"- {d['failed_supplier']} supplier order{'' if d['failed_supplier'] == 1 else 's'} failed and need another try: {base}/dropshipping/fulfilment")
         if d["refunds"]:
             out.append(f"- Refunds to make in Stripe: {', '.join(d['refunds'])} ({base}/dropshipping/orders)")
+        if d.get("problems"):
+            out.append(f"- {d['problems']} shopper report{'' if d['problems'] == 1 else 's'} that something is wrong with an order, to review: {base}/dropshipping")
         if d["exceptions"]:
             out.append(f"- {d['exceptions']} parcel{'' if d['exceptions'] == 1 else 's'} with a delivery problem: {base}/dropshipping/orders")
         if d["stuck"]:
