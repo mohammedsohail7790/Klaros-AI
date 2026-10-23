@@ -1,12 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+vi.mock("next/headers", () => ({ headers: async () => ({ get: () => "meetklaros.com" }) }));   // the Klaros marketing host: the store host is covered in seo.test.tsx
 import robots from "@/app/robots";
 // next.config.js is plain CommonJS
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const nextConfig = require("../../../next.config.js");
 
 describe("search engines", () => {
-  it("may read the shop, but not the basket, checkout, orders or the staff pages", () => {
-    const rule = (robots().rules as { allow: string[]; disallow: string[] }[])[0];
+  it("may read the shop, but not the basket, checkout, orders or the staff pages", async () => {
+    const rule = ((await robots()).rules as { allow: string[]; disallow: string[] }[])[0];
     expect(rule.allow).toContain("/store");
     for (const p of ["/store/cart", "/store/checkout", "/store/orders", "/dropshipping"]) expect(rule.disallow).toContain(p);
   });
