@@ -12,7 +12,9 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import async_session_maker
+from tests.test_clinic_outreach_models import _campaign, _clinic
 from app.models.clinic_outreach import (
+    ClinicOutreach,
     ClinicOutreachCampaign,
     ClinicOutreachMessage,
     OutreachMessageKind,
@@ -24,6 +26,15 @@ DAY1 = datetime(2026, 10, 21, 9, 0, tzinfo=UTC)
 DAY2 = datetime(2026, 10, 22, 9, 0, tzinfo=UTC)
 
 
+async def _outreach(db, tenant) -> uuid.UUID:
+    """A real campaign, clinic and outreach row: the message table's foreign keys are enforced by PostgreSQL, so the rows they point at must exist."""
+    campaign, clinic = await _campaign(db, tenant), await _clinic(db, tenant, "Clinic A")
+    row = ClinicOutreach(tenant_id=tenant, campaign_id=campaign, provider_id=clinic)
+    db.add(row)
+    await db.flush()
+    return row.id
+
+
 def _msg(tenant, outreach, when=DAY1, kind=OutreachMessageKind.INTRO) -> ClinicOutreachMessage:
     return ClinicOutreachMessage(
         tenant_id=tenant, outreach_id=outreach, kind=kind, status=OutreachMessageStatus.QUEUED_SHADOW,
@@ -33,9 +44,10 @@ def _msg(tenant, outreach, when=DAY1, kind=OutreachMessageKind.INTRO) -> ClinicO
 
 @pytest.mark.asyncio
 async def test_message_row_round_trips_with_defaults() -> None:
-    tenant, outreach = uuid.uuid4(), uuid.uuid4()
+    tenant = uuid.uuid4()
     async with async_session_maker() as db:
-        camp = ClinicOutreachCampaign(tenant_id=tenant, campaign_id=uuid.uuid4())
+        outreach = await _outreach(db, tenant)
+        camp = ClinicOutreachCampaign(tenant_id=tenant, campaign_id=await _campaign(db, tenant))
         row = _msg(tenant, outreach)
         db.add_all([camp, row])
         await db.commit()
@@ -51,8 +63,9 @@ async def test_message_row_round_trips_with_defaults() -> None:
 
 @pytest.mark.asyncio
 async def test_duplicate_kind_for_the_same_day_is_rejected() -> None:
-    tenant, outreach = uuid.uuid4(), uuid.uuid4()
+    tenant = uuid.uuid4()
     async with async_session_maker() as db:
+        outreach = await _outreach(db, tenant)
         db.add(_msg(tenant, outreach))
         await db.commit()
         db.add(_msg(tenant, outreach))
@@ -63,8 +76,9 @@ async def test_duplicate_kind_for_the_same_day_is_rejected() -> None:
 
 @pytest.mark.asyncio
 async def test_same_kind_on_a_different_day_is_allowed() -> None:
-    tenant, outreach = uuid.uuid4(), uuid.uuid4()
+    tenant = uuid.uuid4()
     async with async_session_maker() as db:
+        outreach = await _outreach(db, tenant)
         db.add(_msg(tenant, outreach))
         await db.commit()
         db.add(_msg(tenant, outreach, when=DAY2))
