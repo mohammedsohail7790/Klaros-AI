@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Check, Plus } from "lucide-react";
+import NotifyWhenBack from "@/components/store/NotifyWhenBack";
 import { Button, Stepper, StockChip } from "@/components/store/ui";
 import { StoreProduct } from "@/lib/storeApi";
 import { cn } from "@/lib/cn";
@@ -54,7 +55,10 @@ export function AddToCart({ product }: { product: StoreProduct }) {
           </Button>
         </div>
       ) : (
-        <p className="rounded-2xl bg-surface-muted px-5 py-4 text-foreground">Out of stock right now.</p>
+        <div className="space-y-4">
+          <p className="rounded-2xl bg-surface-muted px-5 py-4 text-foreground">Out of stock right now.</p>
+          <NotifyWhenBack key={item.sku} sku={item.sku} />
+        </div>
       )}
 
       {added && (

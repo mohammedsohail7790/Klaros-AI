@@ -250,3 +250,14 @@ class ProblemReport(TenantScopedMixin, Base):
     decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     decided_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+
+
+class StockAlert(TenantScopedMixin, Base):
+    """A shopper asked to be told when a sold-out item is back. The address is cleared once they have been told (so it is never kept longer than needed)."""
+
+    __tablename__ = "dropshipping_stock_alerts"
+    __table_args__ = (UniqueConstraint("tenant_id", "sku_id", "email", name="uq_ds_stock_alerts_tenant_sku_email"),)
+
+    sku_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("dropshipping_skus.id"), nullable=False, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

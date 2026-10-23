@@ -110,6 +110,10 @@ export const sendEnquiry = (body: EnquiryBody) => call<{ received: boolean }>("/
 export const reportOrderProblem = (token: string, description: string) =>
   call<{ received: boolean }>(`/orders/${encodeURIComponent(token)}/problem`, { ...LIVE, method: "POST", body: JSON.stringify({ description }) });
 
+/** "Tell me when it is back" for a sold-out item: one plain e-mail later. */
+export const askToBeTold = (sku: string, email: string, website?: string) =>
+  call<{ received: boolean }>("/stock-alerts", { ...LIVE, method: "POST", body: JSON.stringify({ sku, email, website: website || undefined }) });
+
 export const createCheckout = (body: CheckoutBody) => call<CheckoutResult>("/checkout", { ...LIVE, method: "POST", body: JSON.stringify(body) });
 export const getStoreOrder = async (token: string) => (await call<{ order: StoreOrder }>(`/orders/${encodeURIComponent(token)}`, LIVE)).order;
 export const payStoreOrder = (token: string) => call<CheckoutResult>(`/orders/${encodeURIComponent(token)}/pay`, { ...LIVE, method: "POST" });

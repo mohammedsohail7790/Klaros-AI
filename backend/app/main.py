@@ -176,6 +176,21 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         reminder_task = asyncio.create_task(run_payment_reminder_sweeper(_session_maker_r, _store_tenant_r, sweeper_stop))
     except Exception:  # noqa: BLE001 - payment reminders must never stop the API starting
         logger.warning("payment_reminder_sweeper_not_started")
+    stock_alert_task: asyncio.Task | None = None
+    try:
+        from app.core.config import get_settings as _get_settings_s
+        from app.db.session import async_session_maker as _session_maker_s
+        from app.services.dropshipping_stock_alerts import run_stock_alert_sweeper
+
+        def _store_tenant_s():
+            try:
+                return uuid.UUID(str(_get_settings_s().DROPSHIPPING_STORE_TENANT_ID))
+            except (ValueError, TypeError):
+                return None
+
+        stock_alert_task = asyncio.create_task(run_stock_alert_sweeper(_session_maker_s, _store_tenant_s, sweeper_stop))
+    except Exception:  # noqa: BLE001 - back-in-stock alerts must never stop the API starting
+        logger.warning("stock_alert_sweeper_not_started")
 
     try:
         yield
@@ -183,6 +198,8 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         sweeper_stop.set()
         if reminder_task is not None:
             await reminder_task
+        if stock_alert_task is not None:
+            await stock_alert_task
         if digest_task is not None:
             await digest_task
         if sync_task is not None:
