@@ -86,7 +86,7 @@ describe("AppShell navigation", () => {
       await waitFor(() => expect(primary().getByRole("link", { name: /^Clinics/ })).toBeInTheDocument());
       expect(primary().getAllByRole("link").map((a) => a.textContent)).toEqual(["Home", "CRM", "Sales", "Marketing", "Finance", "Operations3", "Clinics", "AI team", "Website", "Business", "Settings"]);
       const tabs = screen.getByRole("navigation", { name: "CRM sections" });
-      expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Leads", "Customers", "Calendar", "Patients", "Consultations"]);
+      expect(within(tabs).getAllByRole("link").map((a) => a.textContent)).toEqual(["Leads", "Patients", "Consultations"]);
       expect(within(tabs).getByRole("link", { name: "Patients" })).toHaveAttribute("aria-current", "page");
       reset();
     });
