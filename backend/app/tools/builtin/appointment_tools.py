@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from app.calendar.base import BookingRequest, CalendarProvider, DoubleBookingError
 from app.events.bus import EventBus
@@ -28,11 +28,24 @@ def _appointment_to_dict(a: Appointment) -> dict[str, Any]:
     }
 
 
+DEFAULT_AVAILABILITY_WINDOW = timedelta(days=14)
+
+
 class CheckAvailabilityInput(BaseModel):
-    date_from: datetime
-    date_to: datetime
+    """The window defaults to the next 14 days. A crew member working from an enquiry does not know today's date, and used to call this with neither bound (and fail)."""
+
+    date_from: datetime | None = None
+    date_to: datetime | None = None
     duration_minutes: int = 60
     assigned_user_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _fill_window(self) -> "CheckAvailabilityInput":
+        if self.date_from is None:
+            self.date_from = datetime.now(timezone.utc)
+        if self.date_to is None:
+            self.date_to = self.date_from + DEFAULT_AVAILABILITY_WINDOW
+        return self
 
 
 class CheckAvailabilityOutput(BaseModel):
