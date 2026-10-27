@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     # How often the Klaros Event Worker (app/events/worker.py) polls for
     # pending events — distinct from Temporal, which has its own scheduling.
     EVENT_WORKER_POLL_SECONDS: float = 1.0
+    # How often the worker runs its database housekeeping (the stuck-event check and the schedule and recovery hooks) rather than on every poll.
+    # Schedules are per minute, so 30 seconds loses nothing, and it cuts the idle database load by about 30 times. 0 = every poll.
+    EVENT_WORKER_HOUSEKEEPING_SECONDS: float = 30.0
     # Crash recovery (see app/events/bus.py). A handler run unfinished for this long is presumed dead and may be taken over by another delivery.
     EVENT_PROCESSING_LEASE_SECONDS: float = 300.0
     # A stream message delivered to a worker and not acked for this long belongs to a crashed worker and is reclaimed (Redis XAUTOCLAIM).

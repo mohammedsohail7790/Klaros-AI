@@ -102,6 +102,7 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         worker = EventWorker(
             bus,
             poll_interval_seconds=settings.EVENT_WORKER_POLL_SECONDS,
+            housekeeping_interval_seconds=settings.EVENT_WORKER_HOUSEKEEPING_SECONDS,
             on_tick=combine_on_tick(
                 morning_brief_service.check_and_generate_scheduled,
                 automation_service.check_and_dispatch_scheduled,
