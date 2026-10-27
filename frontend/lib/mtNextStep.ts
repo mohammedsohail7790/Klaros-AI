@@ -25,7 +25,7 @@ export function pageNextStep(path: string, clinics: ClinicCounts | null): NextSt
     case "/medical-tourism/provider-referrals":
       return { title: "A referral goes out only after the patient approves", body: `Klaros sends a referral once the patient's approval for that clinic is on record. ${step.text}`, action: { label: step.label, href: step.href } };
     case "/medical-tourism/procedures":
-      return { title: "Procedures are how a patient is matched to a clinic", body: "A patient asks for a treatment such as dental work, a hair transplant or aesthetic surgery. Klaros finds verified clinics that offer that procedure, so list each treatment you arrange here, then say which clinic offers it.", action: { label: "Open clinics", href: "/medical-tourism/providers" } };
+      return { title: "A clinic is matched to a patient through the procedures it offers", body: "Klaros finds verified clinics that offer the treatment a patient asks for. Under \"What clinics offer\" below, record which clinic performs which procedure, and only add a price the clinic has approved in writing.", action: { label: "Open clinics", href: "/medical-tourism/providers" } };
     case "/marketing":
       return {
         title: "Growth for a referral business has two sides",

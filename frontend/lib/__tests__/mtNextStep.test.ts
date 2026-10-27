@@ -18,8 +18,11 @@ describe("pageNextStep", () => {
     expect(unknown.body).not.toMatch(/\d+ of \d+/);
     expect(unknown.action.href).toBe("/marketing/campaigns");
   });
-  it("explains why an empty procedures list blocks matching", () => {
-    expect(pageNextStep("/medical-tourism/procedures", null)!.title).toBe("Procedures are how a patient is matched to a clinic");
+  it("tells the owner to record which clinic offers which procedure, without assuming the list is empty", () => {
+    const s = pageNextStep("/medical-tourism/procedures", null)!;
+    expect(s.title).toBe("A clinic is matched to a patient through the procedures it offers");
+    expect(s.body).not.toMatch(/list each treatment/i);
+    expect(s.body).toMatch(/record which clinic performs which procedure/);
   });
   it("shows nothing on pages that have their own content", () => {
     expect(pageNextStep("/leads", null)).toBeNull();
