@@ -391,3 +391,67 @@ async def test_automations_still_refuse_an_hourly_frequency():
 
     with pytest.raises(InvalidScheduleError):
         validate_schedule_config({"frequency": "HOURLY", "time": "09:00"})
+
+
+async def test_repeated_ticks_do_not_retry_or_re_audit_an_agent_that_already_ran(tool_registry):
+    """The schedule stays due all day, so every worker tick sees it. A service that has handled an occurrence must not try it again (and write another audit row)."""
+    from sqlalchemy import func, select
+
+    from app.db.session import async_session_maker
+    from app.models.agent import AgentExecution
+    from app.models.audit_log import AuditLog
+
+    tenant_id = uuid.uuid4()
+    await _org(tenant_id)
+    await _agent_with_schedule(tool_registry, tenant_id, schedule={"enabled": True, "frequency": "DAILY", "time": "09:00", "goal": "daily check-in"})
+    svc = _trigger_service(tool_registry)
+    assert len(await svc.check_and_dispatch_scheduled(tenant_id, now_utc=datetime(2026, 1, 5, 9, 30, tzinfo=timezone.utc))) == 1
+    for hour in (10, 11, 12, 13, 14):  # five more ticks later the same day
+        assert await svc.check_and_dispatch_scheduled(tenant_id, now_utc=datetime(2026, 1, 5, hour, 0, tzinfo=timezone.utc)) == []
+    async with async_session_maker() as session:
+        executions = (await session.execute(select(func.count()).select_from(AgentExecution).where(AgentExecution.tenant_id == tenant_id))).scalar_one()
+        dedupe_rows = (await session.execute(
+            select(func.count()).select_from(AuditLog).where(AuditLog.tenant_id == tenant_id, AuditLog.action == "agent.trigger.scheduled.deduplicated")
+        )).scalar_one()
+    assert executions == 1
+    assert dedupe_rows == 0
+
+
+async def test_a_new_service_instance_audits_the_duplicate_once_then_goes_quiet(tool_registry):
+    """After a restart the memory is gone: one duplicate attempt and one audit row, then no more."""
+    from sqlalchemy import func, select
+
+    from app.db.session import async_session_maker
+    from app.models.audit_log import AuditLog
+
+    tenant_id = uuid.uuid4()
+    await _org(tenant_id)
+    await _agent_with_schedule(tool_registry, tenant_id, schedule={"enabled": True, "frequency": "DAILY", "time": "09:00", "goal": "daily check-in"})
+    await _trigger_service(tool_registry).check_and_dispatch_scheduled(tenant_id, now_utc=datetime(2026, 1, 5, 9, 30, tzinfo=timezone.utc))
+    restarted = _trigger_service(tool_registry)
+    for hour in (10, 11, 12, 13):
+        assert await restarted.check_and_dispatch_scheduled(tenant_id, now_utc=datetime(2026, 1, 5, hour, 0, tzinfo=timezone.utc)) == []
+    async with async_session_maker() as session:
+        dedupe_rows = (await session.execute(
+            select(func.count()).select_from(AuditLog).where(AuditLog.tenant_id == tenant_id, AuditLog.action == "agent.trigger.scheduled.deduplicated")
+        )).scalar_one()
+    assert dedupe_rows == 1
+
+
+async def test_a_paused_agent_is_audited_as_skipped_once_not_every_tick(tool_registry):
+    from sqlalchemy import func, select
+
+    from app.db.session import async_session_maker
+    from app.models.audit_log import AuditLog
+
+    tenant_id = uuid.uuid4()
+    await _org(tenant_id)
+    await _agent_with_schedule(tool_registry, tenant_id, schedule={"enabled": True, "frequency": "DAILY", "time": "09:00", "goal": "daily check-in"}, status=AgentStatus.PAUSED)
+    svc = _trigger_service(tool_registry)
+    for hour in (10, 11, 12, 13, 14):
+        assert await svc.check_and_dispatch_scheduled(tenant_id, now_utc=datetime(2026, 1, 5, hour, 0, tzinfo=timezone.utc)) == []
+    async with async_session_maker() as session:
+        skipped = (await session.execute(
+            select(func.count()).select_from(AuditLog).where(AuditLog.tenant_id == tenant_id, AuditLog.action == "agent.trigger.scheduled.skipped")
+        )).scalar_one()
+    assert skipped == 1
