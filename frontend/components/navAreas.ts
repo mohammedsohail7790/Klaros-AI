@@ -18,7 +18,7 @@ const DS = "dropshipping";
  * Developer-only pages such as /events are deliberately not listed: they stay reachable by URL.
  */
 export const AREAS: NavArea[] = [
-  { key: "home", label: "Home", icon: Home, tabs: [{ href: "/business/home", label: "Home" }, { href: "/medical-tourism/overview", label: "Today", module: MT }] },
+  { key: "home", label: "Home", icon: Home, tabs: [{ href: "/business/home", label: "Home", hideWithModule: MT }, { href: "/medical-tourism/overview", label: "Today", module: MT }] },
   {
     key: "store", label: "Store", icon: ShoppingBag,
     tabs: [
