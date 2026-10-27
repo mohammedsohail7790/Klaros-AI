@@ -74,8 +74,14 @@ class EventWorker:
         metrics: EventWorkerMetrics | None = None,
         on_tick=None,
         db_lock: asyncio.Lock | None = None,
+        housekeeping_interval_seconds: float = 0.0,
     ) -> None:
         self._bus = bus
+        # The stuck-event check and the on_tick hooks (schedules, recovery) are database work. Events are picked up every poll, but these only need to
+        # run every so often, so a deployment sets this (EVENT_WORKER_HOUSEKEEPING_SECONDS) to stop them hitting the database on every poll.
+        # 0 keeps the old behaviour: every tick. The first tick always runs them.
+        self._housekeeping_interval_seconds = housekeeping_interval_seconds
+        self._last_housekeeping: float | None = None
         self._poll_interval_seconds = poll_interval_seconds
         self._batch_size = batch_size
         self.metrics = metrics if metrics is not None else worker_metrics
@@ -110,12 +116,20 @@ class EventWorker:
 
     async def _tick_unlocked(self) -> dict[str, object]:
         results: dict[str, object] = {}
-        # Outbox-relay pass (Phase 12 production hardening) — cheap (single
-        # indexed SELECT, capped at 100 rows) and safe to run every tick; see
-        # EventBus.reconcile_stuck_events for exactly what gap this closes.
-        reconciled = await self._bus.reconcile_stuck_events()
-        if reconciled:
-            logger.warning("event_worker_reconciled_stuck_events", count=reconciled)
+        now = time.monotonic()
+        housekeeping_due = (
+            self._last_housekeeping is None
+            or self._housekeeping_interval_seconds <= 0
+            or now - self._last_housekeeping >= self._housekeeping_interval_seconds
+        )
+        if housekeeping_due:
+            self._last_housekeeping = now
+            # Outbox-relay pass (Phase 12 production hardening) — cheap (single
+            # indexed SELECT, capped at 100 rows); see
+            # EventBus.reconcile_stuck_events for exactly what gap this closes.
+            reconciled = await self._bus.reconcile_stuck_events()
+            if reconciled:
+                logger.warning("event_worker_reconciled_stuck_events", count=reconciled)
         try:  # liveness marker the API reads (/ready -> event_worker); best effort, a hiccup here must never stop event processing
             await self._bus.transport.set_heartbeat(HEARTBEAT_KEY, HEARTBEAT_TTL_SECONDS)
         except Exception as exc:  # noqa: BLE001
@@ -136,7 +150,7 @@ class EventWorker:
                     dead_lettered=stats.dead_lettered,
                     duplicates_skipped=stats.duplicates_skipped,
                 )
-        if self._on_tick is not None:
+        if housekeeping_due and self._on_tick is not None:
             try:
                 await self._on_tick()
             except Exception as exc:  # noqa: BLE001 — a scheduler hiccup must never kill the worker loop
@@ -234,6 +248,7 @@ async def _standalone_main() -> None:
     worker = EventWorker(
         bus,
         poll_interval_seconds=settings.EVENT_WORKER_POLL_SECONDS,
+        housekeeping_interval_seconds=settings.EVENT_WORKER_HOUSEKEEPING_SECONDS,
         on_tick=combine_on_tick(
             morning_brief_service.check_and_generate_scheduled,
             automation_service.check_and_dispatch_scheduled,
