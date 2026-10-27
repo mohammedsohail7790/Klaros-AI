@@ -2,22 +2,33 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Clock } from "lucide-react";
+import { ArrowRight, Bot, Building2, CheckCircle2, Clock } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
+  ApprovalRow,
+  AttentionQueue,
+  CrewActivity,
   HandoffTask,
+  MedicalTourismProvider,
+  OperatingCrew,
   MedicalTourismFunnel,
   MedicalTourismPipeline,
   RevenueSummary,
+  getAttentionQueue,
+  getCrewActivity,
   getMedicalTourismFunnel,
   getMedicalTourismPipeline,
   getMedicalTourismRevenue,
+  getOperatingCrew,
+  listApprovals,
   listHandoffTasks,
+  listMedicalTourismProviders,
 } from "@/lib/api";
 import { buildNeedsYou, todaySummary, waitingOnOthers } from "@/lib/mtCase";
 import { STAGE_LABEL, STAGE_ORDER } from "@/lib/mtLabels";
+import { clinicLane, crewHeadline, crewRows, journeySteps } from "@/lib/mtToday";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -49,6 +60,12 @@ export default function TodayPage() {
   const [tasks, setTasks] = useState<HandoffTask[]>([]);
   const [revenue, setRevenue] = useState<RevenueSummary | null>(null);
   const [funnel, setFunnel] = useState<MedicalTourismFunnel | null>(null);
+  // The sections below are extras: each loads on its own and simply stays out of the way if it cannot be read, so one slow or missing source never blanks the page.
+  const [providers, setProviders] = useState<MedicalTourismProvider[] | null>(null);
+  const [crew, setCrew] = useState<OperatingCrew | null>(null);
+  const [activity, setActivity] = useState<CrewActivity | null>(null);
+  const [attention, setAttention] = useState<AttentionQueue | null>(null);
+  const [approvals, setApprovals] = useState<ApprovalRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The date and greeting depend on the viewer's clock and locale, so they are set after mount; rendering them on the server would not match the browser.
@@ -70,6 +87,18 @@ export default function TodayPage() {
       setTasks(t.tasks);
       setRevenue(r);
       setFunnel(f);
+      const extra = async <T,>(call: () => Promise<T>, set: (v: T) => void) => {
+        try {
+          set(await call());
+        } catch {
+          /* leave that section out */
+        }
+      };
+      void extra(() => listMedicalTourismProviders(token, { limit: 100 }), (r) => setProviders(r.providers));
+      void extra(() => getOperatingCrew(token), setCrew);
+      void extra(() => getCrewActivity(token, 7), setActivity);
+      void extra(() => getAttentionQueue(token), setAttention);
+      void extra(() => listApprovals(token, "PENDING"), (r) => setApprovals(r.approvals));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to load Today.");
     } finally {
@@ -88,6 +117,16 @@ export default function TodayPage() {
   const failedMessages = funnel ? funnel.delivery.halla_events_failed + funnel.delivery.halla_events_stuck_past_lease : 0;
   const total = pipeline?.leads.length ?? 0;
   const currencies = revenue ? Object.entries(revenue.by_currency) : [];
+  const lane = useMemo(() => (providers ? clinicLane(providers) : null), [providers]);
+  const earned = useMemo(() => (revenue ? Object.values(revenue.by_currency).reduce((n, by) => n + (by.CONFIRMED?.count ?? 0) + (by.INVOICED?.count ?? 0) + (by.PAID?.count ?? 0), 0) : 0), [revenue]);
+  const steps = useMemo(
+    () => (pipeline ? journeySteps({ clinics: lane, received: funnel?.received ?? null, qualified: funnel?.qualification?.qualified ?? null, stageCounts: pipeline.counts, earned }) : []),
+    [pipeline, lane, funnel, earned],
+  );
+  const crewList = useMemo(() => (crew ? crewRows(crew.members, activity?.members ?? null, now) : []), [crew, activity, now]);
+  // Things that need the owner beyond a named patient: actions waiting for approval, and the business-wide attention list (patient tasks are already shown above).
+  const otherAsks = (attention?.items ?? []).filter((i) => i.priority !== "LOW").slice(0, 6);
+  const pending = approvals?.length ?? 0;
 
   return (
     <AppShell user={user}>
@@ -151,6 +190,100 @@ export default function TodayPage() {
                 </ul>
               )}
             </section>
+
+            {(pending > 0 || otherAsks.length > 0) && (
+              <section aria-label="Also needs you" className="mb-14">
+                <h2 className="mb-4 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Also needs you</h2>
+                <ul className="space-y-3">
+                  {pending > 0 && (
+                    <li className="flex flex-col gap-3 rounded-3xl bg-surface-muted p-6 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="text-[17px] font-semibold text-foreground">
+                          {pending} {pending === 1 ? "action is" : "actions are"} waiting for your approval
+                        </div>
+                        <p className="mt-1 text-[15px] text-muted">The AI team asked first. Nothing happens until you say yes.</p>
+                      </div>
+                      <Link href="/approvals" className="klaros-btn-primary shrink-0 self-start sm:self-center">
+                        Review
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </li>
+                  )}
+                  {otherAsks.map((a) => (
+                    <li key={`${a.category}-${a.entity_id}`} className="flex flex-col gap-3 rounded-3xl bg-surface-muted p-6 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="text-[17px] font-semibold text-foreground">{a.title}</div>
+                        <p className="mt-1 text-[15px] text-muted">{a.reason}</p>
+                      </div>
+                      <Link href={a.link} className="klaros-btn-primary shrink-0 self-start sm:self-center">
+                        Open
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <section aria-label="The whole journey" className="mb-14">
+              <h2 className="mb-2 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">The whole journey</h2>
+              <p className="mb-4 text-[15px] text-muted">From having clinics to earning a commission. The highlighted step is where the business is stuck right now.</p>
+              <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {steps.map((st, idx) => (
+                  <li key={st.key} className={st.here ? "klaros-dark rounded-3xl p-5" : "rounded-3xl bg-surface-muted p-5"}>
+                    <Link href={st.href} className="block">
+                      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <span className="tabular-nums">{idx + 1}</span>
+                        {st.here && <span className="rounded-full bg-accent/15 px-2 py-0.5 text-accent">You are here</span>}
+                      </div>
+                      <div className="mt-2 font-display text-[2rem] font-semibold leading-none tracking-[-0.02em]">{st.count}</div>
+                      <div className="mt-1.5 text-[15px] font-medium">{st.label}</div>
+                      <div className="mt-0.5 text-[13px] text-muted">{st.hint}</div>
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+              {lane?.blocker && (
+                <p className="mt-4 flex items-start gap-3 rounded-3xl bg-warning/10 px-5 py-4 text-[15px] leading-snug text-foreground">
+                  <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+                  <span>
+                    {lane.blocker}{" "}
+                    <Link href="/medical-tourism/providers" className="text-accent hover:underline">
+                      Open clinics
+                    </Link>
+                  </span>
+                </p>
+              )}
+            </section>
+
+            {crewList.length > 0 && (
+              <section aria-label="What your AI team did" className="mb-14">
+                <h2 className="mb-2 font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">What your AI team did</h2>
+                <p className="mb-4 text-[15px] text-muted">{crewHeadline(crewList)} Most of them wait for something to happen, such as a new enquiry or a patient&apos;s approval.</p>
+                <ul className="divide-y divide-border/70 overflow-hidden rounded-3xl bg-surface-muted">
+                  {crewList.map((r) => (
+                    <li key={r.key} className="flex items-start gap-3 px-5 py-3.5">
+                      <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${r.state === "done" ? "bg-success/10 text-success" : r.state === "stuck" ? "bg-danger/10 text-danger" : "bg-surface text-muted-foreground"}`}>
+                        <Bot className="h-3.5 w-3.5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[15px] font-medium text-foreground">
+                          {r.agentId ? (
+                            <Link href={`/agents/${r.agentId}`} className="hover:underline">
+                              {r.name}
+                            </Link>
+                          ) : (
+                            r.name
+                          )}
+                        </div>
+                        <p className="text-[13px] leading-snug text-muted">{r.purpose.replace(/\s*\[operating crew\]\s*$/, "")}</p>
+                        <p className={`mt-0.5 text-[13px] leading-snug ${r.state === "stuck" ? "text-danger" : "text-muted-foreground"}`}>{r.line}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             <div className="grid gap-x-12 gap-y-4 lg:grid-cols-2">
               <section aria-label="Where your patients are" className="mb-12">
