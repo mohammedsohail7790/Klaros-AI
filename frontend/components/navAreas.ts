@@ -2,7 +2,8 @@ import {
   Home, Users, Wrench, DollarSign, Megaphone, Bot, Globe, Hammer, Building2, Settings2, FileText, ShoppingBag,
 } from "lucide-react";
 
-/** `module` names a business module (vertical extension) that must be enabled for the tenant to see this tab; `hideWithModule` hides a generic tab a module replaces (a commission-only business has no patient quotes). No `module` means every tenant sees it. */
+/** Which tabs a module hides is that business's configuration, not a branch on its type: a commission-only referral business has no quotes, jobs, workers, vendors or cash forecast, so those tabs carry `hideWithModule` and stay one URL away.
+ * `module` names a business module (vertical extension) that must be enabled for the tenant to see this tab; `hideWithModule` hides a generic tab a module replaces (a commission-only business has no patient quotes). No `module` means every tenant sees it. */
 export type AreaTab = { href: string; label: string; module?: string; hideWithModule?: string };
 export type NavArea = { key: string; label: string; icon: any; tabs: AreaTab[] };
 
@@ -28,7 +29,7 @@ export const AREAS: NavArea[] = [
   {
     key: "crm", label: "CRM", icon: Users,
     tabs: [
-      { href: "/leads", label: "Leads" }, { href: "/customers", label: "Customers" }, { href: "/calendar", label: "Calendar" },
+      { href: "/leads", label: "Leads" }, { href: "/customers", label: "Customers", hideWithModule: MT }, { href: "/calendar", label: "Calendar", hideWithModule: MT },
       { href: "/medical-tourism/pipeline", label: "Patients", module: MT }, { href: "/medical-tourism/consultations", label: "Consultations", module: MT },
     ],
   },
@@ -43,22 +44,23 @@ export const AREAS: NavArea[] = [
     key: "marketing", label: "Marketing", icon: Megaphone,
     tabs: [
       { href: "/marketing", label: "Overview" }, { href: "/marketing/campaigns", label: "Campaigns" }, { href: "/marketing/content", label: "Content" },
-      { href: "/marketing/seo", label: "SEO" }, { href: "/marketing/outbound", label: "Outbound" }, { href: "/marketing/nurture", label: "Nurture" },
-      { href: "/marketing/reactivation", label: "Reactivation" }, { href: "/retention", label: "Customer care" },
+      { href: "/marketing/outreach-wording", label: "Outreach wording", module: MT },
+      { href: "/marketing/seo", label: "SEO", hideWithModule: MT }, { href: "/marketing/outbound", label: "Outbound", hideWithModule: MT }, { href: "/marketing/nurture", label: "Nurture", hideWithModule: MT },
+      { href: "/marketing/reactivation", label: "Reactivation", hideWithModule: MT }, { href: "/retention", label: "Customer care", hideWithModule: MT },
     ],
   },
   {
     key: "finance", label: "Finance", icon: DollarSign,
     tabs: [
-      { href: "/finance/invoices", label: "Invoices" }, { href: "/finance/ar", label: "Receivables" }, { href: "/finance/cash", label: "Cash" }, { href: "/finance/bank", label: "Bank" },
-      { href: "/finance/profitability", label: "Profitability" }, { href: "/vendors", label: "Vendors" },
+      { href: "/finance/invoices", label: "Invoices" }, { href: "/finance/ar", label: "Receivables", hideWithModule: MT }, { href: "/finance/cash", label: "Cash", hideWithModule: MT }, { href: "/finance/bank", label: "Bank", hideWithModule: MT },
+      { href: "/finance/profitability", label: "Profitability", hideWithModule: MT }, { href: "/vendors", label: "Vendors", hideWithModule: MT },
       { href: "/medical-tourism/referrals", label: "Commissions", module: MT }, { href: "/medical-tourism/revenue", label: "Revenue", module: MT },
     ],
   },
   {
     key: "operations", label: "Operations", icon: Wrench,
     tabs: [
-      { href: "/operations", label: "Overview" }, { href: "/jobs", label: "Jobs" }, { href: "/operations/workers", label: "Workers" }, { href: "/exceptions", label: "Exceptions" }, { href: "/replies", label: "Replies" },
+      { href: "/operations", label: "Overview", hideWithModule: MT }, { href: "/jobs", label: "Jobs", hideWithModule: MT }, { href: "/operations/workers", label: "Workers", hideWithModule: MT }, { href: "/exceptions", label: "Exceptions", hideWithModule: MT }, { href: "/replies", label: "Replies" },
       { href: "/medical-tourism/tasks", label: "Tasks", module: MT }, { href: "/medical-tourism/provider-referrals", label: "Referrals", module: MT },
     ],
   },
@@ -69,15 +71,15 @@ export const AREAS: NavArea[] = [
   {
     key: "ai", label: "AI team", icon: Bot,
     tabs: [
-      { href: "/workforce", label: "Receptionist" }, { href: "/approvals", label: "Approvals" }, { href: "/agents", label: "Agents" }, { href: "/automations", label: "Automations" },
-      { href: "/settings/knowledge", label: "Knowledge" }, { href: "/settings/memory", label: "Memory" }, { href: "/settings/voice", label: "Voice" },
+      { href: "/workforce", label: "Receptionist" }, { href: "/approvals", label: "Approvals" }, { href: "/agents", label: "Agents" }, { href: "/automations", label: "Automations", hideWithModule: MT },
+      { href: "/settings/knowledge", label: "Knowledge" }, { href: "/settings/memory", label: "Memory", hideWithModule: MT }, { href: "/settings/voice", label: "Voice", hideWithModule: MT },
       { href: "/settings/automation", label: "Rules" }, { href: "/ai-activity", label: "Activity" },
     ],
   },
-  { key: "website", label: "Website", icon: Globe, tabs: [{ href: "/website", label: "Website" }, { href: "/builder", label: "App Builder" }] },
+  { key: "website", label: "Website", icon: Globe, tabs: [{ href: "/website", label: "Website" }, { href: "/builder", label: "App Builder", hideWithModule: MT }] },
   {
     key: "business", label: "Business", icon: Hammer,
-    tabs: [{ href: "/business", label: "Guided setup" }, { href: "/setup", label: "Setup" }, { href: "/business/blueprint", label: "Blueprint" }, { href: "/business/map", label: "Business map" }],
+    tabs: [{ href: "/business", label: "Guided setup", hideWithModule: MT }, { href: "/setup", label: "Setup" }, { href: "/business/blueprint", label: "Blueprint", hideWithModule: MT }, { href: "/business/map", label: "Business map", hideWithModule: MT }],
   },
   {
     key: "settings", label: "Settings", icon: Settings2,
