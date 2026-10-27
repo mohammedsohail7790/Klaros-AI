@@ -86,6 +86,12 @@ class AgentTriggerService:
         self._session_factory = session_factory
         self._reasoning = reasoning_service
         self._execution = execution_service  # runs a scheduled `action` (one named tool) directly; without it such a schedule falls back to its goal
+        # A daily schedule stays "due" for the rest of the tenant-local day, and this check runs on the worker tick. Without a memory, every tick re-tried every
+        # agent that had already run today, hit the duplicate guard and wrote a "deduplicated" audit row for each (about twenty agents, around the clock).
+        # `_settled` remembers occurrences already dispatched or found already done, and `_skip_audited` the skips already recorded, so each is handled and
+        # audited once per process. The database idempotency key stays the real guard: a restart or a second worker only costs one more duplicate attempt.
+        self._settled: set[str] = set()
+        self._skip_audited: set[str] = set()
 
     async def check_and_dispatch_scheduled(
         self, tenant_id: uuid.UUID | None = None, *, now_utc: datetime | None = None,
@@ -155,13 +161,18 @@ class AgentTriggerService:
                     continue
                 occurrence = due.occurrence_date.isoformat()
 
+            idempotency_key = f"schedule:{agent.id}:{occurrence}"
+            if idempotency_key in self._settled:
+                continue  # already dispatched, or found already done, in this process
             if agent.status != AgentStatus.ACTIVE:
-                await self._audit_skip(
-                    agent, "agent.trigger.scheduled.skipped", reason=f"agent_status={agent.status}"
-                )
+                skip_key = f"{idempotency_key}:{agent.status}"
+                if skip_key not in self._skip_audited:
+                    self._skip_audited.add(skip_key)
+                    await self._audit_skip(
+                        agent, "agent.trigger.scheduled.skipped", reason=f"agent_status={agent.status}"
+                    )
                 continue
 
-            idempotency_key = f"schedule:{agent.id}:{occurrence}"
             goal = schedule.get("goal") or version.instructions_snapshot
 
             action = schedule.get("action")
@@ -177,18 +188,26 @@ class AgentTriggerService:
                         trigger_source=AgentTriggerSource.SCHEDULED, idempotency_key=idempotency_key,
                     )
             except DuplicateExecutionRequestError:
+                self._settled.add(idempotency_key)
                 await self._audit_skip(agent, "agent.trigger.scheduled.deduplicated", reason=idempotency_key)
                 continue
             except AgentNotExecutableError as exc:
-                await self._audit_skip(agent, "agent.trigger.scheduled.skipped", reason=str(exc))
+                skip_key = f"{idempotency_key}:{exc}"
+                if skip_key not in self._skip_audited:
+                    self._skip_audited.add(skip_key)
+                    await self._audit_skip(agent, "agent.trigger.scheduled.skipped", reason=str(exc))
                 continue
             except Exception as exc:  # noqa: BLE001 — one agent's failure must never block others or the worker tick
                 logger.error("agent_schedule_dispatch_failed", agent_id=str(agent.id), error=str(exc))
                 continue
 
+            self._settled.add(idempotency_key)
             await self._audit_dispatch(agent, execution.id)
             dispatched.append(execution.id)
 
+        if len(self._settled) > 5000 or len(self._skip_audited) > 5000:  # old days' keys never match again; keep the memory bounded
+            self._settled.clear()
+            self._skip_audited.clear()
         return dispatched
 
     async def _audit_dispatch(self, agent: Agent, execution_id: uuid.UUID) -> None:
