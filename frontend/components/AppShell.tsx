@@ -63,6 +63,7 @@ import CommandPalette from "./CommandPalette";
 import { Logo } from "./Logo";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useTenantModules } from "@/lib/useTenantModules";
+import { PageNextStep } from "@/components/mt/PageNextStep";
 import { locate, visibleAreas, type NavArea } from "./navAreas";
 
 type NavItem = { href: string; label: string; icon: any };
@@ -323,6 +324,7 @@ export default function AppShell({
               })}
             </nav>
           )}
+          {hasMedicalTourism && <PageNextStep token={token} path={pathname ?? ""} />}
           {children}
         </main>
       </div>
