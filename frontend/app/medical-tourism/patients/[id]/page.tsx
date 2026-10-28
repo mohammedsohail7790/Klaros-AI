@@ -7,6 +7,7 @@ import { ArrowLeft, Check, ShieldCheck } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { LeadConsentPanel } from "@/components/business/LeadConsentPanel";
 import { NewReferral, ReferralDetail } from "@/components/mt/ReferralDialogs";
+import { ClinicQuotes } from "@/components/mt/ClinicQuotes";
 import { useAuth } from "@/lib/useAuth";
 import {
   ApiError,
@@ -246,6 +247,8 @@ export default function PatientCasePage() {
                     </ul>
                   )}
                 </section>
+
+                <ClinicQuotes token={token} leadId={patient.lead_id} />
 
                 <section aria-label="Tasks" className="klaros-card p-6 sm:p-7">
                   <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Tasks</h2>
