@@ -516,6 +516,28 @@ class AgentService:
             ).scalars().all()
             return [_detached(r) for r in rows]
 
+    async def recent_executions_for_agents(
+        self, tenant_id: uuid.UUID, agent_ids: list[uuid.UUID], *, since: datetime, limit: int = 2000
+    ) -> list[AgentExecution]:
+        """Executions of the given agents created since `since`, newest first, in one query (the Today page reads what each crew member last did)."""
+        if not agent_ids:
+            return []
+        async with self._session_factory() as session:
+            await set_tenant_context(session, tenant_id)
+            rows = (
+                await session.execute(
+                    select(AgentExecution)
+                    .where(
+                        AgentExecution.tenant_id == tenant_id,
+                        AgentExecution.agent_id.in_(agent_ids),
+                        AgentExecution.created_at >= since,
+                    )
+                    .order_by(AgentExecution.created_at.desc())
+                    .limit(limit)
+                )
+            ).scalars().all()
+            return [_detached(r) for r in rows]
+
 
 def _detached(obj):
     """Every SQLAlchemy ORM row this service returns has already been

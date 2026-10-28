@@ -8,6 +8,7 @@ Which playbooks apply comes from the business modules the tenant has enabled (th
 uses the ordinary agent service, so every action a crew member takes is still governed by the tool registry, approvals, the audit log and the AI kill switch.
 """
 
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -66,6 +67,55 @@ async def get_operating_crew(
         "total": len(members),
         "auto_provision": bool(settings["auto_provision"]),
     }
+
+
+def _plain(text: str | None, limit: int = 180) -> str | None:
+    """A short, single-line version of a model's own closing words; nothing technical (tool names, ids, errors) is passed through."""
+    if not text:
+        return None
+    one = " ".join(text.split())
+    return one if len(one) <= limit else one[: limit - 1].rstrip() + "\u2026"
+
+
+@router.get("/activity")
+async def get_crew_activity(
+    days: int = 7,
+    current_user: CurrentUser = Depends(require_permission(Permission.READ_AGENT_EXECUTIONS)),
+    service: AgentService = Depends(get_agent_service),
+) -> dict[str, Any]:
+    """What each crew member last did and how its recent runs went. Read-only: one row per member, newest run first. A failed run is reported as
+    "could not finish" without its internal error text, which stays on the agent's own page."""
+    days = max(1, min(days, 30))
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    verticals = await operating_crew.enabled_verticals(async_session_maker, current_user.tenant_id)
+    have = await operating_crew.existing_crew(service, current_user.tenant_id)
+    members = [(m, have.get(m.name)) for m in operating_crew.crew_for(verticals)]
+    rows = await service.recent_executions_for_agents(current_user.tenant_id, [a.id for _, a in members if a], since=since)
+    by_agent: dict[Any, list[Any]] = {}
+    for e in rows:
+        by_agent.setdefault(e.agent_id, []).append(e)
+    out = []
+    for m, a in members:
+        runs = by_agent.get(a.id, []) if a else []
+        last = runs[0] if runs else None
+        out.append(
+            {
+                "key": m.key,
+                "name": m.name,
+                "agent_id": str(a.id) if a else None,
+                "runs": len(runs),
+                "failed": sum(1 for e in runs if e.status == "FAILED"),
+                "last": None
+                if last is None
+                else {
+                    "status": last.status,
+                    "at": (last.completed_at or last.started_at or last.created_at).isoformat(),
+                    "trigger": last.trigger_source,
+                    "summary": _plain(last.final_response) if last.status == "COMPLETED" else None,
+                },
+            }
+        )
+    return {"days": days, "members": out}
 
 
 @router.post("/provision")
