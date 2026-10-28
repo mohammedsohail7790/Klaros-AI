@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { column, countries, pipelineSummary, withGroups } from "@/lib/mtPipeline";
+import { column, countries, countryName, pipelineSummary, withGroups } from "@/lib/mtPipeline";
 
 const terms = { commission_basis: null } as never;
 const row = (name: string, stage: string | undefined, country = "Türkiye", extra: object = {}) => ({ provider_id: name, name, country, verification_status: "UNDER_REVIEW", referrals_sent: 0, terms, stage, next_step: "Do the next thing.", ...extra }) as never;
@@ -36,5 +36,13 @@ describe("pipelineSummary", () => {
   it("changes its tune once a hospital is ready, and handles an empty list", () => {
     expect(pipelineSummary(withGroups([row("A", "live"), row("B", "needs_verification"), row("C", "needs_terms")])).headline).toBe("1 hospital is ready to receive a patient.");
     expect(pipelineSummary([]).headline).toBe("No hospitals are listed yet.");
+  });
+});
+
+describe("countryName", () => {
+  it("spells out a country code and leaves anything unknown as it came", () => {
+    expect(countryName("TR")).toBe("Türkiye");
+    expect(countryName("th")).toBe("Thailand");
+    expect(countryName("Atlantis")).toBe("Atlantis");
   });
 });

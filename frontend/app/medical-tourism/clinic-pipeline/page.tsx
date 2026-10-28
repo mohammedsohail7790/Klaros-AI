@@ -6,7 +6,7 @@ import { Building2 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { ApiError, ClinicAgreementRow, getClinicAgreements } from "@/lib/api";
-import { PIPELINE_STAGES, column, countries, pipelineSummary, withGroups } from "@/lib/mtPipeline";
+import { PIPELINE_STAGES, column, countries, countryName, pipelineSummary, withGroups } from "@/lib/mtPipeline";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -61,7 +61,7 @@ export default function ClinicPipelinePage() {
                   onClick={() => setCountry(c)}
                   className={`rounded-full border px-3.5 py-1 text-[13px] ${country === c ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground"}`}
                 >
-                  {c === "all" ? "All countries" : c}
+                  {c === "all" ? "All countries" : countryName(c)}
                 </button>
               ))}
               <Link href="/medical-tourism/agreements" className="ml-auto text-[14px] text-accent hover:underline">Set commission terms &rsaquo;</Link>
@@ -85,7 +85,7 @@ export default function ClinicPipelinePage() {
                         {rowsHere.map((r) => (
                           <li key={r.provider_id} className="rounded-xl border border-border bg-background p-3">
                             <Link href="/medical-tourism/providers" className="text-[14px] font-semibold text-foreground hover:underline">{r.name}</Link>
-                            <p className="mt-0.5 text-[12px] text-muted">{r.country}</p>
+                            <p className="mt-0.5 text-[12px] text-muted">{countryName(r.country)}</p>
                             {r.next_step && <p className="mt-1.5 text-[12px] leading-snug text-foreground">{r.next_step}</p>}
                             <p className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
                               {r.group && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent" title="Several clinics share this name; the group may publish one contact for all">{r.group} group</span>}

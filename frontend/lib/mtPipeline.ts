@@ -14,6 +14,10 @@ export const PIPELINE_STAGES: { key: OnboardingStage; label: string; hint: strin
   { key: "live", label: "Ready to refer", hint: "Can receive a patient" },
 ];
 
+const COUNTRY: Record<string, string> = { TR: "Türkiye", TH: "Thailand", IN: "India", KR: "South Korea", CN: "China", AE: "United Arab Emirates", SA: "Saudi Arabia", MX: "Mexico", PL: "Poland", US: "United States" };
+/** A readable country name for a two-letter code; anything unknown is shown as it came. */
+export const countryName = (c: string): string => COUNTRY[c.toUpperCase()] ?? c;
+
 export type PipelineRow = ClinicAgreementRow & { stage: OnboardingStage; group: string | null };
 
 /** The first word of a clinic's name when at least two clinics share it ("Acibadem Atakent", "Acibadem Maslak"), so a group with one published contact is easy to spot. */
