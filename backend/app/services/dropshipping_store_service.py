@@ -260,11 +260,16 @@ class DropshippingStoreService:
             lines = list((await session.execute(select(OrderLine).where(OrderLine.tenant_id == tenant_id, OrderLine.order_id == order.id))).scalars())
             sos = list((await session.execute(select(SupplierOrder).where(SupplierOrder.tenant_id == tenant_id, SupplierOrder.order_id == order.id))).scalars())
             shipments = list((await session.execute(select(Shipment).where(Shipment.tenant_id == tenant_id, Shipment.supplier_order_id.in_([s.id for s in sos])))).scalars()) if sos else []
+            from app.services.dropshipping_problem_service import DropshippingProblemService, can_report  # late: that module imports the order service
+
+            problem = await DropshippingProblemService(self._session_factory).status_for_order(session, tenant_id, order.id)
+            offer_report = can_report(order, problem in ("PENDING", "APPROVED"))
         return {
             "order_number": order.order_number, "status": order.status, "status_label": STATUS_LABELS.get(order.status, order.status), "currency": order.currency,
             "placed_at": order.placed_at.isoformat() if order.placed_at else None,
             "subtotal": str(_money(order.subtotal)), "shipping": str(_money(order.shipping)), "tax": str(_money(order.tax)), "total": str(_money(order.total)),
             "can_pay": order.status == OrderStatus.PENDING_PAYMENT.value,
+            "can_report_problem": offer_report, "problem": {"status": problem} if problem else None,
             "tax_at_payment": order.status == OrderStatus.PENDING_PAYMENT.value and (settings.get("sales_tax_mode") or tax.MODE_NONE) == tax.MODE_STRIPE_TAX and Decimal(order.tax) == 0,
             "items": [{"name": ln.name_snapshot, "quantity": ln.quantity, "unit_price": str(_money(ln.unit_price)), "line_total": str(_money(ln.line_total))} for ln in lines],
             "tracking": [{"carrier": sh.carrier, "tracking_number": sh.tracking_number, "tracking_url": sh.tracking_url, "status": sh.status} for sh in shipments],

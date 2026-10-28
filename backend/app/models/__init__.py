@@ -135,7 +135,7 @@ from app.models.clinic_outreach import (  # noqa: F401
 from app.models.inbound_email import EmailReplyRoute, InboundEmail  # noqa: F401
 from app.models.whatsapp import WhatsAppInboundMessage  # noqa: F401
 from app.models.bank_feed import BankAccount, BankFeedState, BankTransaction  # noqa: F401
-from app.models.dropshipping import InventorySnapshot, Order, OrderLine, Product, Shipment, Sku, Supplier, SupplierOrder  # noqa: F401
+from app.models.dropshipping import InventorySnapshot, Order, OrderLine, ProblemReport, Product, Shipment, Sku, Supplier, SupplierOrder  # noqa: F401
 from app.models.business_journey import BusinessJourney
 
 __all__ = [

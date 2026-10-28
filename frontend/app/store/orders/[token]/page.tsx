@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Check, ExternalLink, Info, Package } from "lucide-react";
+import ProblemReport from "@/components/store/ProblemReport";
 import { buttonClass } from "@/components/store/styles";
 import { Button, Card, Skeleton } from "@/components/store/ui";
 import { cn } from "@/lib/cn";
@@ -174,6 +175,7 @@ function OrderInner() {
           </ul>
         </Card>
       )}
+      <ProblemReport token={token} canReport={!!order.can_report_problem} status={order.problem?.status ?? null} />
       <p className="text-sm text-muted">Keep this page&apos;s link to check on your order. <Link href="/store" className="underline underline-offset-4">Continue shopping</Link></p>
     </div>
   );

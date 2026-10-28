@@ -88,6 +88,12 @@ export const cancelOrder = (token: string, id: string, reason: string) => post(t
 export const requestRefund = (token: string, id: string, reason: string) => post(token, `/orders/${id}/request-refund`, { reason });
 export const erasePersonalData = (token: string, id: string) => post(token, `/orders/${id}/erase-personal-data`);
 
+// --- what shoppers reported as wrong with their orders ---
+export interface ProblemReportEntry { id: string; order_id: string; order_number: string; status: "PENDING" | "APPROVED" | "REJECTED"; description: string; decision_note: string | null; created_at: string | null; decided_at: string | null }
+export const listProblemReports = (token: string, status?: ProblemReportEntry["status"]) =>
+  request<{ problem_reports: ProblemReportEntry[] }>(`${BASE}/problem-reports${status ? `?status=${status}` : ""}`, { headers: authHeaders(token) });
+export const decideProblemReport = (token: string, id: string, decision: "approve" | "reject", note?: string) => post(token, `/problem-reports/${id}/${decision}`, { note: note || undefined });
+
 // --- the supplier work queue ---
 export const listSupplierOrders = (token: string, status?: SupplierOrderStatus) =>
   request<{ supplier_orders: WorkQueueEntry[] }>(`${BASE}/supplier-orders${status ? `?status=${status}` : ""}`, { headers: authHeaders(token) });
