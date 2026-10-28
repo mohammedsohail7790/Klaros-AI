@@ -12,7 +12,7 @@ describe("the referral business's navigation", () => {
       marketing: ["Overview", "Campaigns", "Content", "Outreach wording"],
       finance: ["Invoices", "Commissions", "Revenue"],
       operations: ["Replies", "Tasks", "Referrals"],
-      clinics: ["Providers", "Procedures & offers"],
+      clinics: ["Pipeline", "Providers", "Procedures & offers"],
       ai: ["Receptionist", "Approvals", "Agents", "Knowledge", "Rules", "Activity"],
       website: ["Website"],
       business: ["Setup"],
