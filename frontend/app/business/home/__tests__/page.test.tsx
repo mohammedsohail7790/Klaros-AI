@@ -13,7 +13,9 @@ const getLeadBoardMock = vi.fn();
 const getMyWebsiteMock = vi.fn();
 const listVersionsMock = vi.fn();
 const publishMock = vi.fn();
+const getModulesMock = vi.fn();
 vi.mock("@/lib/api", () => ({
+  getTenantModules: (...a: unknown[]) => getModulesMock(...a),
   getOperatingCrew: vi.fn().mockRejectedValue(new Error("not under test")),
   ApiError: class ApiError extends Error {
     status: number;
@@ -40,6 +42,12 @@ vi.mock("@/lib/useAuth", () => ({
 }));
 
 import BusinessHomePage from "@/app/business/home/page";
+
+beforeEach(() => {
+  getModulesMock.mockReset();
+  getModulesMock.mockResolvedValue({ modules: [] });
+  sessionStorage.clear();
+});
 
 const live = { website: { exists: true, published: true, has_draft: false, pages: ["home"] } };
 const launched = (over: Record<string, unknown> = {}) => overviewFixture({ ...live, ...over });
@@ -276,5 +284,14 @@ describe("Business Home — launch readiness and the controlled Launch action", 
     expect(a).toHaveAttribute("target", "_blank");
     expect(screen.queryByRole("button", { name: /Launch Business/ })).not.toBeInTheDocument();
     expect(screen.getByText("Live — launch checklist incomplete")).toBeInTheDocument(); // a data item is still outstanding
+  });
+
+  it("sends a referral business to its Today page instead of the generic setup console, and leaves everyone else here", async () => {
+    getBuilderOverviewMock.mockResolvedValue(launched());
+    getBusinessOperationsMock.mockResolvedValue(opsFixture());
+    getLeadBoardMock.mockResolvedValue({ leads: [] });
+    getModulesMock.mockResolvedValue({ modules: ["medical_tourism"] });
+    render(<BusinessHomePage />);
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/medical-tourism/overview"));
   });
 });

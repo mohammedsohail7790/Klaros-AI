@@ -6,7 +6,7 @@ const labels = (modules: string[]) => Object.fromEntries(visibleAreas(modules).m
 describe("the referral business's navigation", () => {
   it("keeps only the pages a commission-only referral business uses", () => {
     expect(labels(["medical_tourism"])).toEqual({
-      home: ["Home", "Today"],
+      home: ["Today"],
       crm: ["Leads", "Patients", "Consultations"],
       sales: ["Clinic agreements"],
       marketing: ["Overview", "Campaigns", "Content", "Outreach wording"],

@@ -11,8 +11,10 @@
  * "nothing yet" — never sample data. No state is shown that isn't true.
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTenantModules } from "@/lib/useTenantModules";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/useAuth";
 import { Button } from "@/components/ui/Button";
@@ -30,6 +32,12 @@ import { buildActionCenter, buildArchitectureChain, buildHealth, buildLaunchRows
 
 export default function BusinessHomePage() {
   const { token, user } = useAuth();
+  const router = useRouter();
+  // A referral business runs from its Today page; this generic setup console stays for every other business (the setup steps live under Business > Setup).
+  const modules = useTenantModules(token);
+  useEffect(() => {
+    if (modules.includes("medical_tourism")) router.replace("/medical-tourism/overview");
+  }, [modules, router]);
   const { overview, error, reload } = useBuilderOverview(token);
   const { ops, error: opsError, reload: reloadOps } = useOperations(token);
 

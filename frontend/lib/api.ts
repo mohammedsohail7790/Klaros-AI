@@ -6065,6 +6065,21 @@ export function getOperatingCrew(token: string) {
   return request<OperatingCrew>("/api/v1/operating-crew", { headers: authHeaders(token) });
 }
 
+export type CrewActivityMember = {
+  key: string;
+  name: string;
+  agent_id: string | null;
+  runs: number;
+  failed: number;
+  last: { status: string; at: string; trigger: string; summary: string | null } | null;
+};
+export type CrewActivity = { days: number; members: CrewActivityMember[] };
+
+/** What each crew member last did and how its recent runs went (read-only). */
+export function getCrewActivity(token: string, days = 7) {
+  return request<CrewActivity>(`/api/v1/operating-crew/activity?days=${days}`, { headers: authHeaders(token) });
+}
+
 // --- Setup plan: what it takes to run this business on Klaros, the same for every business ---
 export type SetupStep = { key: string; title: string; why: string; owner: "klaros" | "you"; state: "done" | "todo" | "platform"; href: string | null };
 export type SetupPlan = { verticals: string[]; crew: { running: number; total: number }; steps: SetupStep[]; todo: number; activated?: string[] };
