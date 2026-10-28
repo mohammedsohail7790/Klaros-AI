@@ -28,7 +28,7 @@ import {
 } from "@/lib/api";
 import { buildNeedsYou, todaySummary, waitingOnOthers } from "@/lib/mtCase";
 import { STAGE_LABEL, STAGE_ORDER } from "@/lib/mtLabels";
-import { clinicLane, crewHeadline, crewRows, journeySteps } from "@/lib/mtToday";
+import { clinicLane, crewHeadline, crewRows, journeySteps, todayLede } from "@/lib/mtToday";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -134,7 +134,7 @@ export default function TodayPage() {
         <Hero
           eyebrow={clock ? clock.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }) : " "}
           title={`${clock ? greeting(clock) : "Welcome"}${firstName ? `, ${firstName}` : ""}`}
-          lede={pipeline ? todaySummary(needs) : undefined}
+          lede={pipeline ? todayLede(todaySummary(needs), needs.length, (pending > 0 ? 1 : 0) + otherAsks.length) : undefined}
           actions={
             <Button size="sm" variant="secondary" onClick={() => load()}>
               Refresh

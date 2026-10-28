@@ -115,3 +115,13 @@ export function journeySteps(i: JourneyInput): JourneyStep[] {
   const firstEmpty = steps.findIndex((s) => s.count === 0);
   return steps.map((s, idx) => ({ ...s, here: idx === firstEmpty }));
 }
+
+/**
+ * The sentence under the greeting. `patientSummary` only knows about named patients, so on its own it could say "all caught up" while approvals and other asks are waiting;
+ * this adds them, and never says all is well while anything needs the owner.
+ */
+export function todayLede(patientSummary: string, patientCount: number, otherAsks: number): string {
+  if (otherAsks <= 0) return patientSummary;
+  const others = `${otherAsks} ${otherAsks === 1 ? "other thing is" : "other things are"} waiting for you below`;
+  return patientCount === 0 ? `No patient needs you right now, but ${others}.` : `${patientSummary} Also, ${others}.`;
+}
