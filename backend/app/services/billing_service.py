@@ -38,6 +38,11 @@ PLAN_LIMITS: dict[str, int | None] = {"solo": 50, "growth": None, "scale": None}
 PLAN_PRICE_ENV_VAR: dict[str, str] = {"solo": "STRIPE_PRICE_SOLO", "growth": "STRIPE_PRICE_GROWTH"}
 
 
+def billing_enforced() -> bool:
+    """Whether Klaros's own trial/subscription gate applies. Off unless BILLING_ENFORCEMENT is set."""
+    return bool(get_settings().BILLING_ENFORCEMENT)
+
+
 class BillingNotConfiguredError(Exception):
     pass
 
@@ -58,6 +63,7 @@ class BillingStatus:
     current_period_end: datetime | None
     ai_usage_this_month: int
     ai_usage_limit: int | None
+    enforced: bool = True
 
 
 def _platform_stripe_client() -> StripeClient:
@@ -120,9 +126,12 @@ class BillingService:
             current_period_end=_as_utc(org.current_period_end),
             ai_usage_this_month=usage,
             ai_usage_limit=limit,
+            enforced=billing_enforced(),
         )
 
     async def check_ai_usage_allowed(self, org: Organization) -> None:
+        if not billing_enforced():
+            return
         now = datetime.now(UTC)
 
         trial_ends_at = _as_utc(org.trial_ends_at)

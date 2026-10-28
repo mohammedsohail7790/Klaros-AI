@@ -198,6 +198,9 @@ class Settings(BaseSettings):
     # deliberately separate credential from STRIPE_SECRET_KEY above, which
     # is only ever a per-tenant key for collecting THAT tenant's own
     # customer payments. Never mix the two.
+    # Klaros's own subscription gate (14-day trial, then a paid plan before AI recommendations keep working). OFF by default: Klaros is run for the
+    # owner's own businesses, so nothing is gated. Set BILLING_ENFORCEMENT=true only if Klaros is ever sold to outside customers.
+    BILLING_ENFORCEMENT: bool = False
     STRIPE_PLATFORM_SECRET_KEY: str | None = None
     STRIPE_PLATFORM_WEBHOOK_SECRET: str | None = None
     STRIPE_PRICE_SOLO: str | None = None

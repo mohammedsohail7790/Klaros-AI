@@ -121,6 +121,13 @@ async def client(event_bus: EventBus, tool_registry) -> AsyncGenerator[AsyncClie
 
 
 @pytest.fixture(autouse=True)
+def _billing_gate_on(monkeypatch):
+    """Production runs with the trial/subscription gate OFF (BILLING_ENFORCEMENT defaults to false). The existing billing tests exercise the gate itself,
+    so they run with it on; tests of the off behaviour patch it back off inside the test."""
+    monkeypatch.setattr("app.services.billing_service.billing_enforced", lambda: True)
+
+
+@pytest.fixture(autouse=True)
 def _restore_tool_policies():
     """DEFAULT_TOOL_POLICIES is a shared module-level dict; tests that
     override a policy to exercise APPROVAL_REQUIRED/BLOCKED must not leak

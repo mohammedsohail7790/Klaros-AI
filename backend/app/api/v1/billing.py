@@ -61,6 +61,7 @@ async def get_status(
         "current_period_end": result.current_period_end.isoformat() if result.current_period_end else None,
         "ai_usage_this_month": result.ai_usage_this_month,
         "ai_usage_limit": result.ai_usage_limit,
+        "enforced": result.enforced,
     }
 
 
