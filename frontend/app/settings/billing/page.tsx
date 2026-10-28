@@ -102,6 +102,13 @@ export default function BillingSettingsPage() {
 
         {authLoading || loading || !status ? (
           <Skeleton />
+        ) : status.enforced === false ? (
+          <section aria-label="Included" className="rounded-3xl bg-surface-muted p-7 sm:p-9">
+            <h2 className="font-display text-[1.5rem] font-semibold tracking-[-0.02em] text-foreground">Included, nothing to pay</h2>
+            <p className="mt-2 max-w-2xl text-[15px] leading-snug text-muted">
+              This Klaros is run for your own businesses, so there is no trial, no subscription and no limit on AI work. Nothing here needs your attention.
+            </p>
+          </section>
         ) : (
           <>
             <section aria-label="Current plan" className="klaros-dark mb-12 rounded-3xl p-7 sm:p-9">

@@ -3856,6 +3856,8 @@ export interface BillingStatus {
   current_period_end: string | null;
   ai_usage_this_month: number;
   ai_usage_limit: number | null;
+  /** False when this Klaros is run for the owner's own businesses: no trial, no subscription, nothing is gated. Missing (an older backend) means it is enforced. */
+  enforced?: boolean;
 }
 
 export function getBillingStatus(token: string) {
