@@ -6175,6 +6175,26 @@ export function getClinicAgreements(token: string) {
   return request<{ clinics: ClinicAgreementRow[]; with_terms: number; without_terms: number; stages?: Record<OnboardingStage, number> }>(`${MTR}/agreements`, { headers: authHeaders(token) });
 }
 
+export interface QuoteCommission { agreed: boolean; basis: string | null; percentage: string | null; flat_amount: string | null; currency: string | null; estimated: string | null; estimated_currency: string | null }
+export interface ClinicQuoteRow {
+  id: string; provider_id: string; provider_name: string; country: string | null; verified: boolean; procedure: string | null;
+  amount: string; currency: string; includes: string; excludes: string | null; valid_until: string | null; expired: boolean; reference: string | null;
+  recorded_at: string | null; lowest_in_currency: boolean; disclosure: string;
+  /** Present for managers only. */
+  commission?: QuoteCommission;
+}
+export interface LeadQuotes { lead_id: string; quotes: ClinicQuoteRow[]; order_note: string; general_disclosure: string; currencies: string[] }
+export interface NewClinicQuote { provider_id: string; procedure_id?: string; amount: string; currency: string; includes: string; excludes?: string; valid_until?: string; reference?: string }
+export function getLeadQuotes(token: string, leadId: string) {
+  return request<LeadQuotes>(`${MTR}/leads/${leadId}/quotes`, { headers: authHeaders(token) });
+}
+export function recordLeadQuote(token: string, leadId: string, body: NewClinicQuote) {
+  return request<LeadQuotes>(`${MTR}/leads/${leadId}/quotes`, { method: "POST", headers: authHeaders(token), body: JSON.stringify(body) });
+}
+export function withdrawLeadQuote(token: string, quoteId: string) {
+  return request<LeadQuotes>(`${MTR}/quotes/${quoteId}/withdraw`, { method: "POST", headers: authHeaders(token) });
+}
+
 export function getBusinessName(token: string) {
   return request<{ name: string }>("/api/v1/organization/name", { headers: authHeaders(token) });
 }
