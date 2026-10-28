@@ -66,7 +66,7 @@ export const AREAS: NavArea[] = [
   },
   {
     key: "clinics", label: "Clinics", icon: Building2,
-    tabs: [{ href: "/medical-tourism/providers", label: "Providers", module: MT }, { href: "/medical-tourism/procedures", label: "Procedures & offers", module: MT }],
+    tabs: [{ href: "/medical-tourism/clinic-pipeline", label: "Pipeline", module: MT }, { href: "/medical-tourism/providers", label: "Providers", module: MT }, { href: "/medical-tourism/procedures", label: "Procedures & offers", module: MT }],
   },
   {
     key: "ai", label: "AI team", icon: Bot,
