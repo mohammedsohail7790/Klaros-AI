@@ -16,10 +16,12 @@ from sqlalchemy import select
 
 from app.api.deps import CurrentUser, get_current_user
 from app.db.session import async_session_maker, set_tenant_context
+from app.models.actor import ActorType
+from app.models.audit_log import AuditLog
 from app.models.medical_tourism import Provider
 from app.models.medical_tourism_referral import ProviderReferral, ReferralApproval, ReferralDelivery
 from app.models.rbac import Permission, role_has_permission
-from app.services import mt_clinic_cleanup, mt_clinic_sourcing, mt_commission, mt_handoff, mt_pipeline, mt_referrals, mt_revenue
+from app.services import mt_clinic_cleanup, mt_clinic_sourcing, mt_commission, mt_handoff, mt_pipeline, mt_quotes, mt_referrals, mt_revenue
 from app.services.mt_referrals import ReferralError
 
 router = APIRouter(prefix="/medical-tourism", tags=["medical-tourism-referrals"])
@@ -289,6 +291,48 @@ async def put_provider_terms(provider_id: uuid.UUID, body: dict, u: CurrentUser 
     except ReferralError as exc:
         raise _err(exc) from exc
     return {"terms": mt_revenue.terms_to_dict(row)}
+
+
+# --- clinic quotes: what each clinic quoted for one patient, side by side ----------------------------------------------------------------------------
+
+@router.get("/leads/{lead_id}/quotes")
+async def get_lead_quotes(lead_id: uuid.UUID, u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    """The active quotes for an enquiry, cheapest first. Everyone who can read cases sees the price and a yes/no commission disclosure; the commission amounts are for managers."""
+    _read(u)
+    try:
+        return await mt_quotes.quotes_for_lead(async_session_maker, u.tenant_id, lead_id, show_money=_is_manager(u))
+    except ReferralError as exc:
+        raise _err(exc) from exc
+
+
+@router.post("/leads/{lead_id}/quotes", status_code=201)
+async def post_lead_quote(lead_id: uuid.UUID, body: dict, u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    _coord(u)
+    try:
+        row = await mt_quotes.record_quote(async_session_maker, u.tenant_id, lead_id, u.id, body)
+    except ReferralError as exc:
+        raise _err(exc) from exc
+    async with async_session_maker() as session:
+        await set_tenant_context(session, u.tenant_id)
+        session.add(AuditLog(tenant_id=u.tenant_id, actor_type=ActorType.USER, actor_id=u.id, action="mt.quote.recorded", entity_type="medical_tourism_clinic_quote", entity_id=row.id,
+                             input_summary={"provider_id": str(row.provider_id), "currency": row.currency}, result="success"))
+        await session.commit()
+    return await mt_quotes.quotes_for_lead(async_session_maker, u.tenant_id, lead_id, show_money=_is_manager(u))
+
+
+@router.post("/quotes/{quote_id}/withdraw")
+async def withdraw_lead_quote(quote_id: uuid.UUID, u: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    _coord(u)
+    try:
+        row = await mt_quotes.withdraw_quote(async_session_maker, u.tenant_id, quote_id)
+    except ReferralError as exc:
+        raise _err(exc) from exc
+    async with async_session_maker() as session:
+        await set_tenant_context(session, u.tenant_id)
+        session.add(AuditLog(tenant_id=u.tenant_id, actor_type=ActorType.USER, actor_id=u.id, action="mt.quote.withdrawn", entity_type="medical_tourism_clinic_quote", entity_id=row.id,
+                             input_summary={}, result="success"))
+        await session.commit()
+    return await mt_quotes.quotes_for_lead(async_session_maker, u.tenant_id, row.lead_id, show_money=_is_manager(u))
 
 
 @router.get("/agreements")
