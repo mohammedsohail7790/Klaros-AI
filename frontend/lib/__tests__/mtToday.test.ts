@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agoPhrase, clinicLane, crewHeadline, crewRows, journeySteps } from "@/lib/mtToday";
+import { agoPhrase, clinicLane, crewHeadline, crewRows, journeySteps, todayLede } from "@/lib/mtToday";
 
 const NOW = Date.parse("2026-10-27T12:00:00Z");
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
@@ -94,5 +94,15 @@ describe("journeySteps", () => {
     const steps = journeySteps({ clinics: null, received: null, qualified: null, stageCounts: {}, earned: 0 });
     expect(steps.every((s) => s.count === 0)).toBe(true);
     expect(steps[0].here).toBe(true);
+  });
+});
+
+describe("todayLede", () => {
+  it("keeps the patient summary when nothing else is waiting", () => {
+    expect(todayLede("You're all caught up. Nothing needs you right now.", 0, 0)).toBe("You're all caught up. Nothing needs you right now.");
+  });
+  it("never says all caught up while approvals or other asks are waiting", () => {
+    expect(todayLede("You're all caught up. Nothing needs you right now.", 0, 3)).toBe("No patient needs you right now, but 3 other things are waiting for you below.");
+    expect(todayLede("1 thing needs you.", 1, 1)).toBe("1 thing needs you. Also, 1 other thing is waiting for you below.");
   });
 });
