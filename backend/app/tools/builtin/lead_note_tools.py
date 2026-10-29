@@ -1,7 +1,8 @@
 """crm.add_lead_note / crm.list_lead_notes: notes on an enquiry, for a person or an AI crew member to record an assessment before the enquiry is a customer.
 
 A business that handles patient data stores a note only if the person's consent allows storing health information, because a free-text note can carry it, and the text is screened for
-safety categories like every other free text. The lead id is accepted under the names a model tends to use for it (`enquiry_id`, `id`).
+safety categories like every other free text. The lead id is accepted under the names a model tends to use for it (`enquiry_id`, `id`), and the note text under the names it tends to use for that (`note`, `content`, `text`, ...).
+Every alias is also declared personal, because redaction works by key name and a note can carry health information whichever name the model chose.
 """
 
 import uuid
@@ -16,9 +17,13 @@ from app.services import consent_gate, halla_consent
 from app.tools.base import ExecutionContext, Tool
 
 
+# A model called to write a note often names the text field something other than `body`. The live Lead Responder and Safety Triage failed on exactly this ("body Field required").
+NOTE_TEXT_KEYS = ("body", "note", "notes", "content", "text", "message", "assessment", "summary", "comment")
+
+
 class AddLeadNoteInput(BaseModel):
     lead_id: uuid.UUID = Field(validation_alias=AliasChoices("lead_id", "enquiry_id", "id"))
-    body: str = Field(min_length=1, max_length=4000)
+    body: str = Field(min_length=1, max_length=4000, validation_alias=AliasChoices(*NOTE_TEXT_KEYS))
 
 
 class AddLeadNoteOutput(BaseModel):
@@ -27,7 +32,7 @@ class AddLeadNoteOutput(BaseModel):
 
 class AddLeadNote(Tool):
     name = "crm.add_lead_note"
-    pii_input_fields = ("body",)
+    pii_input_fields = NOTE_TEXT_KEYS
     description = "Attach a freeform note to an enquiry (a lead): an assessment, the next step, or why a person must review it. Use this, not crm.create_note, when the person is not yet a customer."
     input_schema = AddLeadNoteInput
     output_schema = AddLeadNoteOutput
