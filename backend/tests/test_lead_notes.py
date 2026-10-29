@@ -100,3 +100,32 @@ async def test_an_event_started_agent_is_told_which_argument_name_the_entity_id_
     referral = SimpleNamespace(event_type="mt.referral.approved", entity_type="provider_referral", entity_id="r-1")
     assert "`referral_id`" in _build_goal("Send it.", referral)  # type: ignore[arg-type]
     assert "Pass entity_id" not in _build_goal("x", SimpleNamespace(event_type="x", entity_type="something_else", entity_id="1"))  # type: ignore[arg-type]
+
+
+async def test_a_model_that_calls_the_note_text_by_another_name_is_understood(client) -> None:
+    """The live Lead Responder failed with 'body Field required' because the model sent its note as `note`."""
+    token = await _register(client, "Note Name Co", "notenameco@example.com")
+    tid = await _tenant_id(client, token)
+    lead = await _lead(client, token, phone="+971500000042")
+    reg = get_tool_registry()
+    for i, key in enumerate(("note", "content", "text", "message", "assessment", "summary", "notes", "comment")):
+        assert (await reg.execute("crm.add_lead_note", {"lead_id": lead, key: f"via {key}"}, _ctx(tid))).note_id, key
+    bodies = {n["body"] for n in (await reg.execute("crm.list_lead_notes", {"lead_id": lead}, _ctx(tid))).notes}
+    assert {"via note", "via content", "via text", "via comment"} <= bodies
+
+
+async def test_a_note_sent_under_any_name_is_masked_in_the_audit_summary(client) -> None:
+    from app.tools.redact import PII_MASK, redact_pii
+    from app.tools.builtin.lead_note_tools import NOTE_TEXT_KEYS, AddLeadNote
+
+    for key in NOTE_TEXT_KEYS:
+        masked = redact_pii({"lead_id": "x", key: "Patient mentioned chest pain"}, AddLeadNote.pii_input_fields)
+        assert masked[key] == PII_MASK and masked["lead_id"] == "x", key
+
+
+async def test_a_note_with_no_text_at_all_is_still_refused(client) -> None:
+    token = await _register(client, "No Text Co", "notextco@example.com")
+    tid = await _tenant_id(client, token)
+    lead = await _lead(client, token, phone="+971500000043")
+    with pytest.raises(Exception):
+        await get_tool_registry().execute("crm.add_lead_note", {"lead_id": lead}, _ctx(tid))
